@@ -1,6 +1,6 @@
 # Workflow Contracts
 
-> Status: Draft 0.2. These are logical payload contracts for product journeys, fixtures, and implementation planning—not yet a machine-readable API specification.
+> Status: Frozen target-state reference. Revised only by findings from design sprints or fixture work. These are logical payload contracts for product journeys, fixtures, and implementation planning—not yet a machine-readable API specification.
 
 ## Purpose
 
