@@ -22,8 +22,9 @@ This roadmap moves from product definition to a reusable internal implementation
 ## Phase 3: Validate through design and fixtures
 
 - Run a whole-product design sprint (active)
-- Design the application shell and major navigation
-- Design the asset-creation journey at high fidelity
+- Design the application shell and major navigation (production-flow pass complete)
+- Design the asset-creation journey at high fidelity (interactive browser pass complete)
+- Test the production interaction model in a runnable browser prototype ✓
 - Design the brand-brain build journey at high fidelity
 - Write the product primer from design learning
 - Define what a client build includes as a deliverable

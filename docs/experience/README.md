@@ -11,7 +11,9 @@ Design decisions discovered here should update the schema, production policy, gl
 
 ## Current status
 
-A whole-product design sprint is active. The sprint brief, mandate, sequence, evidence gates, and exit criteria are in [`design-sprint-brief.md`](design-sprint-brief.md). All specification documents are frozen as target-state references; the sprint is the next unit of learning.
+A whole-product design sprint is active. The sprint brief, mandate, sequence, evidence gates, and exit criteria are in [`design-sprint-brief.md`](design-sprint-brief.md). All specification documents are frozen as target-state references.
+
+The first production journey also has a runnable browser artifact in [`../../app/`](../../app/). It makes the chooser, brief, generation package, and mock result states interactive so workflow assumptions can be tested more quickly than static screens alone. Figma remains useful for broad visual exploration and presentation-ready north-star views; the browser prototype is the current source for interaction behavior in the implemented production flow. See [`browser-prototype.md`](browser-prototype.md) for its scope and boundaries.
 
 The sprint designs the asset-creation journey before the brand-brain journey, uses one synthetic brand consistently, and writes findings back into concept-visibility or ADRs.
 
@@ -19,4 +21,4 @@ The current wireframes produced an additional working model: client-specific del
 
 The Riggg comparison produced another accepted boundary: Preflight yields and presents a portable generation package before optional rendering. The package exposes the read-only compiled prompt, its named brand-derived components, exclusions, and generation inputs for inspection, copying, or export. Every component and input shows its source and production role. Generate uses a downstream renderer configured outside the production job. Brand-knowledge conflicts are filtered or routed to governance before they reach this interface. The decision is recorded in [`../decisions/0006-treat-generation-package-as-portable-artifact.md`](../decisions/0006-treat-generation-package-as-portable-artifact.md).
 
-See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), [`output-type-catalog.md`](output-type-catalog.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.
+See [`browser-prototype.md`](browser-prototype.md), [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), [`output-type-catalog.md`](output-type-catalog.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.
