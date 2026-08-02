@@ -10,7 +10,7 @@ Create a one-off product lifestyle image around an approved product package with
 2. The preset resolves a scene-image output type, required brief fields, placement defaults, and production-stage policies. The user is not asked to select a mode or confirm that brand guidance applies.
 3. The producer chooses the approved product, describes the desired scene, selects a placement and one of its allowed formats, and may add creative references. Every creative reference requires a role and influence level.
 4. Compilation applies approved brand rules. Inapplicable references are excluded automatically; incomplete or contradictory binding knowledge blocks the job or routes to brand governance before production.
-5. Preflight confirms that locked assets can be placed deterministically and presents the compiled generation package: read-only prompt, negative instructions, resolved output requirements, and generation inputs with source and role.
+5. Preflight confirms that locked assets can be placed deterministically and presents the compiled generation package: named brand-derived prompt components, a read-only operational prompt, negative instructions, resolved output requirements, and generation inputs with source and role.
 6. The producer reviews the package and may copy the prompt or export the package. Prompt editing is not part of the in-app workflow.
 7. The producer selects Generate or completes the workflow with an exported package. Generate uses the renderer and model configured outside the job; no provider selector appears in production.
 8. When generation is requested, the adapter submits the provider-specific payload. The system generates the flexible context, then composes the locked assets into it.
@@ -30,6 +30,8 @@ Run a closely related stage request through a constrained preset with the same b
 - Do placement and format behave as connected output-schema choices?
 - Does one render default to one image, with variants appearing only when the preset explicitly requires them?
 - Can the producer inspect and reuse the compiled prompt and generation inputs before rendering?
+- Does the prompt contain concrete brand-derived direction that would materially distinguish the output from a generic brief?
+- Can the producer see which brand-brain components contributed to the prompt?
 - Is the compiled prompt clearly a system-produced, read-only artifact rather than a form field?
 - Does every generation input reveal where it came from and what it will influence?
 - Can the producer export the generation package without using the configured renderer?

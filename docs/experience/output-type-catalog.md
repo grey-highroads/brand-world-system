@@ -54,9 +54,11 @@ Generation inputs are the assets supplied to generation or deterministic composi
 
 ### Generation package
 
-A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the compiled prompt, negative instructions, generation inputs with explicit provenance and roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.
+A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the named source-linked components used to assemble the prompt, the compiled prompt itself, negative instructions, generation inputs with explicit provenance and roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.
 
 Preflight presents the package as its deliverable. The compiled prompt is read-only in the product; the user may inspect or copy it and may export the complete package. Generate invokes the configured renderer adapter, which translates the package into a provider-specific payload without exposing provider or model selection inside the job.
+
+Prompt components should convert structured brand knowledge into executable direction. Depending on the job, they may cover exact subject handling, world rituals, visual grammar, palette and material behavior, photography or illustration rules, casting, composition, voice and claims, output requirements, and scoped prohibitions. A component is omitted when it is irrelevant to the stage; the complete brand brain is never dumped into the prompt.
 
 ### Artifact manifest
 
@@ -291,7 +293,7 @@ The asset-creation wireframes should demonstrate these product truths:
 2. Different cards represent different structures, not only different dimensions.
 3. The brief changes according to the selected preset, applies brand guidance without asking for confirmation, and treats placement and format as dependent choices.
 4. Preflight explains which elements remain exact, which may be generated, and whether text is embedded, editable, or external.
-5. Preflight itself exposes the read-only compiled prompt, exclusions, and generation inputs with provenance and roles; there is no separate generation-package review screen.
+5. Preflight itself exposes the named brand-derived components, read-only compiled prompt, exclusions, and generation inputs with provenance and roles; there is no separate generation-package review screen.
 6. The user can copy or export the package without invoking a built-in renderer.
 7. Generate uses the renderer configured outside the job; provider, model, credentials, and connection controls do not appear in production.
 8. Ads are first-class outputs and include artwork plus publishing fields.
