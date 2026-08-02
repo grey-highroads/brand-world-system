@@ -1,6 +1,6 @@
 # Production Policy and Creative-Control Presets
 
-> Status: Draft 0.2. This specification defines policy primitives, reusable presets, stage-level compilation, evaluation, revision, and approval.
+> Status: Frozen target-state reference. Revised only by findings from design sprints or fixture work. This specification defines policy primitives, reusable presets, stage-level compilation, evaluation, revision, and approval.
 
 ## Purpose
 
