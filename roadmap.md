@@ -4,7 +4,8 @@ This roadmap moves from product definition to a reusable internal implementation
 
 ## Phase 1: Define the product model
 
-- Publish the product thesis and plain-language primer
+- Publish the product thesis ✓
+- Write the plain-language primer
 - Record the two-workflow and production-policy decisions ✓
 - Establish a shared glossary ✓
 - Define success criteria for the first proof ✓
