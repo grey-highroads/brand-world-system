@@ -6,12 +6,13 @@
 
 The production chooser should contain client-configured deliverable presets, not a universal list of marketing intentions.
 
-Each preset connects four layers:
+Each preset connects five layers:
 
 1. A shared **output type** defines the structure of the deliverable.
 2. A client **deliverable preset** gives that structure a useful name, defaults, and brand-specific constraints.
 3. A job **output specification** resolves the preset for one request.
-4. An **artifact manifest** records what the system actually produced.
+4. A **generation package** compiles the prompt, references, exclusions, and execution requirements for inspection or handoff.
+5. An **artifact manifest** records what the system actually produced.
 
 This separation allows Higher Roads to reuse most of the product across clients while keeping each client's chooser specific and credible. A B2B client may see Blog hero, LinkedIn ad, Case study, and Deck illustration. A CPG client may see Product lifestyle image, Static ad, Instagram story, and Product on white.
 
@@ -46,6 +47,12 @@ Examples include Product lifestyle image, Blog post hero, LinkedIn single-image 
 ### Output specification
 
 An output specification is the resolved contract for one job. It contains the chosen product or subject, dimensions, copy, required variants, references, exactness rules, and other request-specific values.
+
+### Generation package
+
+A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the compiled prompt, negative instructions, recommended references with explicit roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.
+
+The user may inspect, copy, or export the package. An authorized prompt edit creates a job-scoped override and triggers policy validation again. It does not update the brand brain. A renderer adapter translates the package into a provider-specific payload only after the user chooses to render.
 
 ### Artifact manifest
 
@@ -278,13 +285,16 @@ The asset-creation wireframes should demonstrate these product truths:
 2. Different cards represent different structures, not only different dimensions.
 3. The brief changes according to the selected preset.
 4. Preflight explains which elements remain exact, which may be generated, and whether text is embedded, editable, or external.
-5. Ads are first-class outputs and include artwork plus publishing fields.
-6. Producers do not select an architectural production mode.
-7. The current SLAKE flow remains a one-off Product lifestyle image. It does not imply campaign ownership.
+5. A separate generation-package step exposes the compiled prompt, exclusions, and recommended reference assets before rendering.
+6. The user can copy or export the package without invoking a built-in renderer.
+7. A configured renderer is the default, while authorized users can choose another available destination at the render boundary.
+8. Ads are first-class outputs and include artwork plus publishing fields.
+9. Producers do not select an architectural production mode.
+10. The current SLAKE flow remains a one-off Product lifestyle image. It does not imply campaign ownership.
 
 ## Future contract implications
 
-A later specification revision should decide whether workflow contracts explicitly reference the deliverable preset, output type, resolved output specification, and placement profiles used for validation.
+A later specification revision should decide whether workflow contracts explicitly reference the deliverable preset, output type, resolved output specification, generation package, render invocation, and placement profiles used for validation.
 
 The artifact manifest already has the right responsibility: record generated regions, composed layers, embedded elements, composition lineage, findings, and delivered files.
 

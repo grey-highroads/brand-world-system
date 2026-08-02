@@ -17,4 +17,6 @@ The sprint designs the asset-creation journey before the brand-brain journey, us
 
 The current wireframes produced an additional working model: client-specific deliverable presets should reference reusable structural output types. The model covers layers, text handling, variants, delivery, validation, and ads as coordinated packages. It is recorded in [`output-type-catalog.md`](output-type-catalog.md) while the normative specifications remain frozen.
 
+The Riggg comparison produced another accepted boundary: prompt compilation yields a portable generation package before optional rendering. The package exposes the compiled prompt, exclusions, and recommended references for inspection, editing, copying, or export. Rendering remains a configurable downstream service. The decision is recorded in [`../decisions/0006-treat-generation-package-as-portable-artifact.md`](../decisions/0006-treat-generation-package-as-portable-artifact.md).
+
 See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), [`output-type-catalog.md`](output-type-catalog.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.
