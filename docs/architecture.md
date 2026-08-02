@@ -1,6 +1,6 @@
 # System Architecture
 
-> Status: Draft 0.2. This document defines implementation boundaries and responsibilities. It deliberately avoids committing to infrastructure that the fixtures have not yet justified.
+> Status: Frozen target-state reference. Revised only by findings from design sprints or fixture work. This document defines implementation boundaries and responsibilities. It deliberately avoids committing to infrastructure that the fixtures have not yet justified.
 
 Product and architecture decisions in this document are governed by [`product-development-principles.md`](product-development-principles.md). Logical components do not become product surfaces without passing the product architecture test.
 
