@@ -8,7 +8,7 @@
 
 The production workflow compiles brand knowledge, job inputs, output requirements, and policy into instructions for a generative system. If those instructions remain hidden, users may try to write prompt-like language into brief fields without knowing what the system will actually submit. Hidden compilation also binds the product too closely to its built-in renderer and makes failures difficult to inspect.
 
-Riggg demonstrates a more useful boundary. A user can review the prompt and recommended reference images before generation. The compiled material remains valuable even when the user chooses to render somewhere else.
+Riggg demonstrates a more useful boundary. A user can review the prompt and generation inputs before generation. The compiled material remains valuable even when the user chooses to render somewhere else.
 
 ## Decision
 
@@ -18,13 +18,15 @@ The package contains:
 
 - the compiled prompt;
 - negative instructions and exclusions;
-- recommended reference assets with their role, priority, and handling;
+- generation inputs with their source, role, priority, and handling;
 - the resolved output specification;
 - a reference to the policy snapshot that governed compilation;
 - provider-neutral generation settings where practical; and
 - provenance linking each instruction to the brief, brand brain, workflow configuration, or policy.
 
-The user can inspect, copy, or export the package without running generation through Brand World System. Authorized users may edit the prompt before submission. An edit creates a job-scoped override, triggers policy validation again, and never changes the brand brain or canon.
+The compiled prompt is read-only inside Brand World System. The user can inspect or copy it and can export the package without running generation through the system. Copying or exporting preserves portability without positioning manual prompt editing as part of the product workflow. If a user changes the prompt elsewhere, Brand World System can no longer attest that the result reflects the compiled package.
+
+Generation inputs are not an undifferentiated reference bucket. A required source asset enters through the selected subject, product, or preset. An optional creative reference enters through the brief or an explicit system recommendation. Every input records its provenance and production role, such as exact subject, composition, lighting, mood, or style. Creative references also record influence and may not relax exactness rules or introduce unapproved claims.
 
 Rendering is a separate, optional capability behind an adapter. An administrator configures the renderer, model, credentials, and connection for a workflow, including a native provider, an API integration, an MCP connector, or a system such as Higher Roads Emagin8. The production interface exposes a single **Generate** action that uses the configured backend. Routine producers do not choose or inspect provider plumbing inside a job.
 
@@ -47,8 +49,8 @@ The prompt remains a derived execution artifact rather than a source of truth. B
 ## Consequences
 
 - Preflight becomes the generation-package review interface and ends with a Generate action.
-- Reference assets require explicit roles such as exact subject, style, composition, or lighting.
-- Prompt edits are stored as job-scoped overrides and revalidated before execution.
+- Generation inputs require explicit provenance and roles such as exact subject, style, composition, or lighting.
+- The compiled prompt is read-only in the product; copy and export remain available for external use.
 - Users can export a package and complete rendering outside the system.
 - Renderer, model, credential, and connection configuration belongs outside the production job in workflow administration or user settings.
 - Brand-knowledge conflicts are filtered or routed upstream rather than presented as production decisions.

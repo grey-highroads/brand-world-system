@@ -11,7 +11,7 @@ Each preset connects five layers:
 1. A shared **output type** defines the structure of the deliverable.
 2. A client **deliverable preset** gives that structure a useful name, defaults, and brand-specific constraints.
 3. A job **output specification** resolves the preset for one request.
-4. A **generation package** compiles the prompt, references, exclusions, and execution requirements for inspection or handoff.
+4. A **generation package** compiles the prompt, generation inputs, exclusions, and execution requirements for inspection or handoff.
 5. An **artifact manifest** records what the system actually produced.
 
 This separation allows Higher Roads to reuse most of the product across clients while keeping each client's chooser specific and credible. A B2B client may see Blog hero, LinkedIn ad, Case study, and Deck illustration. A CPG client may see Product lifestyle image, Static ad, Instagram story, and Product on white.
@@ -46,13 +46,17 @@ Examples include Product lifestyle image, Blog post hero, LinkedIn single-image 
 
 ### Output specification
 
-An output specification is the resolved contract for one job. It contains the chosen product or subject, dimensions, copy, required variants, references, exactness rules, and other request-specific values.
+An output specification is the resolved contract for one job. It contains the chosen product or subject, placement, format, copy, explicit variants, generation inputs, exactness rules, and other request-specific values. Placement constrains the formats available to the user; they are not unrelated fields.
+
+### Generation inputs
+
+Generation inputs are the assets supplied to generation or deterministic composition. A required source asset is resolved from the selected product, subject, template, or deliverable preset. An optional creative reference is added in the brief or proposed explicitly by the system. Every input records provenance, role, priority, and handling. Creative references also record influence. A reference without a declared purpose does not enter the generation package.
 
 ### Generation package
 
-A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the compiled prompt, negative instructions, recommended references with explicit roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.
+A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the compiled prompt, negative instructions, generation inputs with explicit provenance and roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.
 
-Preflight presents the package as its deliverable. The user may inspect, copy, or export it. An authorized prompt edit creates a job-scoped override and triggers policy validation again. It does not update the brand brain. Generate invokes the configured renderer adapter, which translates the package into a provider-specific payload without exposing provider or model selection inside the job.
+Preflight presents the package as its deliverable. The compiled prompt is read-only in the product; the user may inspect or copy it and may export the complete package. Generate invokes the configured renderer adapter, which translates the package into a provider-specific payload without exposing provider or model selection inside the job.
 
 ### Artifact manifest
 
@@ -216,7 +220,9 @@ Recommended defaults:
 - text policy defaults to `none`;
 - background source defaults to `supplied` when a complete source is provided;
 - a registered brand asset defaults to `exact` handling;
-- output quantity defaults to one;
+- output quantity defaults to one primary image per render;
+- placement constrains the formats available for selection;
+- additional crops or variants exist only when the deliverable preset explicitly promises them;
 - delivery defaults to a flattened production file unless the preset promises editability;
 - placement validation is required only when a placement profile is selected.
 
@@ -283,9 +289,9 @@ The asset-creation wireframes should demonstrate these product truths:
 
 1. The chooser contains client-configured deliverables with familiar names.
 2. Different cards represent different structures, not only different dimensions.
-3. The brief changes according to the selected preset.
+3. The brief changes according to the selected preset, applies brand guidance without asking for confirmation, and treats placement and format as dependent choices.
 4. Preflight explains which elements remain exact, which may be generated, and whether text is embedded, editable, or external.
-5. Preflight itself exposes the compiled prompt, exclusions, and recommended reference assets; there is no separate generation-package review screen.
+5. Preflight itself exposes the read-only compiled prompt, exclusions, and generation inputs with provenance and roles; there is no separate generation-package review screen.
 6. The user can copy or export the package without invoking a built-in renderer.
 7. Generate uses the renderer configured outside the job; provider, model, credentials, and connection controls do not appear in production.
 8. Ads are first-class outputs and include artwork plus publishing fields.

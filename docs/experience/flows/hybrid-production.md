@@ -7,11 +7,11 @@ Create a one-off product lifestyle image around an approved product package with
 ## Flow
 
 1. The producer selects the client's configured Product lifestyle image preset.
-2. The preset resolves a scene-image output type, required brief fields, placement defaults, and production-stage policies. The user is not asked to select a mode.
-3. The producer chooses the approved product, describes the desired scene, and supplies any references or format overrides.
+2. The preset resolves a scene-image output type, required brief fields, placement defaults, and production-stage policies. The user is not asked to select a mode or confirm that brand guidance applies.
+3. The producer chooses the approved product, describes the desired scene, selects a placement and one of its allowed formats, and may add creative references. Every creative reference requires a role and influence level.
 4. Compilation applies approved brand rules. Inapplicable references are excluded automatically; incomplete or contradictory binding knowledge blocks the job or routes to brand governance before production.
-5. Preflight confirms that locked assets can be placed deterministically and presents the compiled generation package: prompt, negative instructions, resolved output requirements, and recommended references with explicit roles.
-6. The producer reviews the package and may copy it, export it, or make a job-scoped prompt edit. Any edit is revalidated and does not change the brand brain.
+5. Preflight confirms that locked assets can be placed deterministically and presents the compiled generation package: read-only prompt, negative instructions, resolved output requirements, and generation inputs with source and role.
+6. The producer reviews the package and may copy the prompt or export the package. Prompt editing is not part of the in-app workflow.
 7. The producer selects Generate or completes the workflow with an exported package. Generate uses the renderer and model configured outside the job; no provider selector appears in production.
 8. When generation is requested, the adapter submits the provider-specific payload. The system generates the flexible context, then composes the locked assets into it.
 9. Evaluation checks locked-element drift and unrequested changes before subjective quality.
@@ -27,8 +27,11 @@ Run a closely related stage request through a constrained preset with the same b
 - Can a producer tell what the system will reproduce exactly before running the job?
 - Does the preset ask only for inputs that materially affect a product lifestyle image?
 - Is it clear that this output contains no headline or other text layer?
-- Can the producer inspect and reuse the compiled prompt and recommended references before rendering?
-- Is the difference between editing this job's prompt and changing the brand brain unmistakable?
+- Do placement and format behave as connected output-schema choices?
+- Does one render default to one image, with variants appearing only when the preset explicitly requires them?
+- Can the producer inspect and reuse the compiled prompt and generation inputs before rendering?
+- Is the compiled prompt clearly a system-produced, read-only artifact rather than a form field?
+- Does every generation input reveal where it came from and what it will influence?
 - Can the producer export the generation package without using the configured renderer?
 - Does Generate use the configured backend without making provider infrastructure part of the job?
 - Does the workflow make the correct creative-control decisions without asking the producer to understand policy presets?
