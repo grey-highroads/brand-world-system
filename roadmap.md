@@ -6,7 +6,7 @@ This roadmap moves from product definition to a reusable internal implementation
 
 - Publish the product thesis and plain-language primer
 - Record the two-workflow and production-policy decisions ✓
-- Establish a shared glossary
+- Establish a shared glossary ✓
 - Define success criteria for the first proof ✓
 - Establish the product architecture test and concept-visibility audit ✓
 
@@ -16,16 +16,24 @@ This roadmap moves from product definition to a reusable internal implementation
 - Draft stage-level creative-control policy and reusable presets ✓
 - Add valid, invalid, and ambiguous examples ✓
 - Define workflow, asset-registry, provenance, and evaluation contracts ✓
+- Freeze specifications as target-state references ✓
 
-## Phase 3: Prove the model with fixtures
+## Phase 3: Validate through design and fixtures
 
-- Build a sanitized PWP onboarding and concept-development journey
-- Build a sanitized Riggg controlled-production journey
-- Test a multi-stage journey and an internal hybrid-versus-constrained policy control
+- Run a whole-product design sprint (active)
+- Design the application shell and major navigation
+- Design the asset-creation journey at high fidelity
+- Design the brand-brain build journey at high fidelity
+- Write the product primer from design learning
+- Define what a client build includes as a deliverable
+- Build sanitized PWP and Riggg fixture journeys
+- Test a multi-stage journey and hybrid-versus-constrained policy control
 - Record schema and policy changes revealed by each case
 
 ## Phase 4: Build the internal implementation kit
 
+- Identify the narrowest high-value implementation slice from design and fixture learning
+- Scope and estimate the first slice before committing to code
 - Implement intake, normalization, retrieval, context assembly, and persistence
 - Add prompt compilation, model adapters, evaluation, revision, and approvals
 - Capture job state, provenance, token usage, cost, and failure recovery
