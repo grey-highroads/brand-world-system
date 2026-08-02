@@ -20,13 +20,15 @@ Production uses one of three configurable modes:
 ## Repository map
 
 - [`docs/product-thesis.md`](docs/product-thesis.md) — rationale, product model, boundaries, and commercial opportunity
+- [`docs/architecture.md`](docs/architecture.md) — system boundaries, logical components, data flow, isolation, and failure posture
 - [`glossary.md`](glossary.md) — authoritative terminology for the system
 - [`docs/success-criteria.md`](docs/success-criteria.md) — falsifiable control test for the first proof
 - [`docs/experience/`](docs/experience/) — north-star views and workflow pressure tests
 - [`docs/product-primer.md`](docs/product-primer.md) — forthcoming plain-language product walkthrough
 - [`docs/decisions/`](docs/decisions/) — architectural and product decision records
 - [`specs/brand-world-schema.md`](specs/brand-world-schema.md) — draft entity, governance, provenance, and revision model
-- [`specs/production-policy.md`](specs/production-policy.md) — forthcoming creative-control policy
+- [`specs/production-policy.md`](specs/production-policy.md) — production modes, policy compilation, evaluation, revision, and approvals
+- [`specs/workflow-contracts.md`](specs/workflow-contracts.md) — durable payloads between world-building, production, governance, and learning
 - [`fixtures/pwp/`](fixtures/pwp/) — editorial and inference-first reference case
 - [`fixtures/riggg/`](fixtures/riggg/) — constrained and canon-first reference case
 - [`roadmap.md`](roadmap.md) — staged path from documentation to a working implementation kit
@@ -41,4 +43,4 @@ Production uses one of three configurable modes:
 
 ## Status
 
-This repository currently defines the product before it defines the software. The thesis, glossary, first-proof criteria, and initial schema now form the product contract; the production policy and fixtures are the next implementation-facing specifications.
+This repository currently defines the product before it defines the software. The thesis, glossary, success criteria, schema, production policy, architecture, contracts, and decision records now form the initial product and system contract. Fixtures are the next step: they will pressure-test these abstractions before machine-readable schemas or implementation choices are locked.

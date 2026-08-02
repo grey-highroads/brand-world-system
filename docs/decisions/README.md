@@ -13,4 +13,9 @@ Each record should state:
 
 Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decisions remain in the repository and link to their replacements.
 
-The first expected records cover the two-workflow separation, the separation of content domains from governance authority, policy-driven production modes, and the boundary between shared infrastructure and private client data.
+## Accepted decisions
+
+- [`0001-separate-world-building-and-production.md`](0001-separate-world-building-and-production.md)
+- [`0002-model-canon-as-a-governed-view.md`](0002-model-canon-as-a-governed-view.md)
+- [`0003-compile-and-snapshot-production-policy.md`](0003-compile-and-snapshot-production-policy.md)
+- [`0004-separate-shared-platform-and-private-brand-data.md`](0004-separate-shared-platform-and-private-brand-data.md)
