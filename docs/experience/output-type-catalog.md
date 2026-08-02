@@ -52,7 +52,7 @@ An output specification is the resolved contract for one job. It contains the ch
 
 A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the compiled prompt, negative instructions, recommended references with explicit roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.
 
-The user may inspect, copy, or export the package. An authorized prompt edit creates a job-scoped override and triggers policy validation again. It does not update the brand brain. A renderer adapter translates the package into a provider-specific payload only after the user chooses to render.
+Preflight presents the package as its deliverable. The user may inspect, copy, or export it. An authorized prompt edit creates a job-scoped override and triggers policy validation again. It does not update the brand brain. Generate invokes the configured renderer adapter, which translates the package into a provider-specific payload without exposing provider or model selection inside the job.
 
 ### Artifact manifest
 
@@ -285,9 +285,9 @@ The asset-creation wireframes should demonstrate these product truths:
 2. Different cards represent different structures, not only different dimensions.
 3. The brief changes according to the selected preset.
 4. Preflight explains which elements remain exact, which may be generated, and whether text is embedded, editable, or external.
-5. A separate generation-package step exposes the compiled prompt, exclusions, and recommended reference assets before rendering.
+5. Preflight itself exposes the compiled prompt, exclusions, and recommended reference assets; there is no separate generation-package review screen.
 6. The user can copy or export the package without invoking a built-in renderer.
-7. A configured renderer is the default, while authorized users can choose another available destination at the render boundary.
+7. Generate uses the renderer configured outside the job; provider, model, credentials, and connection controls do not appear in production.
 8. Ads are first-class outputs and include artwork plus publishing fields.
 9. Producers do not select an architectural production mode.
 10. The current SLAKE flow remains a one-off Product lifestyle image. It does not imply campaign ownership.

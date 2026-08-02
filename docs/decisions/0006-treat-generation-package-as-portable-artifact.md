@@ -12,7 +12,7 @@ Riggg demonstrates a more useful boundary. A user can review the prompt and reco
 
 ## Decision
 
-Every generative workflow stage produces a versioned **generation package** before invoking a renderer.
+Preflight produces and presents a versioned **generation package** before invoking a renderer. The package is the deliverable of preflight, not a gate leading to a second review interface.
 
 The package contains:
 
@@ -26,7 +26,9 @@ The package contains:
 
 The user can inspect, copy, or export the package without running generation through Brand World System. Authorized users may edit the prompt before submission. An edit creates a job-scoped override, triggers policy validation again, and never changes the brand brain or canon.
 
-Rendering is a separate, optional step behind a capability adapter. A workflow may configure a default renderer and model, including a native provider, an API integration, an MCP connector, or a system such as Higher Roads Emagin8. The interface shows the destination when the user is deciding whether and where to render. It does not require routine users to understand provider architecture.
+Rendering is a separate, optional capability behind an adapter. An administrator configures the renderer, model, credentials, and connection for a workflow, including a native provider, an API integration, an MCP connector, or a system such as Higher Roads Emagin8. The production interface exposes a single **Generate** action that uses the configured backend. Routine producers do not choose or inspect provider plumbing inside a job.
+
+Compilation applies approved brand rules before the package reaches production. Inapplicable evidence and references that would introduce unapproved claims are excluded automatically. If binding brand knowledge is incomplete or genuinely contradictory, the system blocks compilation or routes the issue to brand governance. Production may ask for a decision about the current job; it must not ask a producer to repair the brand brain.
 
 The system snapshots the exact package and adapter payload used for every render invocation.
 
@@ -44,10 +46,11 @@ The prompt remains a derived execution artifact rather than a source of truth. B
 
 ## Consequences
 
-- The asset-creation journey gains a generation-package review step after preflight and before rendering.
+- Preflight becomes the generation-package review interface and ends with a Generate action.
 - Reference assets require explicit roles such as exact subject, style, composition, or lighting.
 - Prompt edits are stored as job-scoped overrides and revalidated before execution.
 - Users can export a package and complete rendering outside the system.
-- Renderer configuration belongs in workflow administration, with authorized job-level choice where it creates a meaningful tradeoff.
+- Renderer, model, credential, and connection configuration belongs outside the production job in workflow administration or user settings.
+- Brand-knowledge conflicts are filtered or routed upstream rather than presented as production decisions.
 - A later workflow-contract revision should define generation-package and render-invocation schemas.
 - Provider credentials and sensitive payload fields remain subject to tenant security and retention policy.
