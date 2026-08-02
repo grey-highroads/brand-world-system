@@ -7,13 +7,13 @@ This roadmap moves from product definition to a reusable internal implementation
 - Publish the product thesis and plain-language primer
 - Record the two-workflow and production-policy decisions
 - Establish a shared glossary
-- Define success criteria for the first proof
+- Define success criteria for the first proof ✓
 
 ## Phase 2: Specify the system's core
 
-- Draft the canonical brand-world schema
+- Draft the canonical brand-world schema ✓
 - Draft the production modes and creative-control policy
-- Add valid, invalid, and ambiguous examples
+- Add valid, invalid, and ambiguous examples ✓
 - Define workflow, asset-registry, provenance, and evaluation contracts
 
 ## Phase 3: Prove the model with fixtures

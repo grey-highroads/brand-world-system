@@ -21,9 +21,11 @@ Production uses one of three configurable modes:
 
 - [`docs/product-thesis.md`](docs/product-thesis.md) — rationale, product model, boundaries, and commercial opportunity
 - [`glossary.md`](glossary.md) — authoritative terminology for the system
+- [`docs/success-criteria.md`](docs/success-criteria.md) — falsifiable control test for the first proof
+- [`docs/experience/`](docs/experience/) — north-star views and workflow pressure tests
 - [`docs/product-primer.md`](docs/product-primer.md) — forthcoming plain-language product walkthrough
 - [`docs/decisions/`](docs/decisions/) — architectural and product decision records
-- [`specs/brand-world-schema.md`](specs/brand-world-schema.md) — forthcoming canonical brand-world model
+- [`specs/brand-world-schema.md`](specs/brand-world-schema.md) — draft entity, governance, provenance, and revision model
 - [`specs/production-policy.md`](specs/production-policy.md) — forthcoming creative-control policy
 - [`fixtures/pwp/`](fixtures/pwp/) — editorial and inference-first reference case
 - [`fixtures/riggg/`](fixtures/riggg/) — constrained and canon-first reference case
@@ -39,4 +41,4 @@ Production uses one of three configurable modes:
 
 ## Status
 
-This repository currently defines the product before it defines the software. The thesis is the first substantive artifact; the schema and production policy are the next implementation-facing specifications.
+This repository currently defines the product before it defines the software. The thesis, glossary, first-proof criteria, and initial schema now form the product contract; the production policy and fixtures are the next implementation-facing specifications.

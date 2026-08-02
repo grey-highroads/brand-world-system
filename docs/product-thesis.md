@@ -33,7 +33,7 @@ The answer is not simply a better master prompt. It is a persistent representati
 
 ## Two workflows, one shared system
 
-### Workflow one: build and evolve the canonical brand world
+### Workflow one: build and evolve the brand brain
 
 The first workflow turns scattered evidence into governed brand intelligence. It ingests source material such as strategy documents, visual guidelines, websites, campaign decks, product information, approved copy, asset libraries, and stakeholder decisions. It then separates observation from inference, records provenance, exposes contradictions, and produces structured entities and relationships.
 
@@ -52,7 +52,7 @@ This workflow should:
 
 The highest-value output of PWP belongs here: a rich, opinionated model of how a brand looks, speaks, behaves, and lives in the world.
 
-### Workflow two: produce from the canonical brand world
+### Workflow two: produce from the brand brain
 
 The second workflow turns a request into a controlled production job. It retrieves only the relevant brand context, selects or confirms a production mode, identifies locked and flexible elements, compiles task-specific instructions, invokes the appropriate model or service, evaluates the result, and packages the deliverable.
 
@@ -247,6 +247,6 @@ These questions should be resolved through specifications, decision records, and
 
 The product is a persistent brand intelligence system with configurable production engines.
 
-Workflow one constructs and governs the canonical brand world. Workflow two produces from that world. Constrained, editorial, and hybrid modes determine how tightly production follows canon. PWP supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
+Workflow one constructs and governs the brand brain and its canon. Workflow two produces from that brain. Constrained, editorial, and hybrid modes determine how tightly production follows canon. PWP supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
 
 The immediate objective is not to build a universal SaaS product. It is to define a coherent implementation kit, prove it with contrasting fixtures, and deploy one valuable workflow at a time. If the schema, policy, evaluation, and learning loop hold across those cases, the system can turn bespoke brand work into a repeatable and profitable product capability.
