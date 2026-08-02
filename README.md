@@ -48,4 +48,4 @@ These are internal configuration presets, not global brand types or assumed user
 
 ## Status
 
-This repository currently defines the product before it defines the software. The thesis, glossary, success criteria, schema, production policy, architecture, contracts, and decision records now form the initial product and system contract. Fixtures are the next step: they will pressure-test these abstractions before machine-readable schemas or implementation choices are locked.
+Specifications are frozen as target-state references. A whole-product design sprint is active: the sprint designs the application shell and both core journeys at high fidelity before selecting the first implementation slice. See [`docs/experience/design-sprint-brief.md`](docs/experience/design-sprint-brief.md) for the mandate, sequence, evidence gates, and exit criteria.
