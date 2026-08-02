@@ -32,9 +32,16 @@ The prototype defaults to one image per render. It does not expose a renderer ch
 
 ## Visual direction
 
-The browser artifact intentionally moves beyond the earlier neutral beige treatment. Its working theme combines deep botanical ink, warm paper surfaces, coral action color, and restrained celery, lavender, and gold accents. Editorial display type distinguishes brand-world thinking from operational interface text.
+The browser artifact uses a compact dark dashboard language: layered blue-charcoal and slate surfaces, cool white type, low-radius modules, subtle tonal borders, and restrained shadows. The direction intentionally stays close to the supplied DroitLab dashboard reference while translating that system to Brand World System's production workflow.
 
-The palette is a design hypothesis rather than a brand-system requirement. Tokens are centralized in [`../../app/styles.css`](../../app/styles.css) so the direction can be tuned without rewriting the workflow.
+Accent color carries product meaning rather than decoration:
+
+- coral-orange identifies user action, attention, and exceptions;
+- cyan identifies compiled system intelligence and production output;
+- lavender identifies governance and Brand Brain context; and
+- green identifies verified or successfully resolved state.
+
+The palette is a product-shell hypothesis rather than a client brand requirement. Tokens are centralized in [`../../app/styles.css`](../../app/styles.css) so client themes can later change presentation without changing semantic color roles or workflow behavior.
 
 ## Deliberately absent
 
