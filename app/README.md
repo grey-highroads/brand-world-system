@@ -17,9 +17,10 @@ Open `http://localhost:4173`.
 - SLAKE deliverable chooser
 - Product lifestyle image brief
 - Placement-dependent format choices
-- Optional creative references with role and influence
+- Optional creative inputs with source type, role, semantic influence, usage instruction, provenance, and reader confidence
 - Read-only, brand-derived compiled prompt
-- Portable generation package export
+- Preflight resolution trace showing how each input affected the package
+- Portable generation package export with an installation boundary and structured input contract
 - Mock Generate transition and result review
 
 The prototype has no authentication, persistence, uploads, model calls, provider integration, or production approval behavior. Those omissions are intentional.

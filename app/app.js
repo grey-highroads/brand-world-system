@@ -51,25 +51,53 @@ const referenceLibrary = [
     id: "afternoon-reset",
     name: "Afternoon reset",
     detail: "Warm window light and an unhurried domestic moment",
+    sourceType: "Approved library image",
+    provenance: "SLAKE brand library · asset 172",
     role: "Lighting + mood",
     influence: "Strong",
+    usageInstruction: "Use the warm side light and everyday emotional register; ignore the subject’s clothing.",
+    confidence: "High",
+    evidence: ["low window light from camera left", "unhurried domestic gesture"],
     thumb: "light",
   },
   {
     id: "lifestyle-composition",
     name: "Lifestyle composition",
     detail: "Product-forward framing with human context",
+    sourceType: "Approved library image",
+    provenance: "SLAKE brand library · asset 208",
     role: "Composition",
-    influence: "Moderate",
+    influence: "Supporting",
+    usageInstruction: "Borrow the product-to-person scale and negative space; do not copy the setting.",
+    confidence: "High",
+    evidence: ["product remains readable at a human scale", "negative space above and right"],
     thumb: "composition",
   },
   {
     id: "surface-study",
     name: "Surface and material study",
     detail: "Pale stone, tactile linen, and honest domestic wear",
+    sourceType: "Uploaded image",
+    provenance: "Added to this job · surface-study.jpg",
     role: "Materials",
-    influence: "Moderate",
+    influence: "Supporting",
+    usageInstruction: "Use only the stone, linen, and softly worn material behavior.",
+    confidence: "High",
+    evidence: ["pale honed stone", "natural linen with visible weave"],
     thumb: "light",
+  },
+  {
+    id: "social-rhythm-grid",
+    name: "Everyday social rhythm",
+    detail: "A grid of small, candid reset moments across the day",
+    sourceType: "Image grid",
+    provenance: "SLAKE reference board · grid 04",
+    role: "Style calibration",
+    influence: "Light",
+    usageInstruction: "Use the candid pacing as calibration; do not reproduce a grid or any individual tile.",
+    confidence: "Medium",
+    evidence: ["alternating close and medium distance", "consistent warm-neutral palette"],
+    thumb: "grid",
   },
 ];
 
@@ -79,10 +107,12 @@ const state = {
   brief: {
     scene:
       "Lifestyle image for Yuzu Ginger. Warm interior, late-afternoon light, the 4pm reset moment. One person, unhurried, mid-task.",
+    exclusions: "Glossy wellness styling, ingredient piles, medical cues, or added copy.",
     placement: "Instagram feed",
     format: "4:5 portrait",
   },
   references: referenceLibrary.slice(0, 2).map((item) => ({ ...item })),
+  sourcePickerOpen: false,
   toast: "",
 };
 
@@ -229,6 +259,11 @@ function renderBrief() {
               <label for="scene">What are you making?</label>
               <textarea id="scene" data-action="scene-input">${escapeHtml(state.brief.scene)}</textarea>
             </div>
+            <div class="field full">
+              <label for="exclusions">Anything to avoid?</label>
+              <input class="input-like" id="exclusions" data-action="exclusions-input" value="${escapeHtml(state.brief.exclusions)}">
+              <span class="field-note">Job-specific exclusions are compiled into the package as constraints, not creative references.</span>
+            </div>
             <div class="field">
               <label for="placement">Placement</label>
               <select id="placement" data-action="placement-change">
@@ -248,13 +283,14 @@ function renderBrief() {
           <div class="reference-section">
             <div class="reference-heading">
               <div>
-                <span class="section-label">Creative references (optional)</span>
-                <p>Add an image only when you want it to guide a specific part of production.</p>
+                <span class="section-label">Creative inputs (optional)</span>
+                <p>Add a source only when you can name what it should influence. Brand rules and exact assets are never weighted here.</p>
               </div>
-              <button class="button ghost" type="button" data-action="add-reference">+ Add reference</button>
+              <button class="button ghost" type="button" data-action="toggle-source-picker">${state.sourcePickerOpen ? "Close" : "+ Add source"}</button>
             </div>
+            ${renderSourcePicker()}
             <div class="reference-list">
-              ${referenceRows || '<p class="page-description">No creative references added. Brand guidance still applies.</p>'}
+              ${referenceRows || '<p class="page-description">No creative inputs added. Brand guidance still applies.</p>'}
             </div>
           </div>
         </section>
@@ -296,17 +332,60 @@ function referenceEditor(item, index) {
       <span class="reference-copy">
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(item.detail)}</span>
+        <span class="reference-meta"><span class="mini-pill">${escapeHtml(item.sourceType)}</span><span>${escapeHtml(item.confidence)}-confidence read</span></span>
       </span>
-      <select data-action="reference-role" data-index="${index}" aria-label="Role for ${escapeHtml(item.name)}">
-        ${["Lighting + mood", "Composition", "Materials", "Style", "Casting"]
-          .map((role) => option(role, item.role))
-          .join("")}
-      </select>
-      <select class="influence-select" data-action="reference-influence" data-index="${index}" aria-label="Influence for ${escapeHtml(item.name)}">
-        ${["Strong", "Moderate", "Subtle"].map((level) => option(level, item.influence)).join("")}
-      </select>
       <button class="icon-button" type="button" data-action="remove-reference" data-index="${index}" aria-label="Remove ${escapeHtml(item.name)}">×</button>
+      <span class="reference-controls">
+        <label>
+          <span>Use for</span>
+          <select data-action="reference-role" data-index="${index}" aria-label="Role for ${escapeHtml(item.name)}">
+            ${["Lighting + mood", "Composition", "Materials", "Casting", "Style calibration", "Differentiate away"]
+              .map((role) => option(role, item.role))
+              .join("")}
+          </select>
+        </label>
+        <label>
+          <span>Influence</span>
+          <select data-action="reference-influence" data-index="${index}" aria-label="Influence for ${escapeHtml(item.name)}">
+            ${["Lead", "Strong", "Supporting", "Light"].map((level) => option(level, item.influence)).join("")}
+          </select>
+        </label>
+        <label class="guidance-field">
+          <span>Usage instruction</span>
+          <input class="usage-input" data-action="reference-guidance" data-index="${index}" value="${escapeHtml(item.usageInstruction)}" aria-label="Usage instruction for ${escapeHtml(item.name)}">
+        </label>
+      </span>
     </article>
+  `;
+}
+
+function renderSourcePicker() {
+  if (!state.sourcePickerOpen) return "";
+  const available = referenceLibrary.filter(
+    (item) => !state.references.some((reference) => reference.id === item.id),
+  );
+  return `
+    <section class="source-picker">
+      <div class="source-picker-heading">
+        <span><strong>Choose another source</strong><span>Uploads, URLs, named references, and grids will use this same input contract.</span></span>
+        <span class="mini-pill">Prototype library</span>
+      </div>
+      <div class="source-options">
+        ${available.length
+          ? available
+              .map(
+                (item) => `
+                  <button class="source-option" type="button" data-action="attach-source" data-id="${item.id}">
+                    <span class="thumb ${item.thumb}" aria-hidden="true"></span>
+                    <span><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.sourceType)} · ${escapeHtml(item.provenance)}</span></span>
+                    <span aria-hidden="true">+</span>
+                  </button>
+                `,
+              )
+              .join("")
+          : '<p class="page-description">All prototype sources are already attached.</p>'}
+      </div>
+    </section>
   `;
 }
 
@@ -327,9 +406,12 @@ function compiledComponents() {
 
 function promptSections() {
   const referenceDirection = state.references.length
-    ? `Use the attached creative references only for ${state.references
-        .map((item) => `${item.role.toLowerCase()} (${item.influence.toLowerCase()})`)
-        .join(" and ")}. They may not alter exact product handling or claims.`
+    ? `${state.references
+        .map(
+          (item) =>
+            `${item.name} — ${item.influence.toLowerCase()} influence for ${item.role.toLowerCase()}: ${item.usageInstruction} The source read identified ${item.evidence.join(" and ")}.`,
+        )
+        .join(" ")} These inputs may not alter the exact product, approved claims, or Brand Brain rules.`
     : "No creative reference images are attached; resolve flexible choices from the approved brand-world guidance.";
 
   return [
@@ -355,7 +437,7 @@ function promptSections() {
     },
     {
       title: "Content control",
-      body: "Generate one image. Add no copy, health symbols, ingredients, extra products, altered claims, or redesigned packaging.",
+      body: `Generate one image. Add no copy, health symbols, ingredients, extra products, altered claims, or redesigned packaging. Also avoid: ${state.brief.exclusions}`,
     },
   ];
 }
@@ -415,6 +497,10 @@ function renderPreflight() {
               </article>
               ${state.references.map(referenceInput).join("")}
             </div>
+            <div class="resolution-section">
+              <span class="section-label">How inputs resolved</span>
+              <div class="resolution-list">${state.references.map(referenceResolution).join("")}</div>
+            </div>
           </section>
 
           <section class="card ready-card">
@@ -436,7 +522,18 @@ function referenceInput(item) {
   return `
     <article class="input-row">
       <span class="thumb ${item.thumb}" aria-hidden="true"></span>
-      <span><strong>${escapeHtml(item.name)}</strong><span>Added in brief · ${escapeHtml(item.role.toLowerCase())} · ${escapeHtml(item.influence.toLowerCase())}</span></span>
+      <span><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.sourceType)} · ${escapeHtml(item.role.toLowerCase())} · ${escapeHtml(item.influence.toLowerCase())}</span></span>
+    </article>
+  `;
+}
+
+function referenceResolution(item) {
+  return `
+    <article class="resolution-row">
+      <span class="resolution-topline"><strong>${escapeHtml(item.name)}</strong><span class="included-status">Included</span></span>
+      <p>${escapeHtml(item.usageInstruction)}</p>
+      <span class="evidence-chips">${item.evidence.map((piece) => `<span>${escapeHtml(piece)}</span>`).join("")}</span>
+      <span class="resolution-note">Compatible with policy · ${escapeHtml(item.confidence.toLowerCase())} reader confidence</span>
     </article>
   `;
 }
@@ -531,20 +628,40 @@ async function copyPrompt() {
 
 function downloadPackage() {
   const generationPackage = {
-    version: "prototype-1",
+    version: "prototype-2",
+    installation_id: "slake-higher-roads-demo",
     deliverable: state.selectedDeliverable.id,
     output: { ...state.brief, quantity: 1 },
     compiled_components: compiledComponents(),
     prompt: plainPrompt(),
     generation_inputs: [
-      { id: "slake-yuzu-ginger-can-v3", source: "selected_product", role: "exact_subject" },
+      {
+        id: "slake-yuzu-ginger-can-v3",
+        source_type: "approved_asset",
+        source_ref: "SLAKE product library · Yuzu Ginger Can v3",
+        authority_class: "canonical_asset",
+        role: "exact_subject",
+        handling: "exact",
+      },
       ...state.references.map((item) => ({
         id: item.id,
-        source: "brief",
+        source_type: item.sourceType,
+        provenance: item.provenance,
+        authority_class: "creative_evidence",
+        handling: "flexible",
         role: item.role,
         influence: item.influence,
+        usage_instruction: item.usageInstruction,
+        reader: "prototype-image-reader-v1",
+        confidence: item.confidence,
+        extracted_evidence: item.evidence,
+        resolution: "included",
       })),
     ],
+    request_constraints: {
+      requirements: [state.brief.scene],
+      exclusions: [state.brief.exclusions],
+    },
     policy: {
       exact: ["product", "package_artwork", "logo", "approved_claims"],
       flexible: ["scene", "lighting", "casting", "composition"],
@@ -564,6 +681,12 @@ function downloadPackage() {
 root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="scene-input"]')) {
     state.brief.scene = event.target.value;
+  }
+  if (event.target.matches('[data-action="exclusions-input"]')) {
+    state.brief.exclusions = event.target.value;
+  }
+  if (event.target.matches('[data-action="reference-guidance"]')) {
+    state.references[Number(event.target.dataset.index)].usageInstruction = event.target.value;
   }
 });
 
@@ -601,12 +724,17 @@ root.addEventListener("click", (event) => {
   if (action === "start-new") navigate("chooser");
   if (action === "copy-prompt") copyPrompt();
   if (action === "download-package") downloadPackage();
-  if (action === "add-reference") {
-    const next = referenceLibrary.find((item) => !state.references.some((reference) => reference.id === item.id));
-    if (next) {
+  if (action === "toggle-source-picker") {
+    state.sourcePickerOpen = !state.sourcePickerOpen;
+    render();
+  }
+  if (action === "attach-source") {
+    const next = referenceLibrary.find((item) => item.id === target.dataset.id);
+    if (next && !state.references.some((reference) => reference.id === next.id)) {
       state.references.push({ ...next });
+      state.sourcePickerOpen = false;
       render();
-    } else setToast("All prototype references are already attached");
+    }
   }
   if (action === "remove-reference") {
     state.references.splice(Number(target.dataset.index), 1);

@@ -11,8 +11,8 @@ The prototype in [`../../app/`](../../app/) translates the current production-fl
 1. Choose from a client-configured catalog of ordinary deliverables.
 2. Describe a product lifestyle image in brief language.
 3. Choose a placement; the output schema constrains the available formats.
-4. Optionally attach creative references, assigning each a role and influence.
-5. Review Preflight as the deliverable: a portable generation package with named Brand Brain components, a read-only compiled prompt, exact and flexible production rules, output parameters, and input provenance.
+4. Optionally attach creative inputs, assigning each a role, semantic influence, and plain-language usage instruction.
+5. Review Preflight as the deliverable: a portable generation package with named Brand Brain components, a read-only compiled prompt, exact and flexible production rules, output parameters, input provenance, extracted evidence, and a resolution receipt.
 6. Invoke a mock Generate action and review a static result and evaluation state.
 
 The prototype defaults to one image per render. It does not expose a renderer choice, imply that brand guidance is optional, permit prompt editing, or ask a production user to repair Brand Brain governance problems.
@@ -22,6 +22,9 @@ The prototype defaults to one image per render. It does not expose a renderer ch
 - Deliverable presets are client configuration, not universal intent categories.
 - Placement and format are related through the output type rather than independent labels.
 - References are optional production inputs with explicit jobs; they are not unexplained attachments.
+- Influence describes creative priority, not authority. Confidence describes the quality of a source read and remains separate from influence.
+- Canonical assets, policy, and explicit requirements cannot be weakened through the reference controls.
+- Reader output is evidence for the compiler. The server-owned resolution contract decides what is included, rejected, or overridden.
 - The product asset is canonical and exact. It is composed into the scene, not regenerated.
 - Prompt compilation is visibly derived from specific Brand Brain components and the brief.
 - The generation package is portable and useful even when rendering happens elsewhere.
@@ -35,7 +38,7 @@ The palette is a design hypothesis rather than a brand-system requirement. Token
 
 ## Deliberately absent
 
-- authentication, authorization, or client isolation
+- authentication, authorization, or runtime client isolation (the delivery boundary is specified separately in [`../installation-model.md`](../installation-model.md))
 - persistence, saved jobs, uploads, or asset search
 - real Brand Brain retrieval or prompt compilation
 - model/provider selection, credentials, or renderer calls

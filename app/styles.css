@@ -584,6 +584,17 @@ textarea {
   resize: vertical;
 }
 
+.input-like,
+.usage-input {
+  height: 42px;
+  padding: 0 13px;
+}
+
+.field-note {
+  color: var(--muted);
+  font-size: 11px;
+}
+
 select {
   height: 42px;
   padding: 0 38px 0 13px;
@@ -625,18 +636,104 @@ select {
 
 .reference-card {
   display: grid;
-  grid-template-columns: 54px minmax(0, 1fr) 150px 130px auto;
+  grid-template-columns: 54px minmax(0, 1fr) auto;
   gap: 11px;
-  align-items: center;
+  align-items: start;
   padding: 10px;
   background: var(--paper-50);
   border: 1px solid var(--paper-200);
   border-radius: 12px;
 }
 
-.reference-card select {
+.reference-controls select {
   height: 36px;
   font-size: 11px;
+}
+
+.reference-controls {
+  display: grid;
+  grid-column: 2 / -1;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(130px, 0.55fr);
+  gap: 10px;
+}
+
+.reference-controls label {
+  display: grid;
+  gap: 5px;
+}
+
+.reference-controls label > span {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.reference-controls .guidance-field {
+  grid-column: 1 / -1;
+}
+
+.usage-input {
+  height: 38px;
+  color: var(--text);
+  background: var(--white);
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-sm);
+  font-size: 11px;
+}
+
+.source-picker {
+  display: grid;
+  gap: 11px;
+  padding: 12px;
+  margin: 0 0 12px;
+  background: rgb(215 230 123 / 0.12);
+  border: 1px solid rgb(161 181 69 / 0.35);
+  border-radius: 12px;
+}
+
+.source-picker-heading,
+.source-option {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.source-picker-heading > span:first-child,
+.source-option > span:nth-child(2) {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+}
+
+.source-picker-heading strong,
+.source-option strong {
+  color: var(--ink-950);
+  font-size: 12px;
+}
+
+.source-picker-heading > span span,
+.source-option > span span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.source-options {
+  display: grid;
+  gap: 7px;
+}
+
+.source-option {
+  width: 100%;
+  padding: 8px;
+  text-align: left;
+  background: var(--white);
+  border: 1px solid var(--paper-200);
+  border-radius: 10px;
+}
+
+.source-option:hover {
+  border-color: var(--celery-ink);
 }
 
 .thumb {
@@ -697,6 +794,13 @@ select {
   border-radius: 50%;
 }
 
+.thumb.grid {
+  background:
+    linear-gradient(90deg, transparent 48%, rgb(255 255 255 / 0.72) 48% 52%, transparent 52%),
+    linear-gradient(transparent 48%, rgb(255 255 255 / 0.72) 48% 52%, transparent 52%),
+    linear-gradient(135deg, #d9a17c 0 25%, #72856f 25% 50%, #d7cb9c 50% 75%, #ba6f55 75%);
+}
+
 .thumb.product {
   background: #f5ddd1;
 }
@@ -726,6 +830,19 @@ select {
 .reference-copy strong,
 .reference-copy span {
   display: block;
+}
+
+.reference-copy .reference-meta {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  margin-top: 5px;
+}
+
+.reference-copy .reference-meta .mini-pill {
+  display: inline-flex;
+  padding: 3px 6px;
+  font-size: 9px;
 }
 
 .reference-copy strong {
@@ -974,6 +1091,71 @@ select {
   display: block;
 }
 
+.resolution-section {
+  display: grid;
+  gap: 9px;
+  padding-top: 16px;
+  margin-top: 16px;
+  border-top: 1px solid var(--paper-200);
+}
+
+.resolution-list {
+  display: grid;
+  gap: 9px;
+}
+
+.resolution-row {
+  display: grid;
+  gap: 6px;
+  padding: 10px;
+  background: var(--paper-50);
+  border: 1px solid var(--paper-200);
+  border-radius: 10px;
+}
+
+.resolution-topline {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--ink-950);
+  font-size: 11px;
+}
+
+.included-status {
+  color: var(--ink-800);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.resolution-row p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.evidence-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.evidence-chips span {
+  padding: 3px 6px;
+  color: var(--ink-800);
+  background: rgb(215 230 123 / 0.22);
+  border-radius: 999px;
+  font-size: 9px;
+}
+
+.resolution-note {
+  color: var(--muted);
+  font-size: 9px;
+}
+
 .input-row strong {
   color: var(--ink-950);
   font-size: 12px;
@@ -1191,13 +1373,6 @@ select {
     grid-template-columns: 1fr;
   }
 
-  .reference-card {
-    grid-template-columns: 54px minmax(0, 1fr) 150px auto;
-  }
-
-  .reference-card .influence-select {
-    grid-column: 3;
-  }
 }
 
 @media (max-width: 760px) {
@@ -1239,8 +1414,12 @@ select {
     grid-template-columns: 48px minmax(0, 1fr) auto;
   }
 
-  .reference-card select {
-    grid-column: 2 / 4;
+  .reference-controls {
+    grid-template-columns: 1fr;
+  }
+
+  .reference-controls .guidance-field {
+    grid-column: 1;
   }
 
   .actions {

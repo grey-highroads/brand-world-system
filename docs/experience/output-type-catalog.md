@@ -52,6 +52,8 @@ An output specification is the resolved contract for one job. It contains the ch
 
 Generation inputs are the assets supplied to generation or deterministic composition. A required source asset is resolved from the selected product, subject, template, or deliverable preset. An optional creative reference is added in the brief or proposed explicitly by the system. Every input records provenance, role, priority, and handling. Creative references also record influence. A reference without a declared purpose does not enter the generation package.
 
+Influence is semantic creative priority, not authority or a mathematical blend coefficient. Governed context, explicit requirements, exclusions, and protected assets are resolved by policy and handling rather than weighted by the user. Confidence describes the system's read of a source and remains independent from influence. See [`production-input-model.md`](production-input-model.md) for the working input and resolution contract.
+
 ### Generation package
 
 A generation package is a versioned, portable handoff produced before any renderer is invoked. It contains the named source-linked components used to assemble the prompt, the compiled prompt itself, negative instructions, generation inputs with explicit provenance and roles, the resolved output specification, and links to the governing policy snapshot and source knowledge.

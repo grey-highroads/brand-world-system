@@ -1,6 +1,6 @@
 # ADR 0004: Separate shared platform from private brand data
 
-- Status: Accepted
+- Status: Superseded in part by ADR 0007
 - Date: 2026-08-01
 - Owner: Higher Roads
 
@@ -13,6 +13,8 @@ The commercial opportunity depends on reusing schemas, workflows, policies, adap
 Shared infrastructure contains schemas, contract definitions, policy and governance logic, orchestration, provider adapters, evaluators, administrative tools, and sanitized fixtures.
 
 Each brand environment contains private evidence, entities, relationships, assets, rules, jobs, memory, permissions, integrations, and tenant configuration. Every runtime record and storage key is tenant-scoped.
+
+ADR 0007 retains this separation but changes the first delivery model: isolation is initially achieved through a dedicated client installation and its infrastructure rather than row-level multitenancy inside one shared runtime.
 
 ## Options considered
 

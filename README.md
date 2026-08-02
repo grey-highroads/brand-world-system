@@ -25,6 +25,7 @@ These are internal configuration presets, not global brand types or assumed user
 - [`docs/architecture.md`](docs/architecture.md) — system boundaries, logical components, data flow, isolation, and failure posture
 - [`docs/product-development-principles.md`](docs/product-development-principles.md) — product-first decision sequence and architecture test
 - [`docs/concept-visibility.md`](docs/concept-visibility.md) — classification of user-facing, configured, internal, and unproven concepts
+- [`docs/installation-model.md`](docs/installation-model.md) — isolated client-installation profile and repeatable spin-up model
 - [`glossary.md`](glossary.md) — authoritative terminology for the system
 - [`docs/success-criteria.md`](docs/success-criteria.md) — falsifiable control test for the first proof
 - [`docs/experience/`](docs/experience/) — north-star views and workflow pressure tests
