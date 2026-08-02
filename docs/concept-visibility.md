@@ -8,6 +8,8 @@
 | Brand brain | User-facing summary + internal mechanism | Trust that the system understands and preserves the brand | Show relevant knowledge in context; expose the full model mainly in governance and investigation views |
 | World-building workflow | Workflow configuration | Turn scattered evidence into usable brand knowledge | Present as concrete onboarding, import, review, and gap-resolution tasks rather than “world-building” machinery |
 | Production workflow | User-facing | Complete a named deliverable or campaign task | Users choose a useful workflow and provide a brief, not assemble system stages manually |
+| Deliverable preset | User-facing, client-configured | Start a recurring kind of production job | Populate the chooser with familiar client-specific outputs; avoid universal intent categories |
+| Output type and composition schema | Workflow configuration + internal mechanism | Understand required inputs and promised delivery when relevant | Resolve a preset into layers, text handling, variants, delivery, and validation; expose consequences in job language |
 | Five content domains | Internal mechanism | None during ordinary production | Use for storage, retrieval, validation, and specialist governance; do not require routine manual classification |
 | Canon | User-facing in governance contexts | Decide what is identity-defining and change-controlled | Surface when approving or changing binding brand knowledge; summarize implications in plain language |
 | Lifecycle | Internal mechanism with contextual status | Know whether something may be used or needs review | Show actionable states such as “Needs approval” or “Replaced”; preserve native enums internally |
@@ -32,6 +34,8 @@ An early production mockup exposed constrained, hybrid, and editorial as a promi
 
 The accepted correction is to treat these modes as reusable policy presets applied to workflow stages. Ordinary users select a workflow and make job-relevant decisions. Higher Roads or an authorized administrator configures stage behavior. Advanced exceptions are exposed only when the user understands their consequence and has authority to make them.
 
+The asset-creation wireframes exposed a second correction. A chooser organized around campaign intent asks the product to understand strategy that Higher Roads may not own. The accepted direction is a client-configured catalog of recurring deliverables. Each visible preset references an internal output type that defines layers, text handling, variants, delivery, and validation. Ads are a first-class structure because they may combine artwork, platform copy, destination fields, and placement variants. See [`experience/output-type-catalog.md`](experience/output-type-catalog.md).
+
 ## Audit questions still open
 
 - Does “brand brain” help client users, or should most surfaces use more concrete language?
@@ -40,3 +44,4 @@ The accepted correction is to treat these modes as reusable policy presets appli
 - Will candidate rules create a useful learning loop or an ignored review backlog?
 - Which brand-brain views help complete work rather than merely display structured data?
 - How should asset access feel when the client already uses a DAM?
+- Which output structures belong in the first implementation slice, and which remain future client extensions?

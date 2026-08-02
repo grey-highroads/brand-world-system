@@ -15,4 +15,6 @@ A whole-product design sprint is active. The sprint brief, mandate, sequence, ev
 
 The sprint designs the asset-creation journey before the brand-brain journey, uses one synthetic brand consistently, and writes findings back into concept-visibility or ADRs.
 
-See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.
+The current wireframes produced an additional working model: client-specific deliverable presets should reference reusable structural output types. The model covers layers, text handling, variants, delivery, validation, and ads as coordinated packages. It is recorded in [`output-type-catalog.md`](output-type-catalog.md) while the normative specifications remain frozen.
+
+See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), [`output-type-catalog.md`](output-type-catalog.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.
