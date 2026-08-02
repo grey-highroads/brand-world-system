@@ -11,8 +11,8 @@ Design decisions discovered here should update the schema, production policy, gl
 
 ## Current status
 
-Visual development is paused while the product architecture is audited. The first production mockup was valuable as a workflow probe: it exposed a job-level mode selector as architecture leaking into the interface. That finding produced ADR 0005 and the concept-visibility audit.
+A whole-product design sprint is active. The sprint brief, mandate, sequence, evidence gates, and exit criteria are in [`design-sprint-brief.md`](design-sprint-brief.md). All specification documents are frozen as target-state references; the sprint is the next unit of learning.
 
-When visual work resumes, it should begin with the complete application and user journeys before returning to deep production controls. Every proposed surface must pass the product architecture test in [`../product-development-principles.md`](../product-development-principles.md).
+The sprint designs the asset-creation journey before the brand-brain journey, uses one synthetic brand consistently, and writes findings back into concept-visibility or ADRs.
 
 See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.
