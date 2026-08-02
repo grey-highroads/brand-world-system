@@ -1,6 +1,6 @@
 # Brand World Schema
 
-> Status: Draft 0.1. This document defines the conceptual contract. A machine-readable schema should follow only after the examples and fixtures stabilize it.
+> Status: Frozen target-state reference. Revised only by findings from design sprints or fixture work. A machine-readable schema should follow only after the examples and fixtures stabilize it.
 
 ## Purpose
 
