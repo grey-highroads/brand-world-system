@@ -7,8 +7,8 @@ Create a new campaign image around an approved product package without changing 
 ## Flow
 
 1. The producer enters the request, output format, audience, and channel.
-2. The system recommends hybrid mode and explains why; the producer confirms or changes it.
-3. The compiled policy separates locked elements from flexible guidance and shows scoped prohibitions.
+2. The configured lifestyle-imagery workflow enters its hybrid production stage; the user is not asked to select a mode.
+3. The system summarizes what will remain exact, what it may create, and any exception requiring a user decision.
 4. Preflight confirms that locked assets can be placed deterministically.
 5. The system generates the flexible context, then composes the locked assets into it.
 6. Evaluation checks locked-element drift and unrequested changes before subjective quality.
@@ -17,12 +17,12 @@ Create a new campaign image around an approved product package without changing 
 
 ## Control comparison
 
-Run a closely related request in constrained mode with the same brand brain and approved assets. The interface should show fewer flexible decisions, narrower tools, and a fidelity-first evaluation order. The comparison should require no duplicate canon and no hidden configuration changes.
+Run a closely related stage request through a constrained preset with the same brand brain and approved assets. This is an internal policy-control test. It should show fewer flexible decisions, narrower tools, and a fidelity-first evaluation order without requiring a user-facing mode switch or duplicate canon.
 
 ## Questions the mockup must answer
 
 - Can a producer tell what the system will reproduce exactly before running the job?
-- Is mode selection understandable without reading the production-policy specification?
+- Does the workflow make the correct creative-control decisions without asking the producer to understand policy presets?
 - Are scoped prohibitions visible at the point they affect a decision?
 - Can reviewers distinguish a model-generated context from a deterministically composed asset?
 - Are approval, guidance approval, and canonical promotion impossible to confuse?

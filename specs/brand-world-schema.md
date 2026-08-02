@@ -18,7 +18,7 @@ The schema succeeds only if it can:
 - express prohibitions, exceptions, and channel-specific rules with scope and rationale;
 - preserve provenance and revision history without requiring seven manually entered fields on every item;
 - register a batch of 50 ordinary assets without inviting lazy or misleading metadata;
-- support the same brand brain under constrained, editorial, and hybrid production policies.
+- support the same brand brain across workflow stages with constrained, editorial, and hybrid policy presets.
 
 ## Model overview
 
@@ -146,7 +146,7 @@ Profiles keep the ontology complete without forcing irrelevant fields onto every
 | Reusable asset | logo, package render, photo, illustration, template | lifecycle, governance role, epistemic origin, asset reference, integrity metadata | technical metadata by medium |
 | Scoped rule | composition rule, channel rule, prohibition | lifecycle, governance role, epistemic origin, production effect, scope, rationale | confidence when inferred or generated; exception handling |
 | Evidence | source document, interview, image set | evidence reference, capture context | rights, confidentiality, expiry |
-| Production job | request and compiled execution state | request, mode, policy snapshot, input references, status | costs and model/tool details |
+| Production job | request and compiled execution state | request, workflow version, stage policy snapshots, input references, status | costs and model/tool details |
 | Generated output | rendered or composed deliverable | job reference, asset reference, generation/composition record, evaluation results | lifecycle if reusable or approvable |
 | Memory event | correction, approval, rejection, supersession | subject, actor, timestamp, reason | candidate-rule reference |
 
@@ -177,7 +177,7 @@ Scope defines where an entity, rule, or policy relationship applies. It may incl
 - format;
 - campaign;
 - date range;
-- production mode.
+- workflow and stage.
 
 An empty scope means brand-wide only when the entity profile permits it. The interface must label that interpretation clearly; it must never rely on an invisible default for high-risk rules.
 
@@ -194,7 +194,7 @@ Implementations must reject or flag states that violate these rules:
 7. Generated outputs have evaluations rather than epistemic confidence.
 8. Production effect appears only on scoped rules or policy relationships.
 9. A prohibition has scope and rationale.
-10. A production job stores the resolved policy snapshot used at execution time.
+10. A production job stores the resolved policy snapshot used by every executable stage.
 11. A locked asset is composed deterministically whenever the requested operation permits it.
 12. Learning never silently mutates canon; corrections can create candidate rules, and promotion requires approval.
 
@@ -252,7 +252,8 @@ entities:
     production_effect: prohibited
     scope:
       channels: [paid_social, retail_media]
-      modes: [constrained, hybrid]
+      workflows: [campaign_launch]
+      stages: [produce_hero, create_variants]
     rationale: Preserves product realism and prevents a recurring off-brand composition.
     provenance:
       source_kind: brand_owner_decision
@@ -265,10 +266,15 @@ job:
   type: production_job
   domain: Memory
   request: Create a 4:5 paid-social image for the Citrus Spark launch.
-  mode: hybrid
-  locked_entities: [asset_package_front_v3]
-  flexible_entities: [ritual_after_work_share]
-  policy_snapshot: policy-snapshot://job_launch_social_042
+  workflow:
+    id: campaign_launch
+    version: 3
+  stages:
+    - id: produce_hero
+      preset: hybrid
+      locked_entities: [asset_package_front_v3]
+      flexible_entities: [ritual_after_work_share]
+      policy_snapshot: policy-snapshot://job_launch_social_042/produce_hero
   composition_record:
     asset_package_front_v3: deterministically_composited
 ```
@@ -279,7 +285,7 @@ Why it is valid:
 - the ritual is approved but remains contextual and explicitly inferred;
 - the prohibition is a scoped rule with rationale, not an asset status;
 - confidence appears only on the inference;
-- the job records its resolved mode, locks, and policy snapshot;
+- the job records its workflow, stage configuration, locks, and stage policy snapshot;
 - the locked package is composed rather than regenerated.
 
 ## Example: invalid state

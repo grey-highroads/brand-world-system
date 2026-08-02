@@ -54,7 +54,7 @@ The highest-value output of PWP belongs here: a rich, opinionated model of how a
 
 ### Workflow two: produce from the brand brain
 
-The second workflow turns a request into a controlled production job. It retrieves only the relevant brand context, selects or confirms a production mode, identifies locked and flexible elements, compiles task-specific instructions, invokes the appropriate model or service, evaluates the result, and packages the deliverable.
+The second workflow turns a request into a controlled production job. The user selects a useful configured workflow, not an architectural mode. Each workflow stage retrieves relevant brand context, resolves its creative-control policy, identifies exact and flexible elements, compiles task-specific instructions, invokes the appropriate tool or service, evaluates the result, and advances the job.
 
 This workflow should:
 
@@ -98,30 +98,21 @@ Memory contains job history, prompts, generated assets, approvals, rejections, c
 
 Every entity belongs to one primary domain and carries only the metadata required by its entity type and applicable governance dimensions. Governance role distinguishes canonical from contextual entities; lifecycle records review state; epistemic origin and provenance record where knowledge came from. Confidence is required for inferred knowledge and model-generated assertions, while generated artifacts receive evaluation results. Production effects belong to scoped rules or entity-policy relationships rather than indiscriminately to every entity. Nothing becomes canonical without approval, and approval does not automatically make an entity canonical.
 
-## Production modes are policy, not separate products
+## Production policy belongs to configured workflow stages
 
-The apparent gap between an inference-first product like PWP and a canon-first product like Riggg is best expressed as configurable production policy.
+The apparent gap between an inference-first product like PWP and a canon-first product like Riggg is best expressed through creative-control policy. The stable primitives are what production requires or prohibits, which elements are locked, bounded, flexible, or excluded, which capabilities are allowed, and how success is evaluated.
 
-### Constrained mode
+Constrained, hybrid, and editorial remain useful presets over those primitives:
 
-Constrained mode is appropriate for packaging, templates, interface components, icons, mascots, regulated copy, sales collateral, and other repeatable formats. Canonical fidelity outranks novelty. Approved geometry, colors, wording, dimensions, relationships, and placement rules remain locked. Evaluation emphasizes drift detection, missing requirements, and unrequested changes.
+- **Constrained** starts from exact, repeatable execution. Canonical fidelity outranks novelty, and evaluation emphasizes drift, missing requirements, and unrequested changes.
+- **Hybrid** starts from protected elements inside newly created context. Exact assets are composed deterministically while permitted surroundings, narrative, or supporting material can be generated.
+- **Editorial** starts from broad synthesis of the brand's point of view and world logic. It is still constrained by positioning, product truth, voice, prohibitions, and any required identity or legal material.
 
-### Editorial mode
+These presets are not global brand types or assumed user-facing modes. A B2B and a CPG brand may each need all three for different work. One campaign workflow may develop territories editorially, produce a hero through hybrid methods, and create channel adaptations under constrained rules.
 
-Editorial mode is appropriate for campaign concepts, lifestyle imagery, brand stories, lived experiences, mood boards, scenes, and activations. The system may synthesize beyond existing assets, but the output must express the brand's point of view and world logic. Evaluation emphasizes coherence, distinctiveness, narrative relevance, and usefulness rather than literal reproduction.
+The ordinary user chooses the workflow and makes decisions expressed in the language of the job. Higher Roads or an authorized administrator configures each stage's defaults, tools, evaluators, approvals, and exceptions. Before a stage runs, the system compiles that configuration and applicable brand rules into an immutable policy snapshot.
 
-### Hybrid mode
-
-Hybrid mode places protected elements inside a generative context. It is likely the common mode for consumer marketing: package artwork, product shape, logo, and claims remain fixed while setting, casting, wardrobe, props, lighting, and story can change. Evaluation is ordered: protected-asset fidelity first, brand-world coherence second, and general visual quality third.
-
-The selected mode changes four things:
-
-1. what context is retrieved;
-2. which elements are locked or flexible;
-3. how much inference and invention are permitted; and
-4. how the evaluator ranks success and failure.
-
-A job can override the default mode with explicit permissions. For example, a hybrid product-imagery job may allow high environmental invention while setting zero tolerance for package drift. The mode is therefore not merely a user-interface toggle. It is a structured contract that shapes retrieval, prompt compilation, model choice, evaluation, revision, and approval.
+This distinction preserves testable creative control without turning system configurability into the product. The client buys a dependable way to complete valuable work, not a taxonomy of generation modes.
 
 ## What PWP and Riggg taught us
 
@@ -154,7 +145,7 @@ The initial system is intentionally narrower than a universal creative platform.
 - intake and normalization of brand evidence;
 - structured brand-world knowledge with provenance and approval state;
 - canonical asset registration and usage rules;
-- configurable constrained, editorial, and hybrid production policies;
+- configurable workflow stages built from creative-control primitives and reusable presets;
 - reusable workflow orchestration and thin service handoffs;
 - context retrieval and task-specific prompt compilation;
 - model adapters and replaceable output modules;
@@ -247,6 +238,6 @@ These questions should be resolved through specifications, decision records, and
 
 The product is a persistent brand intelligence system with configurable production engines.
 
-Workflow one constructs and governs the brand brain and its canon. Workflow two produces from that brain. Constrained, editorial, and hybrid modes determine how tightly production follows canon. PWP supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
+Workflow one constructs and governs the brand brain and its canon. Workflow two produces from that brain through configured client workflows. Stage-level policy determines how tightly each part of production follows canon; constrained, editorial, and hybrid presets make repeated configuration easier without becoming the user experience. PWP supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
 
 The immediate objective is not to build a universal SaaS product. It is to define a coherent implementation kit, prove it with contrasting fixtures, and deploy one valuable workflow at a time. If the schema, policy, evaluation, and learning loop hold across those cases, the system can turn bespoke brand work into a repeatable and profitable product capability.

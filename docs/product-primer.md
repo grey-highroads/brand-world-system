@@ -13,7 +13,7 @@ Explain the system in plain language for marketing, creative, product, and techn
 - What goes into the brand brain
 - What the brand brain contains
 - How the two core workflows operate
-- How constrained, editorial, and hybrid production differ
+- How configured workflows use different creative-control behavior without burdening users with system taxonomy
 - What a typical job, review, revision, and approval feel like
 - How approved work and corrections improve future production
 - How a new brand is onboarded

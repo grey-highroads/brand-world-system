@@ -1,6 +1,8 @@
 # System Architecture
 
-> Status: Draft 0.1. This document defines implementation boundaries and responsibilities. It deliberately avoids committing to infrastructure that the fixtures have not yet justified.
+> Status: Draft 0.2. This document defines implementation boundaries and responsibilities. It deliberately avoids committing to infrastructure that the fixtures have not yet justified.
+
+Product and architecture decisions in this document are governed by [`product-development-principles.md`](product-development-principles.md). Logical components do not become product surfaces without passing the product architecture test.
 
 ## Architectural objective
 
@@ -15,7 +17,7 @@ The brand brain is the shared source of truth. Production jobs consume versioned
 
 - **Persist knowledge, snapshot execution.** The brand brain evolves; each job retains the exact entity versions and policy it used.
 - **Separate classification from authority.** Domains say what an entity is. Governance role and lifecycle say how production may trust it.
-- **Compile policy before execution.** A production mode is not a prompt adjective. It resolves into explicit locks, permissions, conditions, prohibitions, tools, and evaluation priorities.
+- **Compile policy before each stage.** A workflow stage resolves brand rules and configured creative-control primitives into explicit locks, permissions, conditions, prohibitions, tools, and evaluation priorities.
 - **Prefer deterministic operations.** Compose and validate exact material directly. Reserve model-based judgment for qualities that genuinely require judgment.
 - **Make every state transition attributable.** Approval, rejection, supersession, correction, and canonical revision are recorded events.
 - **Keep providers replaceable.** Models, renderers, storage services, and evaluators sit behind narrow adapters.
@@ -29,7 +31,7 @@ The brand brain is the shared source of truth. Production jobs consume versioned
 - the structured brand brain and its version history;
 - provenance and governance records;
 - registered asset identity and integrity metadata;
-- production requests, compiled policy snapshots, and execution plans;
+- production requests, workflow definitions, compiled stage policy snapshots, and execution plans;
 - job state, intermediate artifacts, outputs, and evaluation records;
 - approvals, revisions, corrections, and candidate rules;
 - provider adapters, validators, and orchestration logic.
@@ -84,17 +86,23 @@ Validates lifecycle and governance invariants, enforces role authority, records 
 
 It is the only component allowed to change canonical status. Production and learning components submit proposals to it.
 
-### 6. Production request service
+### 6. Workflow registry
 
-Turns a human or integration request into a validated production-request contract: deliverables, audience, channel, scope, constraints, references, requested changes, and approval route.
+Stores versioned client workflows as user jobs with configured stages, transitions, plain-language decisions, policy defaults, integrations, evaluators, approvals, and exception paths. Workflow definitions are maintained by system stewards or authorized administrators.
 
-### 7. Context assembler
+The registry is part of the reusable 80 percent; each client build configures only workflows that correspond to real recurring work.
+
+### 7. Production request service
+
+Turns a human or integration request for a configured workflow into a validated production-request contract: outcome, deliverables, audience, channel, scope, constraints, references, requested changes, and approval participants. It does not normally ask the user to select an architectural policy preset.
+
+### 8. Context assembler
 
 Retrieves only the entity versions, evidence, precedents, and rules relevant to the request. Retrieval is scope-aware and records why each item was included.
 
-### 8. Policy compiler
+### 9. Policy compiler
 
-Combines system invariants, brand rules, selected production mode, request scope, and explicit job overrides. It resolves conflicts and emits an immutable policy snapshot containing:
+Combines system invariants, brand rules, current workflow-stage configuration, request scope, and authorized exceptions. It resolves conflicts and emits an immutable stage policy snapshot containing:
 
 - required, permitted, conditional, and prohibited decisions;
 - locked and flexible elements;
@@ -104,25 +112,25 @@ Combines system invariants, brand rules, selected production mode, request scope
 
 The compiler blocks execution when binding rules conflict or required assets cannot be resolved.
 
-### 9. Execution planner and orchestrator
+### 10. Execution planner and orchestrator
 
-Converts the request and policy snapshot into resumable steps. It routes exact work to deterministic tools and judgment-dependent work to model providers. Every step records its inputs, outputs, provider or tool version, duration, and failure state.
+Converts the request and current stage policy snapshot into resumable steps. It routes exact work to deterministic tools and judgment-dependent work to model providers. Every step records its inputs, outputs, provider or tool version, duration, and failure state.
 
-### 10. Provider and tool adapters
+### 11. Provider and tool adapters
 
 Wrap model APIs, generation services, image tools, composition engines, and export utilities behind typed capabilities. Policies target capabilities such as `compose_exact_asset` or `generate_scene`, not provider-specific endpoints.
 
-### 11. Evaluation service
+### 12. Evaluation service
 
-Runs deterministic checks first where possible, then model-based or human evaluation where judgment is necessary. Evaluation order and pass thresholds come from the policy snapshot.
+Runs deterministic checks first where possible, then model-based or human evaluation where judgment is necessary. Evaluation order and pass thresholds come from the stage policy snapshot.
 
 The service returns findings and evidence. It does not approve its own output.
 
-### 12. Review and approval
+### 13. Review and approval
 
 Supports targeted revision, unrequested-change comparison, workflow approval, and canonical change requests. Approving a deliverable and changing canon are deliberately separate actions with different authority.
 
-### 13. Memory recorder
+### 14. Memory recorder
 
 Stores jobs, outputs, evaluations, corrections, decisions, costs, failures, and learned preferences. It may propose candidate rules or positive precedents. It cannot silently promote them.
 
@@ -145,18 +153,19 @@ Batch intake uses exception-oriented review. The normal path records batch prove
 ## Workflow two: production
 
 ```text
-Request + selected mode
+Configured workflow + request
+  -> current stage
   -> scoped context assembly
-  -> policy compilation
+  -> stage policy compilation
   -> preflight and conflict resolution
   -> execution plan
   -> deterministic and generative work
   -> policy-aware evaluation
-  -> targeted revision or approval
+  -> revision, approval, or next stage
   -> output package + memory write-back
 ```
 
-The job pins the request, context selection, entity versions, policy snapshot, and execution plan before production. A later brand-brain revision does not alter an in-flight or historical job invisibly.
+The job pins its request and workflow version. Each executable stage pins its context selection, entity versions, policy snapshot, and execution plan. A later workflow or brand-brain revision does not alter an in-flight or historical job invisibly.
 
 ## Durable contracts
 
@@ -165,9 +174,10 @@ The initial contract set is defined in [`../specs/workflow-contracts.md`](../spe
 - evidence manifest;
 - entity proposal batch;
 - governance event;
+- workflow and stage definition;
 - production request;
 - context manifest;
-- policy snapshot;
+- stage policy snapshot;
 - execution plan and step result;
 - artifact manifest;
 - evaluation record;
@@ -181,7 +191,7 @@ Contracts are logical and serializable. They do not require each component to be
 
 - Entity versions and governance events are immutable after acceptance.
 - A canonical revision commits the replacement version and governed revision event atomically.
-- A production job references immutable snapshots, not mutable queries.
+- A production stage references immutable snapshots, not mutable queries.
 - Execution steps are idempotent where the provider permits it and safe to retry otherwise through explicit attempt records.
 - Long-running work persists after every meaningful step and can resume without replaying completed expensive operations.
 - Human review is a durable waiting state, not an in-memory pause.
@@ -216,6 +226,7 @@ Begin with a modular application and background worker:
 - one relational database for brand, governance, and job records;
 - one object store for evidence, assets, and artifacts;
 - one durable job queue;
+- one versioned workflow registry;
 - provider and deterministic-tool adapters;
 - one evaluation pipeline;
 - explicit modules matching the logical components above.
@@ -246,3 +257,5 @@ The fixtures and first pilot should determine:
 - evaluator calibration and pass thresholds;
 - tenant deployment model and retention rules;
 - which module, if any, needs independent deployment first.
+
+They must also determine which architecture concepts users need to encounter, which belong only in workflow configuration, and which should remain internal. The current audit lives in [`concept-visibility.md`](concept-visibility.md).

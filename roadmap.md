@@ -8,19 +8,20 @@ This roadmap moves from product definition to a reusable internal implementation
 - Record the two-workflow and production-policy decisions ✓
 - Establish a shared glossary
 - Define success criteria for the first proof ✓
+- Establish the product architecture test and concept-visibility audit ✓
 
 ## Phase 2: Specify the system's core
 
 - Draft the brand-world schema ✓
-- Draft the production modes and creative-control policy ✓
+- Draft stage-level creative-control policy and reusable presets ✓
 - Add valid, invalid, and ambiguous examples ✓
 - Define workflow, asset-registry, provenance, and evaluation contracts ✓
 
 ## Phase 3: Prove the model with fixtures
 
-- Build a sanitized PWP fixture for inference-first editorial production
-- Build a sanitized Riggg fixture for canon-first constrained production
-- Test a hybrid job that locks a canonical asset inside a generated context
+- Build a sanitized PWP onboarding and concept-development journey
+- Build a sanitized Riggg controlled-production journey
+- Test a multi-stage journey and an internal hybrid-versus-constrained policy control
 - Record schema and policy changes revealed by each case
 
 ## Phase 4: Build the internal implementation kit

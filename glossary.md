@@ -10,7 +10,9 @@ Shared terminology for the Brand World System. Definitions here are authoritativ
 
 **World-building workflow.** The workflow that creates, validates, and evolves the brand brain from evidence. Its output is governed brand intelligence, not deliverables.
 
-**Production workflow.** The workflow that turns a request into a deliverable by retrieving relevant brand context, applying a production policy, generating or composing output, and evaluating the result.
+**Production workflow.** A configured path that helps a user complete a named production job. It contains one or more stages that retrieve relevant brand context, compile policy, generate or compose output, evaluate it, and route revision or approval.
+
+**Workflow stage.** A meaningful phase in a configured workflow with its own outcome, inputs, policy, capabilities, evaluation, and transition rules. A job may move through stages with different creative-control behavior.
 
 **PWP (Product World Preview).** The inference-first reference case. Demonstrates constructing a brand world from incomplete evidence and producing editorially from it. Formerly abbreviated PWB in early drafts; PWP is the standard abbreviation going forward.
 
@@ -62,13 +64,19 @@ Each dimension is independent. An entity's position in one dimension implies not
 
 ## Production policy
 
-**Production policy.** The explicit contract that determines how tightly a production job follows canon. Selecting a policy changes what context is retrieved, which elements are locked or flexible, how much invention is permitted, and how evaluation ranks success.
+**Production policy.** The explicit stage-level contract that determines what production requires, permits, conditions, and prohibits; how elements are handled; which capabilities may run; and how evaluation ranks success.
 
-**Constrained mode.** Fidelity to canon outranks novelty. For packaging, templates, regulated copy, icons, and repeatable formats.
+**Policy preset.** A reusable starting configuration over production-policy primitives. Constrained, hybrid, and editorial are presets applied to workflow stages, not global brand types or assumed user-facing choices.
 
-**Editorial mode.** The system may synthesize broadly while expressing the brand's point of view and world logic. For campaign concepts, stories, scenes, and activations.
+**Constrained preset.** Fidelity to canon outranks novelty. A starting point for packaging, templates, regulated copy, icons, and repeatable formats.
 
-**Hybrid mode.** Locked canonical elements are placed inside newly generated context. The expected common mode for consumer marketing.
+**Editorial preset.** The system may synthesize broadly while expressing the brand's point of view and world logic. A starting point for concepts, stories, scenes, and activations. Editorial does not mean unconstrained.
+
+**Hybrid preset.** Locked canonical elements are placed inside newly generated context. A starting point for stages that combine exact brand material with generative context.
+
+**Bounded element.** An element that may vary only within stated parameters or an approved set.
+
+**Excluded element.** An element unavailable to a stage because it is prohibited, out of scope, unapproved, or unresolved.
 
 **Locked element.** An element a job must reproduce or place without change. Locked elements use deterministic methods whenever possible.
 
@@ -76,7 +84,7 @@ Each dimension is independent. An entity's position in one dimension implies not
 
 **Deterministic composition.** Placing, transforming, or compositing an approved asset directly rather than asking a model to regenerate it. Principle: never regenerate a locked asset when it can be composed deterministically.
 
-**Drift.** Unintended deviation from canon in a produced output. Constrained and hybrid evaluation prioritize drift detection on locked elements.
+**Drift.** Unintended deviation from canon in a produced output. Stages with locked elements prioritize drift detection regardless of the preset used.
 
 **Unrequested change.** A revision that alters something the request did not ask to change. Treated as a failure regardless of quality.
 

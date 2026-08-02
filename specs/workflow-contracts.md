@@ -1,12 +1,12 @@
 # Workflow Contracts
 
-> Status: Draft 0.1. These are logical payload contracts for fixtures and implementation planning, not yet a machine-readable API specification.
+> Status: Draft 0.2. These are logical payload contracts for product journeys, fixtures, and implementation planning—not yet a machine-readable API specification.
 
 ## Purpose
 
-The contracts make boundaries between world-building, governance, production, evaluation, approval, and learning explicit. Every contract is serializable, versioned, tenant-scoped, and traceable to an actor or system event.
+The contracts make boundaries between world-building, governance, configured workflows, production stages, evaluation, approval, and learning explicit. Every contract is serializable, versioned, tenant-scoped, and traceable to an actor or system event.
 
-Fields shown below are minimum semantic requirements. Transport metadata, pagination, authentication, and provider-specific details are intentionally omitted.
+Contracts are internal architecture unless a user job requires a plain-language representation. Their native field structure should not dictate the interface.
 
 ## Shared envelope
 
@@ -14,17 +14,17 @@ Every contract includes:
 
 ```yaml
 contract_type: production_request
-contract_version: 0.1
+contract_version: 0.2
 id: request_042
 tenant_id: tenant_pwp_fixture
-created_at: 2026-08-01T19:00:00Z
+created_at: 2026-08-02T14:00:00Z
 created_by:
   actor_type: human
   actor_id: producer_01
 correlation_id: launch_social_042
 ```
 
-`correlation_id` connects artifacts from one workflow without replacing their stable identifiers.
+`correlation_id` connects artifacts from one journey without replacing stable identifiers.
 
 ## Evidence manifest
 
@@ -40,11 +40,11 @@ Required content:
 - rights, confidentiality, and expiry when applicable;
 - extraction status and failures.
 
-The approval posture distinguishes a migrated approved library from unreviewed evidence. It supplies an explicit intake default; it does not make every extracted assertion approved.
+Approval posture distinguishes a migrated approved library from unreviewed evidence. It supplies an explicit intake default; it does not make every extracted assertion approved.
 
 ## Entity proposal batch
 
-Created by normalization, inference, import, or a human authoring workflow. Contains proposed entities and relationships plus review exceptions.
+Created by normalization, inference, import, or human authoring. Contains proposed entities and relationships plus review exceptions.
 
 Required content:
 
@@ -78,42 +78,69 @@ rationale: Updated legal panel and barcode; front geometry unchanged.
 supersedes: asset_package_front@2
 ```
 
-Allowed actions initially include:
+Initial actions include approve, reject, deprecate, supersede, promote to canonical, revise canonical, and remove from canon. The governance service validates actor authority and schema invariants before committing the event.
 
-- approve;
-- reject;
-- deprecate;
-- supersede;
-- promote_to_canonical;
-- revise_canonical;
-- remove_from_canon.
+## Workflow definition
 
-The service validates actor authority and schema invariants before committing the event.
-
-## Production request
-
-Defines the job before policy compilation.
+Configured by a system steward or authorized administrator. Defines a reusable client workflow in terms of the user's job and a sequence or graph of stages.
 
 Required content:
 
+- stable workflow identifier and version;
+- client-facing name, description, intended role, and outcome;
+- required request fields in user language;
+- stage definitions and transitions;
+- roles and approval route;
+- exception paths and recovery states;
+- required integrations;
+- completion criteria;
+- product owner and maintenance status.
+
+A workflow definition must pass the product architecture test in [`../docs/product-development-principles.md`](../docs/product-development-principles.md). It cannot exist only because the architecture supports it.
+
+## Stage definition
+
+Defines one meaningful phase within a workflow.
+
+Required content:
+
+- stable stage identifier and version;
+- user or system outcome;
+- entry and completion conditions;
+- required inputs and expected outputs;
+- default policy preset or direct primitive configuration;
+- context requirements;
+- allowed capabilities and provider restrictions;
+- evaluation plan and thresholds;
+- human decisions, using plain-language labels;
+- approval, exception, and next-stage rules.
+
+Stages may use constrained, hybrid, or editorial presets internally. A stage may also configure the primitives directly. Preset names are not automatically exposed to users.
+
+## Production request
+
+Defines what the user wants from a configured workflow before stage policy compilation.
+
+Required content:
+
+- workflow identifier and version;
 - objective and requested deliverables;
-- selected or requested production mode;
 - brand, product, audience, channel, format, geography, and campaign scope as applicable;
 - requested changes and explicit non-changes;
 - provided references and assets;
 - deadlines or service constraints;
-- intended approval route;
+- intended approval participants;
 - human clarifications and unresolved questions.
 
-The request does not carry resolved brand rules. Those come from the context manifest and policy snapshot.
+The request does not normally ask the user to select constrained, hybrid, or editorial policy. Creative latitude is collected only when the workflow makes it a meaningful user decision, in language specific to the job.
 
 ## Context manifest
 
-Records the exact brand-brain material selected for a job and why.
+Records the exact brand-brain material selected for one stage and why.
 
 Required content:
 
-- production request reference;
+- production request, workflow, and stage references;
 - entity and relationship version references;
 - selection reason for every item;
 - scope match and precedence information;
@@ -121,21 +148,28 @@ Required content:
 - unresolved retrieval warnings;
 - retrieval method and version.
 
-The context manifest allows a reviewer to distinguish “the rule did not exist” from “the rule existed but retrieval missed it.”
+The manifest lets a reviewer distinguish “the rule did not exist” from “the rule existed but retrieval missed it.”
 
-## Policy snapshot
+## Stage policy snapshot
 
-The immutable execution contract compiled for one job.
+The immutable execution contract compiled for one stage.
 
 ```yaml
-contract_type: policy_snapshot
+contract_type: stage_policy_snapshot
 request_id: request_042
-mode: hybrid
-context_manifest_id: context_042
+workflow:
+  id: campaign_launch
+  version: 3
+stage:
+  id: produce_hero
+  version: 2
+preset: hybrid
+context_manifest_id: context_042_hero
 decisions:
   required:
     - entity: asset_package_front@3
-      handling: compose_exact
+      handling: locked
+      operation: compose_exact
   permitted:
     - capability: generate_scene
       scope: environment_and_casting
@@ -144,12 +178,9 @@ decisions:
       condition: paid_social
   prohibited:
     - rule: no_floating_package@1
-locked_elements:
-  - entity: asset_package_front@3
-    integrity_check: pixel_and_geometry
-flexible_elements:
-  - concept: environment
-  - concept: lighting
+element_handling:
+  locked: [asset_package_front@3]
+  flexible: [environment, lighting]
 allowed_capabilities:
   - generate_scene
   - compose_exact_asset
@@ -164,15 +195,17 @@ evaluation_plan:
 approval_route: workflow_approver
 ```
 
-Every decision includes its originating rule, scope, and rationale in the full contract. Explicit job overrides record who authorized them. Overrides cannot bypass system invariants or canonical rules without the authority required to change those rules.
+Every decision includes its originating rule, stage configuration, preset default, scope, and rationale. Explicit exceptions record who authorized them. Exceptions cannot bypass system invariants or canonical rules without the required authority.
+
+One job may retain several stage policy snapshots. A snapshot's preset field is optional provenance about its starting configuration, not the operative policy itself.
 
 ## Execution plan
 
-Created after preflight. Describes an ordered or dependency-linked set of resumable steps.
+Created after stage preflight. Describes an ordered or dependency-linked set of resumable steps.
 
 Required content:
 
-- policy snapshot reference;
+- workflow, stage, and stage policy snapshot references;
 - step identifiers and dependencies;
 - required capability for each step;
 - pinned inputs and expected outputs;
@@ -200,7 +233,7 @@ Required content:
 - failure classification and recovery action;
 - substitution from the preferred provider, if any.
 
-Sensitive prompt or provider payload storage may be redacted by tenant policy, but the record must retain enough information to explain the operation.
+Sensitive prompt or provider payload storage may be redacted by tenant policy, but the record retains enough information to explain the operation.
 
 ## Artifact manifest
 
@@ -208,7 +241,7 @@ Identifies a produced or composed artifact and how it was made.
 
 Required content:
 
-- source job and step results;
+- source workflow, stage, job, and step results;
 - asset URI, media type, checksum, dimensions, and rendition information;
 - composition lineage for locked assets;
 - generated regions or layers when the medium supports them;
@@ -217,15 +250,15 @@ Required content:
 - rights and usage scope;
 - lifecycle if the artifact enters a reusable library.
 
-The composition lineage must state whether each locked element was copied, transformed deterministically, or regenerated. Regeneration of a locked element requires a blocking policy exception.
+Composition lineage states whether each locked element was copied, transformed deterministically, or regenerated. Regeneration of a locked element requires a blocking policy exception.
 
 ## Evaluation record
 
-Stores findings against the policy snapshot and request.
+Stores findings against a stage policy snapshot and request.
 
 Required content:
 
-- artifact and policy snapshot references;
+- artifact and stage policy snapshot references;
 - evaluator type, version, and inputs;
 - deterministic findings before judgment findings;
 - result per requirement or criterion;
@@ -246,11 +279,11 @@ Required content:
 - requested changes;
 - protected non-changes;
 - reason and actor;
-- policy snapshot reference;
+- stage policy snapshot reference;
 - whether recompilation is required;
 - affected execution steps.
 
-If scope or policy changes, the system compiles a new policy snapshot. A cosmetic correction that does not affect policy may reuse the existing snapshot and branch the execution plan.
+If stage scope or policy changes, the system compiles a new snapshot. A correction that does not affect policy may reuse the existing snapshot and branch the execution plan.
 
 ## Approval event
 
@@ -263,7 +296,7 @@ Required content:
 - actor and verified authority;
 - approval scope;
 - related evaluations and exceptions;
-- downstream action.
+- downstream action or stage transition.
 
 Output approval, guidance approval, and canonical promotion use distinct actions. The interface and API must not collapse them into one generic approval.
 
@@ -273,7 +306,7 @@ Created from corrections, repeated preferences, failures, or successful preceden
 
 Required content:
 
-- supporting jobs, outputs, evaluations, or corrections;
+- supporting workflows, stages, jobs, outputs, evaluations, or corrections;
 - proposed entity, relationship, validator, or workflow change;
 - epistemic origin and conditional confidence;
 - proposed scope;
@@ -284,17 +317,28 @@ Memory proposals never mutate the brand repository directly.
 
 ## Contract invariants
 
-1. Every production artifact resolves to one production request and policy snapshot.
-2. Every job uses exact entity versions, not “latest” pointers after execution begins.
-3. Every policy decision resolves to a rule, invariant, mode default, or authorized override.
-4. Every locked asset has a composition lineage and integrity check.
-5. Every blocking evaluation finding prevents workflow approval unless an authorized exception is recorded.
+1. Every production artifact resolves to one request, workflow version, stage, and stage policy snapshot.
+2. Every job uses exact entity versions, not `latest` pointers after execution begins.
+3. Every policy decision resolves to a rule, invariant, stage configuration, preset default, or authorized exception.
+4. Every locked asset has composition lineage and an integrity check.
+5. Every blocking finding prevents stage approval unless an authorized exception is recorded.
 6. Every revision states protected non-changes.
 7. Every governance and approval event identifies the authority exercised.
 8. No memory proposal changes canon without a separate governance event.
+9. No preset name must appear in a user interface unless a validated user decision requires it.
 
-## Fixture requirements
+## Journey-first fixture requirements
 
-PWP and Riggg fixtures should each provide representative examples of every contract used by their workflow. The hybrid control test must reuse a common request family and brand-brain snapshot while producing distinct policy snapshots, execution plans, and evaluation order.
+PWP and Riggg fixtures are product-journey proofs before they are contract test suites. Each fixture begins with:
 
-These fixtures should settle optional fields, enum values, error formats, and contract versioning before public APIs are designed.
+- a named user and operating context;
+- a concrete job and desired outcome;
+- what the user knows at the beginning;
+- the decisions that genuinely require the user;
+- what the configured workflow decides automatically;
+- the happy path, exception path, approval, and visible result;
+- the value delivered and friction introduced.
+
+The fixture then supplies representative contracts for that journey. The hybrid control test reuses a common stage request and brand-brain snapshot while producing distinct stage policy snapshots, plans, and evaluation order. At least one fixture should include a multi-stage workflow that changes presets without asking the user to operate a mode selector.
+
+Fixtures should settle optional fields, enum values, error formats, contract versioning, and product-language gaps before public APIs are designed.

@@ -9,11 +9,10 @@ Two artifact types are maintained:
 
 Design decisions discovered here should update the schema, production policy, glossary, or an ADR. Mockups do not override those contracts silently.
 
-## Current sequence
+## Current status
 
-1. Establish the hybrid-production north star.
-2. Pressure-test bulk asset registration and governance.
-3. Extend the confirmed visual language into the full production flow.
-4. Test world-building, approvals, corrections, and memory write-back.
+Visual development is paused while the product architecture is audited. The first production mockup was valuable as a workflow probe: it exposed a job-level mode selector as architecture leaking into the interface. That finding produced ADR 0005 and the concept-visibility audit.
 
-See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md).
+When visual work resumes, it should begin with the complete application and user journeys before returning to deep production controls. Every proposed surface must pass the product architecture test in [`../product-development-principles.md`](../product-development-principles.md).
+
+See [`north-star.md`](north-star.md), [`screen-inventory.md`](screen-inventory.md), and [`flows/hybrid-production.md`](flows/hybrid-production.md) for retained hypotheses and learning.

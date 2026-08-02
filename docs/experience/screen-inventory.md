@@ -4,10 +4,10 @@
 
 1. **Brand workspace** — brain status, recent changes, unresolved governance, and active work.
 2. **Production request** — job brief, channel, format, audience, deliverables, and references.
-3. **Policy setup** — production mode plus the compiled locks, permissions, conditions, and prohibitions.
-4. **Preflight review** — exact assets and claims that will be composed versus the context the system may generate.
+3. **Workflow preflight** — plain-language exactness promises, required inputs, material exceptions, and approvals; policy preset remains internal.
+4. **Stage review** — exact assets and claims that will be composed versus the context the configured stage may generate.
 5. **Production studio** — output preview with tool and decision trace.
-6. **Evaluation** — locked-element drift first, followed by request fidelity, world fit, and craft quality according to mode.
+6. **Evaluation** — actionable findings ordered according to stage policy; evaluator architecture remains internal.
 7. **Revision and approval** — targeted changes, unrequested-change protection, and role-specific approval.
 8. **Memory write-back** — output record, correction, learned preference, or candidate rule; canon unchanged unless separately governed.
 
@@ -21,4 +21,4 @@
 6. **Scoped prohibition** — define effect, scope, rationale, and exceptions as a rule.
 7. **Supersession** — replace contextual material while retaining the audit trail.
 
-The inventory is intentionally broader than the first mockup. Screens should be designed only when their purpose and core state are confirmed through the schema or a workflow discussion.
+The inventory is provisional. Screens should be designed only when they support a named user job, decision, outcome, or recovery path. Architecture concepts do not earn screens by existing in the schema.

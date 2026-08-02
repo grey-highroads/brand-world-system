@@ -1,6 +1,6 @@
 # ADR 0003: Compile and snapshot production policy per job
 
-- Status: Accepted
+- Status: Superseded in part by ADR 0005
 - Date: 2026-08-01
 - Owner: Higher Roads
 
@@ -30,3 +30,7 @@ Compilation makes policy testable, debuggable, and independent of any one provid
 - Execution plans target capabilities rather than named providers.
 - Evaluation is derived from the snapshot, not improvised after generation.
 - Binding conflicts block production before expensive work begins.
+
+## Supersession note
+
+ADR 0005 retains compilation and immutable snapshots but moves their boundary from one selected mode per job to configured policy per workflow stage.
