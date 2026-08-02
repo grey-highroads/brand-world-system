@@ -20,7 +20,7 @@ Shared terminology for the Brand World System. Definitions here are authoritativ
 
 ## The entity model
 
-**Entity.** Any discrete item in the brand brain: an asset, claim, rule, character, audience, template, ritual, precedent, or record. Every entity belongs to one domain and carries metadata across the dimensions below.
+**Entity.** Any discrete item in the brand brain: an asset, claim, rule, character, audience, template, ritual, precedent, or record. Every entity belongs to one primary domain and carries the metadata required by its entity type and the governance dimensions that apply to it.
 
 **Domain.** What kind of knowledge an entity represents. Domains classify content only; they confer no authority. The five domains are Foundation, Identity, World, Production, and Memory.
 
@@ -36,21 +36,21 @@ Shared terminology for the Brand World System. Definitions here are authoritativ
 
 ## Authority and governance dimensions
 
-Each dimension is independent. An entity's position in one dimension implies nothing about another, except where an invariant says so.
+Each dimension is independent. An entity's position in one dimension implies nothing about another, except where an invariant says so. Not every dimension applies to every entity; the schema defines requirements and defaults by entity type.
 
 **Governance role.** Whether an entity is identity-defining. Values: **canonical** (identity-defining, production-binding, change-controlled) or **contextual** (useful material without identity-defining force). Canon is the set of all canonical entities across every domain; it is a governed view, not a container or domain.
 
 **Lifecycle.** Where an entity stands in review. Values: **proposed**, **approved**, **rejected**, **deprecated**, **superseded**. Approval clears an entity for use within its scope. Approval does not make an entity canonical.
 
-**Production effect.** What an entity requires of production when retrieved. Values: **required**, **permitted**, **conditional**, **prohibited**. A prohibition is a rule whose production effect is prohibited; the rule itself may be canonical or merely approved.
+**Production effect.** What a scoped production rule or entity-policy relationship requires of production. Values: **required**, **permitted**, **conditional**, **prohibited**. Production effects carry scope and rationale. A prohibition is a rule whose production effect is prohibited; the rule itself may be canonical or merely approved.
 
 **Epistemic origin.** Where an entity came from. Values: **sourced** (taken directly from evidence), **inferred** (concluded from evidence by the system), **authored** (written by a human), **generated** (produced by a model).
 
-**Confidence.** A qualifier expressing how much the system trusts an inferred or generated entity. Required on inferred and generated entities.
+**Confidence.** A qualifier expressing how much the system trusts inferred knowledge or a model-generated assertion. Required on inferred knowledge and model-generated assertions or candidate rules. Generated artifacts receive evaluation results rather than epistemic confidence scores.
 
 **Provenance.** The traceable record of an entity's origin: source evidence, author, job, or prior version. Required on every entity.
 
-**Invariants.** Nothing becomes canonical without approval. Approval does not automatically confer canonical status. Canonical changes require a governed revision event. Contextual approved material can be superseded within its scope without a governance event. Derived guidance can be approved while remaining explicitly inferred.
+**Invariants.** Nothing becomes canonical without approval. Approval does not automatically confer canonical status. Canonical changes require a governed revision event. Contextual approved material can be superseded within its scope without canonical change control, but every supersession remains versioned and auditable. Inferred guidance can be approved while remaining explicitly inferred.
 
 ## Governance roles (people)
 

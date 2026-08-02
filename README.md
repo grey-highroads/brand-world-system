@@ -2,7 +2,7 @@
 
 Persistent brand intelligence and production infrastructure.
 
-Brand World System is a documentation-first effort to define a reusable system for building a durable brand brain and installing controlled creative-production workflows on top of it. It grows from two working lessons: Product World Preview (PWB) showed how to infer and articulate a brand world from incomplete evidence, while Riggg showed how to produce consistently when canonical rules and assets are explicit.
+Brand World System is a documentation-first effort to define a reusable system for building a durable brand brain and installing controlled creative-production workflows on top of it. It grows from two working lessons: Product World Preview (PWP) showed how to infer and articulate a brand world from incomplete evidence, while Riggg showed how to produce consistently when canonical rules and assets are explicit.
 
 ## Core model
 
@@ -20,17 +20,18 @@ Production uses one of three configurable modes:
 ## Repository map
 
 - [`docs/product-thesis.md`](docs/product-thesis.md) — rationale, product model, boundaries, and commercial opportunity
+- [`glossary.md`](glossary.md) — authoritative terminology for the system
 - [`docs/product-primer.md`](docs/product-primer.md) — forthcoming plain-language product walkthrough
 - [`docs/decisions/`](docs/decisions/) — architectural and product decision records
 - [`specs/brand-world-schema.md`](specs/brand-world-schema.md) — forthcoming canonical brand-world model
 - [`specs/production-policy.md`](specs/production-policy.md) — forthcoming creative-control policy
-- [`fixtures/pwb/`](fixtures/pwb/) — editorial and inference-first reference case
+- [`fixtures/pwp/`](fixtures/pwp/) — editorial and inference-first reference case
 - [`fixtures/riggg/`](fixtures/riggg/) — constrained and canon-first reference case
 - [`roadmap.md`](roadmap.md) — staged path from documentation to a working implementation kit
 
 ## Working principles
 
-- Canon is structured, persistent, versioned, and traceable to evidence.
+- Canon is a governed view of approved, identity-defining entities across every domain.
 - Creative freedom is a policy decision, not an accidental property of a prompt.
 - Generation is downstream of brand intelligence.
 - Approved outputs, corrections, and failures improve future work without silently rewriting foundational canon.

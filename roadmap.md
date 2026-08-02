@@ -18,7 +18,7 @@ This roadmap moves from product definition to a reusable internal implementation
 
 ## Phase 3: Prove the model with fixtures
 
-- Build a sanitized PWB fixture for inference-first editorial production
+- Build a sanitized PWP fixture for inference-first editorial production
 - Build a sanitized Riggg fixture for canon-first constrained production
 - Test a hybrid job that locks a canonical asset inside a generated context
 - Record schema and policy changes revealed by each case

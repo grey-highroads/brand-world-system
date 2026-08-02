@@ -9,10 +9,11 @@ Define the implementation-facing representation of a persistent brand brain, inc
 ## Initial scope
 
 - Foundation: purpose, positioning, values, audiences, products, claims, and proof
-- Canon: voice, visual rules, canonical assets, required relationships, and prohibitions
+- Identity: voice, visual rules, assets, characters, terminology, and expressions
 - World: characters, places, rituals, behaviors, tensions, materials, and narrative territories
 - Production: channel rules, templates, technical constraints, and workflow defaults
 - Memory: jobs, outputs, evaluations, feedback, approvals, and learned preferences
-- Governance: evidence, confidence, ownership, status, scope, and revision history
+- Governance: canonical or contextual role, lifecycle, epistemic origin, provenance, conditional confidence, scope, and revision history
+- Policy relationships: scoped production effects, rationales, exceptions, and the entities they govern
 
 The completed specification will include at least one valid example, one failure example, and a path to a machine-readable schema.

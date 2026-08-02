@@ -13,7 +13,7 @@ The product must separate two workflows:
 1. A world-building workflow creates, validates, and evolves canonical brand intelligence.
 2. A production workflow creates deliverables from that intelligence under an explicit creative-control policy.
 
-This separation resolves a tension exposed by Product World Preview (PWB) and Riggg. PWB is strongest when it interprets incomplete evidence, constructs a point of view, and describes a lived brand world. It becomes overloaded when it must also render, protect every asset, and judge every output in the same pass. Riggg is strongest when it inherits explicit canon and produces within narrow rules. Without canonical assets and relationships, however, it has nothing reliable to preserve.
+This separation resolves a tension exposed by Product World Preview (PWP) and Riggg. PWP is strongest when it interprets incomplete evidence, constructs a point of view, and describes a lived brand world. It becomes overloaded when it must also render, protect every asset, and judge every output in the same pass. Riggg is strongest when it inherits explicit canon and produces within narrow rules. Without canonical assets and relationships, however, it has nothing reliable to preserve.
 
 Together, the two systems reveal a larger commercial opportunity: a reusable foundation for private brand production systems that can support both creative synthesis and controlled execution without confusing the two.
 
@@ -37,7 +37,7 @@ The answer is not simply a better master prompt. It is a persistent representati
 
 The first workflow turns scattered evidence into governed brand intelligence. It ingests source material such as strategy documents, visual guidelines, websites, campaign decks, product information, approved copy, asset libraries, and stakeholder decisions. It then separates observation from inference, records provenance, exposes contradictions, and produces structured entities and relationships.
 
-Its output is not a mood board or a one-time summary. It is a durable model containing approved truths, derived guidance, creative territory, unresolved questions, and confidence levels.
+Its output is not a mood board or a one-time summary. It is a durable model containing approved truths, inferred guidance, creative territory, unresolved questions, and confidence levels where epistemic confidence applies.
 
 This workflow should:
 
@@ -45,12 +45,12 @@ This workflow should:
 - define the brand foundation, audiences, products, claims, and voice;
 - register canonical assets and their required relationships;
 - articulate visual grammar and lived-world logic;
-- distinguish locked canon from derived guidance and generative territory;
+- distinguish locked canon from inferred guidance and generative territory;
 - route consequential conclusions through approval;
 - version changes and preserve their provenance; and
 - learn from later production without silently rewriting foundation-level rules.
 
-The highest-value output of PWB belongs here: a rich, opinionated model of how a brand looks, speaks, behaves, and lives in the world.
+The highest-value output of PWP belongs here: a rich, opinionated model of how a brand looks, speaks, behaves, and lives in the world.
 
 ### Workflow two: produce from the canonical brand world
 
@@ -74,19 +74,19 @@ The two workflows share the same brand brain, asset registry, retrieval layer, j
 
 ## The brand brain as the durable product
 
-The brand brain is a structured, versioned source of truth with five conceptual layers.
+The brand brain is a structured, versioned source of truth organized into five content domains. A domain describes what kind of knowledge an entity represents; it does not confer authority. Canon is a governed view across these domains, not a domain or container of its own.
 
 ### Foundation
 
 Foundation contains the most durable strategic truths: purpose, positioning, values, audiences, product truths, differentiators, proof points, and enduring identity. Changes here should be deliberate and highly governed.
 
-### Canon
+### Identity
 
-Canon contains approved expressions and relationships: logos, product assets, characters, icons, claims, terminology, colors, typography, composition rules, voice rules, and explicit prohibitions. Canon answers what must remain recognizable and correct.
+Identity contains the brand's expressions and their relationships: logos, product assets, characters, icons, claims, terminology, colors, typography, composition rules, and voice rules. An Identity entity may be canonical or contextual, proposed or approved, depending on its independent governance metadata.
 
 ### World
 
-World contains the brand's lived logic: rituals, environments, behaviors, tensions, materials, characters, cultural signals, narrative territories, and ways the brand appears in real life. Some world elements may be approved canon; others may remain derived or exploratory.
+World contains the brand's lived logic: rituals, environments, behaviors, tensions, materials, characters, cultural signals, narrative territories, and ways the brand appears in real life. Some World entities may be approved and canonical; others may remain contextual, inferred, proposed, or exploratory.
 
 ### Production
 
@@ -96,11 +96,11 @@ Production contains channel and execution rules: formats, templates, technical c
 
 Memory contains job history, prompts, generated assets, approvals, rejections, corrections, performance signals, repeated preferences, token and cost records, and failure cases. Memory allows the system to improve while keeping historical behavior auditable.
 
-Each entity should also carry governance metadata. At minimum, the system needs status, confidence, provenance, owner, version, relationships, and scope. A canonical asset and an inferred creative territory can coexist in the same brain only if their authority is explicit.
+Every entity belongs to one primary domain and carries only the metadata required by its entity type and applicable governance dimensions. Governance role distinguishes canonical from contextual entities; lifecycle records review state; epistemic origin and provenance record where knowledge came from. Confidence is required for inferred knowledge and model-generated assertions, while generated artifacts receive evaluation results. Production effects belong to scoped rules or entity-policy relationships rather than indiscriminately to every entity. Nothing becomes canonical without approval, and approval does not automatically make an entity canonical.
 
 ## Production modes are policy, not separate products
 
-The apparent gap between an inference-first product like PWB and a canon-first product like Riggg is best expressed as configurable production policy.
+The apparent gap between an inference-first product like PWP and a canon-first product like Riggg is best expressed as configurable production policy.
 
 ### Constrained mode
 
@@ -123,15 +123,15 @@ The selected mode changes four things:
 
 A job can override the default mode with explicit permissions. For example, a hybrid product-imagery job may allow high environmental invention while setting zero tolerance for package drift. The mode is therefore not merely a user-interface toggle. It is a structured contract that shapes retrieval, prompt compilation, model choice, evaluation, revision, and approval.
 
-## What PWB and Riggg taught us
+## What PWP and Riggg taught us
 
-### PWB: intelligence before rendering
+### PWP: intelligence before rendering
 
-PWB showed that an AI system can consume fragmented brand evidence and generate something more valuable than a summary. It can form a point of view, describe audiences as people, identify rituals, build dossiers, define lived experiences, and propose scenes that feel native to the brand.
+PWP showed that an AI system can consume fragmented brand evidence and generate something more valuable than a summary. It can form a point of view, describe audiences as people, identify rituals, build dossiers, define lived experiences, and propose scenes that feel native to the brand.
 
 It also showed the cost of asking one workflow to do too much. When world-building, asset production, fidelity enforcement, and quality assurance are combined, the system becomes prompt-heavy and difficult to debug. Rendering performance begins to stand in for the quality of the underlying brand intelligence. The workflow is judged by whether every image succeeds, even when its more defensible value lies in synthesis and articulation.
 
-The lesson is that PWB should primarily inform the world-building and editorial-intelligence workflow. Rendering is one downstream consumer of its artifacts, not its defining responsibility.
+The lesson is that PWP should primarily inform the world-building and editorial-intelligence workflow. Rendering is one downstream consumer of its artifacts, not its defining responsibility.
 
 ### Riggg: production requires inherited canon
 
@@ -143,7 +143,7 @@ The lesson is that Riggg represents an effective production layer, but that laye
 
 ### The combined lesson
 
-PWB taught us how to construct a brand world from evidence. Riggg taught us how to maintain a brand world through production. A unified system needs both creation and control, with an explicit boundary between them.
+PWP taught us how to construct a brand world from evidence. Riggg taught us how to maintain a brand world through production. A unified system needs both creation and control, with an explicit boundary between them.
 
 ## System boundaries
 
@@ -247,6 +247,6 @@ These questions should be resolved through specifications, decision records, and
 
 The product is a persistent brand intelligence system with configurable production engines.
 
-Workflow one constructs and governs the canonical brand world. Workflow two produces from that world. Constrained, editorial, and hybrid modes determine how tightly production follows canon. PWB supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
+Workflow one constructs and governs the canonical brand world. Workflow two produces from that world. Constrained, editorial, and hybrid modes determine how tightly production follows canon. PWP supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
 
 The immediate objective is not to build a universal SaaS product. It is to define a coherent implementation kit, prove it with contrasting fixtures, and deploy one valuable workflow at a time. If the schema, policy, evaluation, and learning loop hold across those cases, the system can turn bespoke brand work into a repeatable and profitable product capability.

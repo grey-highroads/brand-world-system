@@ -1,4 +1,4 @@
-# PWB Fixture
+# PWP Fixture
 
 > Status: Placeholder for a sanitized Product World Preview reference case.
 
