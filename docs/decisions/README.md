@@ -1,6 +1,6 @@
 # Decision Records
 
-This directory will hold concise records of consequential product and architecture decisions.
+This directory contains concise records of consequential product and architecture decisions.
 
 Each record should state:
 
@@ -22,3 +22,4 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 - [`0005-apply-policy-presets-per-workflow-stage.md`](0005-apply-policy-presets-per-workflow-stage.md) — Accepted
 - [`0006-treat-generation-package-as-portable-artifact.md`](0006-treat-generation-package-as-portable-artifact.md) — Accepted
 - [`0007-deliver-isolated-client-installations-first.md`](0007-deliver-isolated-client-installations-first.md) — Accepted
+- [`0008-use-openai-as-the-initial-renderer.md`](0008-use-openai-as-the-initial-renderer.md) — Accepted

@@ -17,8 +17,8 @@
 2. **Exception review** — resolve duplicate, approval, rights, scope, and suspected-canon issues.
 3. **Entity detail** — inspect content, domain, provenance, relationships, lifecycle, and governance role.
 4. **Approval** — clear an entity for use without making it canonical.
-5. **Canon promotion** — separate brand-owner action with impact preview and governed revision record.
-6. **Scoped prohibition** — define effect, scope, rationale, and exceptions as a rule.
+5. **Canon promotion** — separate deliberate action with impact preview and governed revision record. V1 does not assign the action to a modeled role.
+6. **Brand rule** — decide whether to use, defer, or discard a proposed rule after reviewing what it prevents, why it matters, where it came from, and where it applies. The implementation stores a scoped prohibition; the interface does not use that term.
 7. **Supersession** — replace contextual material while retaining the audit trail.
 
 The inventory is provisional. Screens should be designed only when they support a named user job, decision, outcome, or recovery path. Architecture concepts do not earn screens by existing in the schema.

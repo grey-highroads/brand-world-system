@@ -20,7 +20,7 @@ The brand brain is the shared source of truth. Production jobs consume versioned
 - **Compile policy before each stage.** A workflow stage resolves brand rules and configured creative-control primitives into explicit locks, permissions, conditions, prohibitions, tools, and evaluation priorities.
 - **Prefer deterministic operations.** Compose and validate exact material directly. Reserve model-based judgment for qualities that genuinely require judgment.
 - **Make every state transition attributable.** Approval, rejection, supersession, correction, and canonical revision are recorded events.
-- **Keep providers replaceable.** Models, renderers, storage services, and evaluators sit behind narrow adapters.
+- **Start with OpenAI and keep the boundary replaceable.** OpenAI is the sole initial generative renderer. Models, renderers, storage services, and evaluators still sit behind narrow adapters so later integrations do not change the production contract.
 - **Isolate brand data.** Shared code and contracts are reusable; private evidence, canon, assets, jobs, and memory remain tenant-scoped.
 - **Start operationally simple.** The first implementation should be a modular system with explicit internal contracts, not a premature network of microservices.
 
@@ -120,6 +120,10 @@ Converts the request and current stage policy snapshot into resumable steps. It 
 
 Wrap model APIs, generation services, image tools, composition engines, and export utilities behind typed capabilities. Policies target capabilities such as `compose_exact_asset` or `generate_scene`, not provider-specific endpoints.
 
+The first renderer adapter targets OpenAI's Image API for flexible image generation. Its model and API parameters are pinned in installation runtime configuration, not embedded in the generation package or exposed in the production job. Responses API support may be added inside the OpenAI adapter only when a validated multi-turn workflow requires it.
+
+Deterministic composition and drift detection are Brand World System tool capabilities, not responsibilities delegated to the renderer. The system generates flexible context through OpenAI, composes exact protected assets through deterministic tooling, and evaluates integrity before judgment-based quality. No initial workflow depends on another renderer adapter.
+
 ### 12. Evaluation service
 
 Runs deterministic checks first where possible, then model-based or human evaluation where judgment is necessary. Evaluation order and pass thresholds come from the stage policy snapshot.
@@ -146,7 +150,7 @@ Evidence
   -> versioned brand repository
 ```
 
-The workflow is proposal-first. Inference remains labeled as inference after approval. Approval permits use; canonical promotion is a separate brand-owner decision.
+The workflow is proposal-first. Inference remains labeled as inference after approval. Approval permits use; canonical promotion is a separate deliberate decision.
 
 Batch intake uses exception-oriented review. The normal path records batch provenance and system-derived metadata; people resolve only decisions the system cannot make honestly.
 
@@ -194,7 +198,7 @@ Contracts are logical and serializable. They do not require each component to be
 - A production stage references immutable snapshots, not mutable queries.
 - Execution steps are idempotent where the provider permits it and safe to retry otherwise through explicit attempt records.
 - Long-running work persists after every meaningful step and can resume without replaying completed expensive operations.
-- Human review is a durable waiting state, not an in-memory pause.
+- When external human review is implemented, it must be a durable waiting state rather than an in-memory pause. External review routing is outside the bootstrap.
 
 ## Data layout and isolation
 
@@ -209,8 +213,9 @@ Every record is tenant-scoped. Storage paths, encryption context, cache keys, se
 
 ## Security and authority
 
-- Brand owners authorize canonical revisions.
-- Workflow approvers authorize deliverables only within assigned scope.
+- The bootstrap records deliberate governance actions without defining users, roles, or permissions.
+- Production deployments must define who may authorize canonical revisions before enforcement is implemented.
+- Deliverable approval and canonical revision remain distinct actions regardless of the future authorization model.
 - System stewards maintain schemas and propose corrections but do not own client canon.
 - Service accounts receive the minimum capability required for their workflow step.
 - Provider adapters receive only task-relevant context, not the complete brand brain by default.

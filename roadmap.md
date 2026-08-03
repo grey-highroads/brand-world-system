@@ -25,21 +25,25 @@ This roadmap moves from product definition to a reusable internal implementation
 - Design the application shell and major navigation (production-flow pass complete)
 - Design the asset-creation journey at high fidelity (interactive browser pass complete)
 - Test the production interaction model in a runnable browser prototype ✓
-- Design the brand-brain build journey at high fidelity
+- Design the brand-brain build journey at high fidelity (intake through brand-rule and core-guidance passes complete; supersession remains open)
+- Design SLAKE batch intake, review, evidence detail, brand-rule decision, approval, and core-guidance change screens ✓
 - Write the product primer from design learning
 - Define what a client build includes as a deliverable
 - Build sanitized PWP and Riggg fixture journeys
+- Add a sanitized SLAKE 50-asset batch fixture with a contradiction, suspected duplicate, suspected-canon item, and proposed brand rule ✓
 - Test a multi-stage journey and hybrid-versus-constrained policy control
 - Record schema and policy changes revealed by each case
 
 ## Phase 4: Build the internal implementation kit
+
+The production compiler foundation was selected through an explicit implementation directive after the first production-flow learning. Its completion starts Phase 4 without closing the active whole-product design sprint or its remaining brand-brain journey.
 
 - Define the isolated client-installation profile and spin-up sequence ✓
 - Identify the narrowest high-value implementation slice from design and fixture learning ✓
 - Scope the first slice before committing to code ✓
 - Implement the executable production compiler foundation and portable Preflight contracts ✓
 - Implement intake, normalization, retrieval, context assembly, and persistence
-- Add prompt compilation, model adapters, evaluation, revision, and approvals
+- Add the OpenAI image renderer adapter, deterministic protected-asset composition, measurable drift checks, evaluation, revision, and approvals
 - Capture job state, provenance, token usage, cost, and failure recovery
 - Keep shared infrastructure separate from private brand configuration
 
@@ -53,6 +57,7 @@ This roadmap moves from product definition to a reusable internal implementation
 ## Phase 6: Productize proven patterns
 
 - Add additional output modules only after the pilot demonstrates value
+- Add another renderer adapter only when a client integration or validated workflow requires it
 - Standardize stable schemas, policies, evaluators, and operational tooling
 - Define security, ownership, portability, hosting, and support packages
 - Reassess whether the proven implementation kit should become a broader platform

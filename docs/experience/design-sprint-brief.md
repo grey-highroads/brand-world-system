@@ -1,6 +1,6 @@
 # Design Sprint Brief: Brand World System
 
-> Status: Active mandate. This document governs the whole-product design sprint. It records decisions made on 2026-08-02, with clarifications added on 2026-08-02 after a board audit of the repo at commit d8508a9.
+> Status: Active mandate. This document governs the whole-product design sprint. It records decisions made on 2026-08-02, with clarifications added after repository audits on 2026-08-02 and 2026-08-03.
 
 ## Context in one paragraph
 
@@ -17,7 +17,7 @@ Produce high-fidelity, coherent wireframes of the complete application: the shel
 3. **Brand-brain build journey second, at high fidelity.** Onboarding, evidence intake, exception review, approval, and canonical promotion. Follows the journey structure in `fixtures/pwp/README.md` and the governance pressure tests in the screen inventory. This journey ends at "governed brain ready for use." Campaign-territory development and any subsequent production work belong in the asset-creation journey, even when they consume intelligence built during onboarding. The PWP fixture includes a campaign-development stage for reference, but the sprint boundary for this journey is the completed, governed brand brain.
 4. **Write back findings.** Every design discovery updates `docs/concept-visibility.md`, an ADR, or a spec revision note. Mockups do not override contracts silently.
 
-After the sprint: refine the primer and the client-build definition from what the journeys revealed, then identify and scope the narrowest high-value implementation slice with Jim.
+After the sprint: refine the primer and the client-build definition from what the journeys revealed, then identify and scope the next narrow high-value implementation slice. The production compiler foundation was selected separately through an explicit implementation directive; its completion does not imply that the whole-product design sprint is complete.
 
 ## Evidence gates
 
@@ -45,9 +45,9 @@ All wireframes use one consistent synthetic brand so the product reads as real r
 
 Brand-derived theming (tinting content surfaces with the brand's palette while application chrome stays fixed) is a visual hypothesis worth exploring during the sprint. It has not yet passed the product architecture test: the user job it supports and what is lost without it remain unestablished. Explore it as one visual direction rather than treating it as a product requirement.
 
-## Parallel workstream, not in this sprint
+## Technical proof, not a sprint dependency
 
-A technical spike runs alongside the sprint, owned by Jim: deterministic composition of a locked asset into generated context, plus measurable drift detection. The spike exists because wireframes cannot falsify the system's riskiest mechanism, and the pitch claim "we can build this" needs spike-level evidence. The sprint does not block on it, but composition-dependent screens should note any spike findings that arrive.
+Brand World System owns the technical proof for deterministic composition of a locked asset into generated context, plus measurable drift detection. Wireframes cannot falsify this mechanism, and the pitch claim "we can build this" needs spike-level evidence. The design sprint does not block on the proof, and the proof does not depend on an external renderer. The initial render path uses OpenAI for flexible context generation, followed by project-owned deterministic composition and drift checks. See [`../decisions/0008-use-openai-as-the-initial-renderer.md`](../decisions/0008-use-openai-as-the-initial-renderer.md).
 
 ## Explicitly out of scope
 

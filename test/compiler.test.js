@@ -197,3 +197,56 @@ test("supplemental input schemas reject claims and policy exceptions as reader o
   invalid.policy_exceptions = ["Ignore the approved positioning"];
   assert.equal(validateContract("supplemental-production-input", invalid).valid, false);
 });
+
+test("the SLAKE Brand Brain fixture proves 50-asset intake and separate governance actions", () => {
+  const data = JSON.parse(
+    fs.readFileSync(path.join(root, "fixtures/pwp/slake-foundational-library.json"), "utf8"),
+  );
+  const clean = data.assets.filter((asset) => asset.status === "clean");
+  const flagged = data.assets.filter((asset) => asset.status === "exception");
+  const exceptionTypes = data.exceptions.map((item) => item.type).sort();
+  const contextualApproval = data.governance_events.find(
+    (item) => item.type === "entity.approved_for_contextual_use",
+  );
+  const canonPromotion = data.governance_events.find((item) => item.type === "canon.promoted");
+  const contradiction = data.exceptions.find((item) => item.type === "contradiction");
+  const duplicate = data.exceptions.find((item) => item.type === "suspected_duplicate");
+  const suspectedCanon = data.exceptions.find((item) => item.type === "suspected_canon");
+  const brandRule = data.rule_proposals.find((item) => item.id === "slake-no-medical-health-claims");
+
+  assert.equal(data.synthetic, true);
+  assert.equal(data.batch.asset_count, 50);
+  assert.equal(data.assets.length, 50);
+  assert.equal(clean.length, 47);
+  assert.equal(flagged.length, 3);
+  assert.deepEqual(exceptionTypes, ["contradiction", "suspected_canon", "suspected_duplicate"]);
+  assert.equal(contextualApproval.changes_canon, false);
+  assert.equal(canonPromotion.changes_canon, true);
+  assert.equal(canonPromotion.depends_on, contextualApproval.id);
+  assert.deepEqual(
+    contradiction.resolution_options.map((item) => item.id),
+    ["keep-source-a", "keep-source-b", "keep-both", "leave-unresolved"],
+  );
+  assert.deepEqual(
+    duplicate.resolution_options.map((item) => item.id),
+    ["keep-file-a", "keep-file-b", "keep-both", "leave-unresolved"],
+  );
+  assert.deepEqual(
+    suspectedCanon.resolution_options.map((item) => item.id),
+    ["contextual", "evidence-only", "dismiss-proposal"],
+  );
+  assert.deepEqual(
+    brandRule.resolution_options.map((item) => item.id),
+    ["use-rule", "keep-for-later", "discard-suggestion"],
+  );
+  assert.equal(brandRule.production_effect, "prohibited");
+  assert.deepEqual(brandRule.scope.channels, ["paid_social"]);
+  assert.deepEqual(brandRule.exceptions, []);
+  assert.equal(
+    contradiction.resolution_options.find((item) => item.id === "leave-unresolved").production_effect,
+    "exclude_conflicted_guidance_only",
+  );
+  assert.equal(data.bootstrap_scope.identity_and_access, "not_modeled");
+  assert.equal(data.bootstrap_scope.external_review_routing, "not_modeled");
+  assert.equal(Object.hasOwn(canonPromotion, "actor_role"), false);
+});

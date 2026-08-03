@@ -16,7 +16,7 @@ The client workflow's hybrid stage should generate a new context while composing
 - Drift and unrequested changes are detected and surfaced before final approval.
 - Every output can be traced to its request, inputs, entity versions, policy snapshot, tools, and evaluation.
 - Corrections may create candidate rules but never silently change canon.
-- A brand owner can approve a useful output without accidentally making it canonical.
+- A useful output can be approved without accidentally becoming canonical.
 - Registering an ordinary asset batch is fast enough that required metadata is completed honestly, with exceptions receiving focused review.
 
 ## Measures

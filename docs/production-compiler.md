@@ -107,4 +107,4 @@ The fixture validator compiles four runs across all eight public schemas. Tests 
 
 ## Deferred work
 
-This slice does not add source readers, Brand Brain retrieval, persistence, authentication, rendering, provider adapters, prompt editing, queues, approvals, or UI workflows. Those capabilities should consume or produce these contracts only when a validated product slice requires them.
+This slice does not add source readers, Brand Brain retrieval, persistence, authentication, rendering, provider adapters, prompt editing, queues, approvals, or UI workflows. The planned first renderer adapter targets OpenAI; deterministic composition and drift checks remain Brand World System responsibilities. Later renderer adapters are optional extensions. Those capabilities should consume or produce these contracts only when a validated product slice requires them.

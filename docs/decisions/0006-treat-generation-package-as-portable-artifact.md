@@ -1,5 +1,7 @@
 # ADR 0006: Treat the generation package as a portable artifact
 
+> Implementation clarification: [`0008-use-openai-as-the-initial-renderer.md`](0008-use-openai-as-the-initial-renderer.md) selects OpenAI as the sole initial renderer while preserving this adapter boundary.
+
 - Status: Accepted
 - Date: 2026-08-02
 - Owner: Higher Roads
@@ -30,7 +32,7 @@ The compiled prompt is read-only inside Brand World System. The user can inspect
 
 Generation inputs are not an undifferentiated reference bucket. A required source asset enters through the selected subject, product, or preset. An optional creative reference enters through the brief or an explicit system recommendation. Every input records its provenance and production role, such as exact subject, composition, lighting, mood, or style. Creative references also record influence and may not relax exactness rules or introduce unapproved claims.
 
-Rendering is a separate, optional capability behind an adapter. An administrator configures the renderer, model, credentials, and connection for a workflow, including a native provider, an API integration, an MCP connector, or a system such as Higher Roads Emagin8. The production interface exposes a single **Generate** action that uses the configured backend. Routine producers do not choose or inspect provider plumbing inside a job.
+Rendering is a separate, optional capability behind an adapter. An administrator configures the renderer, model, credentials, and connection for a workflow. The initial build uses OpenAI; later client installations may add another adapter without changing the package or routine workflow. The production interface exposes a single **Generate** action that uses the configured backend. Routine producers do not choose or inspect provider plumbing inside a job.
 
 Compilation applies approved brand rules before the package reaches production. Inapplicable evidence and references that would introduce unapproved claims are excluded automatically. If binding brand knowledge is incomplete or genuinely contradictory, the system blocks compilation or routes the issue to brand governance. Production may ask for a decision about the current job; it must not ask a producer to repair the brand brain.
 

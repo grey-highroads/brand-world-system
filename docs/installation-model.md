@@ -56,6 +56,8 @@ installation:
 
 The profile contains references and non-secret configuration. Credentials remain in the installation's protected runtime environment.
 
+`openai-image-v1` is the sole initial renderer adapter. The adapter resolves a pinned OpenAI model and API configuration from the protected runtime. Alternative renderer adapters remain a supported architectural extension, not an initial installation requirement or a dependency for product completion. See [`decisions/0008-use-openai-as-the-initial-renderer.md`](decisions/0008-use-openai-as-the-initial-renderer.md).
+
 ## Isolation boundary
 
 Each installation uses separate databases, object storage, queues, caches, credentials, logs, and access configuration. Storage keys may include `installation_id` for lineage, but the primary isolation guarantee is the deployment boundary.
@@ -68,7 +70,7 @@ Every durable job, package, artifact manifest, approval, and memory event receiv
 2. Provision the installation domain, access gate, storage, database, queue, and secrets.
 3. Import or build the initial Brand Brain and approve its production-ready snapshot.
 4. Select configured workflows and deliverable presets that match recurring client work.
-5. Configure provider and asset integrations outside job-level production screens.
+5. Configure the OpenAI renderer and asset integrations outside job-level production screens.
 6. Add the initial users and fixed roles.
 7. Run a known control job and verify that policy, package compilation, rendering, evaluation, and export behave as configured.
 8. Record the installation profile and release version.
