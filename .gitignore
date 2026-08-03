@@ -1,2 +1,4 @@
 node_modules/
 .superdesign/tmp/
+.env.local
+.data/

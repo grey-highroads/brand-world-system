@@ -43,6 +43,48 @@ function pageHeader(title, description) {
 }
 ```
 
+## Brand Brain section navigation
+
+- Source: `app/app.js`
+- Function: `brainSectionNav()`
+- Description: Persistent secondary navigation across Overview, Sources, Needs review, Brand guidance, and History, with live counts for sources, outstanding decisions, versions, and history.
+
+## Brand Brain workspace
+
+- Source: `app/app.js`
+- Function: `brainWorkspace(title, description, content, className)`
+- Description: Wraps every Brand Brain state in the shared app shell, page header, and section navigation so onboarding, review, guidance, and history feel like one product area.
+
+## Source handling contract
+
+- Source: `app/app.js`
+- Functions: `sourceComposer()`, `sourceGroupRow()`, `sourceAuthority()`, `sourceContract()`
+- Description: Collects the source's plain-language authority before synthesis, its intended Brand guidance area, conditional semantic influence, usage instruction, and exclusions. Exact assets and approved guidance intentionally bypass influence weighting. Uploaded document/image bytes, public-page text, and pasted material now travel through the local server to real synthesis while the interface preserves the same source contract.
+
+## Live Brand Brain synthesis
+
+- Sources: `app/app.js`, `scripts/dev-server.js`, `src/brand-brain/source-normalizer.js`, `src/brand-brain/chat-completions-provider.js`, `src/brand-brain/schema.js`
+- Functions: `startBrainSynthesis()`, `applySynthesisResult()`, `hydrateStoredBrain()`, `buildSynthesisRequest()`
+- Description: Replaces the live source path's simulated output with six structured guidance sections, review questions, and three full artifact readers. Provider and model plumbing remain outside the marketer-facing interface. The sanitized SLAKE sample journey remains deterministic for interaction testing.
+
+## Guidance passage feedback
+
+- Source: `app/app.js`
+- Function: `guidanceCommentBlock(section, paragraph, index)`
+- Description: Renders one synthesized prose passage with feedback attached to that exact passage and a visible incorporated-version state.
+
+## Guidance artifact card
+
+- Source: `app/app.js`
+- Function: `guidanceArtifactCard(section, artifact, index)`
+- Description: Renders a durable downstream artifact such as a dossier, lived experience map, persona, reference library, or rule set with an expandable explanation.
+
+## Full artifact reader
+
+- Source: `app/app.js`
+- Functions: `renderBrainArtifactReader()`, `renderDossierArtifact()`, `renderLivedArtifact()`, `renderStoryArtifact()`, `artifactFeedback()`
+- Description: Presents three cross-category artifacts with distinct module structures and section-level comments that enter the shared Brand Brain revision flow.
+
 ## Reference editor card
 
 - Source: `app/app.js`

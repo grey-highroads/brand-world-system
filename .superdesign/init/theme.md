@@ -51,6 +51,18 @@
 - Hover transitions: 140–160ms for transform, shadow, border, and background.
 - Focus ring: 3px translucent lavender with 2px offset.
 - `prefers-reduced-motion` reduces animation and transition durations to 0.01ms.
+- Live synthesis failures reuse the existing danger color and compact action patterns; no new visual language or provider-specific decoration is introduced.
+
+### Brand guidance category accents
+
+- Brand foundation: `--lavender`
+- Identity: `--celery`
+- World and story: `--coral`
+- Voice and messaging: `--success`
+- Creative direction: `--coral-dark`
+- Creative rules: `--danger`
+
+Category color is always paired with the tab label and active border, so color is not the only navigation signal.
 
 ## Raw source: canonical token and global blocks
 

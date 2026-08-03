@@ -120,7 +120,9 @@ Converts the request and current stage policy snapshot into resumable steps. It 
 
 Wrap model APIs, generation services, image tools, composition engines, and export utilities behind typed capabilities. Policies target capabilities such as `compose_exact_asset` or `generate_scene`, not provider-specific endpoints.
 
-The first renderer adapter targets OpenAI's Image API for flexible image generation. Its model and API parameters are pinned in installation runtime configuration, not embedded in the generation package or exposed in the production job. Responses API support may be added inside the OpenAI adapter only when a validated multi-turn workflow requires it.
+The first renderer adapter targets OpenAI's Images API. Prompt-only production calls `/v1/images/generations`. Jobs with canonical or creative reference images call `/v1/images/edits`. In both paths, the adapter sends the compiler's exact prompt string without rewriting, expanding, or re-summarizing it. The model and API parameters are pinned in installation runtime configuration, not embedded in the generation package or exposed in the production job. The Responses API is excluded from the production path because the Riggg implementation showed that automatic prompt rewriting diluted carefully tuned style anchors and prompt fragments.
+
+Brand Brain synthesis is a separate judgment capability. The intake layer extracts document text and normalizes public pages before calling Chat Completions with structured output. Image sources can accompany that synthesis as evidence. This path creates brand knowledge; it never renders production imagery or receives the compiler's production prompt.
 
 Deterministic composition and drift detection are Brand World System tool capabilities, not responsibilities delegated to the renderer. The system generates flexible context through OpenAI, composes exact protected assets through deterministic tooling, and evaluates integrity before judgment-based quality. No initial workflow depends on another renderer adapter.
 

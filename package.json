@@ -6,6 +6,7 @@
   "description": "Deterministic Brand World production compiler foundation",
   "exports": "./src/index.js",
   "scripts": {
+    "dev": "node scripts/dev-server.js",
     "test": "node --test",
     "validate:fixtures": "node scripts/validate-fixtures.js"
   },

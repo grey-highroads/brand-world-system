@@ -10,14 +10,22 @@ The prototype in [`../../app/`](../../app/) translates the current production-fl
 
 ### Brand Brain
 
-1. Open the SLAKE foundational-library batch containing 50 synthetic assets.
-2. Approve 47 clean assets for future work without changing core brand guidance.
-3. Review conflicting guidance, a possible duplicate, a possible brand principle, and a proposed brand rule in one master-detail view.
-4. Inspect the evidence in marketer-facing language: what was found, how it was found, why it matters, and what it could affect.
-5. Resolve contradictions and suspected duplicates by keeping either item, keeping both, or deliberately leaving the affected guidance unresolved.
-6. Use, defer, or discard the proposed rule against medical and health claims, with explicit paid-social scope and no V1 exception workflow.
-7. Approve the system-suggested 4pm Reset ritual as helpful guidance.
-8. Open a separate core-guidance screen, inspect what will change, and record a mock change.
+1. Enter an empty Brand Brain overview that explains the value, supported material, onboarding sequence, and permanent section organization.
+2. Navigate among Overview, Sources, Needs review, Brand guidance, and History.
+3. Add local files, URLs, notes, briefs, interviews, cultural references, and creative references, or load the sanitized SLAKE sample batch. Before adding, identify whether each source is an exact brand asset, approved guidance, brand evidence, or a creative or cultural reference.
+4. Add intended use, guidance area, influence where appropriate, and explicit exclusions. Exact assets and approved guidance are not influence-weighted.
+5. Build with OpenAI to read real sources, connect the brand story, find questions, and prepare structured guidance and artifacts. The sanitized SLAKE sample remains available as a deterministic control journey.
+6. Open the SLAKE foundational-library batch containing 50 synthetic assets.
+7. Approve 47 clean assets for future work without changing core brand guidance.
+8. Review conflicting guidance, a possible duplicate, a possible brand principle, and a proposed brand rule in one master-detail view.
+9. Inspect the evidence in marketer-facing language: what was found, how it was found, why it matters, and what it could affect.
+10. Resolve contradictions and suspected duplicates by keeping either item, keeping both, or deliberately leaving the affected guidance unresolved.
+11. Use, defer, or discard the proposed rule against medical and health claims, with explicit paid-social scope and no V1 exception workflow.
+12. Approve the system-suggested 4pm Reset ritual as helpful guidance and optionally review a separate change to core brand guidance.
+13. Create a stored SLAKE Brand Brain version with six guidance tabs, extended synthesized prose, working principles, its source trail, production use, and richer downstream artifacts.
+14. Switch from editable guidance to three composed cross-category artifacts: Brand Dossier, Lived World, and Story Architecture.
+15. Read varied artifact modules covering the strategic read, audience, product truth, palette, materials, guardrails, tensions, life patterns, earned environments, emotional progression, and production moments.
+16. Comment directly on a guidance passage or artifact section, prepare a revised version from inline feedback, leave overall feedback, or approve the exact version for production, then inspect the session history.
 
 ### Production
 
@@ -36,11 +44,17 @@ The prototype defaults to one image per render. It does not expose a renderer ch
 - Placement and format are related through the output type rather than independent labels.
 - References are optional production inputs with explicit jobs; they are not unexplained attachments.
 - Influence describes creative priority, not authority. Confidence describes the quality of a source read and remains separate from influence.
+- Source authority is declared before synthesis. Exact brand assets remain exact, approved guidance governs its stated area, brand evidence is interpreted for patterns, and outside references remain inspiration rather than brand truth.
 - Canonical assets, policy, and explicit requirements cannot be weakened through the reference controls.
 - Batch approval and exception resolution do not promote material into canon.
 - Inferred material remains visibly inferred after contextual approval.
 - Canon promotion is a separate deliberate action with an impact preview and governance event.
 - Product copy speaks in ordinary brand and marketing language while the implementation retains precise contract terms internally.
+- Brand Brain navigation is organized around user jobs rather than the five internal content domains.
+- Synthesis progress shows what the system is doing without presenting model or service architecture.
+- Feedback creates a new stored version in the prototype instead of silently rewriting the prior Brand Brain.
+- Inline guidance feedback stays attached to the exact passage and records the version in which it was incorporated.
+- Guidance categories remain the editable knowledge layer; composed artifacts combine several categories into a durable reading and production tool.
 - V1 models local resolution outcomes, not user roles, permissions, escalation, notifications, or external review routing.
 - Reader output is evidence for the compiler. The server-owned resolution contract decides what is included, rejected, or overridden.
 - The product asset is canonical and exact. It is composed into the scene, not regenerated.
@@ -65,11 +79,11 @@ The palette is a product-shell hypothesis rather than a client brand requirement
 ## Deliberately absent
 
 - authentication, authorization, or runtime client isolation (the delivery boundary is specified separately in [`../installation-model.md`](../installation-model.md))
-- persistence, saved jobs, uploads, or asset search
-- real Brand Brain retrieval or prompt compilation
-- model/provider selection, credentials, or renderer calls
+- production database storage, saved jobs, durable upload binaries, or asset search
+- multi-version retrieval or production prompt compilation from the generated Brand Brain
+- model/provider selection in the interface or renderer calls
 - production validation, durable approvals, revisions, or memory write-back
-- Brand Brain persistence, real ingestion, extraction, user and permission management, external review routing, rule exceptions, or supersession
+- production-grade ingestion, a background extraction queue, user and permission management, external review routing, rule exceptions, or supersession
 - fully implemented deliverable presets beyond product lifestyle image
 
 These omissions keep the artifact honest. The prototype tests the production interaction model; it is not evidence that the first implementation slice has been selected.
@@ -81,7 +95,7 @@ The absent renderer call is planned work rather than an external dependency. The
 From the repository root:
 
 ```sh
-python3 -m http.server 4173 --directory app
+npm run dev
 ```
 
 Open `http://localhost:4173`.

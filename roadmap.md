@@ -25,8 +25,10 @@ This roadmap moves from product definition to a reusable internal implementation
 - Design the application shell and major navigation (production-flow pass complete)
 - Design the asset-creation journey at high fidelity (interactive browser pass complete)
 - Test the production interaction model in a runnable browser prototype ✓
-- Design the brand-brain build journey at high fidelity (intake through brand-rule and core-guidance passes complete; supersession remains open)
-- Design SLAKE batch intake, review, evidence detail, brand-rule decision, approval, and core-guidance change screens ✓
+- Design the brand-brain build journey at high fidelity (empty state through stored production-ready Brand Brain complete; supersession remains open)
+- Design Brand Brain overview, source intake, synthesis progress, SLAKE review, guidance version, feedback, approval, history, and core-guidance change screens ✓
+- Turn the Brand Brain's downstream artifact summaries into full, reviewable artifact experiences ✓
+- Run a selective readability pass on essential text below 10px without changing the overall type scale ✓
 - Write the product primer from design learning
 - Define what a client build includes as a deliverable
 - Build sanitized PWP and Riggg fixture journeys
@@ -42,7 +44,7 @@ The production compiler foundation was selected through an explicit implementati
 - Identify the narrowest high-value implementation slice from design and fixture learning ✓
 - Scope the first slice before committing to code ✓
 - Implement the executable production compiler foundation and portable Preflight contracts ✓
-- Implement intake, normalization, retrieval, context assembly, and persistence
+- Implement intake, normalization, retrieval, context assembly, and persistence (first local OpenAI vertical slice complete; production storage and durable upload library remain)
 - Add the OpenAI image renderer adapter, deterministic protected-asset composition, measurable drift checks, evaluation, revision, and approvals
 - Capture job state, provenance, token usage, cost, and failure recovery
 - Keep shared infrastructure separate from private brand configuration

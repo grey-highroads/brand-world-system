@@ -54,12 +54,12 @@ These are internal configuration presets, not global brand types or assumed user
 
 ## Status
 
-Specifications remain frozen as target-state references. A whole-product design sprint is active, and its first production-flow learning is represented in a runnable browser prototype. The production compiler foundation now formalizes that learning as executable contracts and a deterministic library that emits a portable generation package and resolution receipt. The prototype remains an interaction artifact and does not determine the production application stack.
+Specifications remain frozen as target-state references. A whole-product design sprint is active, and its production and Brand Brain learning is represented in a runnable browser prototype. The production compiler foundation formalizes the production learning as executable contracts and a deterministic library. The Brand Brain now includes a first local vertical slice for real file, URL, and pasted-text intake, OpenAI synthesis, structured guidance and artifacts, review, and reloadable storage. This slice is still an implementation probe rather than a final application-stack decision.
 
 Run it from the repository root:
 
 ```sh
-python3 -m http.server 4173 --directory app
+npm run dev
 ```
 
 See [`docs/experience/browser-prototype.md`](docs/experience/browser-prototype.md) for scope and product boundaries, and [`docs/experience/design-sprint-brief.md`](docs/experience/design-sprint-brief.md) for the broader design mandate.

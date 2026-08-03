@@ -8,7 +8,7 @@
 - Entry script: `app/app.js`
 - Shared layout: `shell(content)` in `app/app.js`
 
-The application is a single-page prototype. `state.screen` selects a render function, and delegated `data-action` click handlers call `navigate(screen)`.
+The application is a single-page prototype. `state.screen` selects a render function, and delegated `data-action` click handlers call `navigate(screen)`. The same local server exposes `/api/brand-brain/synthesize`, `/api/brand-brain/save`, and `/api/brand-brain` for the live synthesis and reload path.
 
 ## View map
 
@@ -18,14 +18,24 @@ The application is a single-page prototype. `state.screen` selects a render func
 | Production brief | `brief` | `renderBrief()` | Define scene, exclusions, placement, format, and creative inputs |
 | Preflight | `preflight` | `renderPreflight()` | Inspect compiled prompt, sources, generation inputs, and policy contract |
 | Generated result | `result` | `renderResult()` | Review the static output placeholder and evaluation results |
+| Brand Brain overview | `brain-overview` | `renderBrainOverview()` | Orient new and returning users around onboarding, readiness, and the next action |
+| Brand Brain sources | `brain-sources` | `renderBrainSources()` | Add materials with source authority, intended use, influence where relevant, instructions, and exclusions |
+| Brand Brain synthesis | `brain-processing` | `renderBrainProcessing()` | Show visible progress while the local server reads sources and produces structured guidance, review questions, and artifacts |
 | Brand Brain review | `brain` | `renderBrandBrain()` | Approve clean assets, review flagged items and a brand-rule proposal, and save local decisions |
+| Brand guidance | `brain-guidance` | `renderBrainGuidance()` | Move between editable category guidance and full cross-category artifact readers with section-level feedback before approval |
+| Brand Brain history | `brain-history` | `renderBrainHistory()` | Inspect source batches, decisions, feedback, and saved versions |
 | Core brand guidance | `brain-canon` | `renderCanonPromotion()` | Preview impact and record a separate change to core guidance without modeling V1 roles or permissions |
 
 ## Full view dispatcher
 
 ```js
 function render() {
-  if (state.screen === "brain") root.innerHTML = renderBrandBrain();
+  if (state.screen === "brain-overview") root.innerHTML = renderBrainOverview();
+  else if (state.screen === "brain-sources") root.innerHTML = renderBrainSources();
+  else if (state.screen === "brain-processing") root.innerHTML = renderBrainProcessing();
+  else if (state.screen === "brain") root.innerHTML = renderBrandBrain();
+  else if (state.screen === "brain-guidance") root.innerHTML = renderBrainGuidance();
+  else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
   else if (state.screen === "brief") root.innerHTML = renderBrief();
   else if (state.screen === "preflight") root.innerHTML = renderPreflight();
@@ -42,4 +52,4 @@ function navigate(screen) {
 
 ## Brand Brain route family
 
-Brand Brain is a first-class sidebar destination using the shared shell. The implemented states cover batch intake, plain-language review, evidence detail, a scoped brand-rule decision, approval for helpful use, and a separate change to core brand guidance. Rule exceptions and supersession remain planned.
+Brand Brain is a first-class sidebar destination using the shared shell. Its persistent section navigation is Overview, Sources, Needs review, Brand guidance, and History. The implemented states cover empty onboarding, authority-aware mixed source intake, real local OpenAI synthesis, batch review, evidence detail, a brand-rule decision, a tabbed stored guidance version, three full cross-category artifact readers with inline feedback, production approval, reloadable local storage, history, and a separate change to core guidance. Production-grade jobs, rule exceptions, and supersession remain planned.

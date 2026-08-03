@@ -7,8 +7,13 @@
 
 ```js
 function currentCrumb() {
-  if (state.screen === "brain") return "Brand brain / Batch intake / Triage";
-  if (state.screen === "brain-canon") return "Brand brain / Canon promotion";
+  if (state.screen === "brain-overview") return "Brand brain / Overview";
+  if (state.screen === "brain-sources") return "Brand brain / Sources";
+  if (state.screen === "brain-processing") return "Brand brain / Building";
+  if (state.screen === "brain") return "Brand brain / Needs review";
+  if (state.screen === "brain-guidance") return "Brand brain / Brand guidance";
+  if (state.screen === "brain-history") return "Brand brain / History";
+  if (state.screen === "brain-canon") return "Brand brain / Core guidance";
   if (state.screen === "chooser") return "Production";
   if (state.screen === "brief") return "Production / Product lifestyle image";
   if (state.screen === "preflight") return "Production / Product lifestyle image / Preflight";

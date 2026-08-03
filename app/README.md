@@ -1,19 +1,25 @@
 # Browser prototype
 
-This directory contains the framework-neutral interaction prototype for Brand World System. It uses synthetic fixture data and browser-native HTML, CSS, and JavaScript so the product team can test workflow, copy, state, density, and visual direction without implying that the production application stack or backend has been selected.
+This directory contains the browser-native interaction prototype for Brand World System. It retains the sanitized SLAKE fixture journey and now also supports a first real Brand Brain vertical slice through the local Node server. The product team can compare synthetic control data with actual OpenAI-synthesized outputs without treating this prototype stack as a final platform decision.
 
 ## Run locally
 
 From the repository root:
 
 ```sh
-python3 -m http.server 4173 --directory app
+npm run dev
 ```
 
 Open `http://localhost:4173`.
 
 ## Current scope
 
+- Brand Brain empty state and guided onboarding entry
+- Persistent Brand Brain navigation across Overview, Sources, Needs review, Brand guidance, and History
+- Source intake for local files, URLs, notes, briefs, interviews, cultural references, and creative references, with an early distinction among exact assets, approved guidance, brand evidence, and outside references
+- Local document normalization, Chat Completions synthesis with image evidence, public-page reading for URL sources, and full pasted-text intake
+- Per-source guidance area, semantic influence where appropriate, usage instructions, and explicit exclusions
+- Visible OpenAI synthesis progress from reading sources through preparation of review questions, six guidance sections, and three full artifacts
 - SLAKE Brand Brain batch intake with 50 synthetic assets
 - Master-detail review for conflicting guidance, a possible duplicate, a possible brand principle, and a proposed brand rule
 - Plain-language evidence detail explaining what was found, how it was found, why it matters, and what it could affect
@@ -22,6 +28,11 @@ Open `http://localhost:4173`.
 - Complete local outcomes for a brand rule: use it, keep it for later, or discard the suggestion
 - No V1 roles, permissions, escalation, notifications, or external review routing
 - Core-guidance impact preview and mock change record
+- Stored Brand Brain draft with six marketer-facing guidance tabs, extended synthesized prose, working principles, source trails, production use, and richer downstream artifacts
+- Full Brand Dossier, Lived World, and Story Architecture readers composed across multiple guidance categories
+- Varied artifact modules for audience, product truth, palette, guardrails, tensions, life patterns, earned environments, emotional arc, and moment planning
+- Passage-level comments, overall feedback, stored revisions, production approval, and session history
+- Local server storage for the latest source register, structured synthesis, review state, comments, and approval state so the Brand Brain survives refresh
 - SLAKE deliverable chooser
 - Product lifestyle image brief
 - Placement-dependent format choices
@@ -31,4 +42,4 @@ Open `http://localhost:4173`.
 - Portable generation package export with an installation boundary and structured input contract
 - Mock Generate transition and result review
 
-The prototype has no authentication, persistence, uploads, model calls, provider integration, or durable approval behavior. Brand Brain actions update only the current browser session. Those omissions are intentional.
+The live Brand Brain path is intentionally local and single-installation. Uploaded file bytes are sent for the current synthesis request but are not copied into a durable asset library; the stored source register keeps file metadata and the generated source trail. There is no authentication, background job queue, multi-user behavior, production database, full asset search, or retry queue yet. The sanitized SLAKE sample path remains deterministic for interaction testing.
