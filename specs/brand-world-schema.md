@@ -357,6 +357,10 @@ Exceptions receive focused review: conflicting approvals, suspected canonical as
 
 ## Machine-readable follow-on
 
+Implementation note: the production-facing subset is now executable under [`../schemas/v1/`](../schemas/v1/). The first subset formalizes the installation profile, pinned Brand Brain snapshot reference, deliverable preset, job brief, protected asset, supplemental input, generation package, and resolution receipt. It does not claim to be the complete persistence schema for every Brand Brain entity or governance event.
+
+The executable snapshot contract accepts only approved, current entity versions because it is an execution input, not an intake or governance payload. Proposed, rejected, deprecated, and superseded knowledge remains representable in the target-state model and belongs upstream of production snapshot creation.
+
 Draft 0.2 should translate stable portions of this model into JSON Schema or an equivalent typed contract. Before that translation, the PWP and Riggg fixtures must each contribute:
 
 - a valid brand-brain slice;

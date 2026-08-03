@@ -35,6 +35,10 @@ These are internal configuration presets, not global brand types or assumed user
 - [`specs/brand-world-schema.md`](specs/brand-world-schema.md) — draft entity, governance, provenance, and revision model
 - [`specs/production-policy.md`](specs/production-policy.md) — policy primitives, stage-level presets, compilation, evaluation, revision, and approvals
 - [`specs/workflow-contracts.md`](specs/workflow-contracts.md) — durable payloads between world-building, production, governance, and learning
+- [`docs/production-compiler.md`](docs/production-compiler.md) — executable production compiler boundary, contracts, resolution behavior, and verification
+- [`schemas/v1/`](schemas/v1/) — versioned JSON Schema contracts for production compilation
+- [`src/`](src/) — deterministic, framework-independent production compiler
+- [`test/`](test/) — fixture-driven compiler and contract tests
 - [`fixtures/pwp/`](fixtures/pwp/) — inference-first onboarding and concept-development journey
 - [`fixtures/riggg/`](fixtures/riggg/) — canon-first controlled-production journey
 - [`roadmap.md`](roadmap.md) — staged path from documentation to a working implementation kit
@@ -50,7 +54,7 @@ These are internal configuration presets, not global brand types or assumed user
 
 ## Status
 
-Specifications are frozen as target-state references. A whole-product design sprint is active, and its first production-flow learning is now represented in a runnable browser prototype. The prototype covers the configured deliverable chooser, a schema-linked brief, Preflight as a portable generation package, and a mock result state. It is an interaction artifact, not the first production slice or a commitment to an application stack.
+Specifications remain frozen as target-state references. A whole-product design sprint is active, and its first production-flow learning is represented in a runnable browser prototype. The production compiler foundation now formalizes that learning as executable contracts and a deterministic library that emits a portable generation package and resolution receipt. The prototype remains an interaction artifact and does not determine the production application stack.
 
 Run it from the repository root:
 
@@ -59,3 +63,11 @@ python3 -m http.server 4173 --directory app
 ```
 
 See [`docs/experience/browser-prototype.md`](docs/experience/browser-prototype.md) for scope and product boundaries, and [`docs/experience/design-sprint-brief.md`](docs/experience/design-sprint-brief.md) for the broader design mandate.
+
+Validate the production compiler with Node.js 22 or newer:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm test
+pnpm validate:fixtures
+```

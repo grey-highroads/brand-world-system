@@ -185,6 +185,8 @@ Provider defaults are never brand policy. They may fill an operational parameter
 
 ## Compilation procedure
 
+Implementation note: [`../src/compiler.js`](../src/compiler.js) now provides the first deterministic production subset of this procedure. It consumes frozen, already selected Brand Brain entities rather than performing retrieval, and it emits the renderer-neutral generation package and resolution receipt defined in [`../schemas/v1/`](../schemas/v1/). Ambiguous scope remains an upstream clarification or governance concern; this compiler does not use a model to guess applicability.
+
 Before each executable stage, the policy compiler:
 
 1. validates the request, actor, workflow, and stage;

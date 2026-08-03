@@ -81,6 +81,8 @@ Input resolution follows production-policy precedence:
 
 A creative reference cannot introduce a claim, relax an exactness rule, or create an exception. When sources conflict, the system resolves them through authority first and influence only among compatible creative evidence.
 
+The executable compiler makes compatibility a two-sided declaration. A configured deliverable preset states which flexible components accept each source type and role. Reader evidence states which components its observations can support. Influence is applied only after both declarations agree. A mismatch produces an excluded receipt entry with a reason; the compiler does not use model judgment to force a source into the package.
+
 ## Reader boundary
 
 Readers convert sources into compact evidence. They do not decide how authoritative the source is and do not create binding constraints from visible content alone.

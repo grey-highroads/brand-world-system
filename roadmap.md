@@ -35,8 +35,9 @@ This roadmap moves from product definition to a reusable internal implementation
 ## Phase 4: Build the internal implementation kit
 
 - Define the isolated client-installation profile and spin-up sequence ✓
-- Identify the narrowest high-value implementation slice from design and fixture learning
-- Scope and estimate the first slice before committing to code
+- Identify the narrowest high-value implementation slice from design and fixture learning ✓
+- Scope the first slice before committing to code ✓
+- Implement the executable production compiler foundation and portable Preflight contracts ✓
 - Implement intake, normalization, retrieval, context assembly, and persistence
 - Add prompt compilation, model adapters, evaluation, revision, and approvals
 - Capture job state, provenance, token usage, cost, and failure recovery
