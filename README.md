@@ -54,7 +54,7 @@ These are internal configuration presets, not global brand types or assumed user
 
 ## Status
 
-Specifications remain frozen as target-state references. A whole-product design sprint is active, and its production and Brand Brain learning is represented in a runnable browser prototype. The production compiler foundation formalizes the production learning as executable contracts and a deterministic library. The Brand Brain now includes a first local vertical slice for real file, URL, and pasted-text intake, OpenAI synthesis, structured guidance and artifacts, review, and reloadable storage. This slice is still an implementation probe rather than a final application-stack decision.
+Specifications remain frozen as target-state references. A whole-product design sprint is active, and its production and Brand Brain learning is represented in a runnable browser prototype. The production compiler foundation formalizes the production learning as executable contracts and a deterministic library. The Brand Brain now includes a first local vertical slice for type-first single-source intake, OpenAI synthesis, structured guidance and artifacts, review, reloadable storage, and incremental additions that preserve the approved baseline until a candidate update is approved. This slice is still an implementation probe rather than a final application-stack decision.
 
 Run it from the repository root:
 

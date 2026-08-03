@@ -158,6 +158,15 @@ function persistedSources(sources) {
   }));
 }
 
+export function selectApprovedBaseline(stored) {
+  return stored?.approvedResult || (stored?.brain?.artifactStatus === "ready" ? stored.result : null) || null;
+}
+
+export function mergeIncrementalSources(previousSources = [], incomingSources = []) {
+  const incomingIds = new Set(incomingSources.map((source) => source.id));
+  return [...previousSources.filter((source) => !incomingIds.has(source.id)), ...incomingSources];
+}
+
 async function readStore(storePath) {
   try {
     return JSON.parse(await fs.readFile(storePath, "utf8"));
@@ -220,21 +229,58 @@ export function createBrandWorldServer(options = {}) {
           sendJson(response, 400, { error: "Add at least one source before building the Brand Brain." });
           return;
         }
+        if (body.sources.some((source) => source.intakeVersion === "single-source-v1" && (source.files?.length || 0) > 1)) {
+          const error = new Error("Each source can contain only one uploaded file.");
+          error.status = 400;
+          throw error;
+        }
+        const uploadedBytes = body.sources.reduce(
+          (total, source) => total + (source.files || []).reduce((sum, file) => sum + Number(file.size || 0), 0),
+          0,
+        );
+        if (uploadedBytes > 40 * 1024 * 1024) {
+          const error = new Error("One synthesis can contain up to 40 MB of uploaded source files.");
+          error.status = 413;
+          throw error;
+        }
+        const incremental = body.mode === "incremental";
+        const stored = incremental ? await readStore(storePath) : null;
+        const baseline = incremental ? selectApprovedBaseline(stored) : null;
+        if (incremental && !baseline) {
+          const error = new Error("The approved Brand Brain baseline could not be found. Reopen the approved version before preparing this update.");
+          error.status = 409;
+          throw error;
+        }
         const env = { ...process.env, ...(await envPromise) };
-        const sources = await normalizeSourcesForSynthesis(await enrichUrlSources(body.sources, fetchImpl));
+        const incomingSources = await normalizeSourcesForSynthesis(await enrichUrlSources(body.sources, fetchImpl));
+        const previousSources = incremental && Array.isArray(stored?.sources) ? stored.sources : [];
+        const sources = incremental ? mergeIncrementalSources(previousSources, incomingSources) : incomingSources;
         const synthesis = await synthesize({
           apiKey: env.OPENAI_API_KEY,
           model: env.OPENAI_MODEL,
-          sources,
+          sources: incomingSources,
+          baseline,
+          baselineVersion: body.baselineVersion,
           fetchImpl,
         });
         const saved = {
-          kind: "synthesis",
+          kind: incremental ? "incremental-synthesis" : "synthesis",
           sources: persistedSources(sources),
           result: synthesis.result,
+          approvedResult: baseline,
+          baselineVersion: incremental ? body.baselineVersion || stored?.brain?.approvedVersion || stored?.brain?.artifactVersion || null : null,
           responseId: synthesis.responseId,
           model: synthesis.model,
           usage: synthesis.usage,
+          brain: incremental
+            ? {
+                ...(stored?.brain || {}),
+                stage: "review",
+                processingComplete: true,
+                revisionPending: true,
+                candidateBaseVersion: body.baselineVersion || stored?.brain?.approvedVersion || stored?.brain?.artifactVersion || 0,
+              }
+            : undefined,
           savedAt: new Date().toISOString(),
         };
         await writeStore(storePath, saved);

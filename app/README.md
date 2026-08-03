@@ -16,7 +16,8 @@ Open `http://localhost:4173`.
 
 - Brand Brain empty state and guided onboarding entry
 - Persistent Brand Brain navigation across Overview, Sources, Needs review, Brand guidance, and History
-- Source intake for local files, URLs, notes, briefs, interviews, cultural references, and creative references, with an early distinction among exact assets, approved guidance, brand evidence, and outside references
+- Type-first source intake for one local file, URL, or written source at a time, using concrete choices such as protected asset, approved guidance, past work or research, image, image grid, cultural reference, and business context
+- A required usage instruction for every source, conditional influence, optional exclusions, file compatibility checks, a 20 MB per-file limit, and a 40 MB synthesis-batch limit
 - Local document normalization, Chat Completions synthesis with image evidence, public-page reading for URL sources, and full pasted-text intake
 - Per-source guidance area, semantic influence where appropriate, usage instructions, and explicit exclusions
 - Visible OpenAI synthesis progress from reading sources through preparation of review questions, six guidance sections, and three full artifacts
@@ -33,6 +34,7 @@ Open `http://localhost:4173`.
 - Varied artifact modules for audience, product truth, palette, guardrails, tensions, life patterns, earned environments, emotional arc, and moment planning
 - Passage-level comments, overall feedback, stored revisions, production approval, and session history
 - Local server storage for the latest source register, structured synthesis, review state, comments, and approval state so the Brand Brain survives refresh
+- Incremental additions against the stored approved baseline, with stable guidance copied forward, type/content mismatches raised for review, candidate changes identified, and the active version preserved until approval
 - SLAKE deliverable chooser
 - Product lifestyle image brief
 - Placement-dependent format choices

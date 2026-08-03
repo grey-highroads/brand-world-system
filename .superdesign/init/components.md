@@ -55,11 +55,11 @@ function pageHeader(title, description) {
 - Function: `brainWorkspace(title, description, content, className)`
 - Description: Wraps every Brand Brain state in the shared app shell, page header, and section navigation so onboarding, review, guidance, and history feel like one product area.
 
-## Source handling contract
+## Type-first source handling contract
 
 - Source: `app/app.js`
-- Functions: `sourceComposer()`, `sourceGroupRow()`, `sourceAuthority()`, `sourceContract()`
-- Description: Collects the source's plain-language authority before synthesis, its intended Brand guidance area, conditional semantic influence, usage instruction, and exclusions. Exact assets and approved guidance intentionally bypass influence weighting. Uploaded document/image bytes, public-page text, and pasted material now travel through the local server to real synthesis while the interface preserves the same source contract.
+- Functions: `sourceComposer()`, `sourceGroupRow()`, `sourceMaterialType()`, `validateSourceFile()`, `sourceContract()`, `markSourceAdded()`
+- Description: Starts with a concrete material type, then accepts one file, URL, or written source with a required usage instruction, intended Brand guidance area, conditional semantic influence, and optional exclusions. File compatibility, 20 MB per-file and 40 MB batch limits, and content/type mismatch review protect downstream handling. The internal authority mapping remains precise without exposing `brand-evidence` language. Approved Brand Brains remain active while additions become proposed updates.
 
 ## Live Brand Brain synthesis
 

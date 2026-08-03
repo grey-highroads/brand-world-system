@@ -178,30 +178,93 @@ const sampleSourceGroups = [
   },
 ];
 
-const sourceAuthorityOptions = [
+const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024;
+const MAX_SYNTHESIS_FILE_BYTES = 40 * 1024 * 1024;
+
+const sourceMaterialTypes = [
   {
-    id: "exact-asset",
-    label: "Exact brand asset",
-    description: "A logo, package, typeface, claim lockup, or other approved file that must be used as supplied.",
+    id: "protected-asset",
+    label: "Protected brand asset",
+    shortLabel: "Protected asset",
+    description: "A logo, package, typeface, claim lockup, or other approved file that must stay exact.",
+    examples: "PNG, JPG, SVG, PDF, AI, EPS, OTF, TTF, WOFF",
+    authority: "exact-asset",
     handling: "Keep exact",
+    forms: ["files"],
+    accept: ".png,.jpg,.jpeg,.webp,.gif,.svg,.pdf,.ai,.eps,.otf,.ttf,.woff,.woff2",
+    extensions: ["png", "jpg", "jpeg", "webp", "gif", "svg", "pdf", "ai", "eps", "otf", "ttf", "woff", "woff2"],
   },
   {
     id: "approved-guidance",
     label: "Approved brand guidance",
-    description: "A signed-off guideline, strategy, claim, or decision that should govern the areas it covers.",
+    shortLabel: "Approved guidance",
+    description: "A signed-off brand book, guideline, strategy, messaging decision, or other direction that should govern its area.",
+    examples: "PDF, DOCX, PPTX, TXT, MD, RTF",
+    authority: "approved-guidance",
     handling: "Follow when relevant",
+    forms: ["files", "url", "text"],
+    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf",
+    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf"],
   },
   {
-    id: "brand-evidence",
-    label: "Brand evidence",
-    description: "Past work, research, interviews, or case studies that help reveal patterns without becoming rules by themselves.",
+    id: "past-work-research",
+    label: "Past brand work or research",
+    shortLabel: "Past work or research",
+    description: "A campaign, case study, audit, interview, or research source that shows how the brand has behaved without becoming a rule by itself.",
+    examples: "Documents or supported images",
+    authority: "brand-evidence",
     handling: "Interpret with context",
+    forms: ["files", "url", "text"],
+    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf,.csv,.png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "csv", "png", "jpg", "jpeg", "webp", "gif"],
   },
   {
-    id: "creative-reference",
-    label: "Creative or cultural reference",
-    description: "Inspiration or outside context that can shape direction but is not evidence of what the brand already is.",
+    id: "single-image",
+    label: "Single creative image",
+    shortLabel: "Single image",
+    description: "One reference photo, mockup, key visual, or approved piece of brand work used for visual learning.",
+    examples: "PNG, JPG, WEBP, GIF",
+    authority: "creative-reference",
     handling: "Use for inspiration",
+    forms: ["files"],
+    accept: ".png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["png", "jpg", "jpeg", "webp", "gif"],
+  },
+  {
+    id: "image-grid",
+    label: "Image grid or moodboard",
+    shortLabel: "Image grid",
+    description: "One combined grid or moodboard file. Individual images should be added as separate sources when they need separate instructions.",
+    examples: "One PNG, JPG, WEBP, or GIF",
+    authority: "creative-reference",
+    handling: "Use for inspiration",
+    forms: ["files"],
+    accept: ".png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["png", "jpg", "jpeg", "webp", "gif"],
+  },
+  {
+    id: "cultural-reference",
+    label: "Named cultural reference",
+    shortLabel: "Cultural reference",
+    description: "An outside case study, article, place, movement, or creative reference that provides context rather than brand truth.",
+    examples: "Documents, pages, notes, or supported images",
+    authority: "creative-reference",
+    handling: "Use for inspiration",
+    forms: ["files", "url", "text"],
+    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf,.png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "png", "jpg", "jpeg", "webp", "gif"],
+  },
+  {
+    id: "business-document",
+    label: "Other business document",
+    shortLabel: "Business context",
+    description: "A company deck, memo, brief, transcript, or operating context that may inform the brand but is not approved brand guidance.",
+    examples: "PDF, DOCX, PPTX, TXT, MD, RTF, CSV",
+    authority: "brand-evidence",
+    handling: "Use as background",
+    forms: ["files", "url", "text"],
+    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf,.csv",
+    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "csv"],
   },
 ];
 
@@ -643,6 +706,22 @@ const sampleGuidanceSections = JSON.parse(JSON.stringify(guidanceSections));
 const sampleBrainArtifacts = JSON.parse(JSON.stringify(brainArtifacts));
 const sampleBrainExceptions = JSON.parse(JSON.stringify(brainExceptions));
 
+function sampleResultSnapshot() {
+  const [dossier, livedWorld, storyArchitecture] = sampleBrainArtifacts.map(({ id: _id, number: _number, name: _name, short: _short, ...artifact }) => artifact);
+  return {
+    brandName: "SLAKE",
+    brandDescription: "Adaptogen sparkling water",
+    synthesisSummary: "A governed sample Brand Brain built from the sanitized SLAKE source batch.",
+    cleanAssetCount: sampleBrainBatch.cleanCount,
+    guidanceSections: JSON.parse(JSON.stringify(sampleGuidanceSections)),
+    reviewQuestions: sampleBrainExceptions.map((question) => ({
+      ...JSON.parse(JSON.stringify(question)),
+      scope: (question.scope ?? []).map(([label, value]) => ({ label, value })),
+    })),
+    artifacts: { dossier, livedWorld, storyArchitecture },
+  };
+}
+
 const state = {
   screen: "chooser",
   brandName: "SLAKE",
@@ -665,6 +744,7 @@ const state = {
     sourceTitle: "",
     sourceText: "",
     sourceTextType: "Notes",
+    sourceMaterialType: "",
     sourceAuthority: "brand-evidence",
     sourceRole: "Multiple areas",
     sourceInfluence: "Supporting",
@@ -688,6 +768,11 @@ const state = {
     artifactVersion: 1,
     artifactStatus: "not-created",
     revisionPending: false,
+    approvedVersion: 0,
+    approvedResult: null,
+    pendingSourceIds: [],
+    affectedGuidanceIds: [],
+    candidateBaseVersion: 0,
     selectedGuidanceId: "foundation",
     guidanceView: "guidance",
     selectedBrainArtifactId: "dossier",
@@ -819,22 +904,89 @@ function brainCreatedLabel() {
   return Number.isNaN(date.getTime()) ? "This session" : date.toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" });
 }
 
-function sourceAuthority(id) {
-  return sourceAuthorityOptions.find((item) => item.id === id) ?? sourceAuthorityOptions[2];
+function sourceMaterialType(value = state.brain.sourceMaterialType) {
+  if (typeof value === "object" && value) {
+    if (value.materialType) return sourceMaterialType(value.materialType);
+    if (value.authority === "exact-asset") return sourceMaterialType("protected-asset");
+    if (value.authority === "approved-guidance") return sourceMaterialType("approved-guidance");
+    if (value.authority === "creative-reference") return sourceMaterialType("cultural-reference");
+    return sourceMaterialType("past-work-research");
+  }
+  return sourceMaterialTypes.find((item) => item.id === value) ?? null;
+}
+
+function sourceMaterialOptions(form = state.brain.sourceForm) {
+  return sourceMaterialTypes.filter((item) => item.forms.includes(form));
+}
+
+function sourceHasApprovedBaseline() {
+  return Boolean(state.brain.approvedResult || (state.brain.artifactStatus === "ready" && currentSynthesisResult));
+}
+
+function pendingSourceCount() {
+  return state.brain.pendingSourceIds.length;
+}
+
+function sourceFileBytes(sourceIds = null) {
+  const selectedIds = sourceIds ? new Set(sourceIds) : null;
+  return state.brain.sources.reduce((total, source) => {
+    if (selectedIds && !selectedIds.has(source.id)) return total;
+    return total + (source.files ?? []).reduce((sum, file) => sum + Number(file.size || 0), 0);
+  }, 0);
+}
+
+function formatFileSize(bytes) {
+  if (!Number.isFinite(Number(bytes))) return "Unknown size";
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileExtension(file) {
+  return String(file?.name || "").split(".").pop()?.toLowerCase() || "";
+}
+
+function validateSourceFile(file, material = sourceMaterialType()) {
+  if (!material) return "Choose what kind of material this is first.";
+  if (!file) return "Choose one file.";
+  if (file.size > MAX_SOURCE_FILE_BYTES) return "Choose a file smaller than 20 MB.";
+  if (!material.extensions.includes(fileExtension(file))) return `${material.label} accepts ${material.examples}.`;
+  const currentBytes = sourceHasApprovedBaseline() ? sourceFileBytes(state.brain.pendingSourceIds) : sourceFileBytes();
+  if (currentBytes + file.size > MAX_SYNTHESIS_FILE_BYTES) return "This build can read up to 40 MB of uploaded files at once. Remove a large file or prepare a smaller update.";
+  return "";
 }
 
 function sourceUsesInfluence(authority = state.brain.sourceAuthority) {
   return authority === "brand-evidence" || authority === "creative-reference";
 }
 
-function sourceContract() {
+function sourceContract(materialTypeId = state.brain.sourceMaterialType) {
+  const material = sourceMaterialType(materialTypeId);
+  const authority = material?.authority || "brand-evidence";
   return {
-    authority: state.brain.sourceAuthority,
+    materialType: material?.id || "business-document",
+    declaredType: material?.label || "Other business document",
+    intakeVersion: "single-source-v1",
+    authority,
     role: state.brain.sourceRole,
-    influence: sourceUsesInfluence() ? state.brain.sourceInfluence : "Not weighted",
-    usage: state.brain.sourceUsage.trim() || "Use the parts that are relevant to the selected area and preserve the source context.",
+    influence: sourceUsesInfluence(authority) ? state.brain.sourceInfluence : "Not weighted",
+    usage: state.brain.sourceUsage.trim(),
     exclusions: state.brain.sourceExclusions.trim() || "No additional exclusions supplied.",
+    verification: "Pending content check",
   };
+}
+
+function markSourceAdded(sourceId) {
+  if (sourceHasApprovedBaseline()) {
+    state.brain.approvedResult ||= JSON.parse(JSON.stringify(currentSynthesisResult));
+    state.brain.approvedVersion ||= state.brain.artifactVersion;
+    if (!state.brain.pendingSourceIds.includes(sourceId)) state.brain.pendingSourceIds.push(sourceId);
+    state.brain.revisionPending = true;
+    state.brain.candidateBaseVersion = state.brain.approvedVersion;
+    state.brain.stage = "ready";
+  } else {
+    state.brain.stage = "intake";
+    state.brain.processingComplete = false;
+  }
 }
 
 function resetSourceComposer() {
@@ -843,6 +995,7 @@ function resetSourceComposer() {
   state.brain.sourceText = "";
   state.brain.sourceUsage = "";
   state.brain.sourceExclusions = "";
+  state.brain.sourceMaterialType = "";
   state.brain.pendingFiles = [];
   state.brain.sourceFileReading = false;
 }
@@ -958,7 +1111,7 @@ function renderBrainOverview() {
           <aside class="card brain-source-preview">
             <span class="section-label">Bring what you already have</span>
             <ul>
-              <li><span class="source-kind-icon">F</span><span><strong>Files and folders</strong><small>Guidelines, decks, images, documents, and campaign work</small></span></li>
+              <li><span class="source-kind-icon">F</span><span><strong>Individual files</strong><small>One clearly described asset, document, image, or grid at a time</small></span></li>
               <li><span class="source-kind-icon">U</span><span><strong>URLs</strong><small>Websites, articles, social pages, and reference links</small></span></li>
               <li><span class="source-kind-icon">N</span><span><strong>Notes and interviews</strong><small>Research, stakeholder input, transcripts, and working knowledge</small></span></li>
               <li><span class="source-kind-icon">B</span><span><strong>Briefs and references</strong><small>Past briefs, cultural signals, visual references, and inspiration</small></span></li>
@@ -1039,18 +1192,20 @@ function renderBrainOverview() {
 
 function sourceComposer() {
   const mode = state.brain.sourceForm;
-  const authority = sourceAuthority(state.brain.sourceAuthority);
-  const pendingFiles = state.brain.pendingFiles;
+  const material = sourceMaterialType();
+  const pendingFile = state.brain.pendingFiles[0];
+  const contentReady = mode === "files" ? Boolean(pendingFile) : true;
+  const canAdd = Boolean(material && contentReady && !state.brain.sourceFileReading);
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
-        <span><span class="section-label">Add source</span><h2>Tell us what this material is</h2></span>
+        <span><span class="section-label">Add one source</span><h2>Start with what the material is</h2></span>
       </div>
       <div class="source-method-tabs" role="tablist" aria-label="Source type">
         ${[
-          ["files", "Files"],
+          ["files", "File"],
           ["url", "URL"],
-          ["text", "Notes and briefs"],
+          ["text", "Written material"],
         ]
           .map(
             ([id, label]) => `<button class="${mode === id ? "active" : ""}" type="button" data-action="set-source-form" data-kind="${id}">${label}</button>`,
@@ -1058,15 +1213,43 @@ function sourceComposer() {
           .join("")}
       </div>
 
+      <div class="source-type-step">
+        <span class="source-step-label">Step 1</span>
+        <div class="source-type-heading">
+          <span><strong>What kind of material are you adding?</strong><small>Choose the closest real-world type. This sets safe handling before the system reads anything.</small></span>
+        </div>
+        <div class="source-material-grid">
+          ${sourceMaterialOptions(mode)
+            .map(
+              (item) => `
+                <button class="source-material-option ${material?.id === item.id ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
+                  <span class="source-material-mark" aria-hidden="true">${escapeHtml(item.label.slice(0, 1))}</span>
+                  <span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
+                  <i aria-hidden="true">${material?.id === item.id ? "✓" : ""}</i>
+                </button>
+              `,
+            )
+            .join("")}
+        </div>
+      </div>
+
       ${
         mode === "files"
           ? `
-            <label class="source-drop-zone">
-              <input type="file" multiple data-action="source-file-input">
+            <div class="source-upload-step ${material ? "" : "disabled"}">
+              <span class="source-step-label">Step 2</span>
+              <label class="source-drop-zone ${material ? "" : "disabled"}">
+              <input type="file" data-action="source-file-input" accept="${escapeHtml(material?.accept || "")}" ${material ? "" : "disabled"}>
               <span class="source-drop-icon">+</span>
-              <strong>${state.brain.sourceFileReading ? "Reading selected files" : pendingFiles.length ? `${pendingFiles.length} ${pendingFiles.length === 1 ? "file selected" : "files selected"}` : "Choose files or a folder"}</strong>
-              <span>${pendingFiles.length ? escapeHtml(pendingFiles.slice(0, 4).map((file) => file.name).join(", ")) : "Brand assets, guidelines, decks, images, PDFs, documents, exports, and past campaign work"}</span>
-            </label>
+              <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : material ? "Choose one file" : "Choose a material type first"}</strong>
+              <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : material ? `${escapeHtml(material.examples)} · 20 MB maximum` : "Folders and multi-file batches are not accepted in this step."}</span>
+              </label>
+              ${
+                material
+                  ? `<div class="source-verification-note"><span aria-hidden="true">!</span><p>The system will compare the file with <strong>${escapeHtml(material.label)}</strong>. If the contents do not line up, it will ask you to review the mismatch instead of silently trusting the label.</p></div>`
+                  : ""
+              }
+            </div>
           `
           : ""
       }
@@ -1075,8 +1258,10 @@ function sourceComposer() {
         mode === "url"
           ? `
             <div class="source-entry-form source-content-form">
+              <span class="source-step-label">Step 2</span>
               <label><span>Web address</span><input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com/about"></label>
               <label><span>Name this source</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="About page"></label>
+              <small class="source-content-note">The page contents will be checked against the material type you selected.</small>
             </div>
           `
           : ""
@@ -1086,28 +1271,20 @@ function sourceComposer() {
         mode === "text"
           ? `
             <div class="source-entry-form source-content-form">
-              <div class="source-entry-row">
-                <label><span>Material type</span><select data-action="brain-source-text-type">${["Notes", "Brief", "Interview", "Cultural reference", "Creative reference"].map((value) => option(value, state.brain.sourceTextType)).join("")}</select></label>
-                <label><span>Title</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="What should we call this?"></label>
-              </div>
+              <span class="source-step-label">Step 2</span>
+              <label><span>Title</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="What should we call this?"></label>
               <label><span>Paste the material</span><textarea data-action="brain-source-text" placeholder="Paste notes, a brief, transcript, observation, or reference context here.">${escapeHtml(state.brain.sourceText)}</textarea></label>
             </div>
           `
           : ""
       }
 
-      <div class="source-contract">
+      <div class="source-contract ${material ? "" : "disabled"}">
+        <span class="source-step-label">Step 3</span>
         <div class="source-contract-heading">
-          <span><strong>How should we treat it?</strong><small>This distinction follows the source into synthesis and future production work.</small></span>
-          <span class="source-handling-pill">${escapeHtml(authority.handling)}</span>
+          <span><strong>How should we use this source?</strong><small>Your instructions travel with this one source into synthesis and future updates.</small></span>
+          <span class="source-handling-pill">${escapeHtml(material?.handling || "Choose a type first")}</span>
         </div>
-        <label class="source-authority-field">
-          <span>What kind of source is this?</span>
-          <select data-action="brain-source-authority">
-            ${sourceAuthorityOptions.map((item) => `<option value="${item.id}" ${item.id === state.brain.sourceAuthority ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
-          </select>
-          <small>${escapeHtml(authority.description)}</small>
-        </label>
 
         <div class="source-entry-row source-contract-row">
           <label>
@@ -1115,25 +1292,25 @@ function sourceComposer() {
             <select data-action="brain-source-role">${sourceRoleOptions.map((value) => option(value, state.brain.sourceRole)).join("")}</select>
           </label>
           ${
-            sourceUsesInfluence()
+            sourceUsesInfluence(material?.authority)
               ? `<label>
                   <span>Influence</span>
                   <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
                   <small>Creative priority, not a blend percentage.</small>
                 </label>`
-              : `<div class="source-fixed-handling"><span>How it is weighted</span><strong>It is not weighted</strong><small>${state.brain.sourceAuthority === "exact-asset" ? "The exact file is used when needed." : "Approved guidance applies wherever it is relevant."}</small></div>`
+              : `<div class="source-fixed-handling"><span>How it is weighted</span><strong>It is not weighted</strong><small>${material?.authority === "exact-asset" ? "The supplied file stays exact." : material ? "Approved guidance applies wherever it is relevant." : "Choose the material type first."}</small></div>`
           }
         </div>
 
         <label>
-          <span>How should we use this source? <small>Optional but useful</small></span>
-          <textarea data-action="brain-source-usage" placeholder="Example: use the color temperature and material contrast; ignore the subject matter.">${escapeHtml(state.brain.sourceUsage)}</textarea>
+          <span>Usage instruction <b>Required</b></span>
+          <textarea data-action="brain-source-usage" placeholder="Example: use only the color temperature and material contrast; ignore the subject matter.">${escapeHtml(state.brain.sourceUsage)}</textarea>
         </label>
         <label>
           <span>What should we leave out? <small>Optional</small></span>
           <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
         </label>
-        <button class="button primary" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${state.brain.sourceFileReading ? "disabled" : ""}>${state.brain.sourceFileReading ? "Reading files" : mode === "files" ? "Add files" : mode === "url" ? "Add URL" : "Add material"}</button>
+        <button class="button primary source-add-button" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add source to proposed update" : "Add source"}</button>
       </div>
 
       <div class="source-sample-callout">
@@ -1145,35 +1322,39 @@ function sourceComposer() {
 }
 
 function sourceGroupRow(source) {
-  const authority = sourceAuthority(source.authority);
+  const material = sourceMaterialType(source);
   const expanded = state.brain.selectedSourceId === source.id;
+  const pending = state.brain.pendingSourceIds.includes(source.id);
+  const locked = sourceHasApprovedBaseline() && !pending;
+  const weighted = sourceUsesInfluence(source.authority);
   return `
-    <article class="brain-source-item ${expanded ? "expanded" : ""}">
+    <article class="brain-source-item ${expanded ? "expanded" : ""} ${pending ? "pending" : ""} ${locked ? "locked" : ""}">
       <div class="brain-source-row">
         <span class="source-kind-icon">${escapeHtml(source.type.slice(0, 1))}</span>
         <span class="brain-source-copy">
           <strong>${escapeHtml(source.name)}</strong>
           <span>${escapeHtml(source.type)} · ${escapeHtml(source.detail)}</span>
-          <span class="source-row-meta"><i>${escapeHtml(authority.label)}</i><i>${escapeHtml(source.role)}</i><i>${escapeHtml(source.influence)}</i></span>
+          <span class="source-row-meta"><i>${escapeHtml(material?.shortLabel || "Past work or research")}</i><i>${escapeHtml(source.role)}</i><i>${escapeHtml(weighted ? source.influence : material?.handling || "Not weighted")}</i>${pending ? "<i>Proposed update</i>" : locked ? `<i>Active v${state.brain.approvedVersion || state.brain.artifactVersion}</i>` : ""}</span>
         </span>
         <span class="brain-source-count"><strong>${source.count}</strong><span>${source.count === 1 ? "item" : "items"}</span></span>
         <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Review details"}</button>
-        <button class="icon-button" type="button" data-action="remove-brain-source" data-id="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.name)}">×</button>
+        <button class="icon-button" type="button" data-action="remove-brain-source" data-id="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.name)}" ${locked ? "disabled" : ""}>×</button>
       </div>
       ${
         expanded
           ? `<div class="brain-source-details">
+              ${locked ? `<div class="source-lock-note"><strong>Part of active Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion}</strong><span>Existing approved sources stay unchanged while additions are reviewed. Source retirement will be handled as a separate governed change later.</span></div>` : ""}
               <div class="source-entry-row">
-                <label><span>What kind of source is this?</span><select data-action="brain-source-item-authority" data-id="${escapeHtml(source.id)}">${sourceAuthorityOptions.map((item) => `<option value="${item.id}" ${item.id === source.authority ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}</select><small>${escapeHtml(authority.description)}</small></label>
-                <label><span>What should it inform?</span><select data-action="brain-source-item-role" data-id="${escapeHtml(source.id)}">${sourceRoleOptions.map((value) => option(value, source.role)).join("")}</select></label>
+                <label><span>Material type</span><select data-action="brain-source-item-material-type" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceMaterialTypes.map((item) => `<option value="${item.id}" ${item.id === material?.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}</select><small>${escapeHtml(material?.description || "This source will be checked before synthesis.")}</small></label>
+                <label><span>What should it inform?</span><select data-action="brain-source-item-role" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceRoleOptions.map((value) => option(value, source.role)).join("")}</select></label>
               </div>
               ${
-                sourceUsesInfluence(source.authority)
-                  ? `<label><span>Influence</span><select data-action="brain-source-item-influence" data-id="${escapeHtml(source.id)}">${sourceInfluenceOptions.map((value) => option(value, source.influence)).join("")}</select><small>Creative priority, not a blend percentage.</small></label>`
-                  : `<div class="source-fixed-handling compact"><span>How it is weighted</span><strong>It is not weighted</strong><small>${escapeHtml(authority.handling)} whenever this source is relevant.</small></div>`
+                weighted
+                  ? `<label><span>Influence</span><select data-action="brain-source-item-influence" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceInfluenceOptions.map((value) => option(value, source.influence)).join("")}</select><small>Creative priority, not a blend percentage.</small></label>`
+                  : `<div class="source-fixed-handling compact"><span>How it is weighted</span><strong>It is not weighted</strong><small>${escapeHtml(material?.handling || "Use safely")} whenever this source is relevant.</small></div>`
               }
-              <label><span>How should we use this source?</span><textarea data-action="brain-source-item-usage" data-id="${escapeHtml(source.id)}">${escapeHtml(source.usage)}</textarea></label>
-              <label><span>What should we leave out?</span><textarea data-action="brain-source-item-exclusions" data-id="${escapeHtml(source.id)}">${escapeHtml(source.exclusions)}</textarea></label>
+              <label><span>Usage instruction</span><textarea data-action="brain-source-item-usage" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${escapeHtml(source.usage)}</textarea></label>
+              <label><span>What should we leave out?</span><textarea data-action="brain-source-item-exclusions" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${escapeHtml(source.exclusions)}</textarea></label>
             </div>`
           : ""
       }
@@ -1183,17 +1364,25 @@ function sourceGroupRow(source) {
 
 function renderBrainSources() {
   const hasSources = state.brain.sources.length > 0;
+  const hasApproved = sourceHasApprovedBaseline();
+  const pending = pendingSourceCount();
+  const canSynthesize = hasApproved ? pending > 0 : hasSources;
   return brainWorkspace(
     "Sources",
-    "Collect the material that explains the brand. You can add more later without replacing what was already approved.",
+    "Add one clearly described source at a time so its meaning, handling, and instructions stay attached.",
     `
+      ${
+        hasApproved
+          ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span><span><strong>Your approved Brand Brain stays active</strong><p>New sources create a proposed update. Only guidance touched by the new material is reconsidered, and nothing changes for production until you review and approve the next version.</p></span></section>`
+          : ""
+      }
       <div class="brain-sources-layout ${hasSources ? "has-sources" : ""}">
         ${sourceComposer()}
 
         <section class="card brain-source-batch">
           <div class="card-header">
-            <span><span class="section-label">Current batch</span><h2>${hasSources ? `${brainSourceCount()} items ready` : "Nothing added yet"}</h2></span>
-            ${hasSources ? `<span class="mini-pill">${state.brain.sources.length} source groups</span>` : ""}
+            <span><span class="section-label">${hasApproved ? "Source library and proposed update" : "Current batch"}</span><h2>${hasApproved ? `${pending} new ${pending === 1 ? "source" : "sources"} pending` : hasSources ? `${brainSourceCount()} items ready` : "Nothing added yet"}</h2></span>
+            ${hasSources ? `<span class="mini-pill">${state.brain.sources.length} ${state.brain.sources.length === 1 ? "source" : "sources"}</span>` : ""}
           </div>
           ${
             hasSources
@@ -1202,10 +1391,10 @@ function renderBrainSources() {
           }
           <div class="brain-source-footer">
             <span>
-              <strong>${hasSources ? "Ready to build from these sources" : "Add at least one source to continue"}</strong>
-              <span>${hasSources ? "The system will read the supplied material, connect the evidence, and prepare real guidance and artifacts for review." : "Nothing is processed or approved until you start."}</span>
+              <strong>${hasApproved ? (pending ? `Ready to check ${pending} proposed ${pending === 1 ? "addition" : "additions"}` : "Your approved source library is unchanged") : hasSources ? "Ready to build from these sources" : "Add at least one source to continue"}</strong>
+              <span>${hasApproved ? (pending ? `Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} remains active while the system prepares the smallest supported update.` : "Add a source above when new material should be considered. The active version will not be reset.") : hasSources ? "The system will read the supplied material, check the declared types, and prepare guidance and artifacts for review." : "Nothing is processed or approved until you start."}</span>
             </span>
-            <button class="button primary" type="button" data-action="start-brain-synthesis" ${hasSources ? "" : "disabled"}>Build Brand Brain draft</button>
+            <button class="button primary" type="button" data-action="start-brain-synthesis" ${canSynthesize ? "" : "disabled"}>${hasApproved ? "Prepare proposed update" : "Build Brand Brain draft"}</button>
           </div>
         </section>
       </div>
@@ -1216,15 +1405,20 @@ function renderBrainSources() {
 function renderBrainProcessing() {
   const complete = state.brain.processingComplete;
   const error = state.brain.processingError;
+  const incremental = state.brain.revisionPending && state.brain.approvedVersion > 0;
   const activeStep = complete ? synthesisSteps.length : Math.max(state.brain.processingStep, 0);
   const progress = complete ? 100 : Math.round(((activeStep + 1) / synthesisSteps.length) * 100);
   return brainWorkspace(
-    complete ? "Your sources are ready for review" : error ? "We could not finish this draft" : "Building your Brand Brain",
+    complete ? (incremental ? "Your proposed update is ready for review" : "Your sources are ready for review") : error ? "We could not finish this draft" : incremental ? `Checking new sources against Brand Brain v${state.brain.approvedVersion}` : "Building your Brand Brain",
     complete
-      ? "The first draft is prepared. Review the few questions that need your judgment before production can use it."
+      ? incremental
+        ? `Brand Brain v${state.brain.approvedVersion} remains active. Review the candidate changes before a new version can replace it.`
+        : "The first draft is prepared. Review the few questions that need your judgment before production can use it."
       : error
         ? "Your source batch is still here. Review the issue below and try again when you are ready."
-      : "You can leave this page. Your source batch and progress stay together in this prototype session.",
+      : incremental
+        ? `The approved version stays available to production while ${pendingSourceCount()} new ${pendingSourceCount() === 1 ? "source is" : "sources are"} checked.`
+        : "You can leave this page. Your source batch and progress stay together in this prototype session.",
     `
       <div class="brain-processing-layout">
         <section class="card brain-processing-card">
@@ -1232,8 +1426,8 @@ function renderBrainProcessing() {
             <span class="brain-processing-orbit ${complete ? "complete" : error ? "error" : ""}" aria-hidden="true"><i></i><i></i><i></i></span>
             <span>
               <span class="brain-status ${complete ? "success" : error ? "danger" : "governed"}">${complete ? "Ready" : error ? "Needs attention" : "In progress"}</span>
-              <h2>${complete ? "Synthesis complete" : error ? "The source batch was not changed" : synthesisSteps[activeStep]?.title ?? synthesisSteps[0].title}</h2>
-              <p>${complete ? `OpenAI prepared six guidance sections and three working artifacts. ${brainExceptions.length ? `It also found ${brainExceptions.length} ${brainExceptions.length === 1 ? "question" : "questions"} that need your judgment.` : "It found no questions that require a decision."}` : error ? escapeHtml(error) : synthesisSteps[activeStep]?.detail ?? synthesisSteps[0].detail}</p>
+              <h2>${complete ? (incremental ? "Candidate update prepared" : "Synthesis complete") : error ? "The source batch was not changed" : synthesisSteps[activeStep]?.title ?? synthesisSteps[0].title}</h2>
+              <p>${complete ? incremental ? `${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area has" : "areas have"} a proposed change. ${brainExceptions.length ? `${brainExceptions.length} ${brainExceptions.length === 1 ? "question needs" : "questions need"} your judgment.` : "No additional questions need a decision."}` : `OpenAI prepared six guidance sections and three working artifacts. ${brainExceptions.length ? `It also found ${brainExceptions.length} ${brainExceptions.length === 1 ? "question" : "questions"} that need your judgment.` : "It found no questions that require a decision."}` : error ? escapeHtml(error) : synthesisSteps[activeStep]?.detail ?? synthesisSteps[0].detail}</p>
             </span>
           </div>
           <div class="brain-progress-track" aria-label="Synthesis progress"><span style="width: ${progress}%"></span></div>
@@ -1249,16 +1443,16 @@ function renderBrainProcessing() {
         </section>
 
         <aside class="card brain-processing-summary">
-          <span class="section-label">Source batch</span>
-          <strong>${brainSourceCount()} items</strong>
-          <span>${state.brain.sources.length} source groups</span>
+          <span class="section-label">${incremental ? "Proposed update" : "Source batch"}</span>
+          <strong>${incremental ? pendingSourceCount() : brainSourceCount()} ${incremental ? "new" : ""} ${incremental && pendingSourceCount() === 1 ? "source" : "items"}</strong>
+          <span>${incremental ? `Compared with active v${state.brain.approvedVersion}` : `${state.brain.sources.length} source groups`}</span>
           <dl>
             <div><dt>Files and pages</dt><dd>${complete ? "Read" : error ? "Still saved" : "Captured"}</dd></div>
             <div><dt>Source details</dt><dd>Attached</dd></div>
             <div><dt>Original material</dt><dd>Preserved</dd></div>
             <div><dt>Approval</dt><dd>Still yours</dd></div>
           </dl>
-          <p>The system prepares suggestions and questions. It does not silently turn repeated material into core brand guidance.</p>
+          <p>${incremental ? `The approved version stays active. Stable guidance is copied forward, conflicts become review questions, and only approved candidate changes can create v${state.brain.approvedVersion + 1}.` : "The system prepares suggestions and questions. It does not silently turn repeated material into core brand guidance."}</p>
         </aside>
       </div>
     `,
@@ -1463,12 +1657,14 @@ function renderBrainGuidance() {
   }
 
   const ready = state.brain.artifactStatus === "ready";
+  const candidateUpdate = !ready && state.brain.approvedResult && state.brain.approvedVersion < state.brain.artifactVersion;
   const section = guidanceSections.find((item) => item.id === state.brain.selectedGuidanceId) ?? guidanceSections[0];
   const commentCount = state.brain.guidanceComments.filter((comment) => !comment.resolved).length;
   return brainWorkspace(
     "Brand guidance",
     "Read what the Brand Brain understands, see why it reached each conclusion, and give feedback where it belongs.",
     `
+      ${candidateUpdate ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion}</span><span><strong>You are reviewing candidate v${state.brain.artifactVersion}</strong><p>The approved version stays available to production. This candidate changes only after you approve it.</p></span></section>` : ""}
       <section class="card brain-artifact-header ${ready ? "ready" : ""}">
         <div>
           <span class="brain-status ${ready ? "success" : "governed"}">${ready ? "Ready for production" : "Draft for review"}</span>
@@ -1536,7 +1732,7 @@ function renderBrainGuidance() {
             <dl>
               <div><dt>Exact assets</dt><dd>Used as supplied</dd></div>
               <div><dt>Approved guidance</dt><dd>Followed where relevant</dd></div>
-              <div><dt>Brand evidence</dt><dd>Interpreted for patterns</dd></div>
+              <div><dt>Past work and research</dt><dd>Interpreted for patterns, not treated as rules</dd></div>
               <div><dt>References</dt><dd>Used for inspiration only</dd></div>
             </dl>
           </section>
@@ -1708,6 +1904,7 @@ function brainDecisionAction(action, selected, activeResolution) {
 }
 
 function renderBrandBrain() {
+  const incrementalReview = state.brain.revisionPending && state.brain.approvedVersion > 0;
   if (!state.brain.processingComplete) {
     return brainWorkspace(
       "Needs review",
@@ -1727,8 +1924,9 @@ function renderBrandBrain() {
     const ready = state.brain.cleanApproved;
     return brainWorkspace(
       "Needs review",
-      "OpenAI found no conflicts or uncertain suggestions that require a decision in this source batch.",
+      incrementalReview ? `The proposed update introduces no unresolved conflicts. Brand Brain v${state.brain.approvedVersion} remains active until you approve the candidate.` : "OpenAI found no conflicts or uncertain suggestions that require a decision in this source batch.",
       `
+        ${incrementalReview ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion}</span><span><strong>${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area has" : "areas have"} a proposed change</strong><p>The active version is unchanged. Review the candidate draft before it can become v${state.brain.approvedVersion + 1}.</p></span></section>` : ""}
         <section class="card brain-review-empty brain-review-clear">
           <span class="brain-status success">No questions found</span>
           <h2>The synthesized Brand Brain is ready to read</h2>
@@ -1843,6 +2041,7 @@ function renderBrandBrain() {
     "Needs review",
     "Review the few items that need a decision. Everything else can move forward quickly without changing the brand's core guidance.",
     `
+      ${incrementalReview ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion}</span><span><strong>Reviewing a proposed update</strong><p>${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area has" : "areas have"} candidate changes. The active version stays available to production until the next version is approved.</p></span></section>` : ""}
       <section class="brain-fast-path">
         <div class="brain-batch-identity">
           <span class="section-label">Batch</span>
@@ -1907,10 +2106,10 @@ function renderBrandBrain() {
 
       <section class="brain-review-finish ${reviewComplete ? "ready" : ""}">
         <span>
-          <strong>${reviewComplete ? "Your Brand Brain draft is ready" : "Finish review to prepare your stored draft"}</strong>
+          <strong>${reviewComplete ? (incrementalReview ? `Candidate v${state.brain.approvedVersion + 1} is ready to read` : "Your Brand Brain draft is ready") : incrementalReview ? "Finish review without changing the active version" : "Finish review to prepare your stored draft"}</strong>
           <span>${state.brain.cleanApproved ? `${brainResolvedCount()} of ${brainExceptions.length} review decisions saved` : `Approve ${brainBatch.cleanCount} clean assets and resolve ${brainExceptions.length - brainResolvedCount()} review items`}</span>
         </span>
-        <button class="button ${reviewComplete ? "secondary" : ""}" type="button" data-action="finish-brain-review" ${reviewComplete ? "" : "disabled"}>Review Brand Brain draft</button>
+        <button class="button ${reviewComplete ? "secondary" : ""}" type="button" data-action="finish-brain-review" ${reviewComplete ? "" : "disabled"}>${incrementalReview ? "Review candidate update" : "Review Brand Brain draft"}</button>
       </section>
     `,
   );
@@ -2364,6 +2563,7 @@ async function persistBrainState() {
     kind: "state",
     sources: serializableSources(),
     result: currentSynthesisResult,
+    approvedResult: state.brain.approvedResult,
     model: state.brain.synthesisModel,
     responseId: state.brain.synthesisResponseId,
     brain: {
@@ -2373,6 +2573,11 @@ async function persistBrainState() {
       cleanApproved: state.brain.cleanApproved,
       artifactVersion: state.brain.artifactVersion,
       artifactStatus: state.brain.artifactStatus,
+      approvedVersion: state.brain.approvedVersion,
+      revisionPending: state.brain.revisionPending,
+      pendingSourceIds: state.brain.pendingSourceIds,
+      affectedGuidanceIds: state.brain.affectedGuidanceIds,
+      candidateBaseVersion: state.brain.candidateBaseVersion,
       guidanceComments: state.brain.guidanceComments,
       history: state.brain.history,
     },
@@ -2399,7 +2604,14 @@ function normalizeGuidanceSections(sections) {
   }));
 }
 
-function applySynthesisResult(result) {
+function changedGuidanceIds(baseline, result) {
+  if (!baseline?.guidanceSections) return [];
+  const previous = new Map(baseline.guidanceSections.map((section) => [section.id, section]));
+  return result.guidanceSections.filter((section) => JSON.stringify(previous.get(section.id)) !== JSON.stringify(section)).map((section) => section.id);
+}
+
+function applySynthesisResult(result, options = {}) {
+  const incremental = Boolean(options.baseline);
   currentSynthesisResult = result;
   state.brandName = result.brandName || state.brandName;
   state.brandDescription = result.brandDescription || state.brandDescription;
@@ -2429,8 +2641,22 @@ function applySynthesisResult(result) {
   state.brain.processingError = "";
   state.brain.processingStep = synthesisSteps.length;
   state.brain.stage = "review";
-  state.brain.artifactStatus = "not-created";
-  state.brain.artifactVersion = 1;
+  if (incremental) {
+    state.brain.approvedResult = options.baseline;
+    state.brain.approvedVersion = options.baselineVersion || state.brain.approvedVersion || state.brain.artifactVersion;
+    state.brain.candidateBaseVersion = state.brain.approvedVersion;
+    state.brain.affectedGuidanceIds = changedGuidanceIds(options.baseline, result);
+    state.brain.revisionPending = true;
+    state.brain.artifactStatus = "ready";
+  } else {
+    state.brain.artifactStatus = "not-created";
+    state.brain.artifactVersion = 1;
+    state.brain.approvedVersion = 0;
+    state.brain.approvedResult = null;
+    state.brain.pendingSourceIds = [];
+    state.brain.affectedGuidanceIds = [];
+    state.brain.candidateBaseVersion = 0;
+  }
   state.brain.selectedGuidanceId = "foundation";
   state.brain.guidanceView = "guidance";
   state.brain.selectedBrainArtifactId = "dossier";
@@ -2444,7 +2670,11 @@ async function hydrateStoredBrain() {
     const { saved } = await response.json();
     if (!saved?.result || !Array.isArray(saved.sources)) return;
     state.brain.sources = saved.sources;
-    applySynthesisResult(saved.result);
+    const savedBaseline = saved.approvedResult || null;
+    applySynthesisResult(saved.result, {
+      baseline: savedBaseline,
+      baselineVersion: saved.baselineVersion || saved.brain?.approvedVersion || saved.brain?.candidateBaseVersion,
+    });
     state.brain.synthesisKind = "openai";
     state.brain.synthesisModel = saved.model || "";
     state.brain.synthesisResponseId = saved.responseId || "";
@@ -2456,8 +2686,18 @@ async function hydrateStoredBrain() {
       state.brain.cleanApproved = saved.brain.cleanApproved ?? state.brain.cleanApproved;
       state.brain.artifactVersion = saved.brain.artifactVersion || 1;
       state.brain.artifactStatus = saved.brain.artifactStatus || "not-created";
+      state.brain.approvedVersion = saved.brain.approvedVersion || state.brain.approvedVersion;
+      state.brain.revisionPending = saved.brain.revisionPending ?? state.brain.revisionPending;
+      state.brain.pendingSourceIds = saved.brain.pendingSourceIds || [];
+      state.brain.affectedGuidanceIds = saved.brain.affectedGuidanceIds || state.brain.affectedGuidanceIds;
+      state.brain.candidateBaseVersion = saved.brain.candidateBaseVersion || state.brain.candidateBaseVersion;
       state.brain.guidanceComments = saved.brain.guidanceComments || [];
       state.brain.history = saved.brain.history || [];
+    }
+    if (savedBaseline) state.brain.approvedResult = savedBaseline;
+    else if (state.brain.artifactStatus === "ready") {
+      state.brain.approvedResult = JSON.parse(JSON.stringify(saved.result));
+      state.brain.approvedVersion = state.brain.artifactVersion;
     }
     render();
   } catch {
@@ -2470,7 +2710,7 @@ function loadSampleSources() {
   guidanceSections = JSON.parse(JSON.stringify(sampleGuidanceSections));
   brainArtifacts = JSON.parse(JSON.stringify(sampleBrainArtifacts));
   brainExceptions = JSON.parse(JSON.stringify(sampleBrainExceptions));
-  currentSynthesisResult = null;
+  currentSynthesisResult = sampleResultSnapshot();
   state.brandName = "SLAKE";
   state.brandDescription = "Adaptogen sparkling water";
   state.brain.sources = sampleSourceGroups.map((source) => ({ ...source }));
@@ -2481,13 +2721,18 @@ function loadSampleSources() {
   state.brain.synthesisKind = "sample";
   state.brain.synthesisModel = "";
   state.brain.synthesisResponseId = "";
-  state.brain.selectedExceptionId = brainExceptions[0].id;
+  state.brain.selectedExceptionId = brainExceptions[0]?.id ?? "";
   state.brain.cleanApproved = false;
   state.brain.resolutions = {};
   state.brain.canonPromoted = false;
   state.brain.artifactVersion = 1;
   state.brain.artifactStatus = "not-created";
   state.brain.revisionPending = false;
+  state.brain.approvedVersion = 0;
+  state.brain.approvedResult = null;
+  state.brain.pendingSourceIds = [];
+  state.brain.affectedGuidanceIds = [];
+  state.brain.candidateBaseVersion = 0;
   state.brain.selectedGuidanceId = "foundation";
   state.brain.guidanceView = "guidance";
   state.brain.selectedBrainArtifactId = "dossier";
@@ -2524,8 +2769,25 @@ async function startBrainSynthesis() {
     navigate("brain-processing");
     return;
   }
-  state.brain.revisionPending = state.brain.artifactStatus === "ready";
-  state.brain.selectedExceptionId = brainExceptions[0].id;
+  const incremental = sourceHasApprovedBaseline();
+  if (incremental && !state.brain.pendingSourceIds.length) {
+    setToast("Add at least one new source before preparing an update");
+    return;
+  }
+  if (incremental && !state.brain.approvedResult && currentSynthesisResult) {
+    state.brain.approvedResult = JSON.parse(JSON.stringify(currentSynthesisResult));
+    state.brain.approvedVersion = state.brain.artifactVersion;
+  }
+  const requestSources = incremental
+    ? state.brain.sources.filter((source) => state.brain.pendingSourceIds.includes(source.id))
+    : state.brain.sources;
+  if (sourceFileBytes(requestSources.map((source) => source.id)) > MAX_SYNTHESIS_FILE_BYTES) {
+    setToast("This build can read up to 40 MB of uploaded files in one synthesis. Prepare a smaller batch.");
+    return;
+  }
+  const baseline = incremental ? state.brain.approvedResult : null;
+  state.brain.revisionPending = incremental;
+  state.brain.selectedExceptionId = brainExceptions[0]?.id ?? "";
   state.brain.cleanApproved = false;
   state.brain.resolutions = {};
   state.brain.stage = "processing";
@@ -2548,15 +2810,28 @@ async function startBrainSynthesis() {
     const response = await fetch("/api/brand-brain/synthesize", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ sources: state.brain.sources }),
+      body: JSON.stringify({
+        sources: requestSources,
+        mode: incremental ? "incremental" : "initial",
+        baselineVersion: incremental ? state.brain.approvedVersion : undefined,
+      }),
     });
     const body = await response.json();
     if (!response.ok) throw new Error(body.error || "The Brand Brain could not be built.");
-    applySynthesisResult(body.result);
+    applySynthesisResult(body.result, {
+      baseline: body.approvedResult || baseline,
+      baselineVersion: body.baselineVersion || state.brain.approvedVersion,
+    });
     state.brain.synthesisModel = body.model || "OpenAI";
     state.brain.synthesisResponseId = body.responseId || "";
     state.brain.savedAt = body.savedAt || "";
-    recordBrainHistory("Brand Brain synthesis prepared for review", `${brainSourceCount()} source items produced six guidance sections, three working artifacts, and ${brainExceptions.length} review ${brainExceptions.length === 1 ? "question" : "questions"}.`, "complete");
+    recordBrainHistory(
+      incremental ? `Update to Brand Brain v${state.brain.approvedVersion} prepared` : "Brand Brain synthesis prepared for review",
+      incremental
+        ? `${requestSources.length} new ${requestSources.length === 1 ? "source was" : "sources were"} checked against the approved version. ${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area was" : "areas were"} changed in the candidate.`
+        : `${brainSourceCount()} source items produced six guidance sections, three working artifacts, and ${brainExceptions.length} review ${brainExceptions.length === 1 ? "question" : "questions"}.`,
+      "complete",
+    );
   } catch (error) {
     state.brain.processingError = error.message || "The Brand Brain could not be built.";
     state.brain.stage = "intake";
@@ -2706,17 +2981,18 @@ root.addEventListener("input", (event) => {
 root.addEventListener("change", async (event) => {
   const action = event.target.dataset.action;
   if (action === "source-file-input") {
-    const files = Array.from(event.target.files ?? []);
-    if (files.length) {
-      const totalSize = files.reduce((total, file) => total + file.size, 0);
-      if (totalSize > 45 * 1024 * 1024) {
-        setToast("Choose a file batch smaller than 45 MB");
+    const file = Array.from(event.target.files ?? [])[0];
+    if (file) {
+      const validationError = validateSourceFile(file);
+      if (validationError) {
+        state.brain.pendingFiles = [];
+        setToast(validationError);
       } else {
         state.brain.sourceFileReading = true;
-        state.brain.pendingFiles = files.map((file) => ({ name: file.name, type: file.type, size: file.size }));
+        state.brain.pendingFiles = [{ name: file.name, type: file.type, size: file.size }];
         render();
         try {
-          state.brain.pendingFiles = await Promise.all(files.map(readFileAsDataUrl));
+          state.brain.pendingFiles = [await readFileAsDataUrl(file)];
         } catch (error) {
           state.brain.pendingFiles = [];
           setToast(error.message);
@@ -2739,6 +3015,18 @@ root.addEventListener("change", async (event) => {
     if (source) {
       source.authority = event.target.value;
       source.influence = sourceUsesInfluence(source.authority) ? (source.influence === "Not weighted" ? "Supporting" : source.influence) : "Not weighted";
+      render();
+    }
+  }
+  if (action === "brain-source-item-material-type") {
+    const source = state.brain.sources.find((item) => item.id === event.target.dataset.id);
+    const material = sourceMaterialType(event.target.value);
+    if (source && material) {
+      source.materialType = material.id;
+      source.declaredType = material.label;
+      source.authority = material.authority;
+      source.influence = sourceUsesInfluence(material.authority) ? (source.influence === "Not weighted" ? "Supporting" : source.influence) : "Not weighted";
+      source.verification = "Pending content check";
       render();
     }
   }
@@ -2781,80 +3069,121 @@ root.addEventListener("click", (event) => {
   }
   if (action === "load-sample-sources") loadSampleSources();
   if (action === "set-source-form") {
+    resetSourceComposer();
     state.brain.sourceForm = target.dataset.kind;
     render();
   }
+  if (action === "select-source-material-type") {
+    const material = sourceMaterialType(target.dataset.id);
+    if (material) {
+      const pendingFile = state.brain.pendingFiles[0];
+      state.brain.sourceMaterialType = material.id;
+      state.brain.sourceAuthority = material.authority;
+      if (!sourceUsesInfluence(material.authority)) state.brain.sourceInfluence = "Supporting";
+      if (pendingFile) {
+        const validationError = validateSourceFile(pendingFile, material);
+        if (validationError) {
+          state.brain.pendingFiles = [];
+          setToast(`${pendingFile.name} was cleared because it does not match ${material.label}.`);
+          return;
+        }
+      }
+      render();
+    }
+  }
   if (action === "add-file-source") {
     const files = state.brain.pendingFiles;
-    if (!files.length) {
-      setToast("Choose one or more files first");
+    const material = sourceMaterialType();
+    if (!material) {
+      setToast("Choose what kind of material this is first");
+    } else if (!files.length) {
+      setToast("Choose one file first");
+    } else if (!state.brain.sourceUsage.trim()) {
+      setToast("Add a usage instruction before continuing");
     } else {
+      const file = files[0];
+      const sourceId = `file-${Date.now()}`;
       state.brain.sources.push({
-        id: `files-${Date.now()}`,
-        name: state.brain.sourceTitle.trim() || (files.length === 1 ? files[0].name : `${files.length} uploaded files`),
-        type: "Files",
-        detail: files.length === 1 ? files[0].name : files.slice(0, 3).map((file) => file.name).join(", "),
-        count: files.length,
+        id: sourceId,
+        name: file.name,
+        type: material.label,
+        detail: `${fileExtension(file).toUpperCase()} · ${formatFileSize(file.size)}`,
+        count: 1,
         status: "Ready",
-        files: files.map((file) => ({ ...file })),
-        ...sourceContract(),
+        files: [{ ...file }],
+        ...sourceContract(material.id),
       });
-      state.brain.stage = "intake";
-      state.brain.processingComplete = false;
-      recordBrainHistory("Files added", `${files.length} ${files.length === 1 ? "file was" : "files were"} added with source instructions.`, "complete");
+      markSourceAdded(sourceId);
+      recordBrainHistory("File added", `${file.name} was added as ${material.label.toLowerCase()} with its own usage instruction.`, "complete");
       resetSourceComposer();
-      setToast("Files added with their source details");
+      setToast(sourceHasApprovedBaseline() ? "Source added to the proposed update" : "Source added with its usage instructions");
     }
   }
   if (action === "add-url-source") {
     const url = state.brain.sourceUrl.trim();
-    if (!url) {
+    const material = sourceMaterialType();
+    if (!material) {
+      setToast("Choose what kind of material this is first");
+    } else if (!url) {
       setToast("Add a web address first");
+    } else if (!state.brain.sourceUsage.trim()) {
+      setToast("Add a usage instruction before continuing");
     } else {
+      const sourceId = `url-${Date.now()}`;
       state.brain.sources.push({
-        id: `url-${Date.now()}`,
+        id: sourceId,
         name: state.brain.sourceTitle.trim() || url,
-        type: "URL",
+        type: material.label,
         detail: url,
         url,
         count: 1,
         status: "Ready",
-        ...sourceContract(),
+        ...sourceContract(material.id),
       });
-      state.brain.stage = "intake";
-      state.brain.processingComplete = false;
+      markSourceAdded(sourceId);
       recordBrainHistory("URL added", `${state.brain.sourceTitle.trim() || url} was added to the current source batch.`, "complete");
       resetSourceComposer();
-      setToast("URL added to the source batch");
+      setToast(sourceHasApprovedBaseline() ? "URL added to the proposed update" : "URL added to the source batch");
     }
   }
   if (action === "add-text-source") {
     const sourceText = state.brain.sourceText.trim();
-    if (!sourceText) {
+    const material = sourceMaterialType();
+    if (!material) {
+      setToast("Choose what kind of material this is first");
+    } else if (!sourceText) {
       setToast("Paste some material first");
+    } else if (!state.brain.sourceUsage.trim()) {
+      setToast("Add a usage instruction before continuing");
     } else {
-      const title = state.brain.sourceTitle.trim() || state.brain.sourceTextType;
+      const title = state.brain.sourceTitle.trim() || material.label;
+      const sourceId = `text-${Date.now()}`;
       state.brain.sources.push({
-        id: `text-${Date.now()}`,
+        id: sourceId,
         name: title,
-        type: state.brain.sourceTextType,
+        type: material.label,
         detail: sourceText.length > 92 ? `${sourceText.slice(0, 92)}...` : sourceText,
         content: sourceText,
         count: 1,
         status: "Ready",
-        ...sourceContract(),
+        ...sourceContract(material.id),
       });
-      state.brain.stage = "intake";
-      state.brain.processingComplete = false;
-      recordBrainHistory(`${state.brain.sourceTextType} added`, `${title} was added to the current source batch.`, "complete");
+      markSourceAdded(sourceId);
+      recordBrainHistory(`${material.label} added`, `${title} was added with its own usage instruction.`, "complete");
       resetSourceComposer();
-      setToast("Material added to the source batch");
+      setToast(sourceHasApprovedBaseline() ? "Material added to the proposed update" : "Material added to the source batch");
     }
   }
   if (action === "remove-brain-source") {
     const source = state.brain.sources.find((item) => item.id === target.dataset.id);
-    state.brain.sources = state.brain.sources.filter((item) => item.id !== target.dataset.id);
-    if (source) setToast(`${source.name} removed`);
+    const locked = sourceHasApprovedBaseline() && !state.brain.pendingSourceIds.includes(target.dataset.id);
+    if (locked) {
+      setToast("Active sources cannot be removed here. Source retirement will be a separate reviewed change.");
+    } else {
+      state.brain.sources = state.brain.sources.filter((item) => item.id !== target.dataset.id);
+      state.brain.pendingSourceIds = state.brain.pendingSourceIds.filter((id) => id !== target.dataset.id);
+      if (source) setToast(`${source.name} removed`);
+    }
   }
   if (action === "toggle-source-details") {
     state.brain.selectedSourceId = state.brain.selectedSourceId === target.dataset.id ? "" : target.dataset.id;
@@ -2879,6 +3208,7 @@ root.addEventListener("click", (event) => {
   if (action === "finish-brain-review" && state.brain.cleanApproved && brainResolvedCount() === brainExceptions.length) {
     if (state.brain.revisionPending) state.brain.artifactVersion += 1;
     state.brain.revisionPending = false;
+    state.brain.pendingSourceIds = [];
     state.brain.artifactStatus = "draft";
     state.brain.stage = "draft";
     state.brain.selectedGuidanceId = "foundation";
@@ -2890,6 +3220,12 @@ root.addEventListener("click", (event) => {
   if (action === "approve-brain-artifact" && state.brain.artifactStatus === "draft") {
     state.brain.artifactStatus = "ready";
     state.brain.stage = "ready";
+    state.brain.approvedResult = JSON.parse(JSON.stringify(currentSynthesisResult));
+    state.brain.approvedVersion = state.brain.artifactVersion;
+    state.brain.pendingSourceIds = [];
+    state.brain.affectedGuidanceIds = [];
+    state.brain.candidateBaseVersion = 0;
+    state.brain.revisionPending = false;
     recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved`, "This exact stored version is now available to future production work.", "complete");
     void persistBrainState();
     setToast(`Brand Brain v${state.brain.artifactVersion} is ready for production`);

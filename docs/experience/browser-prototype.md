@@ -12,8 +12,8 @@ The prototype in [`../../app/`](../../app/) translates the current production-fl
 
 1. Enter an empty Brand Brain overview that explains the value, supported material, onboarding sequence, and permanent section organization.
 2. Navigate among Overview, Sources, Needs review, Brand guidance, and History.
-3. Add local files, URLs, notes, briefs, interviews, cultural references, and creative references, or load the sanitized SLAKE sample batch. Before adding, identify whether each source is an exact brand asset, approved guidance, brand evidence, or a creative or cultural reference.
-4. Add intended use, guidance area, influence where appropriate, and explicit exclusions. Exact assets and approved guidance are not influence-weighted.
+3. Add one local file, URL, or written source at a time, or load the sanitized SLAKE sample batch. Choose the concrete material type first: protected asset, approved guidance, past brand work or research, single image, image grid, named cultural reference, or other business document.
+4. Add a required usage instruction, guidance area, influence where interpretation is appropriate, and optional exclusions. Protected assets and approved guidance are not influence-weighted. File intake shows accepted formats, enforces 20 MB per file and 40 MB per synthesis batch, and does not accept folders or mixed multi-file records.
 5. Build with OpenAI to read real sources, connect the brand story, find questions, and prepare structured guidance and artifacts. The sanitized SLAKE sample remains available as a deterministic control journey.
 6. Open the SLAKE foundational-library batch containing 50 synthetic assets.
 7. Approve 47 clean assets for future work without changing core brand guidance.
@@ -26,6 +26,7 @@ The prototype in [`../../app/`](../../app/) translates the current production-fl
 14. Switch from editable guidance to three composed cross-category artifacts: Brand Dossier, Lived World, and Story Architecture.
 15. Read varied artifact modules covering the strategic read, audience, product truth, palette, materials, guardrails, tensions, life patterns, earned environments, emotional progression, and production moments.
 16. Comment directly on a guidance passage or artifact section, prepare a revised version from inline feedback, leave overall feedback, or approve the exact version for production, then inspect the session history.
+17. Add new sources after approval without resetting production guidance. The approved result stays active while only the additions are checked against it, affected guidance is identified, and a candidate next version waits for review and approval.
 
 ### Production
 
@@ -44,7 +45,8 @@ The prototype defaults to one image per render. It does not expose a renderer ch
 - Placement and format are related through the output type rather than independent labels.
 - References are optional production inputs with explicit jobs; they are not unexplained attachments.
 - Influence describes creative priority, not authority. Confidence describes the quality of a source read and remains separate from influence.
-- Source authority is declared before synthesis. Exact brand assets remain exact, approved guidance governs its stated area, brand evidence is interpreted for patterns, and outside references remain inspiration rather than brand truth.
+- Source handling begins with a concrete material type rather than an abstract authority menu. Protected assets remain exact, approved guidance governs its stated area, past work and research are interpreted for patterns rather than rules, and outside references remain inspiration rather than brand truth.
+- Declared material type is verified against file compatibility and actual contents. A mismatch becomes a review question instead of silently changing downstream authority.
 - Canonical assets, policy, and explicit requirements cannot be weakened through the reference controls.
 - Batch approval and exception resolution do not promote material into canon.
 - Inferred material remains visibly inferred after contextual approval.
@@ -53,6 +55,7 @@ The prototype defaults to one image per render. It does not expose a renderer ch
 - Brand Brain navigation is organized around user jobs rather than the five internal content domains.
 - Synthesis progress shows what the system is doing without presenting model or service architecture.
 - Feedback creates a new stored version in the prototype instead of silently rewriting the prior Brand Brain.
+- New sources create a minimal candidate update against the stored approved baseline. Stable fields are copied exactly, earlier review questions stay closed, and the active version remains available to production until approval.
 - Inline guidance feedback stays attached to the exact passage and records the version in which it was incorporated.
 - Guidance categories remain the editable knowledge layer; composed artifacts combine several categories into a durable reading and production tool.
 - V1 models local resolution outcomes, not user roles, permissions, escalation, notifications, or external review routing.
@@ -80,7 +83,7 @@ The palette is a product-shell hypothesis rather than a client brand requirement
 
 - authentication, authorization, or runtime client isolation (the delivery boundary is specified separately in [`../installation-model.md`](../installation-model.md))
 - production database storage, saved jobs, durable upload binaries, or asset search
-- multi-version retrieval or production prompt compilation from the generated Brand Brain
+- full multi-version retrieval, rollback, or production prompt compilation from the generated Brand Brain
 - model/provider selection in the interface or renderer calls
 - production validation, durable approvals, revisions, or memory write-back
 - production-grade ingestion, a background extraction queue, user and permission management, external review routing, rule exceptions, or supersession

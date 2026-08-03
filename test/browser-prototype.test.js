@@ -95,11 +95,17 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("load-sample-sources");
   assert.match(session.appRoot.innerHTML, /50 items ready/);
   assert.match(session.appRoot.innerHTML, /Approved brand assets/);
-  assert.match(session.appRoot.innerHTML, /Exact brand asset/);
+  assert.match(session.appRoot.innerHTML, /Protected asset/);
   assert.match(session.appRoot.innerHTML, /Approved brand guidance/);
-  assert.match(session.appRoot.innerHTML, /Not weighted/);
+  assert.match(session.appRoot.innerHTML, /Keep exact/);
   assert.match(session.appRoot.innerHTML, /Strong/);
   assert.match(session.appRoot.innerHTML, /Campaign archive/);
+  assert.match(session.appRoot.innerHTML, /Folders and multi-file batches are not accepted/);
+  assert.match(session.appRoot.innerHTML, /Usage instruction/);
+  assert.doesNotMatch(session.appRoot.innerHTML, />Brand evidence</);
+  session.click("select-source-material-type", { id: "protected-asset" });
+  assert.match(session.appRoot.innerHTML, /Choose one file/);
+  assert.match(session.appRoot.innerHTML, /20 MB maximum/);
 
   session.click("toggle-source-details", { id: "approved-brand-assets" });
   assert.match(session.appRoot.innerHTML, /Use these files exactly as supplied/);
@@ -169,4 +175,17 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("navigate-brain", { screen: "brain-history" });
   assert.match(session.appRoot.innerHTML, /Brand Brain v3 approved/);
   assert.match(session.appRoot.innerHTML, /SLAKE source batch added/);
+
+  session.click("navigate-brain", { screen: "brain-sources" });
+  assert.match(session.appRoot.innerHTML, /Your approved Brand Brain stays active/);
+  assert.match(session.appRoot.innerHTML, /Active v3/);
+  session.click("set-source-form", { kind: "text" });
+  session.click("select-source-material-type", { id: "business-document" });
+  session.input("brain-source-title", "Retail expansion briefing");
+  session.input("brain-source-text", "A briefing on retail expansion timing and operational context.");
+  session.input("brain-source-usage", "Use only as company background; do not treat growth targets as brand guidance.");
+  session.click("add-text-source");
+  assert.match(session.appRoot.innerHTML, /1 new source pending/);
+  assert.match(session.appRoot.innerHTML, /Prepare proposed update/);
+  assert.match(session.appRoot.innerHTML, /Active v3/);
 });

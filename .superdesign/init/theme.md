@@ -52,6 +52,8 @@
 - Focus ring: 3px translucent lavender with 2px offset.
 - `prefers-reduced-motion` reduces animation and transition durations to 0.01ms.
 - Live synthesis failures reuse the existing danger color and compact action patterns; no new visual language or provider-specific decoration is introduced.
+- Type-first source options use existing nested surfaces, blue metadata marks, coral selected borders, and text labels; type is never communicated through color alone.
+- Approved-baseline update callouts use the existing lavender governed state and remain visually secondary to the source task.
 
 ### Brand guidance category accents
 

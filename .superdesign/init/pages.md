@@ -88,14 +88,17 @@ Entry: `app/index.html` with `state.screen = "brain-overview"`, `"brain-sources"
   - `renderBrainSources()`
     - `sourceComposer()`
     - `sourceGroupRow()`
-    - source authority, intended guidance area, conditional influence, usage instruction, and exclusion controls
+    - concrete material-type selection before upload
+    - one-file compatibility and size checks
+    - required usage instruction, intended guidance area, conditional influence, and optional exclusion controls
+    - approved-version and proposed-update callouts for incremental additions
   - `renderBrainProcessing()`
     - `startBrainSynthesis()`
     - `applySynthesisResult()`
     - local `/api/brand-brain/synthesize` request
   - `sampleSourceGroups`
   - `synthesisSteps`
-  - delegated input, change, click, file-reading, live synthesis, persistence, and deterministic-sample listeners
+  - delegated input, change, click, single-file reading, initial or incremental synthesis, persistence, and deterministic-sample listeners
 - `app/styles.css`
 
 ## `/` Brand guidance and history states

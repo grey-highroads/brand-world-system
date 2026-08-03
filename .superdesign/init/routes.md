@@ -19,7 +19,7 @@ The application is a single-page prototype. `state.screen` selects a render func
 | Preflight | `preflight` | `renderPreflight()` | Inspect compiled prompt, sources, generation inputs, and policy contract |
 | Generated result | `result` | `renderResult()` | Review the static output placeholder and evaluation results |
 | Brand Brain overview | `brain-overview` | `renderBrainOverview()` | Orient new and returning users around onboarding, readiness, and the next action |
-| Brand Brain sources | `brain-sources` | `renderBrainSources()` | Add materials with source authority, intended use, influence where relevant, instructions, and exclusions |
+| Brand Brain sources | `brain-sources` | `renderBrainSources()` | Add one type-first source with safe file limits, required usage instructions, and a proposed-update path that preserves the approved version |
 | Brand Brain synthesis | `brain-processing` | `renderBrainProcessing()` | Show visible progress while the local server reads sources and produces structured guidance, review questions, and artifacts |
 | Brand Brain review | `brain` | `renderBrandBrain()` | Approve clean assets, review flagged items and a brand-rule proposal, and save local decisions |
 | Brand guidance | `brain-guidance` | `renderBrainGuidance()` | Move between editable category guidance and full cross-category artifact readers with section-level feedback before approval |
@@ -52,4 +52,4 @@ function navigate(screen) {
 
 ## Brand Brain route family
 
-Brand Brain is a first-class sidebar destination using the shared shell. Its persistent section navigation is Overview, Sources, Needs review, Brand guidance, and History. The implemented states cover empty onboarding, authority-aware mixed source intake, real local OpenAI synthesis, batch review, evidence detail, a brand-rule decision, a tabbed stored guidance version, three full cross-category artifact readers with inline feedback, production approval, reloadable local storage, history, and a separate change to core guidance. Production-grade jobs, rule exceptions, and supersession remain planned.
+Brand Brain is a first-class sidebar destination using the shared shell. Its persistent section navigation is Overview, Sources, Needs review, Brand guidance, and History. The implemented states cover empty onboarding, type-first single-source intake, real local OpenAI synthesis, incremental additions against an approved baseline, batch review, evidence detail, a brand-rule decision, a tabbed stored guidance version, three full cross-category artifact readers with inline feedback, production approval, reloadable local storage, history, and a separate change to core guidance. Production-grade jobs, rule exceptions, full version retrieval, and supersession remain planned.

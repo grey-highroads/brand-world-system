@@ -5,6 +5,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
+export const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024;
+const visionMimeTypes = new Set(["image/gif", "image/jpeg", "image/png", "image/webp"]);
 const directTextExtensions = new Set([".csv", ".html", ".json", ".md", ".rtf", ".text", ".txt", ".xml"]);
 const directTextMimeTypes = new Set([
   "application/json",
@@ -62,11 +64,31 @@ async function extractWithMacMetadata(bytes, filename) {
   }
 }
 
-export async function normalizeUploadedFile(file) {
+export async function normalizeUploadedFile(file, source = {}) {
+  if (Number(file.size || 0) > MAX_SOURCE_FILE_BYTES) {
+    const error = new Error(`${file.name || "The uploaded file"} is larger than the 20 MB source limit.`);
+    error.status = 413;
+    throw error;
+  }
   if (!file.data) return { kind: "metadata", name: file.name, type: file.type, size: file.size };
   const decoded = decodeDataUrl(file.data);
+  if (decoded.bytes.length > MAX_SOURCE_FILE_BYTES) {
+    const error = new Error(`${file.name || "The uploaded file"} is larger than the 20 MB source limit.`);
+    error.status = 413;
+    throw error;
+  }
   const mimeType = file.type || decoded.mimeType;
-  if (mimeType.startsWith("image/")) return { kind: "image", ...file, type: mimeType };
+  if (visionMimeTypes.has(mimeType)) return { kind: "image", ...file, type: mimeType };
+
+  if (source.authority === "exact-asset") {
+    return {
+      kind: "metadata",
+      name: file.name,
+      type: mimeType,
+      size: file.size,
+      note: "Protected source preserved as supplied; this file format was not visually interpreted during synthesis.",
+    };
+  }
 
   const extension = path.extname(file.name || "").toLowerCase();
   const text = directTextMimeTypes.has(mimeType) || directTextExtensions.has(extension)
@@ -80,7 +102,7 @@ export async function normalizeUploadedFile(file) {
 export async function normalizeSourcesForSynthesis(sources) {
   return Promise.all(
     sources.map(async (source) => {
-      const normalizedFiles = await Promise.all((source.files ?? []).map(normalizeUploadedFile));
+      const normalizedFiles = await Promise.all((source.files ?? []).map((file) => normalizeUploadedFile(file, source)));
       const extractedText = normalizedFiles.filter((file) => file.kind === "text").map((file) => `SOURCE FILE: ${file.name}\n${file.text}`);
       return {
         ...source,

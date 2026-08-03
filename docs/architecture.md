@@ -16,6 +16,7 @@ The brand brain is the shared source of truth. Production jobs consume versioned
 ## Core principles
 
 - **Persist knowledge, snapshot execution.** The brand brain evolves; each job retains the exact entity versions and policy it used.
+- **Update from an approved baseline.** New evidence creates a candidate change against the active Brand Brain; it never resets or silently replaces the version production is using.
 - **Separate classification from authority.** Domains say what an entity is. Governance role and lifecycle say how production may trust it.
 - **Compile policy before each stage.** A workflow stage resolves brand rules and configured creative-control primitives into explicit locks, permissions, conditions, prohibitions, tools, and evaluation priorities.
 - **Prefer deterministic operations.** Compose and validate exact material directly. Reserve model-based judgment for qualities that genuinely require judgment.
@@ -62,7 +63,9 @@ An integration may remain the system of record for source files. Brand World Sys
 
 Accepts documents, files, links, interviews, and structured imports. It creates an evidence manifest, captures source context and rights, computes file integrity metadata, and hands normalized evidence to world-building.
 
-It must not convert ingestion into approval. The intake path declares whether a source is an already-approved library or unreviewed evidence.
+It must not convert ingestion into approval. Each routine intake record carries one file, page, or written source plus its concrete material type, intended use, applicable guidance area, and exclusions. Collections are represented as separate records or one deliberately composed grid, not as an unstructured folder whose contents silently share one instruction.
+
+Declared material type is a claim to verify, not trusted authority. File compatibility is checked before extraction, and synthesis compares the declaration with actual contents. A mismatch becomes a review question rather than silently turning a business deck into cultural inspiration or a reference image into an exact protected asset.
 
 ### 2. Normalization and inference
 
@@ -123,6 +126,8 @@ Wrap model APIs, generation services, image tools, composition engines, and expo
 The first renderer adapter targets OpenAI's Images API. Prompt-only production calls `/v1/images/generations`. Jobs with canonical or creative reference images call `/v1/images/edits`. In both paths, the adapter sends the compiler's exact prompt string without rewriting, expanding, or re-summarizing it. The model and API parameters are pinned in installation runtime configuration, not embedded in the generation package or exposed in the production job. The Responses API is excluded from the production path because the Riggg implementation showed that automatic prompt rewriting diluted carefully tuned style anchors and prompt fragments.
 
 Brand Brain synthesis is a separate judgment capability. The intake layer extracts document text and normalizes public pages before calling Chat Completions with structured output. Image sources can accompany that synthesis as evidence. This path creates brand knowledge; it never renders production imagery or receives the compiler's production prompt.
+
+After an approved Brand Brain exists, synthesis operates incrementally. The server retrieves the stored approved result, sends only the new source records with that pinned baseline, and asks for the smallest supported candidate update. Unaffected fields are copied exactly, earlier resolved questions do not reopen, conflicts and declaration mismatches become new review questions, and a field-level comparison identifies affected guidance. The approved baseline remains active until the candidate is reviewed and approved. A broad new source may legitimately affect every section, but that is an explicit candidate change rather than an implicit reset.
 
 Deterministic composition and drift detection are Brand World System tool capabilities, not responsibilities delegated to the renderer. The system generates flexible context through OpenAI, composes exact protected assets through deterministic tooling, and evaluates integrity before judgment-based quality. No initial workflow depends on another renderer adapter.
 
