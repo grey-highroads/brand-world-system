@@ -1,10 +1,9 @@
 const deliverables = [
   {
-    id: "product-lifestyle",
-    name: "Product lifestyle image",
-    description: "Create a one-off image around an approved product.",
-    contract: "Exact product in a generated scene. Image-only output.",
-    active: "Yuzu Ginger in progress · 1 active",
+    id: "brand-world-image",
+    name: "Brand world image",
+    description: "Create a brand-grounded image from an approved Brand Brain.",
+    contract: "One finished image. The approved brand guidance shapes every open choice.",
     available: true,
   },
   {
@@ -45,61 +44,6 @@ const placementFormats = {
   "LinkedIn feed": ["1:1 square", "1.91:1 landscape"],
   "Website feature": ["16:9 landscape", "4:3 landscape"],
 };
-
-const referenceLibrary = [
-  {
-    id: "afternoon-reset",
-    name: "Afternoon reset",
-    detail: "Warm window light and an unhurried domestic moment",
-    sourceType: "Approved library image",
-    provenance: "SLAKE brand library · asset 172",
-    role: "Lighting + mood",
-    influence: "Strong",
-    usageInstruction: "Use the warm side light and everyday emotional register; ignore the subject’s clothing.",
-    confidence: "High",
-    evidence: ["low window light from camera left", "unhurried domestic gesture"],
-    thumb: "light",
-  },
-  {
-    id: "lifestyle-composition",
-    name: "Lifestyle composition",
-    detail: "Product-forward framing with human context",
-    sourceType: "Approved library image",
-    provenance: "SLAKE brand library · asset 208",
-    role: "Composition",
-    influence: "Supporting",
-    usageInstruction: "Borrow the product-to-person scale and negative space; do not copy the setting.",
-    confidence: "High",
-    evidence: ["product remains readable at a human scale", "negative space above and right"],
-    thumb: "composition",
-  },
-  {
-    id: "surface-study",
-    name: "Surface and material study",
-    detail: "Pale stone, tactile linen, and honest domestic wear",
-    sourceType: "Uploaded image",
-    provenance: "Added to this job · surface-study.jpg",
-    role: "Materials",
-    influence: "Supporting",
-    usageInstruction: "Use only the stone, linen, and softly worn material behavior.",
-    confidence: "High",
-    evidence: ["pale honed stone", "natural linen with visible weave"],
-    thumb: "light",
-  },
-  {
-    id: "social-rhythm-grid",
-    name: "Everyday social rhythm",
-    detail: "A grid of small, candid reset moments across the day",
-    sourceType: "Image grid",
-    provenance: "SLAKE reference board · grid 04",
-    role: "Style calibration",
-    influence: "Light",
-    usageInstruction: "Use the candid pacing as calibration; do not reproduce a grid or any individual tile.",
-    confidence: "Medium",
-    evidence: ["alternating close and medium distance", "consistent warm-neutral palette"],
-    thumb: "grid",
-  },
-];
 
 let brainBatch = {
   id: "slake-foundational-library-001",
@@ -735,14 +679,20 @@ const state = {
   brandDescription: "Adaptogen sparkling water",
   selectedDeliverable: deliverables[0],
   brief: {
-    scene:
-      "Lifestyle image for Yuzu Ginger. Warm interior, late-afternoon light, the 4pm reset moment. One person, unhurried, mid-task.",
-    exclusions: "Glossy wellness styling, ingredient piles, medical cues, or added copy.",
+    scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
+    exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
     placement: "Instagram feed",
     format: "4:5 portrait",
   },
-  references: referenceLibrary.slice(0, 2).map((item) => ({ ...item })),
+  references: [],
   sourcePickerOpen: false,
+  production: {
+    status: "idle",
+    package: null,
+    job: null,
+    error: "",
+    recovered: false,
+  },
   brain: {
     stage: "empty",
     sources: [],
@@ -766,6 +716,7 @@ const state = {
     synthesisKind: "sample",
     synthesisModel: "",
     synthesisResponseId: "",
+    synthesisRequestId: "",
     savedAt: "",
     selectedExceptionId: brainExceptions[0].id,
     cleanApproved: false,
@@ -816,9 +767,9 @@ function currentCrumb() {
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
   if (state.screen === "chooser") return "Production";
-  if (state.screen === "brief") return "Production / Product lifestyle image";
-  if (state.screen === "preflight") return "Production / Product lifestyle image / Preflight";
-  return "Production / Product lifestyle image / Result";
+  if (state.screen === "brief") return "Production / Brand world image";
+  if (state.screen === "preflight") return "Production / Brand world image / Preflight";
+  return "Production / Brand world image / Result";
 }
 
 function shell(content) {
@@ -827,7 +778,7 @@ function shell(content) {
     ? state.brain.processingComplete
       ? brainExceptions.filter((item) => !state.brain.resolutions[item.id]).length
       : 0
-    : 3;
+    : 0;
   return `
     <div class="app-shell">
       <aside class="sidebar">
@@ -1835,8 +1786,9 @@ function renderChooser() {
     <section class="workspace">
       ${pageHeader(
         "Choose a deliverable",
-        "Choose from SLAKE’s configured production workflows. Brand rules and output structure travel with the work.",
+        `Choose a production workflow for ${state.brandName}. The approved Brand Brain travels with the work.`,
       )}
+      ${state.production.job?.status === "complete" ? `<section class="production-resume"><span><strong>Your latest image is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated image")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
       <div class="grid deliverable-grid">${cards}</div>
     </section>
   `);
@@ -2189,15 +2141,55 @@ function renderCanonPromotion() {
   );
 }
 
+function approvedBrainForProduction() {
+  return state.brain.approvedResult || (state.brain.artifactStatus === "ready" ? currentSynthesisResult : null);
+}
+
+function productionReferenceLibrary() {
+  if (state.brain.synthesisKind === "sample") return [];
+  return state.brain.sources
+    .filter((source) => !["exact-asset", "approved-guidance"].includes(source.authority))
+    .map((source) => {
+      const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
+      if (!file) return null;
+      return {
+        id: source.id,
+        name: source.name,
+        detail: source.detail || source.declaredType || "Visual source",
+        sourceType: source.declaredType || sourceMaterialType(source)?.shortLabel || "Visual source",
+        provenance: file.name,
+        role: source.role === "Creative direction" ? "Style calibration" : "Lighting + mood",
+        influence: source.influence === "Not weighted" ? "Supporting" : source.influence || "Supporting",
+        usageInstruction: source.usage || "Use only as visual inspiration where it supports the approved Brand Brain.",
+        confidence: "User supplied",
+        evidence: [],
+        thumb: source.materialType === "image-grid" ? "grid" : "light",
+      };
+    })
+    .filter(Boolean);
+}
+
+function syncProductionReferences() {
+  const available = new Map(productionReferenceLibrary().map((item) => [item.id, item]));
+  state.references = state.references
+    .filter((item) => available.has(item.id))
+    .map((item) => ({ ...available.get(item.id), ...item }));
+}
+
 function renderBrief() {
   const formats = placementFormats[state.brief.placement];
   const referenceRows = state.references.map(referenceEditor).join("");
+  const approved = approvedBrainForProduction();
+  const rules = approved?.guidanceSections?.find((section) => section.id === "rules");
+  const identity = approved?.guidanceSections?.find((section) => section.id === "identity");
 
   return shell(`
     <section class="workspace">
       ${pageHeader(
-        "New product lifestyle image",
-        "SLAKE keeps the approved pack, logo, and claims exact. Describe the scene you need.",
+        "New brand world image",
+        approved
+          ? `Describe the image you need. ${state.brandName} Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} will shape the result.`
+          : "Describe the image you need after approving a Brand Brain.",
       )}
 
       <div class="content-grid">
@@ -2215,7 +2207,7 @@ function renderBrief() {
             <div class="field full">
               <label for="exclusions">Anything to avoid?</label>
               <input class="input-like" id="exclusions" data-action="exclusions-input" value="${escapeHtml(state.brief.exclusions)}">
-              <span class="field-note">Job-specific exclusions are compiled into the package as constraints, not creative references.</span>
+              <span class="field-note">These are added to the approved brand boundaries for this image only.</span>
             </div>
             <div class="field">
               <label for="placement">Placement</label>
@@ -2237,7 +2229,7 @@ function renderBrief() {
             <div class="reference-heading">
               <div>
                 <span class="section-label">Creative inputs (optional)</span>
-                <p>Add a source only when you can name what it should influence. Brand rules and exact assets are never weighted here.</p>
+                <p>Add an uploaded visual source only when you can name what it should influence. Approved guidance still takes priority.</p>
               </div>
               <button class="button ghost" type="button" data-action="toggle-source-picker">${state.sourcePickerOpen ? "Close" : "+ Add source"}</button>
             </div>
@@ -2251,19 +2243,19 @@ function renderBrief() {
         <aside>
           <section class="card">
             <div class="card-header">
-              <h2>What stays exact</h2>
-              <span class="status-pill">Locked</span>
+              <h2>Guidance applied</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
             </div>
             <ul class="exact-list">
-              <li><strong>SLAKE Yuzu Ginger can</strong><span>Composed in, not redrawn</span></li>
-              <li><strong>Wordmark and logo</strong><span>Reproduced exactly</span></li>
-              <li><strong>Approved claims only</strong><span>No generated or inferred claims</span></li>
+              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((section) => section.id === "foundation")?.summary || "Approve the Brand Brain to use this guidance")}</span></li>
+              <li><strong>Identity direction</strong><span>${escapeHtml(identity?.summary || "No approved identity direction is active")}</span></li>
+              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((section) => section.id === "creative")?.summary || "No approved creative direction is active")}</span></li>
             </ul>
             <div class="rule-card">
-              <span class="section-label">Rule in play</span>
+              <span class="section-label">Boundaries in play</span>
               <div class="rule">
-                <span class="mini-pill">Prohibited</span>
-                <span><strong>No health or cognitive claims</strong><span>All public copy and imagery, every channel</span></span>
+                <span class="mini-pill">Applied</span>
+                <span><strong>${escapeHtml(rules?.principles?.[0] || "Approved Brand Brain required")}</strong><span>${escapeHtml(rules?.summary || "Production remains unavailable until the Brand Brain is approved.")}</span></span>
               </div>
             </div>
           </section>
@@ -2272,7 +2264,7 @@ function renderBrief() {
 
       <div class="actions">
         <button class="button" type="button" data-action="save-draft">Save draft</button>
-        <button class="button primary" type="button" data-action="continue-preflight">Continue to Preflight ›</button>
+        <button class="button primary" type="button" data-action="continue-preflight" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
       </div>
     </section>
   `);
@@ -2285,7 +2277,7 @@ function referenceEditor(item, index) {
       <span class="reference-copy">
         <strong>${escapeHtml(item.name)}</strong>
         <span>${escapeHtml(item.detail)}</span>
-        <span class="reference-meta"><span class="mini-pill">${escapeHtml(item.sourceType)}</span><span>${escapeHtml(item.confidence)}-confidence read</span></span>
+        <span class="reference-meta"><span class="mini-pill">${escapeHtml(item.sourceType)}</span><span>${item.confidence === "User supplied" ? "Uploaded source" : `${escapeHtml(item.confidence)}-confidence read`}</span></span>
       </span>
       <button class="icon-button" type="button" data-action="remove-reference" data-index="${index}" aria-label="Remove ${escapeHtml(item.name)}">×</button>
       <span class="reference-controls">
@@ -2314,14 +2306,14 @@ function referenceEditor(item, index) {
 
 function renderSourcePicker() {
   if (!state.sourcePickerOpen) return "";
-  const available = referenceLibrary.filter(
+  const available = productionReferenceLibrary().filter(
     (item) => !state.references.some((reference) => reference.id === item.id),
   );
   return `
     <section class="source-picker">
       <div class="source-picker-heading">
-        <span><strong>Choose another source</strong><span>Uploads, URLs, named references, and grids will use this same input contract.</span></span>
-        <span class="mini-pill">Prototype library</span>
+        <span><strong>Choose another source</strong><span>Select a visual source you already added to the Brand Brain.</span></span>
+        <span class="mini-pill">Your sources</span>
       </div>
       <div class="source-options">
         ${available.length
@@ -2336,7 +2328,7 @@ function renderSourcePicker() {
                 `,
               )
               .join("")
-          : '<p class="page-description">All prototype sources are already attached.</p>'}
+          : '<p class="page-description">No other uploaded PNG, JPG, or WEBP creative sources are available.</p>'}
       </div>
     </section>
   `;
@@ -2346,60 +2338,25 @@ function option(value, selected) {
   return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`;
 }
 
-function compiledComponents() {
-  return [
-    "World / 4pm Reset Ritual",
-    "Visual grammar / Warm Domestic Naturalism",
-    "Photography / Late-Afternoon Window Light",
-    "Product / Yuzu Ginger Can v3",
-    "Policy / Claims Guardrails",
-    `Output / ${state.brief.placement} ${state.brief.format}`,
-  ];
-}
-
-function promptSections() {
-  const referenceDirection = state.references.length
-    ? `${state.references
-        .map(
-          (item) =>
-            `${item.name}. ${item.influence.toLowerCase()} influence for ${item.role.toLowerCase()}: ${item.usageInstruction} The source read identified ${item.evidence.join(" and ")}.`,
-        )
-        .join(" ")} These inputs may not alter the exact product, approved claims, or Brand Brain rules.`
-    : "No creative reference images are attached; resolve flexible choices from the approved brand-world guidance.";
-
-  return [
-    {
-      title: "Subject fidelity",
-      body: "Place the approved SLAKE Yuzu Ginger can exactly as supplied. Preserve silhouette, geometry, orange-red field, cream label, wordmark, flavor name, and approved claims; never redraw the pack.",
-    },
-    {
-      title: "Brand world",
-      body: `${state.brief.scene} Interpret this as SLAKE’s “4pm Reset”: restorative and everyday, never medicinal, aspirational, or spa-like.`,
-    },
-    {
-      title: "Visual grammar",
-      body: "Use warm editorial naturalism. Lead with oat and cream, muted sage, and sun-washed terracotta. Favor tactile linen, unglazed ceramic, pale stone, and honest domestic wear; avoid glossy wellness styling.",
-    },
-    {
-      title: "Light and composition",
-      body: `Use low window light from camera left, soft long shadows, and a gentle rim on the can. Compose one ${state.brief.format} image for ${state.brief.placement}; keep the can in the lower-middle third, the person secondary, and negative space above and right.`,
-    },
-    {
-      title: "Reference handling",
-      body: referenceDirection,
-    },
-    {
-      title: "Content control",
-      body: `Generate one image. Add no copy, health symbols, ingredients, extra products, altered claims, or redesigned packaging. Also avoid: ${state.brief.exclusions}`,
-    },
-  ];
-}
-
 function renderPreflight() {
-  const sources = compiledComponents()
+  const generationPackage = state.production.package;
+  if (!generationPackage) {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader("Preparing preflight", state.production.error || "Building the exact prompt from your approved Brand Brain.")}
+        <section class="card production-wait-card">
+          <div class="production-spinner" aria-hidden="true"></div>
+          <h2>${state.production.status === "error" ? "Preflight needs another try" : "Building your production package"}</h2>
+          <p>${escapeHtml(state.production.error || "This should only take a moment. No image is being generated yet.")}</p>
+          ${state.production.status === "error" ? '<button class="button primary" type="button" data-action="continue-preflight">Try again</button>' : ""}
+        </section>
+      </section>
+    `);
+  }
+  const sources = generationPackage.compiledComponents
     .map((source) => `<span class="source-chip">${escapeHtml(source)}</span>`)
     .join("");
-  const prompt = promptSections()
+  const prompt = generationPackage.sections
     .map(
       (section) => `<p><strong>${escapeHtml(section.title.toUpperCase())}</strong>: ${escapeHtml(section.body)}</p>`,
     )
@@ -2407,7 +2364,7 @@ function renderPreflight() {
 
   return shell(`
     <section class="workspace">
-      ${pageHeader("Preflight", "Review the compiled generation package before generating.")}
+      ${pageHeader("Preflight", "Review the exact prompt and inputs before OpenAI generates the image.")}
 
       <div class="preflight-grid">
         <div>
@@ -2430,9 +2387,9 @@ function renderPreflight() {
           <section class="card">
             <div class="card-header"><h2>Production contract</h2></div>
             <ul class="contract-list">
-              <li><strong>Exact:</strong> product, package artwork, logo, and approved claims</li>
-              <li><strong>Flexible:</strong> scene, lighting, casting, and composition</li>
-              <li><strong>Excluded:</strong> added claims and text layers</li>
+              <li><strong>Grounded in:</strong> ${escapeHtml(generationPackage.policy.groundedIn)}</li>
+              <li><strong>Flexible:</strong> ${escapeHtml(generationPackage.policy.flexible.join(", "))}</li>
+              <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
             </ul>
           </section>
         </div>
@@ -2441,25 +2398,25 @@ function renderPreflight() {
           <section class="card">
             <div class="card-header">
               <h2>Generation inputs</h2>
-              <span class="mini-pill">${state.references.length + 1} inputs</span>
+              <span class="mini-pill">${state.references.length ? `${state.references.length} source ${state.references.length === 1 ? "image" : "images"}` : "Brain only"}</span>
             </div>
             <div class="input-list">
               <article class="input-row">
-                <span class="thumb product" aria-hidden="true"><span class="can"></span></span>
-                <span><strong>Approved Yuzu Ginger can</strong><span>Selected product · exact source</span></span>
+                <span class="thumb product" aria-hidden="true"></span>
+                <span><strong>${escapeHtml(state.brandName)} Brand Brain v${generationPackage.brainVersion}</strong><span>Approved guidance · applied to the full prompt</span></span>
               </article>
               ${state.references.map(referenceInput).join("")}
             </div>
             <div class="resolution-section">
               <span class="section-label">How inputs resolved</span>
-              <div class="resolution-list">${state.references.map(referenceResolution).join("")}</div>
+              <div class="resolution-list">${state.references.length ? state.references.map(referenceResolution).join("") : '<p class="page-description">No additional visual sources are attached.</p>'}</div>
             </div>
           </section>
 
           <section class="card ready-card">
-            <div class="card-header"><h2>Ready to generate</h2><span class="mini-pill">Verified</span></div>
-            <p>The prompt, inputs, output contract, and governing policy snapshot are complete.</p>
-            <button class="button secondary" type="button" data-action="generate">Generate</button>
+            <div class="card-header"><h2>Ready to generate</h2><span class="mini-pill">Ready</span></div>
+            <p>The exact prompt, approved Brand Brain version, creative sources, and output format are saved in this package.</p>
+            <button class="button secondary" type="button" data-action="generate">Generate with OpenAI</button>
           </section>
         </aside>
       </div>
@@ -2485,47 +2442,51 @@ function referenceResolution(item) {
     <article class="resolution-row">
       <span class="resolution-topline"><strong>${escapeHtml(item.name)}</strong><span class="included-status">Included</span></span>
       <p>${escapeHtml(item.usageInstruction)}</p>
-      <span class="evidence-chips">${item.evidence.map((piece) => `<span>${escapeHtml(piece)}</span>`).join("")}</span>
-      <span class="resolution-note">Compatible with policy · ${escapeHtml(item.confidence.toLowerCase())} reader confidence</span>
+      ${item.evidence?.length ? `<span class="evidence-chips">${item.evidence.map((piece) => `<span>${escapeHtml(piece)}</span>`).join("")}</span>` : ""}
+      <span class="resolution-note">Included as ${escapeHtml(item.influence.toLowerCase())} influence for ${escapeHtml(item.role.toLowerCase())}</span>
     </article>
   `;
 }
 
 function renderResult() {
+  const job = state.production.job;
+  const working = state.production.status === "generating" || job?.status === "working";
+  const failed = state.production.status === "error" || job?.status === "error";
+  const complete = job?.status === "complete" && job.imageUrl;
+  const generationMethod = job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
   return shell(`
     <section class="workspace">
-      ${pageHeader("Generated result", "A static prototype result for reviewing the next workflow state.")}
+      ${pageHeader(complete ? "Generated result" : working ? "Generating your image" : "Generation needs attention", complete ? `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}.` : working ? "OpenAI is creating the image from the reviewed package." : "Your package is still saved and ready to try again.")}
 
       <div class="result-grid">
         <section class="card">
           <div class="card-header">
-            <h2>SLAKE Yuzu Ginger · 4pm Reset</h2>
-            <span class="mini-pill">Generated</span>
+            <h2>${escapeHtml(state.brandName)} brand world image</h2>
+            <span class="mini-pill">${complete ? "Generated" : working ? "Working" : "Not generated"}</span>
           </div>
-          <div class="mock-output" role="img" aria-label="Stylized placeholder of a SLAKE can in a warm afternoon kitchen scene">
-            <span class="figure"></span>
-            <span class="hero-can"></span>
-            <span class="result-caption"><strong>${escapeHtml(state.brief.format)}</strong><span>Mock result · no model invoked</span></span>
-          </div>
+          ${complete
+            ? `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+            : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`}
         </section>
 
         <aside>
           <section class="card">
-            <div class="card-header"><h2>Evaluation</h2><span class="mini-pill">4 passed</span></div>
-            <ul class="check-list">
-              <li>Package silhouette and artwork remain exact</li>
-              <li>No unapproved copy or health claim introduced</li>
-              <li>Output matches ${escapeHtml(state.brief.placement)} ${escapeHtml(state.brief.format)}</li>
-              <li>Scene follows the 4pm Reset visual-world guidance</li>
+            <div class="card-header"><h2>Review before use</h2><span class="mini-pill">Human check</span></div>
+            <ul class="review-list">
+              <li>Does the scene feel specific to ${escapeHtml(state.brandName)}?</li>
+              <li>Does it follow the approved creative direction and boundaries?</li>
+              <li>Does the composition work for ${escapeHtml(state.brief.placement)} ${escapeHtml(state.brief.format)}?</li>
+              <li>Is there any accidental text, logo, or visual claim to reject?</li>
             </ul>
           </section>
 
-          <section class="card">
+          <section class="card" ${complete ? "" : "hidden"}>
             <div class="card-header"><h2>What next?</h2></div>
-            <p class="page-description">Stage review, revision, approval, and memory write-back remain outside today’s prototype.</p>
+            <p class="page-description">The image and exact production package are stored together. Approval and write-back will come in a later workflow.</p>
             <div class="actions">
               <button class="button" type="button" data-action="back-to-preflight">View package</button>
-              <button class="button primary" type="button" data-action="start-new">Start new</button>
+              <button class="button" type="button" data-action="download-result">Download image</button>
+              <button class="button primary" type="button" data-action="start-new">Start another</button>
             </div>
           </section>
         </aside>
@@ -2574,6 +2535,7 @@ async function persistBrainState() {
     approvedResult: state.brain.approvedResult,
     model: state.brain.synthesisModel,
     responseId: state.brain.synthesisResponseId,
+    synthesisRequestId: state.brain.synthesisRequestId,
     brain: {
       stage: state.brain.stage,
       processingComplete: state.brain.processingComplete,
@@ -2684,8 +2646,10 @@ async function hydrateStoredBrain() {
       baselineVersion: saved.baselineVersion || saved.brain?.approvedVersion || saved.brain?.candidateBaseVersion,
     });
     state.brain.synthesisKind = "openai";
+    syncProductionReferences();
     state.brain.synthesisModel = saved.model || "";
     state.brain.synthesisResponseId = saved.responseId || "";
+    state.brain.synthesisRequestId = saved.synthesisRequestId || "";
     state.brain.savedAt = saved.savedAt || "";
     if (saved.brain) {
       state.brain.stage = saved.brain.stage || state.brain.stage;
@@ -2729,6 +2693,7 @@ function loadSampleSources() {
   state.brain.synthesisKind = "sample";
   state.brain.synthesisModel = "";
   state.brain.synthesisResponseId = "";
+  state.brain.synthesisRequestId = "";
   state.brain.selectedExceptionId = brainExceptions[0]?.id ?? "";
   state.brain.cleanApproved = false;
   state.brain.resolutions = {};
@@ -2771,6 +2736,22 @@ function simulateBrainSynthesis() {
   }, 1250);
 }
 
+async function recoverBrainSynthesis(requestId) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      const response = await fetch("/api/brand-brain", { headers: { Accept: "application/json" } });
+      if (response.ok) {
+        const { saved } = await readApiJson(response);
+        if (saved?.synthesisRequestId === requestId && saved.result) return saved;
+      }
+    } catch {
+      // A later check can still find the saved result after the connection returns.
+    }
+    await wait(1500);
+  }
+  return null;
+}
+
 async function startBrainSynthesis() {
   if (!state.brain.sources.length) return;
   if (state.brain.stage === "processing" && !state.brain.processingComplete) {
@@ -2809,6 +2790,8 @@ async function startBrainSynthesis() {
   }
 
   state.brain.synthesisKind = "openai";
+  const requestId = newRequestId("synthesis");
+  state.brain.synthesisRequestId = requestId;
   const progressTimer = window.setInterval(() => {
     if (state.brain.processingStep < synthesisSteps.length - 1) state.brain.processingStep += 1;
     if (state.screen === "brain-processing") render();
@@ -2822,6 +2805,7 @@ async function startBrainSynthesis() {
         sources: requestSources,
         mode: incremental ? "incremental" : "initial",
         baselineVersion: incremental ? state.brain.approvedVersion : undefined,
+        requestId,
       }),
     });
     const body = await readApiJson(response);
@@ -2832,6 +2816,7 @@ async function startBrainSynthesis() {
     });
     state.brain.synthesisModel = body.model || "OpenAI";
     state.brain.synthesisResponseId = body.responseId || "";
+    state.brain.synthesisRequestId = body.synthesisRequestId || requestId;
     state.brain.savedAt = body.savedAt || "";
     recordBrainHistory(
       incremental ? `Update to Brand Brain v${state.brain.approvedVersion} prepared` : "Brand Brain synthesis prepared for review",
@@ -2841,8 +2826,26 @@ async function startBrainSynthesis() {
       "complete",
     );
   } catch (error) {
-    state.brain.processingError = error.message || "The Brand Brain could not be built.";
-    state.brain.stage = "intake";
+    const recovered = await recoverBrainSynthesis(requestId);
+    if (recovered) {
+      applySynthesisResult(recovered.result, {
+        baseline: recovered.approvedResult || baseline,
+        baselineVersion: recovered.baselineVersion || state.brain.approvedVersion,
+      });
+      state.brain.synthesisModel = recovered.model || "OpenAI";
+      state.brain.synthesisResponseId = recovered.responseId || "";
+      state.brain.synthesisRequestId = recovered.synthesisRequestId || requestId;
+      state.brain.savedAt = recovered.savedAt || "";
+      recordBrainHistory(
+        incremental ? `Update to Brand Brain v${state.brain.approvedVersion} recovered` : "Brand Brain synthesis recovered",
+        "The browser connection dropped after the work was saved. The completed draft was restored automatically.",
+        "complete",
+      );
+      setToast("The completed Brand Brain draft was recovered after the connection dropped");
+    } else {
+      state.brain.processingError = `${error.message || "The Brand Brain response was lost."} Your sources are still saved. Try again when the connection is stable.`;
+      state.brain.stage = "intake";
+    }
   } finally {
     window.clearInterval(progressTimer);
     if (state.screen.startsWith("brain")) render();
@@ -2858,10 +2861,133 @@ function setToast(message) {
   }, 1800);
 }
 
+function newRequestId(prefix) {
+  const random = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${random}`;
+}
+
+function wait(milliseconds) {
+  return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
+function productionRequest(jobId) {
+  return {
+    jobId,
+    brief: { ...state.brief },
+    references: state.references.map((item) => ({
+      id: item.id,
+      role: item.role,
+      influence: item.influence,
+      usageInstruction: item.usageInstruction,
+    })),
+  };
+}
+
+async function prepareProductionPreflight() {
+  if (!approvedBrainForProduction()) {
+    setToast("Approve the Brand Brain before starting production");
+    return;
+  }
+  state.production.status = "preflighting";
+  state.production.error = "";
+  state.production.package = null;
+  navigate("preflight");
+  if (typeof fetch !== "function") return;
+  try {
+    const response = await fetch("/api/production/preflight", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(productionRequest()),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The production package could not be prepared.");
+    state.production.package = body.generationPackage;
+    state.production.status = "ready";
+  } catch (error) {
+    state.production.status = "error";
+    state.production.error = error.message || "The production package could not be prepared.";
+  }
+  render();
+}
+
+function applyProductionJob(job, recovered = false) {
+  if (!job) return false;
+  state.production.job = job;
+  state.production.package = job.generationPackage || state.production.package;
+  state.production.status = job.status === "complete" ? "complete" : job.status === "error" ? "error" : "generating";
+  state.production.error = job.error || "";
+  state.production.recovered = recovered;
+  if (recovered && job.status === "complete") setToast("The completed image was recovered after the connection dropped");
+  return true;
+}
+
+async function fetchCurrentProductionJob() {
+  const response = await fetch("/api/production/current", { headers: { Accept: "application/json" } });
+  if (!response.ok) return null;
+  return (await readApiJson(response)).job || null;
+}
+
+async function recoverProductionJob(jobId) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    try {
+      const job = await fetchCurrentProductionJob();
+      if (job?.jobId === jobId && ["complete", "error"].includes(job.status)) return job;
+    } catch {
+      // The next check can still recover a job that completed while the connection was unavailable.
+    }
+    await wait(1500);
+  }
+  return null;
+}
+
+async function startProductionGeneration() {
+  if (!state.production.package) {
+    await prepareProductionPreflight();
+    if (!state.production.package) return;
+  }
+  const jobId = newRequestId("render");
+  state.production.status = "generating";
+  state.production.error = "";
+  state.production.recovered = false;
+  state.production.job = {
+    jobId,
+    status: "working",
+    model: "gpt-image-2",
+    generationPackage: state.production.package,
+  };
+  navigate("result");
+  try {
+    const response = await fetch("/api/production/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(productionRequest(jobId)),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The image could not be generated.");
+    applyProductionJob(body.job);
+  } catch (error) {
+    const recovered = await recoverProductionJob(jobId);
+    if (recovered) applyProductionJob(recovered, true);
+    else {
+      state.production.status = "error";
+      state.production.error = `${error.message || "The image response was lost."} The reviewed package is still saved, so you can try again without rebuilding the Brand Brain.`;
+    }
+  }
+  render();
+}
+
+async function hydrateProductionJob() {
+  if (typeof fetch !== "function") return;
+  try {
+    const job = await fetchCurrentProductionJob();
+    if (job) applyProductionJob(job, true);
+  } catch {
+    // Production remains available even when no earlier job can be restored.
+  }
+}
+
 function plainPrompt() {
-  return promptSections()
-    .map((section) => `${section.title.toUpperCase()}\n${section.body}`)
-    .join("\n\n");
+  return state.production.package?.prompt || "";
 }
 
 async function copyPrompt() {
@@ -2882,55 +3008,38 @@ async function copyPrompt() {
 }
 
 function downloadPackage() {
-  const generationPackage = {
-    version: "prototype-2",
-    installation_id: "slake-higher-roads-demo",
-    deliverable: state.selectedDeliverable.id,
-    output: { ...state.brief, quantity: 1 },
-    compiled_components: compiledComponents(),
-    prompt: plainPrompt(),
-    generation_inputs: [
-      {
-        id: "slake-yuzu-ginger-can-v3",
-        source_type: "approved_asset",
-        source_ref: "SLAKE product library · Yuzu Ginger Can v3",
-        authority_class: "canonical_asset",
-        role: "exact_subject",
-        handling: "exact",
-      },
-      ...state.references.map((item) => ({
-        id: item.id,
-        source_type: item.sourceType,
-        provenance: item.provenance,
-        authority_class: "creative_evidence",
-        handling: "flexible",
-        role: item.role,
-        influence: item.influence,
-        usage_instruction: item.usageInstruction,
-        reader: "prototype-image-reader-v1",
-        confidence: item.confidence,
-        extracted_evidence: item.evidence,
-        resolution: "included",
-      })),
-    ],
-    request_constraints: {
-      requirements: [state.brief.scene],
-      exclusions: [state.brief.exclusions],
-    },
-    policy: {
-      exact: ["product", "package_artwork", "logo", "approved_claims"],
-      flexible: ["scene", "lighting", "casting", "composition"],
-      excluded: ["added_claims", "text_layers"],
-    },
-  };
+  const generationPackage = state.production.package;
+  if (!generationPackage) return;
   const file = new Blob([JSON.stringify(generationPackage, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(file);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = "slake-product-lifestyle-generation-package.json";
+  anchor.download = `${state.brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-brand-world-generation-package.json`;
   anchor.click();
   URL.revokeObjectURL(url);
   setToast("Generation package downloaded");
+}
+
+async function downloadGeneratedImage() {
+  const imageUrl = state.production.job?.imageUrl;
+  if (!imageUrl) return;
+  try {
+    const response = await fetch(imageUrl);
+    if (!response.ok) throw new Error("The saved image link expired.");
+    const file = await response.blob();
+    const url = URL.createObjectURL(file);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `${state.brandName.toLowerCase().replace(/[^a-z0-9]+/g, "-")}-brand-world.png`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  } catch {
+    const refreshed = await fetchCurrentProductionJob();
+    if (refreshed?.imageUrl) {
+      applyProductionJob(refreshed);
+      window.open?.(refreshed.imageUrl, "_blank", "noopener");
+    } else setToast("The saved image could not be downloaded yet");
+  }
 }
 
 function readFileAsDataUrl(file) {
@@ -3082,6 +3191,7 @@ root.addEventListener("click", (event) => {
   const action = target.dataset.action;
 
   if (action === "chooser") navigate("chooser");
+  if (action === "view-latest-result") navigate("result");
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
   if (action === "begin-brain-onboarding") {
@@ -3229,6 +3339,7 @@ root.addEventListener("click", (event) => {
   if (action === "finish-brain-review" && state.brain.cleanApproved && brainResolvedCount() === brainExceptions.length) {
     if (state.brain.revisionPending) state.brain.artifactVersion += 1;
     state.brain.revisionPending = false;
+    syncProductionReferences();
     state.brain.pendingSourceIds = [];
     state.brain.artifactStatus = "draft";
     state.brain.stage = "draft";
@@ -3247,6 +3358,7 @@ root.addEventListener("click", (event) => {
     state.brain.affectedGuidanceIds = [];
     state.brain.candidateBaseVersion = 0;
     state.brain.revisionPending = false;
+    syncProductionReferences();
     recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved`, "This exact stored version is now available to future production work.", "complete");
     void persistBrainState();
     setToast(`Brand Brain v${state.brain.artifactVersion} is ready for production`);
@@ -3350,11 +3462,18 @@ root.addEventListener("click", (event) => {
     navigate("brief");
   }
   if (action === "save-draft") setToast("Draft saved in this prototype session");
-  if (action === "continue-preflight") navigate("preflight");
+  if (action === "continue-preflight") void prepareProductionPreflight();
   if (action === "back-to-brief") navigate("brief");
   if (action === "back-to-preflight") navigate("preflight");
-  if (action === "generate") navigate("result");
-  if (action === "start-new") navigate("chooser");
+  if (action === "generate" || action === "retry-generate") void startProductionGeneration();
+  if (action === "download-result") void downloadGeneratedImage();
+  if (action === "start-new") {
+    state.production.status = "idle";
+    state.production.package = null;
+    state.production.error = "";
+    state.production.recovered = false;
+    navigate("chooser");
+  }
   if (action === "copy-prompt") copyPrompt();
   if (action === "download-package") downloadPackage();
   if (action === "toggle-source-picker") {
@@ -3362,7 +3481,7 @@ root.addEventListener("click", (event) => {
     render();
   }
   if (action === "attach-source") {
-    const next = referenceLibrary.find((item) => item.id === target.dataset.id);
+    const next = productionReferenceLibrary().find((item) => item.id === target.dataset.id);
     if (next && !state.references.some((reference) => reference.id === next.id)) {
       state.references.push({ ...next });
       state.sourcePickerOpen = false;
@@ -3377,3 +3496,4 @@ root.addEventListener("click", (event) => {
 
 render();
 void hydrateStoredBrain();
+void hydrateProductionJob();

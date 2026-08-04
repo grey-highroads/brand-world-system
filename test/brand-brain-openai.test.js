@@ -172,6 +172,7 @@ test("the shared Brand Brain service writes the same durable result used by loca
   const result = await synthesizeBrandBrain(
     {
       mode: "initial",
+      requestId: "synthesis-recovery-test",
       sources: [
         {
           id: "approved-note",
@@ -194,6 +195,7 @@ test("the shared Brand Brain service writes the same durable result used by loca
   assert.equal(result.result.brandName, "Fallow");
   assert.equal(stored.responseId, "chatcmpl-test");
   assert.equal(stored.sources[0].id, "approved-note");
+  assert.equal(stored.synthesisRequestId, "synthesis-recovery-test");
 });
 
 test("protected unsupported files remain exact metadata and source size limits are enforced", async () => {

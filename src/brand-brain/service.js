@@ -72,6 +72,7 @@ export async function synthesizeBrandBrain(body, options) {
   });
   const saved = {
     kind: incremental ? "incremental-synthesis" : "synthesis",
+    synthesisRequestId: typeof body.requestId === "string" ? body.requestId.slice(0, 120) : null,
     sources: persistedSources(sources),
     result: synthesis.result,
     approvedResult: baseline,

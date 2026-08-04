@@ -1231,6 +1231,89 @@ select {
   align-items: start;
 }
 
+.production-resume {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  margin-bottom: 18px;
+  background: rgb(104 198 155 / 0.08);
+  border: 1px solid rgb(104 198 155 / 0.3);
+  border-radius: var(--radius-md);
+  box-shadow: inset 3px 0 0 var(--success);
+}
+
+.production-resume > span {
+  display: grid;
+  gap: 3px;
+}
+
+.production-resume strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.production-resume small {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.production-wait-card,
+.generation-state {
+  display: grid;
+  min-height: 420px;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.production-wait-card p,
+.generation-state p {
+  max-width: 540px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.generation-state.error .production-spinner {
+  animation: none;
+  border-color: rgb(235 111 87 / 0.25);
+  border-top-color: var(--coral);
+}
+
+.production-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid rgb(142 132 211 / 0.22);
+  border-top-color: var(--lavender);
+  border-radius: 50%;
+  animation: production-spin 0.9s linear infinite;
+}
+
+@keyframes production-spin {
+  to { transform: rotate(360deg); }
+}
+
+.generated-output {
+  position: relative;
+  min-height: 480px;
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  background: var(--ink-950);
+  border-radius: 4px;
+}
+
+.generated-output img {
+  display: block;
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+  background: var(--ink-950);
+}
+
 .mock-output {
   position: relative;
   min-height: 610px;
@@ -1360,6 +1443,32 @@ select {
   border-radius: 50%;
   font-size: 11px;
   font-weight: 900;
+}
+
+.review-list {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.review-list li {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 11px 12px;
+  background: #27313e;
+  border: 1px solid var(--paper-200);
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.review-list li::before {
+  color: var(--lavender);
+  content: "•";
+  font-size: 18px;
+  line-height: 0.8;
 }
 
 .brain-workspace {

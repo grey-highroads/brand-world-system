@@ -6,6 +6,8 @@ import { fileURLToPath } from "node:url";
 import { synthesizeWithChatCompletions } from "../src/brand-brain/chat-completions-provider.js";
 import { saveBrandBrainSnapshot, synthesizeBrandBrain } from "../src/brand-brain/service.js";
 import { createFileBrandBrainStore } from "../src/brand-brain/store.js";
+import { generateProductionImage, prepareProductionPackage, readProductionJob } from "../src/production/service.js";
+import { createFileProductionStore } from "../src/production/store.js";
 
 export { mergeIncrementalSources, selectApprovedBaseline } from "../src/brand-brain/service.js";
 export { assertSafeRemoteUrl, readRemotePage } from "../src/brand-brain/source-reader.js";
@@ -14,6 +16,7 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "
 const builtAppRoot = path.join(projectRoot, "dist");
 const appRoot = existsSync(builtAppRoot) ? builtAppRoot : path.join(projectRoot, "app");
 const defaultStorePath = path.join(projectRoot, ".data", "brand-brain.json");
+const defaultProductionRoot = path.join(projectRoot, ".data", "production");
 
 const mimeTypes = {
   ".css": "text/css; charset=utf-8",
@@ -99,8 +102,10 @@ async function serveStatic(request, response) {
 export function createBrandWorldServer(options = {}) {
   const storePath = options.storePath || process.env.BRAND_BRAIN_STORE_PATH || defaultStorePath;
   const store = options.store || createFileBrandBrainStore(storePath);
+  const productionStore = options.productionStore || createFileProductionStore(options.productionRoot || defaultProductionRoot);
   const fetchImpl = options.fetchImpl || fetch;
   const synthesize = options.synthesize || synthesizeWithChatCompletions;
+  const renderImage = options.renderImage;
   const envPromise = options.env ? Promise.resolve(options.env) : readLocalEnv();
 
   return http.createServer(async (request, response) => {
@@ -121,6 +126,44 @@ export function createBrandWorldServer(options = {}) {
         const env = { ...process.env, ...(await envPromise) };
         const saved = await synthesizeBrandBrain(body, { store, fetchImpl, synthesize, env });
         sendJson(response, 200, saved);
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/production/preflight") {
+        const body = await readJson(request, 1024 * 1024);
+        const { generationPackage } = await prepareProductionPackage(body, { brainStore: store });
+        sendJson(response, 200, { generationPackage });
+        return;
+      }
+      if (request.method === "POST" && url.pathname === "/api/production/generate") {
+        const body = await readJson(request, 1024 * 1024);
+        const env = { ...process.env, ...(await envPromise) };
+        const job = await generateProductionImage(body, {
+          brainStore: store,
+          productionStore,
+          env,
+          fetchImpl,
+          render: renderImage,
+        });
+        if (job?.status === "complete") job.imageUrl = `/api/production/image?jobId=${encodeURIComponent(job.jobId)}`;
+        sendJson(response, 200, { job });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/production/current") {
+        const job = await readProductionJob({ productionStore });
+        if (job?.status === "complete") job.imageUrl = `/api/production/image?jobId=${encodeURIComponent(job.jobId)}`;
+        sendJson(response, 200, { job });
+        return;
+      }
+      if (request.method === "GET" && url.pathname === "/api/production/image") {
+        const job = await productionStore.read();
+        if (!job?.imagePathname || job.jobId !== url.searchParams.get("jobId")) {
+          response.writeHead(404);
+          response.end("Not found");
+          return;
+        }
+        const bytes = await productionStore.readImage(job.imagePathname);
+        response.writeHead(200, { "Content-Type": job.imageContentType || "image/png", "Cache-Control": "private, no-store" });
+        response.end(bytes);
         return;
       }
       await serveStatic(request, response);
