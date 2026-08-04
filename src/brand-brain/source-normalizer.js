@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 const execFileAsync = promisify(execFile);
 export const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024;
 const visionMimeTypes = new Set(["image/gif", "image/jpeg", "image/png", "image/webp"]);
-const directTextExtensions = new Set([".csv", ".html", ".json", ".md", ".rtf", ".text", ".txt", ".xml"]);
+const directTextExtensions = new Set([".csv", ".htm", ".html", ".json", ".md", ".rtf", ".text", ".txt", ".xml"]);
 const directTextMimeTypes = new Set([
   "application/json",
   "application/rtf",

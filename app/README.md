@@ -17,7 +17,7 @@ Open `http://localhost:4173`.
 - Brand Brain empty state and guided onboarding entry
 - Persistent Brand Brain navigation across Overview, Sources, Needs review, Brand guidance, and History
 - Type-first source intake for one local file, URL, or written source at a time, using concrete choices such as protected asset, approved guidance, past work or research, image, image grid, cultural reference, and business context
-- A required usage instruction for every source, conditional influence, optional exclusions, file compatibility checks, a 20 MB per-file limit, and a 40 MB synthesis-batch limit
+- A required usage instruction for every source, conditional influence, optional exclusions, file compatibility checks, a 20 MB per-file limit, and a 40 MB synthesis-batch limit. Approved guidance accepts supported documents, structured text files, and PNG, JPG, or WebP page images; SVG and native design files require conversion when they need interpretation.
 - Local document normalization, Chat Completions synthesis with image evidence, public-page reading for URL sources, and full pasted-text intake
 - Per-source guidance area, semantic influence where appropriate, usage instructions, and explicit exclusions
 - Visible OpenAI synthesis progress from reading sources through preparation of review questions, six guidance sections, and three full artifacts

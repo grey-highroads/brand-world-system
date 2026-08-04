@@ -180,6 +180,12 @@ const sampleSourceGroups = [
 
 const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_SYNTHESIS_FILE_BYTES = 40 * 1024 * 1024;
+const supportedRasterExtensions = ["png", "jpg", "jpeg", "webp"];
+const readableDocumentExtensions = ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "csv", "html", "htm", "json", "xml"];
+
+function acceptedExtensions(extensions) {
+  return extensions.map((extension) => `.${extension}`).join(",");
+}
 
 const sourceMaterialTypes = [
   {
@@ -199,12 +205,13 @@ const sourceMaterialTypes = [
     label: "Approved brand guidance",
     shortLabel: "Approved guidance",
     description: "A signed-off brand book, guideline, strategy, messaging decision, or other direction that should govern its area.",
-    examples: "PDF, DOCX, PPTX, TXT, MD, RTF",
+    examples: "PDF, DOCX, PPTX, text files, PNG, JPG, WEBP, and more",
+    formatAdvice: "For a multi-page brand book, PDF works best. PNG, JPG, and WebP work for a single page or image-only guide. Convert SVG, HEIC, TIFF, Keynote, and native design files first.",
     authority: "approved-guidance",
     handling: "Follow when relevant",
     forms: ["files", "url", "text"],
-    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf",
-    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf"],
+    accept: acceptedExtensions([...readableDocumentExtensions, ...supportedRasterExtensions]),
+    extensions: [...readableDocumentExtensions, ...supportedRasterExtensions],
   },
   {
     id: "past-work-research",
@@ -1244,6 +1251,7 @@ function sourceComposer() {
               <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : material ? "Choose one file" : "Choose a material type first"}</strong>
               <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : material ? `${escapeHtml(material.examples)} · 20 MB maximum` : "Folders and multi-file batches are not accepted in this step."}</span>
               </label>
+              ${material?.formatAdvice ? `<small class="source-content-note">${escapeHtml(material.formatAdvice)}</small>` : ""}
               ${
                 material
                   ? `<div class="source-verification-note"><span aria-hidden="true">!</span><p>The system will compare the file with <strong>${escapeHtml(material.label)}</strong>. If the contents do not line up, it will ask you to review the mismatch instead of silently trusting the label.</p></div>`

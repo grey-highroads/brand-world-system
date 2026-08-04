@@ -107,6 +107,12 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Choose one file/);
   assert.match(session.appRoot.innerHTML, /20 MB maximum/);
 
+  session.click("select-source-material-type", { id: "approved-guidance" });
+  assert.match(session.appRoot.innerHTML, /PNG, JPG, WEBP, and more/);
+  assert.match(session.appRoot.innerHTML, /For a multi-page brand book, PDF works best/);
+  assert.match(session.appRoot.innerHTML, /accept="[^"]*\.png[^"]*\.webp"/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /accept="[^"]*\.svg/);
+
   session.click("toggle-source-details", { id: "approved-brand-assets" });
   assert.match(session.appRoot.innerHTML, /Use these files exactly as supplied/);
   assert.match(session.appRoot.innerHTML, /What should we leave out/);

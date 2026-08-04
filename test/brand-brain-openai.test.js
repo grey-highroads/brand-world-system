@@ -116,6 +116,22 @@ test("plain-text uploads are normalized before they reach synthesis", async () =
   assert.equal(source.extractedFiles[0].kind, "text");
 });
 
+test("approved guidance can use a supported raster image as visual evidence", async () => {
+  const data = `data:image/png;base64,${Buffer.from("brand-book-page").toString("base64")}`;
+  const [source] = await normalizeSourcesForSynthesis([
+    {
+      id: "approved-brand-book-page",
+      materialType: "approved-guidance",
+      authority: "approved-guidance",
+      files: [{ name: "brand-book-page.png", type: "image/png", size: 15, data }],
+    },
+  ]);
+
+  assert.equal(source.files.length, 1);
+  assert.equal(source.files[0].kind, "image");
+  assert.equal(source.files[0].type, "image/png");
+});
+
 test("protected unsupported files remain exact metadata and source size limits are enforced", async () => {
   const svg = `data:image/svg+xml;base64,${Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0h10v10z"/></svg>').toString("base64")}`;
   const [source] = await normalizeSourcesForSynthesis([
