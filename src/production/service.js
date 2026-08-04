@@ -59,12 +59,55 @@ function resolveReferences(stored, requested = []) {
   });
 }
 
+/**
+ * Resolve a locked asset from stored sources. The user selects which
+ * exact-asset source to lock for this job by ID. The source must have
+ * authority "exact-asset" and contain a raster file stored in Blob.
+ *
+ * Returns null when no locked asset is requested (world-only image).
+ */
+function resolveLockedAsset(stored, lockedAssetId) {
+  if (!lockedAssetId) return null;
+  const sourceById = new Map((stored?.sources || []).map((source) => [source.id, source]));
+  const source = sourceById.get(lockedAssetId);
+  if (!source) {
+    const error = new Error("The selected protected asset was not found.");
+    error.status = 400;
+    throw error;
+  }
+  if (source.authority !== "exact-asset") {
+    const error = new Error("Only a protected brand asset can be locked for production.");
+    error.status = 400;
+    throw error;
+  }
+  const file = (source.files || []).find((candidate) => rasterTypes.has(String(candidate.type || "").toLowerCase()) && candidate.blobPathname);
+  if (!file) {
+    const error = new Error(`${source.name || "The selected asset"} does not contain a usable PNG, JPG, or WEBP image. Upload a raster version of the asset.`);
+    error.status = 400;
+    throw error;
+  }
+  return {
+    source,
+    file,
+    name: source.name || "Protected asset",
+    assetType: source.declaredType || source.detail || "packaging",
+    fileName: file.name,
+  };
+}
+
 export async function prepareProductionPackage(body, options) {
   const stored = await options.brainStore.read();
   const { approvedBrain, brainVersion } = approvedContext(stored);
   const references = resolveReferences(stored, body.references || []);
-  const generationPackage = compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief: body.brief, references });
-  return { generationPackage, references, stored };
+  const lockedAsset = resolveLockedAsset(stored, body.lockedAssetId);
+  const generationPackage = compileBrandWorldImagePackage({
+    approvedBrain,
+    brainVersion,
+    brief: body.brief,
+    references,
+    lockedAsset,
+  });
+  return { generationPackage, references, lockedAsset, stored };
 }
 
 function publicJob(job, imageUrl) {
@@ -90,24 +133,35 @@ export async function generateProductionImage(body, options) {
   const current = await options.productionStore.read();
   if (current?.jobId === jobId && current.status === "complete") return readProductionJob(options);
 
-  const { generationPackage, references } = await prepareProductionPackage(body, options);
+  const { generationPackage, references, lockedAsset } = await prepareProductionPackage(body, options);
+
+  // The locked asset is always the first reference image so the renderer
+  // treats it as the primary identity source. Creative references follow.
+  const allReferenceEntries = [];
+  if (lockedAsset) {
+    allReferenceEntries.push({ file: lockedAsset.file, name: lockedAsset.fileName, isLockedAsset: true });
+  }
+  for (const ref of references) {
+    allReferenceEntries.push({ file: ref.file, name: ref.file.name, isLockedAsset: false });
+  }
+
   const working = {
     jobId,
     status: "working",
     createdAt: new Date().toISOString(),
     model: OPENAI_IMAGE_MODEL,
-    endpoint: chooseOpenAIImageEndpoint(references),
+    endpoint: chooseOpenAIImageEndpoint(allReferenceEntries),
     generationPackage,
   };
   await options.productionStore.write(working);
 
   try {
     const referenceImages = await Promise.all(
-      references.map(async (reference) => {
-        const storedFile = await options.brainStore.readSourceFile(reference.file.blobPathname);
+      allReferenceEntries.map(async (entry) => {
+        const storedFile = await options.brainStore.readSourceFile(entry.file.blobPathname);
         return {
-          name: reference.file.name,
-          type: storedFile.mimeType || reference.file.type,
+          name: entry.name,
+          type: storedFile.mimeType || entry.file.type,
           bytes: storedFile.bytes,
         };
       }),
@@ -146,4 +200,3 @@ export async function generateProductionImage(body, options) {
     throw error;
   }
 }
-
