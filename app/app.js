@@ -685,6 +685,7 @@ const state = {
     format: "4:5 portrait",
   },
   references: [],
+  lockedAssetId: "",
   sourcePickerOpen: false,
   production: {
     status: "idle",
@@ -2176,6 +2177,47 @@ function syncProductionReferences() {
     .map((item) => ({ ...available.get(item.id), ...item }));
 }
 
+function productionLockedAssets() {
+  if (state.brain.synthesisKind === "sample") return [];
+  return state.brain.sources
+    .filter((source) => source.authority === "exact-asset")
+    .map((source) => {
+      const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
+      if (!file) return null;
+      return { id: source.id, name: source.name, detail: source.detail || source.declaredType || "Protected asset", fileName: file.name };
+    })
+    .filter(Boolean);
+}
+
+function renderLockedAssetPicker() {
+  const assets = productionLockedAssets();
+  if (!assets.length) return "";
+  const selected = assets.find((item) => item.id === state.lockedAssetId);
+  return `
+    <div class="reference-section">
+      <div class="reference-heading">
+        <div>
+          <span class="section-label">Protected asset</span>
+          <p>Include an uploaded protected asset to preserve it exactly in the generated image.</p>
+        </div>
+      </div>
+      <div class="reference-list">
+        ${assets.map((item) => {
+          const active = item.id === state.lockedAssetId;
+          return `
+            <article class="source-option" style="border-color: ${active ? "var(--coral)" : "var(--paper-200)"}; ${active ? "box-shadow: inset 3px 0 0 var(--coral);" : ""}">
+              <span class="source-kind-icon">P</span>
+              <span><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.detail)} · ${escapeHtml(item.fileName)}</span></span>
+              <button class="button ghost" type="button" data-action="toggle-locked-asset" data-id="${escapeHtml(item.id)}" style="font-size: 11px; min-height: 34px;">${active ? "Remove" : "Include"}</button>
+            </article>
+          `;
+        }).join("")}
+        ${selected ? '<p class="field-note" style="margin-top: 6px;">This asset will be preserved exactly. The prompt will include format-specific protection rules.</p>' : ""}
+      </div>
+    </div>
+  `;
+}
+
 function renderBrief() {
   const formats = placementFormats[state.brief.placement];
   const referenceRows = state.references.map(referenceEditor).join("");
@@ -2238,6 +2280,8 @@ function renderBrief() {
               ${referenceRows || '<p class="page-description">No creative inputs added. Brand guidance still applies.</p>'}
             </div>
           </div>
+
+          ${renderLockedAssetPicker()}
         </section>
 
         <aside>
@@ -2388,9 +2432,23 @@ function renderPreflight() {
             <div class="card-header"><h2>Production contract</h2></div>
             <ul class="contract-list">
               <li><strong>Grounded in:</strong> ${escapeHtml(generationPackage.policy.groundedIn)}</li>
+              ${generationPackage.lockedAsset ? `<li><strong>Protected asset:</strong> ${escapeHtml(generationPackage.lockedAsset.name)} (${escapeHtml(generationPackage.lockedAsset.format)})</li>` : ""}
+              ${generationPackage.aestheticMode ? `<li><strong>Visual register:</strong> ${escapeHtml(generationPackage.aestheticMode.name)}</li>` : ""}
               <li><strong>Flexible:</strong> ${escapeHtml(generationPackage.policy.flexible.join(", "))}</li>
               <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
             </ul>
+            ${generationPackage.stateNeutralizations?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the protected asset sealed</strong><span>${escapeHtml(generationPackage.stateNeutralizations.join(", "))} changed to match the supplied asset state.</span></span></div></div>` : ""}
+            ${generationPackage.constraintAudit?.length ? `
+              <div class="rule-card">
+                <span class="section-label">Brand boundaries checked</span>
+                ${generationPackage.constraintAudit.map((entry) => `
+                  <div class="rule">
+                    <span class="mini-pill" style="${entry.status === "carried" ? "color: #a9e6ca; background: rgb(104 198 155 / 0.1); border-color: rgb(104 198 155 / 0.3);" : ""}">${entry.status === "carried" ? "Carried" : "Review"}</span>
+                    <span><strong>${escapeHtml(entry.rule)}</strong><span>${escapeHtml(entry.source)}</span></span>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ""}
           </section>
         </div>
 
@@ -2398,13 +2456,19 @@ function renderPreflight() {
           <section class="card">
             <div class="card-header">
               <h2>Generation inputs</h2>
-              <span class="mini-pill">${state.references.length ? `${state.references.length} source ${state.references.length === 1 ? "image" : "images"}` : "Brain only"}</span>
+              <span class="mini-pill">${generationPackage.lockedAsset ? "Protected asset" : state.references.length ? `${state.references.length} source ${state.references.length === 1 ? "image" : "images"}` : "Brain only"}</span>
             </div>
             <div class="input-list">
               <article class="input-row">
                 <span class="thumb product" aria-hidden="true"></span>
                 <span><strong>${escapeHtml(state.brandName)} Brand Brain v${generationPackage.brainVersion}</strong><span>Approved guidance · applied to the full prompt</span></span>
               </article>
+              ${generationPackage.lockedAsset ? `
+                <article class="input-row" style="border-color: rgb(230 132 90 / 0.42); box-shadow: inset 3px 0 0 var(--coral);">
+                  <span class="thumb product" aria-hidden="true"></span>
+                  <span><strong>${escapeHtml(generationPackage.lockedAsset.name)}</strong><span>Protected ${escapeHtml(generationPackage.lockedAsset.format)} · stays exact · sent as reference image</span></span>
+                </article>
+              ` : ""}
               ${state.references.map(referenceInput).join("")}
             </div>
             <div class="resolution-section">
@@ -2874,6 +2938,7 @@ function productionRequest(jobId) {
   return {
     jobId,
     brief: { ...state.brief },
+    lockedAssetId: state.lockedAssetId || undefined,
     references: state.references.map((item) => ({
       id: item.id,
       role: item.role,
@@ -3490,6 +3555,10 @@ root.addEventListener("click", (event) => {
   }
   if (action === "remove-reference") {
     state.references.splice(Number(target.dataset.index), 1);
+    render();
+  }
+  if (action === "toggle-locked-asset") {
+    state.lockedAssetId = state.lockedAssetId === target.dataset.id ? "" : target.dataset.id;
     render();
   }
 });

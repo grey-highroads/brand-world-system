@@ -93,6 +93,12 @@ These omissions keep the artifact honest. The prototype tests the production int
 
 The absent renderer call is planned work rather than an external dependency. The first production adapter will target OpenAI, followed by Brand World System-owned deterministic composition and drift checks for protected assets. See [`../decisions/0008-use-openai-as-the-initial-renderer.md`](../decisions/0008-use-openai-as-the-initial-renderer.md).
 
+## Two compilers
+
+The browser application uses `src/production/package.js`, the `brand-world-image-v2` compiler. This is the live production path for the current output type: a single brand-world image compiled from an approved Brand Brain, optional creative references, and an optional locked asset. It includes a craft layer ported from the Product World Preview render-prompt-writer (v13): aesthetic mode selection, a format-aware protection block, an integration sentence, state-lock neutralization, and a constraint audit.
+
+The schema-governed compiler in `src/compiler.js` remains the reference implementation for the full policy model, multi-stage workflows, and the Riggg falsifiability control that proves policy changes behavior predictably. The two converge when production supports multiple output types and stage-level policy configuration. Until then, the image compiler is the real product and the schema compiler is the specification proof.
+
 ## Running locally
 
 From the repository root:
