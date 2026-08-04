@@ -16,7 +16,7 @@ Brand World System is configured to run as one Vercel project while keeping the 
 
 1. In Vercel, choose **Add New → Project** and import `grey-highroads/brand-world-system` from GitHub.
 2. Leave the project root at the repository root. The committed `vercel.json` supplies the framework, build command, output directory, and function duration.
-3. Open the project’s **Storage** tab, create a **Blob** store, choose **Private**, and connect it to this project. Vercel adds `BLOB_READ_WRITE_TOKEN` automatically.
+3. Open the project’s **Storage** tab, create a **Blob** store, choose **Private**, and connect it to this project. New connections use Vercel's automatic OIDC authentication. Older connections may instead add `BLOB_READ_WRITE_TOKEN`.
 4. Open **Settings → Environment Variables** and add:
    - `OPENAI_API_KEY`: the OpenAI project key for this installation
    - `OPENAI_MODEL`: `gpt-5.6` (optional because this is already the application default)
@@ -60,7 +60,7 @@ The file is ignored by Git.
 ## Failure guide
 
 - **“This Brand World installation still needs its access password configured.”** Add `BRAND_WORLD_ACCESS_PASSWORD` and redeploy.
-- **“Private Vercel storage is not connected.”** Create or reconnect the private Blob store so `BLOB_READ_WRITE_TOKEN` is available.
+- **Blob authentication or upload error.** Confirm the private Blob store is connected to this project, then redeploy. New connections use automatic OIDC authentication and do not need a manually created `BLOB_READ_WRITE_TOKEN`; older connections may still use that variable.
 - **Upload fails before synthesis.** Confirm the Blob store is private and connected to the same Vercel project and environment.
 - **Synthesis reports that OpenAI is not configured.** Add `OPENAI_API_KEY` to that deployment environment and redeploy.
 - **A document has no readable text.** Save an older DOC or PPT as DOCX, PPTX, or PDF. For a scanned or image-only PDF, upload readable page images or an exported text PDF.

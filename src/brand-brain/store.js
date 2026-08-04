@@ -26,10 +26,10 @@ export function createFileBrandBrainStore(storePath) {
 
 export function createVercelBlobBrandBrainStore(options = {}) {
   const token = options.token || process.env.BLOB_READ_WRITE_TOKEN;
-  if (!token) throw new Error("Private Vercel storage is not connected to this deployment.");
+  const credentials = token ? { token } : {};
   return {
     async read() {
-      const result = await get(statePathname, { access: "private", token, useCache: false });
+      const result = await get(statePathname, { access: "private", ...credentials, useCache: false });
       if (!result) return null;
       if (result.statusCode !== 200 || !result.stream) throw new Error("The stored Brand Brain could not be read.");
       return JSON.parse(await new Response(result.stream).text());
@@ -37,7 +37,7 @@ export function createVercelBlobBrandBrainStore(options = {}) {
     async write(value) {
       await put(statePathname, JSON.stringify(value), {
         access: "private",
-        token,
+        ...credentials,
         allowOverwrite: true,
         addRandomSuffix: false,
         contentType: "application/json",
@@ -48,7 +48,7 @@ export function createVercelBlobBrandBrainStore(options = {}) {
       if (!pathname || !String(pathname).startsWith("brand-world-system/sources/")) {
         throw new Error("The stored source file reference is invalid.");
       }
-      const result = await get(pathname, { access: "private", token, useCache: false });
+      const result = await get(pathname, { access: "private", ...credentials, useCache: false });
       if (!result || result.statusCode !== 200 || !result.stream) throw new Error("One of the stored source files could not be read.");
       return {
         bytes: Buffer.from(await new Response(result.stream).arrayBuffer()),

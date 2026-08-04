@@ -24,21 +24,17 @@ export default async function handler(request, response) {
     return;
   }
   try {
-    if (!process.env.BLOB_READ_WRITE_TOKEN) {
-      const error = new Error("Private Vercel storage is not connected to this deployment.");
-      error.status = 503;
-      throw error;
-    }
     const body = await readJsonBody(request, 1024 * 1024);
     if (body.type === "blob.generate-client-token" && !hasBrandWorldAccess(request)) {
       response.setHeader("WWW-Authenticate", 'Basic realm="Brand World System", charset="UTF-8"');
       sendJson(response, 401, { error: "Enter the Brand World installation password to upload a source." });
       return;
     }
+    const token = process.env.BLOB_READ_WRITE_TOKEN;
     const result = await handleUpload({
       request,
       body,
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      ...(token ? { token } : {}),
       onBeforeGenerateToken: async (pathname) => {
         if (!String(pathname).startsWith("brand-world-system/sources/")) throw new Error("The upload path is invalid.");
         return {
