@@ -7,6 +7,7 @@ Brand World System is configured to run as one Vercel project while keeping the 
 - The browser application is built with Vite and served from `dist/`.
 - Brand Brain read, save, and synthesis routes run as Vercel Functions.
 - Source files upload directly from the browser into a private Vercel Blob store. They do not pass through the 4.5 MB Vercel Function request limit.
+- Each browser upload uses a short-lived URL limited to that file and the 20 MB application cap. New Vercel projects authorize these URLs with OIDC, while older projects may use `BLOB_READ_WRITE_TOKEN`.
 - The latest Brand Brain is stored in the same private Blob store and read without CDN caching.
 - OpenAI is called only from the server. `OPENAI_API_KEY` is never included in the browser build.
 - One shared installation password protects the hosted workspace. This is an access gate, not a user, role, or permissions system.

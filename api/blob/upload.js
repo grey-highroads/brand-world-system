@@ -1,6 +1,7 @@
-import { handleUpload } from "@vercel/blob/client";
+import { issueSignedToken, presignUrl } from "@vercel/blob";
 import { hasBrandWorldAccess, readJsonBody, sendJson, sendPublicError } from "../../src/server/http.js";
 
+const maximumSizeInBytes = 20 * 1024 * 1024;
 const allowedContentTypes = [
   "application/json",
   "application/octet-stream",
@@ -17,6 +18,10 @@ const allowedContentTypes = [
   "text/*",
 ];
 
+function isAllowedContentType(contentType) {
+  return allowedContentTypes.some((allowed) => allowed === contentType || (allowed.endsWith("/*") && contentType.startsWith(allowed.slice(0, -1))));
+}
+
 export default async function handler(request, response) {
   if (request.method !== "POST") {
     response.setHeader("Allow", "POST");
@@ -24,30 +29,41 @@ export default async function handler(request, response) {
     return;
   }
   try {
-    const body = await readJsonBody(request, 1024 * 1024);
-    if (body.type === "blob.generate-client-token" && !hasBrandWorldAccess(request)) {
+    if (!hasBrandWorldAccess(request)) {
       response.setHeader("WWW-Authenticate", 'Basic realm="Brand World System", charset="UTF-8"');
       sendJson(response, 401, { error: "Enter the Brand World installation password to upload a source." });
       return;
     }
+    const body = await readJsonBody(request, 1024 * 1024);
+    const pathname = String(body.pathname || "");
+    const contentType = String(body.contentType || "application/octet-stream").toLowerCase();
+    const size = Number(body.size);
+    if (!pathname.startsWith("brand-world-system/sources/")) throw new Error("The upload path is invalid.");
+    if (!Number.isFinite(size) || size <= 0 || size > maximumSizeInBytes) throw new Error("Choose one source file no larger than 20 MB.");
+    if (!isAllowedContentType(contentType)) throw new Error("That file format is not supported for this source.");
+
     const token = process.env.BLOB_READ_WRITE_TOKEN;
-    const result = await handleUpload({
-      request,
-      body,
-      ...(token ? { token } : {}),
-      onBeforeGenerateToken: async (pathname) => {
-        if (!String(pathname).startsWith("brand-world-system/sources/")) throw new Error("The upload path is invalid.");
-        return {
-          allowedContentTypes,
-          maximumSizeInBytes: 20 * 1024 * 1024,
-          addRandomSuffix: true,
-          allowOverwrite: false,
-          validUntil: Date.now() + 10 * 60 * 1000,
-        };
-      },
-      onUploadCompleted: async () => {},
+    const credentials = token ? { token } : {};
+    const validUntil = Date.now() + 10 * 60 * 1000;
+    const signedToken = await issueSignedToken({
+      ...credentials,
+      pathname,
+      operations: ["put"],
+      validUntil,
+      allowedContentTypes: [contentType],
+      maximumSizeInBytes,
     });
-    sendJson(response, 200, result);
+    const result = await presignUrl(signedToken, {
+      access: "private",
+      operation: "put",
+      pathname,
+      validUntil,
+      allowedContentTypes: [contentType],
+      maximumSizeInBytes,
+      allowOverwrite: false,
+      addRandomSuffix: false,
+    });
+    sendJson(response, 200, { pathname, presignedUrl: result.presignedUrl });
   } catch (error) {
     sendPublicError(response, error);
   }

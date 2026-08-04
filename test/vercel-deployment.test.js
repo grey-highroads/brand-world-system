@@ -28,10 +28,14 @@ test("the hosted installation uses one shared access password without roles", ()
 test("the browser build includes direct private source uploads", () => {
   const index = fs.readFileSync(path.join(rootPath, "app", "index.html"), "utf8");
   const uploadClient = fs.readFileSync(path.join(rootPath, "app", "upload-client.js"), "utf8");
+  const uploadApi = fs.readFileSync(path.join(rootPath, "api", "blob", "upload.js"), "utf8");
   assert.match(index, /upload-client\.js/);
-  assert.match(uploadClient, /access: "private"/);
-  assert.match(uploadClient, /multipart: file\.size/);
+  assert.match(uploadClient, /credentials: "same-origin"/);
+  assert.match(uploadClient, /presignedUrl/);
   assert.match(uploadClient, /blobPathname/);
+  assert.match(uploadApi, /issueSignedToken/);
+  assert.match(uploadApi, /access: "private"/);
+  assert.match(uploadApi, /maximumSizeInBytes/);
 });
 
 test("Blob access supports Vercel OIDC without requiring a long-lived token", () => {
@@ -39,6 +43,6 @@ test("Blob access supports Vercel OIDC without requiring a long-lived token", ()
   const blobStore = fs.readFileSync(path.join(rootPath, "src", "brand-brain", "store.js"), "utf8");
   assert.doesNotMatch(uploadApi, /if \(!process\.env\.BLOB_READ_WRITE_TOKEN\)/);
   assert.doesNotMatch(blobStore, /if \(!token\)/);
-  assert.match(uploadApi, /\.\.\.\(token \? \{ token \} : \{\}\)/);
+  assert.match(uploadApi, /const credentials = token \? \{ token \} : \{\}/);
   assert.match(blobStore, /const credentials = token \? \{ token \} : \{\}/);
 });

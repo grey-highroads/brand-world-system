@@ -1,5 +1,3 @@
-import { upload } from "@vercel/blob/client";
-
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -14,19 +12,45 @@ function safeFilename(filename) {
   return cleaned || "source-file";
 }
 
+function uniquePathname(filename) {
+  const uniqueId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return `brand-world-system/sources/${uniqueId}-${safeFilename(filename)}`;
+}
+
+async function readPublicError(response, fallback) {
+  try {
+    const body = await response.json();
+    return body?.error || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 window.storeBrandWorldSourceFile = async function storeBrandWorldSourceFile(file) {
   if (["localhost", "127.0.0.1"].includes(window.location.hostname)) return readAsDataUrl(file);
-  const pathname = `brand-world-system/sources/${safeFilename(file.name)}`;
-  const blob = await upload(pathname, file, {
-    access: "private",
-    handleUploadUrl: "/api/blob/upload",
-    contentType: file.type || "application/octet-stream",
-    multipart: file.size > 5 * 1024 * 1024,
+  const pathname = uniquePathname(file.name);
+  const contentType = file.type || "application/octet-stream";
+  const authorization = await fetch("/api/blob/upload", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ pathname, contentType, size: file.size }),
   });
+  if (!authorization.ok) throw new Error(await readPublicError(authorization, "The source upload could not be authorized."));
+  const { presignedUrl } = await authorization.json();
+  if (!presignedUrl) throw new Error("The source upload could not be authorized.");
+
+  const uploadResponse = await fetch(presignedUrl, {
+    method: "PUT",
+    headers: { "content-type": contentType },
+    body: file,
+  });
+  if (!uploadResponse.ok) throw new Error(await readPublicError(uploadResponse, "The source file could not be uploaded."));
+  const blob = await uploadResponse.json();
   return {
     name: file.name,
     type: blob.contentType || file.type || "application/octet-stream",
     size: file.size,
-    blobPathname: blob.pathname,
+    blobPathname: blob.pathname || pathname,
   };
 };
