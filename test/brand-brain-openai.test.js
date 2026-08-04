@@ -6,6 +6,7 @@ import {
   extractChatCompletionText,
 } from "../src/brand-brain/chat-completions-provider.js";
 import { MAX_SOURCE_FILE_BYTES, normalizeSourcesForSynthesis, normalizeUploadedFile } from "../src/brand-brain/source-normalizer.js";
+import { synthesizeBrandBrain } from "../src/brand-brain/service.js";
 import {
   OPENAI_IMAGE_EDITS_ENDPOINT,
   OPENAI_IMAGE_GENERATIONS_ENDPOINT,
@@ -130,6 +131,69 @@ test("approved guidance can use a supported raster image as visual evidence", as
   assert.equal(source.files.length, 1);
   assert.equal(source.files[0].kind, "image");
   assert.equal(source.files[0].type, "image/png");
+});
+
+test("hosted source files are read from private storage before synthesis", async () => {
+  const text = "Approved positioning from durable private storage.";
+  const file = await normalizeUploadedFile(
+    { name: "guidance.txt", type: "text/plain", size: Buffer.byteLength(text), blobPathname: "brand-world-system/sources/guidance.txt" },
+    { authority: "approved-guidance" },
+    {
+      async readStoredFile(pathname) {
+        assert.equal(pathname, "brand-world-system/sources/guidance.txt");
+        return { bytes: Buffer.from(text), mimeType: "text/plain", size: Buffer.byteLength(text) };
+      },
+    },
+  );
+  assert.equal(file.kind, "text");
+  assert.match(file.text, /durable private storage/);
+});
+
+test("portable document parsing does not depend on macOS metadata tools", async () => {
+  const bytes = Buffer.from("{\\rtf1\\ansi Approved brand direction.}");
+  const file = await normalizeUploadedFile(
+    { name: "guidance.rtf", type: "application/rtf", size: bytes.length, data: `data:application/rtf;base64,${bytes.toString("base64")}` },
+    { authority: "approved-guidance" },
+  );
+  assert.equal(file.kind, "text");
+  assert.match(file.text, /Approved brand direction/);
+});
+
+test("the shared Brand Brain service writes the same durable result used by local and hosted APIs", async () => {
+  let stored = null;
+  const store = {
+    async read() {
+      return stored;
+    },
+    async write(value) {
+      stored = value;
+    },
+  };
+  const result = await synthesizeBrandBrain(
+    {
+      mode: "initial",
+      sources: [
+        {
+          id: "approved-note",
+          name: "Approved note",
+          authority: "approved-guidance",
+          content: "Make ordinary moments feel considered.",
+          files: [],
+        },
+      ],
+    },
+    {
+      store,
+      env: { OPENAI_API_KEY: "test-only" },
+      async synthesize({ sources }) {
+        assert.match(sources[0].content, /ordinary moments/);
+        return { result: { brandName: "Fallow" }, responseId: "chatcmpl-test", model: "gpt-5.6", usage: null };
+      },
+    },
+  );
+  assert.equal(result.result.brandName, "Fallow");
+  assert.equal(stored.responseId, "chatcmpl-test");
+  assert.equal(stored.sources[0].id, "approved-note");
 });
 
 test("protected unsupported files remain exact metadata and source size limits are enforced", async () => {

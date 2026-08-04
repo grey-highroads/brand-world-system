@@ -181,7 +181,7 @@ const sampleSourceGroups = [
 const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024;
 const MAX_SYNTHESIS_FILE_BYTES = 40 * 1024 * 1024;
 const supportedRasterExtensions = ["png", "jpg", "jpeg", "webp"];
-const readableDocumentExtensions = ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "csv", "html", "htm", "json", "xml"];
+const readableDocumentExtensions = ["pdf", "docx", "pptx", "txt", "md", "rtf", "csv", "html", "htm", "json", "xml"];
 
 function acceptedExtensions(extensions) {
   return extensions.map((extension) => `.${extension}`).join(",");
@@ -206,7 +206,7 @@ const sourceMaterialTypes = [
     shortLabel: "Approved guidance",
     description: "A signed-off brand book, guideline, strategy, messaging decision, or other direction that should govern its area.",
     examples: "PDF, DOCX, PPTX, text files, PNG, JPG, WEBP, and more",
-    formatAdvice: "For a multi-page brand book, PDF works best. PNG, JPG, and WebP work for a single page or image-only guide. Convert SVG, HEIC, TIFF, Keynote, and native design files first.",
+    formatAdvice: "For a multi-page brand book, PDF works best. PNG, JPG, and WebP work for a single page or image-only guide. Convert older DOC or PPT files, SVG, HEIC, TIFF, Keynote, and native design files first.",
     authority: "approved-guidance",
     handling: "Follow when relevant",
     forms: ["files", "url", "text"],
@@ -222,8 +222,8 @@ const sourceMaterialTypes = [
     authority: "brand-evidence",
     handling: "Interpret with context",
     forms: ["files", "url", "text"],
-    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf,.csv,.png,.jpg,.jpeg,.webp,.gif",
-    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "csv", "png", "jpg", "jpeg", "webp", "gif"],
+    accept: ".pdf,.docx,.pptx,.txt,.md,.rtf,.csv,.png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["pdf", "docx", "pptx", "txt", "md", "rtf", "csv", "png", "jpg", "jpeg", "webp", "gif"],
   },
   {
     id: "single-image",
@@ -258,8 +258,8 @@ const sourceMaterialTypes = [
     authority: "creative-reference",
     handling: "Use for inspiration",
     forms: ["files", "url", "text"],
-    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf,.png,.jpg,.jpeg,.webp,.gif",
-    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "png", "jpg", "jpeg", "webp", "gif"],
+    accept: ".pdf,.docx,.pptx,.txt,.md,.rtf,.png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["pdf", "docx", "pptx", "txt", "md", "rtf", "png", "jpg", "jpeg", "webp", "gif"],
   },
   {
     id: "business-document",
@@ -270,8 +270,8 @@ const sourceMaterialTypes = [
     authority: "brand-evidence",
     handling: "Use as background",
     forms: ["files", "url", "text"],
-    accept: ".pdf,.doc,.docx,.ppt,.pptx,.txt,.md,.rtf,.csv",
-    extensions: ["pdf", "doc", "docx", "ppt", "pptx", "txt", "md", "rtf", "csv"],
+    accept: ".pdf,.docx,.pptx,.txt,.md,.rtf,.csv",
+    extensions: ["pdf", "docx", "pptx", "txt", "md", "rtf", "csv"],
   },
 ];
 
@@ -2597,7 +2597,7 @@ async function persistBrainState() {
       body: JSON.stringify(snapshot),
     });
     if (response.ok) {
-      const saved = await response.json();
+      const saved = await readApiJson(response);
       state.brain.savedAt = saved.savedAt || state.brain.savedAt;
     }
   } catch {
@@ -2675,7 +2675,7 @@ async function hydrateStoredBrain() {
   try {
     const response = await fetch("/api/brand-brain", { headers: { Accept: "application/json" } });
     if (!response.ok) return;
-    const { saved } = await response.json();
+    const { saved } = await readApiJson(response);
     if (!saved?.result || !Array.isArray(saved.sources)) return;
     state.brain.sources = saved.sources;
     const savedBaseline = saved.approvedResult || null;
@@ -2824,7 +2824,7 @@ async function startBrainSynthesis() {
         baselineVersion: incremental ? state.brain.approvedVersion : undefined,
       }),
     });
-    const body = await response.json();
+    const body = await readApiJson(response);
     if (!response.ok) throw new Error(body.error || "The Brand Brain could not be built.");
     applySynthesisResult(body.result, {
       baseline: body.approvedResult || baseline,
@@ -2942,6 +2942,18 @@ function readFileAsDataUrl(file) {
   });
 }
 
+async function readApiJson(response) {
+  const contentType = response.headers?.get?.("content-type") || "";
+  if (!contentType.includes("application/json")) {
+    throw new Error("The app server returned an unexpected response. Reload the page and try again.");
+  }
+  try {
+    return await response.json();
+  } catch {
+    throw new Error("The app server returned an incomplete response. Try again in a moment.");
+  }
+}
+
 root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="brain-source-url"]')) {
     state.brain.sourceUrl = event.target.value;
@@ -3000,7 +3012,8 @@ root.addEventListener("change", async (event) => {
         state.brain.pendingFiles = [{ name: file.name, type: file.type, size: file.size }];
         render();
         try {
-          state.brain.pendingFiles = [await readFileAsDataUrl(file)];
+          const storeFile = window.storeBrandWorldSourceFile || readFileAsDataUrl;
+          state.brain.pendingFiles = [await storeFile(file)];
         } catch (error) {
           state.brain.pendingFiles = [];
           setToast(error.message);

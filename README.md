@@ -30,6 +30,7 @@ These are internal configuration presets, not global brand types or assumed user
 - [`docs/success-criteria.md`](docs/success-criteria.md) — falsifiable control test for the first proof
 - [`docs/experience/`](docs/experience/) — north-star views and workflow pressure tests
 - [`app/`](app/) — runnable browser prototype of the configured production journey
+- [`docs/vercel-deployment.md`](docs/vercel-deployment.md) — hosted installation, private storage, environment, and custom-domain setup
 - [`docs/product-primer.md`](docs/product-primer.md) — forthcoming plain-language product walkthrough
 - [`docs/decisions/`](docs/decisions/) — architectural and product decision records
 - [`specs/brand-world-schema.md`](specs/brand-world-schema.md) — draft entity, governance, provenance, and revision model
@@ -54,7 +55,7 @@ These are internal configuration presets, not global brand types or assumed user
 
 ## Status
 
-Specifications remain frozen as target-state references. A whole-product design sprint is active, and its production and Brand Brain learning is represented in a runnable browser prototype. The production compiler foundation formalizes the production learning as executable contracts and a deterministic library. The Brand Brain now includes a first local vertical slice for type-first single-source intake, OpenAI synthesis, structured guidance and artifacts, review, reloadable storage, and incremental additions that preserve the approved baseline until a candidate update is approved. This slice is still an implementation probe rather than a final application-stack decision.
+Specifications remain frozen as target-state references. A whole-product design sprint is active, and its production and Brand Brain learning is represented in a runnable browser prototype. The production compiler foundation formalizes the production learning as executable contracts and a deterministic library. The Brand Brain now includes a first vertical slice for type-first single-source intake, OpenAI synthesis, structured guidance and artifacts, review, reloadable storage, and incremental additions that preserve the approved baseline until a candidate update is approved. It runs locally and is configured for a private, durable Vercel installation. This slice is still an implementation probe rather than a final application-stack decision.
 
 Run it from the repository root:
 

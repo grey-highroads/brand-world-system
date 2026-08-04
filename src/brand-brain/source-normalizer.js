@@ -1,24 +1,19 @@
-import { execFile } from "node:child_process";
-import fs from "node:fs/promises";
-import os from "node:os";
 import path from "node:path";
-import { promisify } from "node:util";
+import { OfficeParser } from "officeparser";
 
-const execFileAsync = promisify(execFile);
 export const MAX_SOURCE_FILE_BYTES = 20 * 1024 * 1024;
 const visionMimeTypes = new Set(["image/gif", "image/jpeg", "image/png", "image/webp"]);
-const directTextExtensions = new Set([".csv", ".htm", ".html", ".json", ".md", ".rtf", ".text", ".txt", ".xml"]);
+const directTextExtensions = new Set([".csv", ".htm", ".html", ".json", ".md", ".text", ".txt", ".xml"]);
 const directTextMimeTypes = new Set([
   "application/json",
-  "application/rtf",
   "application/xml",
   "text/csv",
   "text/html",
   "text/markdown",
   "text/plain",
-  "text/rtf",
   "text/xml",
 ]);
+const portableDocumentExtensions = new Set([".docx", ".pdf", ".pptx", ".rtf"]);
 
 function decodeDataUrl(dataUrl) {
   const match = String(dataUrl || "").match(/^data:([^;,]+)?(?:;charset=[^;,]+)?(;base64)?,([\s\S]*)$/);
@@ -38,47 +33,66 @@ function cleanExtractedText(text) {
     .slice(0, 160_000);
 }
 
-async function extractWithMacMetadata(bytes, filename) {
-  if (process.platform !== "darwin") {
-    throw new Error(`${filename} needs a local document extractor before it can be synthesized on this platform.`);
-  }
-  const temporaryDirectory = await fs.mkdtemp(path.join(os.tmpdir(), "brand-world-source-"));
-  const safeName = path.basename(filename).replace(/[^A-Za-z0-9._-]/g, "_") || "source-file";
-  const sourcePath = path.join(temporaryDirectory, safeName);
-  const metadataPath = path.join(temporaryDirectory, "metadata.plist");
-
+async function extractPortableDocument(bytes, filename, extension) {
   try {
-    await fs.writeFile(sourcePath, bytes, { mode: 0o600 });
-    await execFileAsync("/usr/bin/mdimport", ["-t", "-o", metadataPath, sourcePath], { maxBuffer: 12 * 1024 * 1024 });
-    const { stdout } = await execFileAsync("/usr/bin/plutil", ["-extract", "kMDItemTextContent", "raw", "-o", "-", metadataPath], {
-      maxBuffer: 12 * 1024 * 1024,
+    const ast = await OfficeParser.parseOffice(bytes, {
+      fileType: extension.slice(1),
+      extractAttachments: false,
+      ignoreComments: true,
+      ocr: false,
     });
-    const text = cleanExtractedText(stdout);
+    const { value } = await ast.to("text", {
+      includeImages: false,
+      textConfig: { preserveLayout: false, renderNotes: true },
+    });
+    const text = cleanExtractedText(value);
     if (!text) throw new Error(`${filename} did not contain readable text.`);
     return text;
   } catch (error) {
     if (error.message?.includes(filename)) throw error;
     throw new Error(`Could not extract readable text from ${filename}. Convert it to PDF or plain text and try again.`);
-  } finally {
-    await fs.rm(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
-export async function normalizeUploadedFile(file, source = {}) {
+async function loadUploadedBytes(file, options) {
+  if (file.data) return decodeDataUrl(file.data);
+  if (file.blobPathname && options.readStoredFile) {
+    const stored = await options.readStoredFile(file.blobPathname);
+    return { mimeType: stored.mimeType || file.type || "application/octet-stream", bytes: stored.bytes };
+  }
+  return null;
+}
+
+export async function normalizeUploadedFile(file, source = {}, options = {}) {
   if (Number(file.size || 0) > MAX_SOURCE_FILE_BYTES) {
     const error = new Error(`${file.name || "The uploaded file"} is larger than the 20 MB source limit.`);
     error.status = 413;
     throw error;
   }
-  if (!file.data) return { kind: "metadata", name: file.name, type: file.type, size: file.size };
-  const decoded = decodeDataUrl(file.data);
+  const extension = path.extname(file.name || "").toLowerCase();
+  if (!file.data && !file.blobPathname) return { kind: "metadata", name: file.name, type: file.type, size: file.size };
+  if (source.authority === "exact-asset" && !visionMimeTypes.has(file.type)) {
+    return {
+      kind: "metadata",
+      name: file.name,
+      type: file.type,
+      size: file.size,
+      blobPathname: file.blobPathname,
+      note: "Protected source preserved as supplied; this file format was not visually interpreted during synthesis.",
+    };
+  }
+  const decoded = await loadUploadedBytes(file, options);
+  if (!decoded) return { kind: "metadata", name: file.name, type: file.type, size: file.size };
   if (decoded.bytes.length > MAX_SOURCE_FILE_BYTES) {
     const error = new Error(`${file.name || "The uploaded file"} is larger than the 20 MB source limit.`);
     error.status = 413;
     throw error;
   }
   const mimeType = file.type || decoded.mimeType;
-  if (visionMimeTypes.has(mimeType)) return { kind: "image", ...file, type: mimeType };
+  if (visionMimeTypes.has(mimeType)) {
+    const data = file.data || `data:${mimeType};base64,${decoded.bytes.toString("base64")}`;
+    return { kind: "image", ...file, type: mimeType, data };
+  }
 
   if (source.authority === "exact-asset") {
     return {
@@ -90,19 +104,25 @@ export async function normalizeUploadedFile(file, source = {}) {
     };
   }
 
-  const extension = path.extname(file.name || "").toLowerCase();
+  if ([".doc", ".ppt"].includes(extension)) {
+    throw new Error(`${file.name} uses an older Office format. Save it as DOCX, PPTX, or PDF and try again.`);
+  }
   const text = directTextMimeTypes.has(mimeType) || directTextExtensions.has(extension)
     ? cleanExtractedText(decoded.bytes.toString("utf8"))
-    : await extractWithMacMetadata(decoded.bytes, file.name || "uploaded document");
+    : portableDocumentExtensions.has(extension)
+      ? await extractPortableDocument(decoded.bytes, file.name || "uploaded document", extension)
+      : (() => {
+          throw new Error(`Could not read ${file.name || "the uploaded file"}. Convert it to PDF or plain text and try again.`);
+        })();
 
   if (!text) throw new Error(`${file.name || "The uploaded file"} did not contain readable text.`);
   return { kind: "text", name: file.name, type: mimeType, size: file.size, text };
 }
 
-export async function normalizeSourcesForSynthesis(sources) {
+export async function normalizeSourcesForSynthesis(sources, options = {}) {
   return Promise.all(
     sources.map(async (source) => {
-      const normalizedFiles = await Promise.all((source.files ?? []).map((file) => normalizeUploadedFile(file, source)));
+      const normalizedFiles = await Promise.all((source.files ?? []).map((file) => normalizeUploadedFile(file, source, options)));
       const extractedText = normalizedFiles.filter((file) => file.kind === "text").map((file) => `SOURCE FILE: ${file.name}\n${file.text}`);
       return {
         ...source,
