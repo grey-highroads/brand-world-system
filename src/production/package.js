@@ -367,3 +367,64 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     },
   };
 }
+
+// ---------------------------------------------------------------------------
+// Consumption record and change-impact classification (roadmap item 11)
+// ---------------------------------------------------------------------------
+
+export function buildConsumptionRecord(job) {
+  if (!job?.generationPackage) return null;
+  const pkg = job.generationPackage;
+  return {
+    jobId: job.jobId,
+    completedAt: new Date().toISOString(),
+    brandName: pkg.brandName,
+    brainVersion: pkg.brainVersion,
+    sourceCount: pkg.sourceCount || 0,
+    guidanceSections: (pkg.compiledComponents || []).map((c) => c),
+    aestheticMode: pkg.aestheticMode?.id || null,
+    output: { placement: pkg.output?.placement, format: pkg.output?.format },
+    lockedAsset: pkg.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
+    references: (pkg.references || []).map((r) => ({ name: r.name, role: r.role, influence: r.influence })),
+    palette: pkg.treatments?.filter((t) => t.element?.includes("palette")).map((t) => t.element) || [],
+    appliedRules: pkg.treatments?.filter((t) => t.treatment === "locked" && t.category === "Creative rules").map((t) => t.element) || [],
+  };
+}
+
+export function classifyChangeImpact(record, currentBrainVersion, changedElements = []) {
+  if (!record) return null;
+  if (record.brainVersion === currentBrainVersion) {
+    return { level: "current", label: "Current", description: `Uses active Brand Brain v${currentBrainVersion}.` };
+  }
+  // Brain version changed: classify the impact
+  if (!changedElements.length) {
+    return { level: "review", label: "Review recommended", description: `Made with Brand Brain v${record.brainVersion}. The brain has been updated to v${currentBrainVersion}.` };
+  }
+  // Check whether the changed elements overlap with what this output consumed
+  const consumed = new Set([
+    ...(record.guidanceSections || []),
+    ...(record.palette || []),
+    ...(record.appliedRules || []),
+    record.lockedAsset?.name,
+  ].filter(Boolean).map((s) => s.toLowerCase()));
+  const overlapping = changedElements.filter((el) => {
+    const lower = el.toLowerCase();
+    for (const c of consumed) {
+      if (c.includes(lower) || lower.includes(c)) return true;
+    }
+    return false;
+  });
+  if (!overlapping.length) {
+    return { level: "unaffected", label: "No impact", description: `Made with Brand Brain v${record.brainVersion}. The v${currentBrainVersion} changes do not affect the elements this output used.` };
+  }
+  // Determine severity
+  const lockedAffected = record.lockedAsset && overlapping.some((el) => el.toLowerCase().includes("asset") || el.toLowerCase().includes("logo") || el.toLowerCase().includes("packag"));
+  if (lockedAffected) {
+    return { level: "reproduction", label: "Reproduction required", description: `The protected asset has changed since v${record.brainVersion}. This output should be re-produced.`, affected: overlapping };
+  }
+  const paletteOrIdentity = overlapping.some((el) => el.toLowerCase().includes("palette") || el.toLowerCase().includes("identity") || el.toLowerCase().includes("color"));
+  if (paletteOrIdentity) {
+    return { level: "update", label: "Update available", description: `${overlapping.join(", ")} changed. A deterministic fix may bring this output current.`, affected: overlapping };
+  }
+  return { level: "review", label: "Review recommended", description: `${overlapping.join(", ")} changed between v${record.brainVersion} and v${currentBrainVersion}. The visual difference may or may not matter.`, affected: overlapping };
+}
