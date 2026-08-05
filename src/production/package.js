@@ -9,6 +9,172 @@ import {
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
+// ---------------------------------------------------------------------------
+// Deliverable requirements (roadmap item 2)
+// ---------------------------------------------------------------------------
+
+const deliverableRequirements = {
+  "brand-world-image": [
+    { id: "approved-brain", label: "Approved Brand Brain", condition: "always", required: true },
+    { id: "creative-direction", label: "Creative direction guidance", condition: "always", required: true, sectionId: "creative" },
+    { id: "foundation", label: "Brand foundation guidance", condition: "always", required: true, sectionId: "foundation" },
+    { id: "locked-asset", label: "Protected product asset", condition: "when product is visible", required: false },
+    { id: "voice-guidance", label: "Voice and messaging guidance", condition: "when text appears", required: false, sectionId: "voice" },
+    { id: "identity-guidance", label: "Identity guidance", condition: "always", required: true, sectionId: "identity" },
+  ],
+  "product-showcase": [
+    { id: "approved-brain", label: "Approved Brand Brain", condition: "always", required: true },
+    { id: "locked-asset", label: "Protected product asset", condition: "always", required: true },
+    { id: "identity-guidance", label: "Identity guidance", condition: "always", required: true, sectionId: "identity" },
+    { id: "creative-direction", label: "Creative direction guidance", condition: "always", required: true, sectionId: "creative" },
+  ],
+};
+
+export function checkRequirements(deliverableId, { approvedBrain, lockedAsset, hasText = false }) {
+  const requirements = deliverableRequirements[deliverableId] || deliverableRequirements["brand-world-image"];
+  const sectionIds = new Set((approvedBrain?.guidanceSections || []).map((s) => s.id));
+  return requirements.map((req) => {
+    const active = req.required || (req.condition === "when product is visible" && !!lockedAsset) || (req.condition === "when text appears" && hasText);
+    let met = true;
+    if (req.id === "approved-brain") met = !!approvedBrain;
+    else if (req.id === "locked-asset") met = !!lockedAsset;
+    else if (req.sectionId) met = sectionIds.has(req.sectionId);
+    return { ...req, active, met: active ? met : true };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Applicability resolution (roadmap item 3)
+// ---------------------------------------------------------------------------
+
+const placementScopes = {
+  "Instagram feed": { channel: "social", platform: "instagram" },
+  "Instagram story": { channel: "social", platform: "instagram" },
+  "LinkedIn feed": { channel: "social", platform: "linkedin" },
+  "Website feature": { channel: "web", platform: "website" },
+};
+
+function scopeAppliesToPlacement(ruleScope, placement) {
+  if (!ruleScope || !ruleScope.length) return true;
+  const target = placementScopes[placement];
+  if (!target) return true;
+  for (const [label, value] of ruleScope) {
+    const lower = label.toLowerCase();
+    const lowerValue = value.toLowerCase();
+    if (lower === "channel" || lower === "channels") {
+      if (lowerValue !== "all channels" && !lowerValue.includes(target.channel)) return false;
+    }
+    if (lower === "placements") {
+      if (!lowerValue.startsWith("all") && !lowerValue.includes(target.platform || "")) return false;
+    }
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
+// Job-specific treatments (roadmap item 1)
+// ---------------------------------------------------------------------------
+
+export function resolveTreatments({ approvedBrain, lockedAsset, brief, references = [] }) {
+  const treatments = [];
+  const placement = brief?.placement || "";
+  const dossier = approvedBrain?.artifacts?.dossier || {};
+  const rulesSection = (approvedBrain?.guidanceSections || []).find((s) => s.id === "rules");
+
+  // Locked assets
+  if (lockedAsset) {
+    treatments.push({
+      element: lockedAsset.name || "Protected asset",
+      category: "Identity",
+      treatment: "locked",
+      reason: "Exact file placed without change. Logo, label, proportions, and state are preserved.",
+    });
+  }
+
+  // Approved claims and guardrails
+  for (const guardrail of dossier.guardrails || []) {
+    treatments.push({
+      element: guardrail.title,
+      category: "Creative rules",
+      treatment: "locked",
+      reason: guardrail.body,
+    });
+  }
+
+  // Scoped prohibitions from review decisions
+  const reviewQuestions = approvedBrain?.reviewQuestions || [];
+  for (const question of reviewQuestions) {
+    if (question.type !== "brand-rule" || !question.scope?.length) continue;
+    const scoped = question.scope.map ? question.scope : [];
+    const applies = scopeAppliesToPlacement(scoped, placement);
+    if (applies) {
+      treatments.push({
+        element: question.title || question.statement || "Scoped rule",
+        category: "Creative rules",
+        treatment: "locked",
+        reason: `${question.rationale || question.summary}. Applies to this ${placement || "placement"}.`,
+      });
+    } else {
+      treatments.push({
+        element: question.title || question.statement || "Scoped rule",
+        category: "Creative rules",
+        treatment: "not_needed",
+        reason: `This rule is scoped to ${scoped.map(([l, v]) => `${l}: ${v}`).join(", ")}. It does not apply to ${placement}.`,
+      });
+    }
+  }
+
+  // Guidance sections: suggested or not needed
+  const imageOnlySections = new Set(["voice"]);
+  for (const section of approvedBrain?.guidanceSections || []) {
+    if (imageOnlySections.has(section.id)) {
+      treatments.push({
+        element: section.name,
+        category: "Brand guidance",
+        treatment: "not_needed",
+        reason: "This image-only deliverable does not include text. Voice guidance is available if text is added.",
+      });
+    } else {
+      treatments.push({
+        element: section.name,
+        category: "Brand guidance",
+        treatment: "suggested",
+        reason: `${section.summary}. The system applies this guidance to shape the result.`,
+      });
+    }
+  }
+
+  // Creative references
+  for (const ref of references) {
+    treatments.push({
+      element: ref.source?.name || ref.name || "Creative source",
+      category: "Creative input",
+      treatment: "suggested",
+      reason: `${ref.influence || "Supporting"} influence for ${ref.role || "style"}. Does not override approved guidance.`,
+    });
+  }
+
+  // Palette and materials
+  if (dossier.palette?.length) {
+    treatments.push({
+      element: `${approvedBrain.brandName} palette`,
+      category: "Identity",
+      treatment: "suggested",
+      reason: `${dossier.palette.map((c) => `${c.name} (${c.role})`).join(", ")}. Used as the color system for the result.`,
+    });
+  }
+  if (dossier.materials?.length) {
+    treatments.push({
+      element: "Materials and light",
+      category: "Creative direction",
+      treatment: "suggested",
+      reason: `${dossier.materials.join(", ")}. Shapes the physical feel of the scene.`,
+    });
+  }
+
+  return treatments;
+}
+
 const formatSizes = {
   "4:5 portrait": "1024x1280",
   "1:1 square": "1024x1024",
@@ -158,6 +324,12 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     prompt,
   });
 
+  // Job-specific treatments (roadmap items 1-3)
+  const treatments = resolveTreatments({ approvedBrain, lockedAsset, brief: { scene, exclusions, placement, format }, references });
+  const requirementCheck = checkRequirements("brand-world-image", { approvedBrain, lockedAsset, hasText: false });
+  const unmetRequirements = requirementCheck.filter((r) => r.active && !r.met);
+  const ready = unmetRequirements.length === 0;
+
   return {
     version: "brand-world-image-v2",
     deliverable: "brand-world-image",
@@ -183,6 +355,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       fileType: reference.file.type,
     })),
     constraintAudit,
+    treatments,
+    requirementCheck,
+    ready,
     policy: {
       groundedIn: sourceCount
         ? `Approved Brand Brain v${Number(brainVersion || 1)}, built from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`
