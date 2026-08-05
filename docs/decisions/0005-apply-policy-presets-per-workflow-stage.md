@@ -38,3 +38,15 @@ Stage-level configuration matches actual creative work, keeps configuration out 
 - The internal control test can compare presets without implying that an end user performs the switch.
 - Product surfaces expose workflow-specific language and exceptions.
 - Fixtures must demonstrate complete user journeys and at least one workflow that changes posture across stages.
+
+## Sprint findings (2026-08-05)
+
+**Finding 1: Mode labels leak into passive status text.** ADR 0005's original scope covered selectors and configuration surfaces. The design sprint exposed that internal mode vocabulary also appears in status text, progress indicators, and result descriptions. "Hybrid job" and "constrained stage" were replaced with plain-language promises: "Locked pack preserved," "exact layout required." The ruling extends to any visible label, not only interactive controls.
+
+**Finding 2: "Start production" must resolve to a named workflow.** An early prototype routed the "Start production" action to a generic request form. The sprint finding showed that entering production mid-workflow creates a "dropped into the middle" problem. The accepted direction routes to a named workflow chooser (Campaign hero, Retail adaptations, Social launch kit) so the user sees a recognizable starting point before providing a brief.
+
+**Finding 3: Treatments are display-only during the sprint.** Job-specific treatments (locked, suggested, not needed, needs input) classify every brand element for the current job. In the sprint prototype, treatments are a preflight summary panel. They do not yet govern the prompt or change what the system compiles. Making treatments authoritative belongs in Phase 4 when the formal compiler takes over the production path, since a classification bug in an authoritative treatment would silently drop guidance from the prompt.
+
+**Finding 4: Deliverable requirements are advisory, not blocking.** The preflight shows "Needs your input" when a required element is unmet, but does not disable the Generate button. The only active deliverable (brand world image) always has requirements met when reaching preflight. Blocking behavior should be added when the deliverable catalog expands and unmet requirements become a real user scenario.
+
+**Finding 5: Applicability resolution is limited to channel and placement.** The treatment resolver filters scoped rules by the job's channel and placement. Product, audience, campaign, and date-range scope require structured metadata on individual brain guidance entries, which is a schema change deferred until a real brand's material forces the question.
