@@ -705,6 +705,53 @@ const state = {
     feedbackOpen: false,
     feedbackDraft: "",
     feedbackScope: "this-output",
+    completedOutputs: [
+      {
+        jobId: "sample-001",
+        completedAt: "2026-07-28T14:22:00Z",
+        brandName: "SLAKE",
+        brainVersion: 1,
+        sourceCount: 6,
+        guidanceSections: ["Brand foundation / Purpose and positioning", "Identity / Approved assets and expressions", "World and story / Warm domestic moments", "Creative direction / Editorial naturalism"],
+        aestheticMode: "editorial-realism",
+        output: { placement: "Instagram feed", format: "4:5 portrait" },
+        lockedAsset: { name: "Yuzu Ginger packaging", format: "PNG" },
+        references: [{ name: "Afternoon kitchen scene", role: "environment", influence: "Primary" }],
+        palette: ["SLAKE palette"],
+        appliedRules: ["Never clinical"],
+        label: "Spring social hero",
+      },
+      {
+        jobId: "sample-002",
+        completedAt: "2026-07-30T09:45:00Z",
+        brandName: "SLAKE",
+        brainVersion: 1,
+        sourceCount: 6,
+        guidanceSections: ["Brand foundation / Purpose and positioning", "Identity / Approved assets and expressions", "Creative direction / Editorial naturalism", "Creative rules / Practical boundaries"],
+        aestheticMode: "editorial-realism",
+        output: { placement: "Website feature", format: "16:9 landscape" },
+        lockedAsset: { name: "Yuzu Ginger packaging", format: "PNG" },
+        references: [],
+        palette: ["SLAKE palette"],
+        appliedRules: ["Never clinical"],
+        label: "Website hero banner",
+      },
+      {
+        jobId: "sample-003",
+        completedAt: "2026-08-01T16:10:00Z",
+        brandName: "SLAKE",
+        brainVersion: 1,
+        sourceCount: 6,
+        guidanceSections: ["Brand foundation / Purpose and positioning", "Identity / Approved assets and expressions", "World and story / Warm domestic moments"],
+        aestheticMode: "editorial-realism",
+        output: { placement: "LinkedIn feed", format: "1:1 square" },
+        lockedAsset: null,
+        references: [{ name: "Brand world moodboard", role: "style", influence: "Supporting" }],
+        palette: ["SLAKE palette"],
+        appliedRules: [],
+        label: "LinkedIn brand moment",
+      },
+    ],
   },
   brain: {
     stage: "empty",
@@ -1795,6 +1842,8 @@ function renderChooser() {
     )
     .join("");
 
+  const affectedOutputs = state.production.completedOutputs.filter((o) => o.brainVersion < state.brain.approvedVersion);
+
   return shell(`
     <section class="workspace">
       ${pageHeader(
@@ -1802,6 +1851,22 @@ function renderChooser() {
         `Choose a production workflow for ${state.brandName}. The approved Brand Brain travels with the work.`,
       )}
       ${state.production.job?.status === "complete" ? `<section class="production-resume"><span><strong>Your latest image is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated image")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
+      ${affectedOutputs.length ? `
+        <details class="card collapsible-card affected-outputs-card">
+          <summary class="card-header collapsible-header">
+            <h2>Outputs using an earlier version</h2>
+            <span class="collapsible-meta"><span class="mini-pill" style="color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);">${affectedOutputs.length} ${affectedOutputs.length === 1 ? "output" : "outputs"} on v${affectedOutputs[0].brainVersion}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+          </summary>
+          <div class="affected-outputs-list">
+            ${affectedOutputs.map((o) => `
+              <div class="rule">
+                <span class="mini-pill" style="color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);">v${o.brainVersion}</span>
+                <span><strong>${escapeHtml(o.label || `${o.output.placement} ${o.output.format}`)}</strong><span>Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.${o.lockedAsset ? ` Used ${o.lockedAsset.name}.` : ""}</span></span>
+              </div>
+            `).join("")}
+          </div>
+        </details>
+      ` : ""}
       <div class="grid deliverable-grid">${cards}</div>
     </section>
   `);
@@ -3653,15 +3718,21 @@ root.addEventListener("click", (event) => {
     state.brain.artifactStatus = "ready";
     state.brain.stage = "ready";
     state.brain.approvedResult = JSON.parse(JSON.stringify(currentSynthesisResult));
+    const previousVersion = state.brain.approvedVersion;
     state.brain.approvedVersion = state.brain.artifactVersion;
     state.brain.pendingSourceIds = [];
     state.brain.affectedGuidanceIds = [];
     state.brain.candidateBaseVersion = 0;
     state.brain.revisionPending = false;
     syncProductionReferences();
-    recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved`, "This exact stored version is now available to future production work.", "complete");
+    // Check impact on completed outputs
+    const affectedCount = state.production.completedOutputs.filter((o) => o.brainVersion < state.brain.approvedVersion).length;
+    const impactNote = affectedCount > 0
+      ? ` ${affectedCount} existing ${affectedCount === 1 ? "output uses" : "outputs use"} an earlier version.`
+      : "";
+    recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved`, `This exact stored version is now available to future production work.${impactNote}`, "complete");
     void persistBrainState();
-    setToast(`Brand Brain v${state.brain.artifactVersion} is ready for production`);
+    setToast(`Brand Brain v${state.brain.artifactVersion} is ready for production${impactNote}`);
   }
   if (action === "toggle-brain-feedback") {
     state.brain.feedbackOpen = !state.brain.feedbackOpen;
@@ -3789,6 +3860,26 @@ root.addEventListener("click", (event) => {
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
     state.production.approved = true;
+    // Log consumption record
+    const job = state.production.job;
+    if (job?.generationPackage) {
+      const pkg = job.generationPackage;
+      state.production.completedOutputs.push({
+        jobId: job.jobId || `output-${Date.now()}`,
+        completedAt: new Date().toISOString(),
+        brandName: pkg.brandName,
+        brainVersion: pkg.brainVersion,
+        sourceCount: pkg.sourceCount || 0,
+        guidanceSections: (pkg.compiledComponents || []).map((c) => c),
+        aestheticMode: pkg.aestheticMode?.id || null,
+        output: { placement: pkg.output?.placement, format: pkg.output?.format },
+        lockedAsset: pkg.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
+        references: (pkg.references || []).map((r) => ({ name: r.name, role: r.role, influence: r.influence })),
+        palette: (pkg.treatments || []).filter((t) => t.element?.includes("palette")).map((t) => t.element),
+        appliedRules: (pkg.treatments || []).filter((t) => t.treatment === "locked" && t.category === "Creative rules").map((t) => t.element),
+        label: `${pkg.output?.placement} ${pkg.output?.format}`,
+      });
+    }
     recordBrainHistory("Output approved", `A ${state.brandName} brand world image was approved for ${state.brief.placement} ${state.brief.format}.`, "complete");
     setToast("Output approved. The image and production package are recorded.");
   }
