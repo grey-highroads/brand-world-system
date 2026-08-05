@@ -700,6 +700,7 @@ const state = {
     job: null,
     error: "",
     recovered: false,
+    approved: false,
     candidateRules: [],
     feedbackOpen: false,
     feedbackDraft: "",
@@ -2543,6 +2544,7 @@ function renderPreflight() {
 
       <div class="actions">
         <button class="button" type="button" data-action="back-to-brief">‹ Back to brief</button>
+        ${state.production.job?.status === "complete" ? '<button class="button" type="button" data-action="back-to-result">View result ›</button>' : ""}
       </div>
     </section>
   `);
@@ -2701,7 +2703,10 @@ function renderResult() {
           <section class="card">
             <div class="card-header"><h2>Actions</h2></div>
             <div class="result-actions">
-              <button class="button secondary" type="button" data-action="approve-output">Approve this output</button>
+              ${state.production.approved
+                ? `<button class="button" type="button" disabled style="opacity: 0.6; cursor: default;">Approved</button>`
+                : `<button class="button secondary" type="button" data-action="approve-output">Approve this output</button>`
+              }
               <button class="button" type="button" data-action="open-feedback">Provide feedback</button>
               <button class="button" type="button" data-action="retry-generate">Try again</button>
               <button class="button" type="button" data-action="back-to-preflight">View package</button>
@@ -3487,7 +3492,6 @@ root.addEventListener("click", (event) => {
   const action = target.dataset.action;
 
   if (action === "chooser") navigate("chooser");
-  if (action === "view-latest-result") navigate("result");
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
   if (action === "begin-brain-onboarding") {
@@ -3761,9 +3765,30 @@ root.addEventListener("click", (event) => {
   if (action === "continue-preflight") void prepareProductionPreflight();
   if (action === "back-to-brief") navigate("brief");
   if (action === "back-to-preflight") navigate("preflight");
+  if (action === "back-to-result") {
+    // Re-fetch the job to get a fresh presigned image URL
+    void (async () => {
+      try {
+        const job = await fetchCurrentProductionJob();
+        if (job) applyProductionJob(job);
+      } catch { /* keep existing job state */ }
+      navigate("result");
+    })();
+  }
+  if (action === "view-latest-result") {
+    // Re-fetch to get a fresh presigned image URL
+    void (async () => {
+      try {
+        const job = await fetchCurrentProductionJob();
+        if (job) applyProductionJob(job);
+      } catch { /* keep existing job state */ }
+      navigate("result");
+    })();
+  }
   if (action === "generate" || action === "retry-generate") void startProductionGeneration();
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
+    state.production.approved = true;
     recordBrainHistory("Output approved", `A ${state.brandName} brand world image was approved for ${state.brief.placement} ${state.brief.format}.`, "complete");
     setToast("Output approved. The image and production package are recorded.");
   }
@@ -3824,6 +3849,7 @@ root.addEventListener("click", (event) => {
     state.production.package = null;
     state.production.error = "";
     state.production.recovered = false;
+    state.production.approved = false;
     state.production.feedbackOpen = false;
     state.production.feedbackDraft = "";
     state.production.feedbackScope = "this-output";
