@@ -58,14 +58,14 @@ function scopeAppliesToPlacement(ruleScope, placement) {
   if (!ruleScope || !ruleScope.length) return true;
   const target = placementScopes[placement];
   if (!target) return true;
-  for (const [label, value] of ruleScope) {
-    const lower = label.toLowerCase();
-    const lowerValue = value.toLowerCase();
-    if (lower === "channel" || lower === "channels") {
-      if (lowerValue !== "all channels" && !lowerValue.includes(target.channel)) return false;
+  for (const entry of ruleScope) {
+    const label = (Array.isArray(entry) ? entry[0] : entry.label || "").toLowerCase();
+    const value = (Array.isArray(entry) ? entry[1] : entry.value || "").toLowerCase();
+    if (label === "channel" || label === "channels") {
+      if (value !== "all channels" && !value.includes(target.channel)) return false;
     }
-    if (lower === "placements") {
-      if (!lowerValue.startsWith("all") && !lowerValue.includes(target.platform || "")) return false;
+    if (label === "placements") {
+      if (!value.startsWith("all") && !value.includes(target.platform || "")) return false;
     }
   }
   return true;
@@ -119,7 +119,7 @@ export function resolveTreatments({ approvedBrain, lockedAsset, brief, reference
         element: question.title || question.statement || "Scoped rule",
         category: "Creative rules",
         treatment: "not_needed",
-        reason: `This rule is scoped to ${scoped.map(([l, v]) => `${l}: ${v}`).join(", ")}. It does not apply to ${placement}.`,
+        reason: `This rule is scoped to ${scoped.map((e) => `${Array.isArray(e) ? e[0] : e.label}: ${Array.isArray(e) ? e[1] : e.value}`).join(", ")}. It does not apply to ${placement}.`,
       });
     }
   }
