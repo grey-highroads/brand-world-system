@@ -24,3 +24,4 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 - [`0007-deliver-isolated-client-installations-first.md`](0007-deliver-isolated-client-installations-first.md) — Accepted
 - [`0008-use-openai-as-the-initial-renderer.md`](0008-use-openai-as-the-initial-renderer.md) — Accepted
 - [`0009-update-brand-brain-from-an-approved-baseline.md`](0009-update-brand-brain-from-an-approved-baseline.md) — Accepted
+- [`0010-route-production-feedback-through-candidate-rules.md`](0010-route-production-feedback-through-candidate-rules.md) — Accepted
