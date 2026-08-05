@@ -1471,6 +1471,58 @@ select {
   line-height: 0.8;
 }
 
+/* Collapsible cards (details/summary) */
+
+.collapsible-card {
+  border: 1px solid var(--paper-200);
+  border-radius: var(--radius-md);
+  background: var(--paper-100);
+}
+
+.collapsible-card > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.collapsible-card > summary::-webkit-details-marker {
+  display: none;
+}
+
+.collapsible-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 18px;
+  user-select: none;
+}
+
+.collapsible-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.collapsible-chevron {
+  display: inline-block;
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 5px solid var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.collapsible-card[open] .collapsible-chevron {
+  transform: rotate(180deg);
+}
+
+.collapsible-card > .prompt-panel,
+.collapsible-card > .utility-actions,
+.collapsible-card > .rule-card {
+  padding-left: 18px;
+  padding-right: 18px;
+}
+
 /* Evaluation findings */
 
 .evaluation-list {
