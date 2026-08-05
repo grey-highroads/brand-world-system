@@ -700,6 +700,10 @@ const state = {
     job: null,
     error: "",
     recovered: false,
+    candidateRules: [],
+    feedbackOpen: false,
+    feedbackDraft: "",
+    feedbackScope: "this-output",
   },
   brain: {
     stage: "empty",
@@ -2564,46 +2568,218 @@ function referenceResolution(item) {
   `;
 }
 
+function buildEvaluationFindings(job) {
+  if (!job?.generationPackage) return [];
+  const findings = [];
+  const pkg = job.generationPackage;
+
+  // Locked-asset check
+  if (pkg.lockedAsset) {
+    findings.push({
+      id: "locked-asset",
+      element: pkg.lockedAsset.name || "Protected asset",
+      category: "Fidelity",
+      status: "verify",
+      finding: "The protected asset was included in the generation input. Verify that the label, proportions, and state are preserved in the result.",
+      repairAction: "retry-with-direction",
+      repairLabel: "Retry with stronger protection",
+    });
+  }
+
+  // Composition / placement check
+  findings.push({
+    id: "composition",
+    element: `${pkg.output.format} composition`,
+    category: "Output",
+    status: "verify",
+    finding: `The image was generated at ${pkg.output.size || "default"} for ${pkg.output.placement || "the requested placement"}. Confirm the composition works at this ratio.`,
+    repairAction: "retry-with-direction",
+    repairLabel: "Retry with adjusted composition",
+  });
+
+  // Accidental text / visual claims
+  findings.push({
+    id: "accidental-text",
+    element: "Unintended text or claims",
+    category: "Compliance",
+    status: "verify",
+    finding: "Check for any accidental readable text, logos, or visual elements that could imply a health or performance claim.",
+    repairAction: "retry-exclude",
+    repairLabel: "Retry with explicit exclusion",
+  });
+
+  // Brand-world fidelity
+  findings.push({
+    id: "brand-fidelity",
+    element: `${pkg.brandName} world`,
+    category: "Brand",
+    status: "verify",
+    finding: `Does the scene feel specific to ${pkg.brandName}? The approved creative direction, palette, and materials were compiled into the prompt. The result should feel grounded in those choices, not generic.`,
+    repairAction: "retry-with-direction",
+    repairLabel: "Retry with stronger direction",
+  });
+
+  // Constraint audit findings
+  for (const constraint of pkg.constraintAudit || []) {
+    if (constraint.status === "excluded" || constraint.status === "warning") {
+      findings.push({
+        id: `constraint-${constraint.rule?.replace(/\s/g, "-") || Math.random()}`,
+        element: constraint.rule || "Constraint",
+        category: "Rules",
+        status: constraint.status === "excluded" ? "enforced" : "verify",
+        finding: constraint.status === "excluded"
+          ? `This element was excluded from the prompt: ${constraint.rule}.`
+          : `A constraint was flagged during compilation: ${constraint.rule}. Verify the result complies.`,
+        repairAction: null,
+        repairLabel: null,
+      });
+    }
+  }
+  return findings;
+}
+
 function renderResult() {
   const job = state.production.job;
   const working = state.production.status === "generating" || job?.status === "working";
   const failed = state.production.status === "error" || job?.status === "error";
   const complete = job?.status === "complete" && job.imageUrl;
   const generationMethod = job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
+  const findings = complete ? buildEvaluationFindings(job) : [];
+  const candidateRules = state.production.candidateRules || [];
+  const feedbackOpen = state.production.feedbackOpen || false;
+  const feedbackDraft = state.production.feedbackDraft || "";
+  const feedbackScope = state.production.feedbackScope || "this-output";
+
   return shell(`
     <section class="workspace">
-      ${pageHeader(complete ? "Generated result" : working ? "Generating your image" : "Generation needs attention", complete ? `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}.` : working ? "OpenAI is creating the image from the reviewed package." : "Your package is still saved and ready to try again.")}
+      ${pageHeader(
+        failed ? "Generation needs attention" : working ? "Generating your image" : complete ? "Evaluate result" : "Generated result",
+        failed ? "Your package is still saved and ready to try again."
+          : working ? "OpenAI is creating the image from the reviewed package."
+          : complete ? `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. Review the findings below before approving or revising.`
+          : ""
+      )}
 
       <div class="result-grid">
-        <section class="card">
-          <div class="card-header">
-            <h2>${escapeHtml(state.brandName)} brand world image</h2>
-            <span class="mini-pill">${complete ? "Generated" : working ? "Working" : "Not generated"}</span>
-          </div>
-          ${complete
-            ? `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
-            : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`}
-        </section>
-
-        <aside>
+        <div>
           <section class="card">
-            <div class="card-header"><h2>Review before use</h2><span class="mini-pill">Human check</span></div>
-            <ul class="review-list">
-              <li>Does the scene feel specific to ${escapeHtml(state.brandName)}?</li>
-              <li>Does it follow the approved creative direction and boundaries?</li>
-              <li>Does the composition work for ${escapeHtml(state.brief.placement)} ${escapeHtml(state.brief.format)}?</li>
-              <li>Is there any accidental text, logo, or visual claim to reject?</li>
-            </ul>
+            <div class="card-header">
+              <h2>${escapeHtml(state.brandName)} brand world image</h2>
+              <span class="mini-pill">${complete ? "Generated" : working ? "Working" : "Not generated"}</span>
+            </div>
+            ${complete
+              ? `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+              : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
+            }
           </section>
 
-          <section class="card" ${complete ? "" : "hidden"}>
-            <div class="card-header"><h2>What next?</h2></div>
-            <p class="page-description">The image and exact production package are stored together. Approval and write-back will come in a later workflow.</p>
-            <div class="actions">
+          ${complete && findings.length ? `
+          <section class="card">
+            <div class="card-header">
+              <h2>Evaluation findings</h2>
+              <span class="mini-pill">${findings.filter((f) => f.status === "verify").length} to verify</span>
+            </div>
+            <ul class="evaluation-list">
+              ${findings.map((f) => `
+                <li class="evaluation-item ${f.status}">
+                  <div class="evaluation-item-header">
+                    <span class="mini-pill" style="${f.status === "enforced" ? "color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);" : ""}">${f.status === "enforced" ? "Enforced" : "Verify"}</span>
+                    <strong>${escapeHtml(f.element)}</strong>
+                    <span class="evaluation-category">${escapeHtml(f.category)}</span>
+                  </div>
+                  <p>${escapeHtml(f.finding)}</p>
+                  ${f.repairAction ? `<button class="button small" type="button" data-action="${f.repairAction}" data-finding="${f.id}">${escapeHtml(f.repairLabel)}</button>` : ""}
+                </li>
+              `).join("")}
+            </ul>
+          </section>
+          ` : ""}
+        </div>
+
+        <aside>
+          ${complete ? `
+          <section class="card">
+            <div class="card-header"><h2>Actions</h2></div>
+            <div class="result-actions">
+              <button class="button secondary" type="button" data-action="approve-output">Approve this output</button>
+              <button class="button" type="button" data-action="open-feedback">Provide feedback</button>
+              <button class="button" type="button" data-action="retry-generate">Try again</button>
               <button class="button" type="button" data-action="back-to-preflight">View package</button>
               <button class="button" type="button" data-action="download-result">Download image</button>
-              <button class="button primary" type="button" data-action="start-new">Start another</button>
             </div>
+          </section>
+
+          ${feedbackOpen ? `
+          <section class="card feedback-card">
+            <div class="card-header"><h2>What should change?</h2></div>
+            <textarea class="feedback-textarea" data-field="feedbackDraft" placeholder="Describe what you would change. Be specific about which element and why." rows="4">${escapeHtml(feedbackDraft)}</textarea>
+            <div class="feedback-scope">
+              <span class="section-label">Where should this apply?</span>
+              <label class="feedback-scope-option ${feedbackScope === "this-output" ? "selected" : ""}">
+                <input type="radio" name="feedbackScope" value="this-output" ${feedbackScope === "this-output" ? "checked" : ""} data-action="set-feedback-scope">
+                <span><strong>Fix this one</strong>Revise the current output only. Nothing else changes.</span>
+              </label>
+              <label class="feedback-scope-option ${feedbackScope === "remember" ? "selected" : ""}">
+                <input type="radio" name="feedbackScope" value="remember" ${feedbackScope === "remember" ? "checked" : ""} data-action="set-feedback-scope">
+                <span><strong>Propose for future work</strong>Submit for review as a candidate rule. Does not change the Brand Brain until someone approves it.</span>
+              </label>
+              <label class="feedback-scope-option ${feedbackScope === "brand-rule" ? "selected" : ""}">
+                <input type="radio" name="feedbackScope" value="brand-rule" ${feedbackScope === "brand-rule" ? "checked" : ""} data-action="set-feedback-scope">
+                <span><strong>Propose as a brand rule</strong>Submit for review as a potential identity-defining rule. Requires brand-owner approval before it takes effect.</span>
+              </label>
+            </div>
+            <div class="actions">
+              <button class="button secondary" type="button" data-action="submit-feedback" ${feedbackDraft.trim() ? "" : "disabled"}>
+                ${feedbackScope === "this-output" ? "Revise this output" : "Submit for review"}
+              </button>
+              <button class="button" type="button" data-action="cancel-feedback">Cancel</button>
+            </div>
+          </section>
+          ` : ""}
+
+          ${candidateRules.length ? `
+          <section class="card">
+            <div class="card-header">
+              <h2>Pending review</h2>
+              <span class="mini-pill">${candidateRules.length} candidate ${candidateRules.length === 1 ? "rule" : "rules"}</span>
+            </div>
+            <ul class="candidate-rules-list">
+              ${candidateRules.map((rule, index) => `
+                <li class="candidate-rule-item">
+                  <div class="candidate-rule-header">
+                    <span class="mini-pill" style="${rule.scope === "brand-rule" ? "color: var(--coral); background: rgb(230 132 90 / 0.08); border-color: rgb(230 132 90 / 0.25);" : "color: var(--lavender); background: rgb(142 132 211 / 0.08); border-color: rgb(142 132 211 / 0.25);"}">${rule.scope === "brand-rule" ? "Brand rule proposal" : "Candidate rule"}</span>
+                  </div>
+                  <p>${escapeHtml(rule.feedback)}</p>
+                  <span class="candidate-rule-source">From: ${escapeHtml(rule.sourceOutput || state.brandName + " production")} · ${escapeHtml(rule.time)}</span>
+                  <button class="button small" type="button" data-action="dismiss-candidate" data-index="${index}">Dismiss</button>
+                </li>
+              `).join("")}
+            </ul>
+          </section>
+          ` : ""}
+
+          <section class="card">
+            <div class="card-header"><h2>Production record</h2></div>
+            <div class="rule-card">
+              <div class="rule"><span class="mini-pill">Brain</span><span>v${job.generationPackage.brainVersion} · ${job.generationPackage.sourceCount || 0} sources</span></div>
+              <div class="rule"><span class="mini-pill">Mode</span><span>${escapeHtml(job.generationPackage.aestheticMode?.name || "Standard")}</span></div>
+              <div class="rule"><span class="mini-pill">Output</span><span>${escapeHtml(job.generationPackage.output?.placement || "")} · ${escapeHtml(job.generationPackage.output?.format || "")}</span></div>
+              <div class="rule"><span class="mini-pill">Render</span><span>${escapeHtml(job.model || "OpenAI")} · ${escapeHtml(generationMethod)}</span></div>
+              ${job.generationPackage.lockedAsset ? `<div class="rule"><span class="mini-pill">Locked</span><span>${escapeHtml(job.generationPackage.lockedAsset.name)}</span></div>` : ""}
+              ${job.generationPackage.references?.length ? `<div class="rule"><span class="mini-pill">Sources</span><span>${job.generationPackage.references.map((r) => escapeHtml(r.name)).join(", ")}</span></div>` : ""}
+            </div>
+          </section>
+          ` : `
+          <section class="card" ${working ? "" : "hidden"}>
+            <div class="card-header"><h2>Production record</h2></div>
+            <p class="page-description">Details will appear when generation completes.</p>
+          </section>
+          `}
+
+          <section class="card">
+            <div class="card-header"><h2>Start over</h2></div>
+            <p class="page-description">Begin a new production job from the workflow chooser.</p>
+            <button class="button" type="button" data-action="start-new">Start another</button>
           </section>
         </aside>
       </div>
@@ -3222,6 +3398,9 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="reference-guidance"]')) {
     state.references[Number(event.target.dataset.index)].usageInstruction = event.target.value;
   }
+  if (event.target.matches('[data-field="feedbackDraft"]')) {
+    state.production.feedbackDraft = event.target.value;
+  }
 });
 
 root.addEventListener("change", async (event) => {
@@ -3584,11 +3763,70 @@ root.addEventListener("click", (event) => {
   if (action === "back-to-preflight") navigate("preflight");
   if (action === "generate" || action === "retry-generate") void startProductionGeneration();
   if (action === "download-result") void downloadGeneratedImage();
+  if (action === "approve-output") {
+    recordBrainHistory("Output approved", `A ${state.brandName} brand world image was approved for ${state.brief.placement} ${state.brief.format}.`, "complete");
+    setToast("Output approved. The image and production package are recorded.");
+  }
+  if (action === "open-feedback") {
+    state.production.feedbackOpen = true;
+    state.production.feedbackScope = "this-output";
+    state.production.feedbackDraft = "";
+    render();
+  }
+  if (action === "cancel-feedback") {
+    state.production.feedbackOpen = false;
+    render();
+  }
+  if (action === "set-feedback-scope") {
+    state.production.feedbackScope = target.value;
+    render();
+  }
+  if (action === "submit-feedback") {
+    const draft = state.production.feedbackDraft.trim();
+    if (!draft) { setToast("Describe what should change first"); return; }
+    const scope = state.production.feedbackScope;
+    if (scope === "this-output") {
+      // Revision: go back to preflight with the feedback as additional direction
+      state.production.feedbackOpen = false;
+      setToast("Feedback noted. Adjust the brief or try again with the revised direction.");
+      navigate("preflight");
+    } else {
+      // Candidate rule: log it for review, do NOT write to the brain
+      state.production.candidateRules.push({
+        feedback: draft,
+        scope,
+        sourceOutput: `${state.brandName} ${state.brief.placement} ${state.brief.format}`,
+        sourcePackageVersion: state.production.job?.generationPackage?.brainVersion || 0,
+        time: "This session",
+      });
+      state.production.feedbackOpen = false;
+      state.production.feedbackDraft = "";
+      recordBrainHistory(
+        scope === "brand-rule" ? "Brand rule proposed" : "Candidate rule submitted",
+        `"${draft}" was submitted for review. It does not affect the Brand Brain until a qualified reviewer approves it.`,
+        "governed"
+      );
+      setToast(scope === "brand-rule" ? "Brand rule proposal submitted for review" : "Candidate rule submitted for review");
+    }
+  }
+  if (action === "dismiss-candidate") {
+    const index = Number(target.dataset.index);
+    const dismissed = state.production.candidateRules.splice(index, 1)[0];
+    if (dismissed) recordBrainHistory("Candidate rule dismissed", `"${dismissed.feedback}" was removed from the review queue.`);
+    render();
+  }
+  if (action === "retry-with-direction" || action === "retry-exclude") {
+    setToast("Adjust your brief with the finding in mind, then regenerate.");
+    navigate("preflight");
+  }
   if (action === "start-new") {
     state.production.status = "idle";
     state.production.package = null;
     state.production.error = "";
     state.production.recovered = false;
+    state.production.feedbackOpen = false;
+    state.production.feedbackDraft = "";
+    state.production.feedbackScope = "this-output";
     navigate("chooser");
   }
   if (action === "copy-prompt") copyPrompt();
