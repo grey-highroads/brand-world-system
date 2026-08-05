@@ -2423,11 +2423,11 @@ function renderPreflight() {
 
       <div class="preflight-grid">
         <div>
-          <section class="card">
-            <div class="card-header">
+          <details class="card collapsible-card">
+            <summary class="card-header collapsible-header">
               <h2>Compiled prompt</h2>
-              <span class="status-pill">Built from Brand Brain</span>
-            </div>
+              <span class="collapsible-meta"><span class="mini-pill" style="color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);">${generationPackage.sections.length} sections compiled</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            </summary>
             <div class="prompt-panel">
               <span class="component-kicker">Compiled components</span>
               <div class="source-chips">${sources}</div>
@@ -2437,7 +2437,7 @@ function renderPreflight() {
               <button class="button" type="button" data-action="copy-prompt">Copy prompt</button>
               <button class="button" type="button" data-action="download-package">Download package</button>
             </div>
-          </section>
+          </details>
 
           <section class="card">
             <div class="card-header"><h2>Production contract</h2></div>
@@ -2465,11 +2465,11 @@ function renderPreflight() {
 
         <aside>
           ${generationPackage.treatments?.length ? `
-          <section class="card">
-            <div class="card-header">
+          <details class="card collapsible-card">
+            <summary class="card-header collapsible-header">
               <h2>What the system will do</h2>
-              <span class="mini-pill">${generationPackage.ready !== false ? "Ready" : "Needs input"}</span>
-            </div>
+              <span class="collapsible-meta"><span class="mini-pill" style="color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);">${generationPackage.treatments.filter((t) => t.treatment === "locked").length} exact · ${generationPackage.treatments.filter((t) => t.treatment === "suggested").length} interpreted</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            </summary>
             ${["locked", "suggested", "not_needed", "needs_input"].map((treatment) => {
               const items = generationPackage.treatments.filter((t) => t.treatment === treatment);
               if (!items.length) return "";
@@ -2503,7 +2503,7 @@ function renderPreflight() {
                 `).join("")}
               </div>
             ` : ""}
-          </section>
+          </details>
           ` : ""}
 
           <section class="card">
