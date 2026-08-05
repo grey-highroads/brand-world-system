@@ -5,6 +5,13 @@ const deliverables = [
     description: "Create a brand-grounded image from an approved Brand Brain.",
     contract: "One finished image. The approved brand guidance shapes every open choice.",
     available: true,
+    requirements: [
+      { id: "approved-brain", label: "Approved Brand Brain", condition: "always" },
+      { id: "creative-direction", label: "Creative direction guidance", condition: "always" },
+      { id: "foundation", label: "Brand foundation guidance", condition: "always" },
+      { id: "locked-asset", label: "Protected product asset", condition: "when product is visible" },
+      { id: "voice-guidance", label: "Voice and messaging", condition: "when text appears" },
+    ],
   },
   {
     id: "product-showcase",
@@ -2453,6 +2460,48 @@ function renderPreflight() {
         </div>
 
         <aside>
+          ${generationPackage.treatments?.length ? `
+          <section class="card">
+            <div class="card-header">
+              <h2>What the system will do</h2>
+              <span class="mini-pill">${generationPackage.ready !== false ? "Ready" : "Needs input"}</span>
+            </div>
+            ${["locked", "suggested", "not_needed", "needs_input"].map((treatment) => {
+              const items = generationPackage.treatments.filter((t) => t.treatment === treatment);
+              if (!items.length) return "";
+              const treatmentLabels = { locked: "Stays exact", suggested: "System interprets", not_needed: "Not needed for this job", needs_input: "Needs your input" };
+              const treatmentStyles = {
+                locked: "color: var(--coral); background: rgb(230 132 90 / 0.08); border-color: rgb(230 132 90 / 0.25);",
+                suggested: "color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);",
+                not_needed: "",
+                needs_input: "color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);",
+              };
+              return `
+                <div class="rule-card">
+                  <span class="section-label">${treatmentLabels[treatment]}</span>
+                  ${items.map((item) => `
+                    <div class="rule">
+                      <span class="mini-pill" style="${treatmentStyles[treatment]}">${escapeHtml(item.category)}</span>
+                      <span><strong>${escapeHtml(item.element)}</strong><span>${escapeHtml(item.reason)}</span></span>
+                    </div>
+                  `).join("")}
+                </div>
+              `;
+            }).join("")}
+            ${generationPackage.requirementCheck?.length ? `
+              <div class="rule-card">
+                <span class="section-label">Deliverable requirements</span>
+                ${generationPackage.requirementCheck.filter((r) => r.active).map((r) => `
+                  <div class="rule">
+                    <span class="mini-pill" style="${r.met ? "color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);" : "color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);"}">${r.met ? "Met" : "Missing"}</span>
+                    <span><strong>${escapeHtml(r.label)}</strong><span>${escapeHtml(r.condition)}</span></span>
+                  </div>
+                `).join("")}
+              </div>
+            ` : ""}
+          </section>
+          ` : ""}
+
           <section class="card">
             <div class="card-header">
               <h2>Generation inputs</h2>
@@ -2478,8 +2527,11 @@ function renderPreflight() {
           </section>
 
           <section class="card ready-card">
-            <div class="card-header"><h2>Ready to generate</h2><span class="mini-pill">Ready</span></div>
-            <p>The exact prompt, approved Brand Brain version, creative sources, and output format are saved in this package.</p>
+            <div class="card-header"><h2>${generationPackage.ready !== false ? "Ready to generate" : "Needs your input"}</h2><span class="mini-pill">${generationPackage.ready !== false ? "Ready" : "Review"}</span></div>
+            <p>${generationPackage.ready !== false
+              ? "The exact prompt, approved Brand Brain version, creative sources, and output format are saved in this package."
+              : `${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).map((r) => r.label).join(", ")} ${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).length === 1 ? "is" : "are"} not available yet. You can still generate, but the result may be incomplete.`
+            }</p>
             <button class="button secondary" type="button" data-action="generate">Generate with OpenAI</button>
           </section>
         </aside>
