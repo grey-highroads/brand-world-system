@@ -1471,6 +1471,18 @@ select {
   line-height: 0.8;
 }
 
+/* Affected outputs */
+
+.affected-outputs-card {
+  margin-bottom: 8px;
+}
+
+.affected-outputs-list {
+  display: grid;
+  gap: 2px;
+  padding: 0 18px 16px;
+}
+
 /* Collapsible cards (details/summary) */
 
 .collapsible-card {
