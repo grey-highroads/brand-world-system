@@ -47,6 +47,12 @@ The brief review exposed a fifth correction. Ambient product promises should not
 
 The Brand Brain review exposed a sixth correction. Architecture vocabulary must not leak into marketer-facing copy. The interface starts with the decision, evidence, and consequence using terms such as “brand rule,” “where this applies,” and “core brand guidance.” Schema terms such as scoped prohibition, epistemic origin, lifecycle, production effect, and governance event remain available in contracts and specialist documentation instead of becoming routine labels.
 
+The evaluation and feedback sprint exposed a seventh correction. Production feedback must not auto-write to the Brand Brain. A user evaluating a generated result may dislike it for subjective, emotional, or unrealistic reasons. If that feedback writes directly to the brain, the brain drifts from governed brand intelligence toward uncurated reactions. The accepted direction routes all broader-than-this-output feedback through a candidate rule queue. A qualified reviewer must promote, modify, or dismiss each proposal before it affects anything. See [`decisions/0010-route-production-feedback-through-candidate-rules.md`](decisions/0010-route-production-feedback-through-candidate-rules.md).
+
+The same sprint exposed an eighth correction. The result screen must show element-level evaluation findings, not a generic quality checklist. Each finding names a specific element (locked-asset fidelity, composition for the requested format, accidental text, brand-world specificity), states what the system did, and offers a targeted repair action when applicable. Repair actions route back to preflight with specific direction rather than presenting a generic "try again." This is not yet automated element-level repair (regenerating just the background while keeping the product), but it directs the user to the right fix.
+
+The preflight review exposed a ninth correction. Job-specific treatments (locked, suggested, not needed, needs input) classify every brand element for the current job and show a plain-language summary of what the system will do. In the sprint prototype these are display-only. The formal compiler handles authoritative resolution. The preflight surface is collapsible so the production contract and ready state stay prominent while the treatment detail is available on demand.
+
 ## Audit questions still open
 
 - Does “brand brain” help client users, or should most surfaces use more concrete language?
