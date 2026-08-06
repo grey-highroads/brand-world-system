@@ -4071,24 +4071,6 @@ root.addEventListener("change", async (event) => {
   if (action === "format-change") state.brief.format = event.target.value;
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
-  if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
-  if (action === "toggle-campaign-ref") {
-    const id = target.dataset.id;
-    const existing = state.campaignReferences.findIndex((r) => r.id === id);
-    if (existing >= 0) {
-      state.campaignReferences.splice(existing, 1);
-    } else {
-      const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
-      const output = campaign?.outputs?.find((o) => o.id === id);
-      if (output) state.campaignReferences.push({ id, role: "continue-direction", label: output.label, scene: output.scene, channel: output.channel, format: output.format });
-    }
-    render();
-  }
-  if (action === "set-campaign-ref-role") {
-    const ref = state.campaignReferences.find((r) => r.id === target.dataset.id);
-    if (ref) ref.role = target.dataset.role;
-    render();
-  }
   if (action === "reference-role") {
     state.references[Number(event.target.dataset.index)].role = event.target.value;
   }
@@ -4132,6 +4114,24 @@ root.addEventListener("click", (event) => {
   }
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
   if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
+  if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
+  if (action === "toggle-campaign-ref") {
+    const id = target.dataset.id;
+    const existing = state.campaignReferences.findIndex((r) => r.id === id);
+    if (existing >= 0) {
+      state.campaignReferences.splice(existing, 1);
+    } else {
+      const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+      const output = campaign?.outputs?.find((o) => o.id === id);
+      if (output) state.campaignReferences.push({ id, role: "continue-direction", label: output.label, scene: output.scene, channel: output.channel, format: output.format });
+    }
+    render();
+  }
+  if (action === "set-campaign-ref-role") {
+    const ref = state.campaignReferences.find((r) => r.id === target.dataset.id);
+    if (ref) ref.role = target.dataset.role;
+    render();
+  }
   if (action === "create-campaign") { setToast("Campaign creation flow coming next. Using the sample campaign for now."); }
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
