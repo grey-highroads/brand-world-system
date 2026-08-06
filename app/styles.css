@@ -1564,6 +1564,117 @@ select {
   line-height: 1;
 }
 
+/* Product asset upload */
+
+.product-upload-drop {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px;
+  cursor: pointer;
+  background: var(--ink-950);
+  border: 1px dashed var(--paper-200);
+  border-radius: 4px;
+  transition: border-color 0.15s;
+}
+
+.product-upload-drop:hover {
+  border-color: var(--coral);
+}
+
+.product-upload-drop.busy {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.product-upload-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  color: var(--coral);
+  font-size: 16px;
+  background: rgb(230 132 90 / 0.08);
+  border: 1px solid rgb(230 132 90 / 0.25);
+  border-radius: 4px;
+}
+
+.product-upload-copy {
+  display: grid;
+  gap: 2px;
+}
+
+.product-upload-copy strong {
+  font-size: 12px;
+}
+
+.product-upload-copy span {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.product-upload-inline {
+  display: block;
+  padding: 8px 12px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 11px;
+  text-align: center;
+  cursor: pointer;
+  background: var(--ink-950);
+  border: 1px dashed var(--paper-200);
+  border-radius: 4px;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.product-upload-inline:hover {
+  border-color: var(--coral);
+  color: var(--text);
+}
+
+.product-upload-inline.busy {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* Scene starters */
+
+.scene-starters {
+  display: grid;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.scene-starter-btn {
+  display: grid;
+  gap: 2px;
+  padding: 8px 12px;
+  font-family: var(--sans);
+  text-align: left;
+  cursor: pointer;
+  background: var(--ink-950);
+  border: 1px solid var(--paper-200);
+  border-radius: 4px;
+  transition: border-color 0.15s;
+}
+
+.scene-starter-btn:hover {
+  border-color: var(--lavender);
+}
+
+.scene-starter-btn strong {
+  color: var(--text);
+  font-size: 12px;
+}
+
+.scene-starter-btn span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
 /* Campaign output references */
 
 .campaign-outputs-list {

@@ -726,12 +726,15 @@ const state = {
   ],
   activeCampaignId: null,
   campaignReferences: [],
+  productAssetUploading: false,
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
     exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
     placement: "Instagram feed",
     format: "4:5 portrait",
     assetType: "scene",
+    bannerHeadline: "",
+    bannerTextSide: "Left third",
     postType: "Thought leadership",
     postTopic: "",
     postClaims: "",
@@ -1950,6 +1953,7 @@ function renderCampaignWorkspace() {
   if (!campaign) return renderChooser();
   const approved = approvedBrainForProduction();
   const formats = placementFormats[state.brief.placement] || ["1:1 square"];
+  const needsProduct = state.brief.assetType === "product" && !state.lockedAssetId;
 
   return shell(`
     <section class="workspace">
@@ -1981,33 +1985,83 @@ function renderCampaignWorkspace() {
               ${state.brief.assetType === "post" ? `
                 <div class="field full">
                   <label for="post-topic">What is this post about?</label>
-                  <textarea id="post-topic" data-action="post-topic-input" placeholder="The campaign idea and brand voice shape the writing. Describe the angle or key message.">${escapeHtml(state.brief.postTopic)}</textarea>
+                  <textarea id="post-topic" data-action="post-topic-input" placeholder="The angle or key message. Campaign idea and brand voice shape the writing.">${escapeHtml(state.brief.postTopic)}</textarea>
+                  ${campaign.messageTerritory ? `<span class="field-note">Campaign territory: ${escapeHtml(campaign.messageTerritory)}</span>` : ""}
                 </div>
                 <div class="field full">
-                  <label for="post-claims">Approved claims or facts to include (optional)</label>
-                  <input class="input-like" id="post-claims" data-action="post-claims-input" value="${escapeHtml(state.brief.postClaims)}" placeholder="Only claims verified by the Brand Brain will appear.">
+                  <label for="post-claims">Claims or facts to include (optional)</label>
+                  <input class="input-like" id="post-claims" data-action="post-claims-input" value="${escapeHtml(state.brief.postClaims)}" placeholder="Only claims the Brand Brain has approved will appear.">
+                  ${campaign.proofPoints ? `<span class="field-note">Campaign proof points: ${escapeHtml(campaign.proofPoints)}</span>` : ""}
                 </div>
                 <div class="field full">
                   <label for="post-cta">Call to action (optional)</label>
-                  <input class="input-like" id="post-cta" data-action="post-cta-input" value="${escapeHtml(state.brief.postCta)}" placeholder="e.g., Visit the link in bio, Try it this afternoon">
+                  <input class="input-like" id="post-cta" data-action="post-cta-input" value="${escapeHtml(state.brief.postCta)}" placeholder="${escapeHtml(campaign.desiredAction || "What should the reader do next?")}">
                 </div>
                 <div class="field full">
                   <label class="checkbox-label">
                     <input type="checkbox" data-action="toggle-include-image" ${state.brief.includeImage ? "checked" : ""}>
                     <span>Generate a supporting image</span>
                   </label>
+                  <span class="field-note">The image supports the post rather than repeating it.</span>
                 </div>
                 ${state.brief.includeImage ? `
                   <div class="field full">
                     <label for="scene">Image direction (optional)</label>
-                    <textarea id="scene" data-action="scene-input" placeholder="Leave blank to let the campaign and brand direction shape the image.">${escapeHtml(state.brief.scene)}</textarea>
+                    <textarea id="scene" data-action="scene-input" placeholder="Leave blank and the image will be composed from the post topic, campaign direction, and brand world.">${escapeHtml(state.brief.scene)}</textarea>
                   </div>
                 ` : ""}
+              ` : state.brief.assetType === "product" ? `
+                <div class="field full">
+                  <label for="scene">Where is the product and what is happening around it?</label>
+                  <textarea id="scene" data-action="scene-input" placeholder="Describe the moment. For example: resting on a kitchen counter in late afternoon light, someone reaching for it mid-conversation.">${escapeHtml(state.brief.scene)}</textarea>
+                  <span class="field-note">The product is placed exactly as uploaded. Describe the world around it, not the packaging itself.</span>
+                </div>
+                ${sceneStarters(approved, campaign).length ? `
+                  <div class="field full">
+                    <span class="section-label">Starting points from the brand and campaign</span>
+                    <div class="scene-starters">
+                      ${sceneStarters(approved, campaign).map((s) => `
+                        <button class="scene-starter-btn" type="button" data-action="use-scene-starter" data-text="${escapeHtml(s.text)}">
+                          <strong>${escapeHtml(s.label)}</strong><span>${escapeHtml(s.source)}</span>
+                        </button>
+                      `).join("")}
+                    </div>
+                  </div>
+                ` : ""}
+              ` : state.brief.assetType === "banner" ? `
+                <div class="field full">
+                  <label for="scene">What should the banner show?</label>
+                  <textarea id="scene" data-action="scene-input" placeholder="Banners are wide and often cropped. Describe a scene that reads clearly at a glance.">${escapeHtml(state.brief.scene)}</textarea>
+                </div>
+                <div class="field full">
+                  <label for="banner-headline">Headline that will sit over the image (optional)</label>
+                  <input class="input-like" id="banner-headline" data-action="banner-headline-input" value="${escapeHtml(state.brief.bannerHeadline)}" placeholder="${escapeHtml(campaign.campaignIdea || "Leave blank for image only")}">
+                  <span class="field-note">The headline is not rendered into the image. Naming it keeps that area of the composition clear.</span>
+                </div>
+                <div class="field full">
+                  <label for="banner-text-side">Where should the text area sit?</label>
+                  <select id="banner-text-side" data-action="banner-text-side-change">
+                    ${["Left third", "Right third", "Lower third", "No text area"].map((s) => option(s, state.brief.bannerTextSide)).join("")}
+                  </select>
+                  <span class="field-note">The subject is composed away from this area so the headline stays readable.</span>
+                </div>
               ` : `
                 <div class="field full">
-                  <label for="scene">${state.brief.assetType === "product" ? "Describe the scene around the product" : state.brief.assetType === "banner" ? "Describe the banner" : "Describe this image"}</label>
-                  <textarea id="scene" data-action="scene-input" placeholder="${state.brief.assetType === "product" ? "The product stays exact. Describe the setting, mood, and context around it." : "The campaign direction and brand guidance fill in the gaps."}">${escapeHtml(state.brief.scene)}</textarea>
+                  <label for="scene">Describe this image</label>
+                  <textarea id="scene" data-action="scene-input" placeholder="A moment from the brand world. Campaign direction and brand guidance fill in the gaps.">${escapeHtml(state.brief.scene)}</textarea>
                 </div>
+                ${sceneStarters(approved, campaign).length ? `
+                  <div class="field full">
+                    <span class="section-label">Starting points from the brand and campaign</span>
+                    <div class="scene-starters">
+                      ${sceneStarters(approved, campaign).map((s) => `
+                        <button class="scene-starter-btn" type="button" data-action="use-scene-starter" data-text="${escapeHtml(s.text)}">
+                          <strong>${escapeHtml(s.label)}</strong><span>${escapeHtml(s.source)}</span>
+                        </button>
+                      `).join("")}
+                    </div>
+                  </div>
+                ` : ""}
               `}
               <div class="field">
                 <label for="placement">Channel</label>
@@ -2030,13 +2084,9 @@ function renderCampaignWorkspace() {
               </div>
             </div>
 
-            ${state.brief.assetType === "product" ? `
-              <div class="rule-card rule-card-compact">
-                <span class="section-label">Product asset required</span>
-                <p class="page-description support-note">This asset type places a product in the scene. Select a protected asset below.</p>
-              </div>
-            ` : ""}
-            ${(state.brief.assetType !== "post" || state.brief.includeImage) ? renderLockedAssetPicker() : ""}
+            ${state.brief.assetType === "product"
+              ? renderLockedAssetPicker({ required: true })
+              : (state.brief.assetType !== "post" || state.brief.includeImage) ? renderLockedAssetPicker() : ""}
           </section>
 
           ${campaign.outputs?.length ? `
@@ -2113,9 +2163,11 @@ function renderCampaignWorkspace() {
           </section>
 
           <section class="card ready-card">
-            <div class="card-header"><h2>${approved ? "Ready" : "Not ready"}</h2></div>
-            <p class="page-description">Campaign direction and brand guidance will both compile into the prompt.</p>
-            <button class="button primary" type="button" data-action="start-campaign-asset" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
+            <div class="card-header"><h2>${!approved ? "Not ready" : needsProduct ? "Needs a product image" : "Ready"}</h2></div>
+            <p class="page-description">${needsProduct
+              ? "Product in scene places a real product image into the generated scene. Add one below the brief, or switch to Scene image."
+              : "Campaign direction and brand guidance will both compile into the prompt."}</p>
+            <button class="button primary" type="button" data-action="start-campaign-asset" ${approved && !needsProduct ? "" : "disabled"}>Continue to preflight ›</button>
           </section>
 
           <div class="actions actions-compact">
@@ -2509,10 +2561,34 @@ function syncProductionReferences() {
     .map((item) => ({ ...available.get(item.id), ...item }));
 }
 
+function sceneStarters(approved, campaign) {
+  const starters = [];
+  // Campaign explore direction is the most specific starting point
+  if (campaign?.explore) {
+    for (const piece of campaign.explore.split(",").map((s) => s.trim()).filter(Boolean).slice(0, 2)) {
+      starters.push({
+        label: piece.charAt(0).toUpperCase() + piece.slice(1),
+        source: `${campaign.name} campaign`,
+        text: `A moment set in ${piece.toLowerCase()}. ${campaign.messageTerritory || ""}`.trim(),
+      });
+    }
+  }
+  // Rituals and behaviors from the brand world section
+  const world = approved?.guidanceSections?.find((s) => s.id === "world");
+  for (const principle of (world?.principles || []).slice(0, 2)) {
+    starters.push({
+      label: principle.length > 46 ? `${principle.slice(0, 46)}...` : principle,
+      source: "Brand world",
+      text: principle,
+    });
+  }
+  return starters.slice(0, 4);
+}
+
 function productionLockedAssets() {
   if (state.brain.synthesisKind === "sample") return [];
   return state.brain.sources
-    .filter((source) => source.authority === "exact-asset")
+    .filter((source) => source.authority === "exact-asset" || source.sessionProductAsset)
     .map((source) => {
       const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
       if (!file) return null;
@@ -2521,16 +2597,43 @@ function productionLockedAssets() {
     .filter(Boolean);
 }
 
-function renderLockedAssetPicker() {
+function renderLockedAssetPicker(options = {}) {
   const assets = productionLockedAssets();
-  if (!assets.length) return "";
+  const required = options.required || false;
   const selected = assets.find((item) => item.id === state.lockedAssetId);
+  const uploading = state.productAssetUploading;
+
+  // Empty state: give the marketer a way to add a product asset right here
+  if (!assets.length) {
+    return `
+      <div class="reference-section">
+        <div class="reference-heading">
+          <div>
+            <span class="section-label">Product asset${required ? "" : " (optional)"}</span>
+            <p>${required
+              ? "This asset type places a real product in the scene. Upload the product image so it is preserved exactly rather than invented by the model."
+              : "Upload a product image to preserve it exactly in the generated image."}</p>
+          </div>
+        </div>
+        <label class="product-upload-drop ${uploading ? "busy" : ""}">
+          <input type="file" accept="image/png,image/jpeg,image/webp" data-action="product-asset-input" ${uploading ? "disabled" : ""} hidden>
+          <span class="product-upload-icon">${uploading ? "⋯" : "＋"}</span>
+          <span class="product-upload-copy">
+            <strong>${uploading ? "Uploading" : "Add a product image"}</strong>
+            <span>${uploading ? "Storing the file" : "PNG, JPEG, or WebP. A clean pack shot on a plain background works best."}</span>
+          </span>
+        </label>
+        ${required ? '<p class="field-note field-note-spaced">Without a product image the model will invent packaging, which will not match the real product.</p>' : ""}
+      </div>
+    `;
+  }
+
   return `
     <div class="reference-section">
       <div class="reference-heading">
         <div>
-          <span class="section-label">Protected asset</span>
-          <p>Include an uploaded protected asset to preserve it exactly in the generated image.</p>
+          <span class="section-label">Product asset${required ? "" : " (optional)"}</span>
+          <p>The selected file is placed without change. The model builds the scene around it.</p>
         </div>
       </div>
       <div class="reference-list">
@@ -2544,7 +2647,11 @@ function renderLockedAssetPicker() {
             </article>
           `;
         }).join("")}
-        ${selected ? '<p class="field-note field-note-spaced">This asset will be preserved exactly. The prompt will include format-specific protection rules.</p>' : ""}
+        <label class="product-upload-inline ${uploading ? "busy" : ""}">
+          <input type="file" accept="image/png,image/jpeg,image/webp" data-action="product-asset-input" ${uploading ? "disabled" : ""} hidden>
+          <span>${uploading ? "Uploading" : "＋ Add another product image"}</span>
+        </label>
+        ${selected ? '<p class="field-note field-note-spaced">This asset stays exact. The prompt carries format-specific protection rules.</p>' : required ? '<p class="field-note field-note-spaced">Select a product image before generating.</p>' : ""}
       </div>
     </div>
   `;
@@ -3991,6 +4098,9 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="post-cta-input"]')) {
     state.brief.postCta = event.target.value;
   }
+  if (event.target.matches('[data-action="banner-headline-input"]')) {
+    state.brief.bannerHeadline = event.target.value;
+  }
   if (event.target.matches('[data-action="reference-guidance"]')) {
     state.references[Number(event.target.dataset.index)].usageInstruction = event.target.value;
   }
@@ -4020,6 +4130,40 @@ root.addEventListener("change", async (event) => {
           setToast(error.message);
         } finally {
           state.brain.sourceFileReading = false;
+          render();
+        }
+      }
+    }
+  }
+  if (action === "product-asset-input") {
+    const file = Array.from(event.target.files ?? [])[0];
+    if (file) {
+      const validationError = validateSourceFile(file);
+      if (validationError) {
+        setToast(validationError);
+      } else {
+        state.productAssetUploading = true;
+        render();
+        try {
+          const storeFile = window.storeBrandWorldSourceFile || readFileAsDataUrl;
+          const stored = await storeFile(file);
+          const id = `product-${Date.now()}`;
+          const displayName = file.name.replace(/\.[^.]+$/, "").replace(/[-_]/g, " ");
+          state.brain.sources.push({
+            id,
+            name: displayName || "Product image",
+            detail: "Uploaded for production",
+            declaredType: "Protected asset",
+            authority: "exact-asset",
+            sessionProductAsset: true,
+            files: [stored],
+          });
+          state.lockedAssetId = id;
+          setToast(`${displayName} will be preserved exactly`);
+        } catch (error) {
+          setToast(error.message || "The product image could not be uploaded.");
+        } finally {
+          state.productAssetUploading = false;
           render();
         }
       }
@@ -4069,6 +4213,7 @@ root.addEventListener("change", async (event) => {
     render();
   }
   if (action === "format-change") state.brief.format = event.target.value;
+  if (action === "banner-text-side-change") state.brief.bannerTextSide = event.target.value;
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
   if (action === "reference-role") {
@@ -4100,6 +4245,10 @@ root.addEventListener("click", (event) => {
     render();
   }
   if (action === "start-campaign-asset") {
+    if (state.brief.assetType === "product" && !state.lockedAssetId) {
+      setToast("Add a product image first, or switch to Scene image");
+      return;
+    }
     if (state.brief.assetType === "post") {
       state.selectedDeliverable = deliverables.find((d) => d.id === "linkedin-post") || deliverables[0];
       state.brief.placement = "LinkedIn feed";
@@ -4115,6 +4264,11 @@ root.addEventListener("click", (event) => {
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
   if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
+  if (action === "use-scene-starter") {
+    const text = target.dataset.text || "";
+    state.brief.scene = state.brief.scene.trim() ? `${state.brief.scene.trim()} ${text}` : text;
+    render();
+  }
   if (action === "toggle-campaign-ref") {
     const id = target.dataset.id;
     const existing = state.campaignReferences.findIndex((r) => r.id === id);
