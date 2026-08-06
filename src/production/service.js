@@ -106,6 +106,7 @@ export async function prepareProductionPackage(body, options) {
     brief: body.brief,
     references,
     lockedAsset,
+    campaign: body.campaign || null,
   });
   return { generationPackage, references, lockedAsset, stored };
 }
