@@ -274,6 +274,14 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 
   const sourceCount = approvedBrain.sourceCount || null;
 
+  const roleInstructions = {
+    "continue-direction": "Continue the visual direction of this prior output. Match the overall feeling, light quality, and palette choices while creating a distinct new image.",
+    "match-composition": "Match the composition and layout approach of this prior output. The new image should feel structurally similar but with different content.",
+    "create-variation": "Create a variation of this prior output. Same essential concept, different execution. The two should feel like siblings.",
+    "use-treatment": "Use the same product treatment as this prior output. Match how the product was lit, angled, and placed in the scene.",
+    "reference-only": "Use this as a loose reference for mood and atmosphere. The new image does not need to match it directly.",
+  };
+
   // Campaign direction section (compiled when campaign context is provided)
   const campaignSection = campaign?.campaignIdea ? {
     title: "Campaign direction",
@@ -290,6 +298,17 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     ].filter(Boolean).join(" "),
   } : null;
 
+  // Campaign continuity section (compiled when prior outputs are referenced)
+  const priorOutputs = campaign?.priorOutputs?.length ? {
+    title: "Campaign continuity",
+    body: [
+      `This campaign has ${campaign.priorOutputs.length} existing ${campaign.priorOutputs.length === 1 ? "output" : "outputs"}. The new image should feel like it belongs in the same campaign without repeating what already exists.`,
+      ...campaign.priorOutputs.map((prior) =>
+        `Prior output "${cleanText(prior.label)}" (${cleanText(prior.channel)} ${cleanText(prior.format)}): ${cleanText(prior.scene)}. ${roleInstructions[prior.role] || roleInstructions["reference-only"]}`
+      ),
+    ].join(" "),
+  } : null;
+
   const sections = [
     {
       title: "Assignment",
@@ -301,6 +320,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     },
     ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
     campaignSection,
+    priorOutputs,
     {
       title: "Audience and feeling",
       body: `${cleanText(dossier.audience)} ${cleanText(dossier.desiredFeeling)}`,
