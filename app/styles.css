@@ -1485,6 +1485,43 @@ select {
 
 /* LinkedIn post result */
 
+.mode-grid {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+.chooser-card {
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s;
+}
+
+.chooser-card:hover:not(:disabled) {
+  border-color: var(--lavender);
+}
+
+.chooser-card.unavailable {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.chooser-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.chooser-contract {
+  display: block;
+  margin-top: 8px;
+  color: var(--lavender);
+  font-size: 11px;
+}
+
+.new-campaign-card {
+  border-style: dashed;
+}
+
 .linkedin-result {
   display: grid;
   gap: 16px;
