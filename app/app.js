@@ -1,3 +1,31 @@
+const creativeModes = [
+  {
+    id: "explore",
+    name: "Explore the brand",
+    description: "Generate world images to expand the visual language.",
+    detail: "No campaign context. The Brand Brain shapes every choice.",
+  },
+  {
+    id: "campaign",
+    name: "Create for a campaign",
+    description: "Produce assets inside a strategic campaign.",
+    detail: "Brand Brain + Campaign Brain shape every choice.",
+  },
+  {
+    id: "standalone",
+    name: "Create something specific",
+    description: "Generate a standalone asset for a specific need.",
+    detail: "Brand Brain + request-specific direction.",
+  },
+];
+
+const assetConfig = {
+  dimensions: ["4:5 portrait", "1:1 square", "9:16 portrait", "16:9 landscape", "1.91:1 landscape", "4:3 landscape"],
+  composition: ["Environment only", "Product included", "Human included", "Multiple products"],
+  textMode: ["No text", "User supplied text", "Generated copy"],
+  channels: ["Instagram", "LinkedIn", "Website", "Email", "Presentation"],
+};
+
 const deliverables = [
   {
     id: "brand-world-image",
@@ -25,36 +53,6 @@ const deliverables = [
       { id: "voice-guidance", label: "Voice and messaging", condition: "always" },
       { id: "creative-direction", label: "Creative direction guidance", condition: "when image is included" },
     ],
-  },
-  {
-    id: "product-showcase",
-    name: "Product showcase",
-    description: "Create a polished, product-focused image with an approved pack.",
-    contract: "Exact product in a flexible composition. Image-only output.",
-  },
-  {
-    id: "instagram-story",
-    name: "Instagram story",
-    description: "Create a 9:16 graphic with an optional headline.",
-    contract: "Product and logo stay exact. Text is an editable layer.",
-  },
-  {
-    id: "social-feed",
-    name: "Social feed image",
-    description: "Create a 4:5 or square graphic with optional text.",
-    contract: "Placement and format resolve the output contract.",
-  },
-  {
-    id: "static-ad",
-    name: "Static ad",
-    description: "Create artwork plus the fields required for publishing.",
-    contract: "Artwork, platform copy, CTA, and destination travel together.",
-  },
-  {
-    id: "blog-hero",
-    name: "Blog post hero",
-    description: "Create image-only art for a recurring article placement.",
-    contract: "Composition respects the configured editorial safe area.",
   },
 ];
 
@@ -698,6 +696,31 @@ const state = {
   brandName: "SLAKE",
   brandDescription: "Adaptogen sparkling water",
   selectedDeliverable: deliverables[0],
+  creativeMode: null,
+  campaigns: [
+    {
+      id: "sample-campaign",
+      name: "Summer Reset",
+      description: "Position adaptogens as the afternoon alternative to caffeine. Target the 2-4pm energy dip with a ritual-based message.",
+      objective: "Awareness and trial among wellness-curious professionals",
+      audience: "Working professionals 28-42 who are looking for an afternoon energy solution that is not another coffee",
+      currentBelief: "Afternoon slumps require caffeine or pushing through",
+      desiredBelief: "There is a calmer, more intentional way to reset in the afternoon",
+      desiredAction: "Try SLAKE as a 4pm ritual",
+      campaignIdea: "The 4pm Reset",
+      messageTerritory: "The moment between push-through and wind-down belongs to you",
+      proofPoints: "Adaptogens support calm focus without caffeine crash. The ritual of pausing matters as much as the ingredients.",
+      preserve: "Warm domestic palette, editorial naturalism, quiet confidence",
+      explore: "Workplace and co-working environments, outdoor transition moments, late-afternoon light",
+      paletteShift: "Warmer. Push the oat and clay tones. Less green.",
+      productFocus: "Yuzu Ginger",
+      channels: ["LinkedIn", "Instagram", "Email"],
+      outputs: [],
+      learnings: [],
+      createdAt: "2026-08-01T10:00:00Z",
+    },
+  ],
+  activeCampaignId: null,
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
     exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
@@ -1840,35 +1863,30 @@ function renderBrainHistory() {
 }
 
 function renderChooser() {
-  const cards = deliverables
-    .map(
-      (item, index) => `
-        <button
-          class="deliverable-card ${index === 0 ? "featured" : ""}"
-          type="button"
-          ${item.available ? `data-action="choose-deliverable" data-id="${item.id}"` : "disabled"}
-        >
-          <span class="card-topline">
-            <h2>${escapeHtml(item.name)}</h2>
-            ${item.available ? '<span class="card-arrow" aria-hidden="true">›</span>' : '<span class="mini-pill">Configured</span>'}
-          </span>
-          <p>${escapeHtml(item.description)}</p>
-          <span class="contract-line">${escapeHtml(item.contract)}</span>
-          ${item.active ? `<span class="active-note">${escapeHtml(item.active)}</span>` : ""}
-        </button>
-      `,
-    )
-    .join("");
-
+  const approved = approvedBrainForProduction();
   const affectedOutputs = state.production.completedOutputs.filter((o) => o.brainVersion < state.brain.approvedVersion);
+  const activeCampaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+
+  if (state.creativeMode === "campaign" && !state.activeCampaignId) return renderCampaignChooser();
+  if (state.activeCampaignId) return renderCampaignWorkspace();
+
+  const modeCards = creativeModes.map((mode) => `
+    <button class="card chooser-card ${!approved ? "unavailable" : ""}" type="button" data-action="select-creative-mode" data-id="${mode.id}" ${!approved ? "disabled" : ""}>
+      <div class="card-header"><h2>${escapeHtml(mode.name)}</h2></div>
+      <p>${escapeHtml(mode.description)}</p>
+      <span class="chooser-contract">${escapeHtml(mode.detail)}</span>
+    </button>
+  `).join("");
 
   return shell(`
     <section class="workspace">
       ${pageHeader(
-        "Choose a deliverable",
-        `Choose a production workflow for ${state.brandName}. The approved Brand Brain travels with the work.`,
+        "What are you creating?",
+        approved
+          ? `${state.brandName} Brand Brain v${state.brain.approvedVersion} is ready. Choose how you want to work.`
+          : `Build and approve the ${state.brandName} Brand Brain first, then start creating.`,
       )}
-      ${state.production.job?.status === "complete" ? `<section class="production-resume"><span><strong>Your latest image is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated image")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
+      ${state.production.job?.status === "complete" ? `<section class="production-resume"><span><strong>Your latest output is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated output")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
       ${affectedOutputs.length ? `
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
@@ -1885,7 +1903,123 @@ function renderChooser() {
           </div>
         </details>
       ` : ""}
-      <div class="grid deliverable-grid">${cards}</div>
+      <div class="grid mode-grid">${modeCards}</div>
+    </section>
+  `);
+}
+
+function renderCampaignChooser() {
+  const campaigns = state.campaigns;
+  const campaignCards = campaigns.map((campaign) => `
+    <button class="card chooser-card" type="button" data-action="select-campaign" data-id="${escapeHtml(campaign.id)}">
+      <div class="card-header">
+        <h2>${escapeHtml(campaign.name)}</h2>
+        <span class="mini-pill">${campaign.outputs?.length || 0} outputs</span>
+      </div>
+      <p>${escapeHtml(campaign.description)}</p>
+      <span class="chooser-contract">${escapeHtml(campaign.objective)}</span>
+    </button>
+  `).join("");
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader("Choose a campaign", `Select an existing campaign or create a new one for ${state.brandName}.`)}
+      <div class="grid mode-grid">
+        ${campaignCards}
+        <button class="card chooser-card new-campaign-card" type="button" data-action="create-campaign">
+          <div class="card-header"><h2>New campaign</h2></div>
+          <p>Define a new strategic context with its own objective, audience, and creative direction.</p>
+          <span class="chooser-contract">Campaign Brain inherits from Brand Brain</span>
+        </button>
+      </div>
+      <div class="actions">
+        <button class="button" type="button" data-action="back-to-modes">‹ Back</button>
+      </div>
+    </section>
+  `);
+}
+
+function renderCampaignWorkspace() {
+  const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+  if (!campaign) return renderChooser();
+  const approved = approvedBrainForProduction();
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(campaign.name, campaign.description)}
+
+      <div class="content-grid">
+        <div>
+          <section class="card">
+            <div class="card-header"><h2>Campaign direction</h2><span class="mini-pill">Campaign Brain</span></div>
+            <ul class="exact-list">
+              <li><strong>Objective</strong><span>${escapeHtml(campaign.objective)}</span></li>
+              <li><strong>Audience</strong><span>${escapeHtml(campaign.audience)}</span></li>
+              <li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>
+              <li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Creative direction</h2></div>
+            <ul class="exact-list">
+              <li><strong>Preserve from brand</strong><span>${escapeHtml(campaign.preserve)}</span></li>
+              <li><strong>Explore for campaign</strong><span>${escapeHtml(campaign.explore)}</span></li>
+              ${campaign.paletteShift ? `<li><strong>Palette shift</strong><span>${escapeHtml(campaign.paletteShift)}</span></li>` : ""}
+              ${campaign.productFocus ? `<li><strong>Product focus</strong><span>${escapeHtml(campaign.productFocus)}</span></li>` : ""}
+            </ul>
+          </section>
+
+          ${campaign.outputs?.length ? `
+          <section class="card">
+            <div class="card-header"><h2>Campaign outputs</h2><span class="mini-pill">${campaign.outputs.length}</span></div>
+            <div class="affected-outputs-list">
+              ${campaign.outputs.map((o) => `
+                <div class="rule">
+                  <span class="mini-pill">${escapeHtml(o.channel || "Image")}</span>
+                  <span><strong>${escapeHtml(o.label)}</strong><span>${escapeHtml(o.format || "")}</span></span>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+          ` : ""}
+        </div>
+
+        <aside>
+          <section class="card">
+            <div class="card-header"><h2>Audience</h2></div>
+            <ul class="exact-list">
+              <li><strong>Current belief</strong><span>${escapeHtml(campaign.currentBelief)}</span></li>
+              <li><strong>Desired belief</strong><span>${escapeHtml(campaign.desiredBelief)}</span></li>
+              <li><strong>Desired action</strong><span>${escapeHtml(campaign.desiredAction)}</span></li>
+            </ul>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Proof points</h2></div>
+            <p class="page-description">${escapeHtml(campaign.proofPoints)}</p>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Channels</h2></div>
+            <div class="source-chips">${(campaign.channels || []).map((c) => `<span class="source-chip">${escapeHtml(c)}</span>`).join("")}</div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Create an asset</h2></div>
+            <p class="page-description">The campaign direction will be compiled alongside Brand Brain guidance.</p>
+            <button class="button primary" type="button" data-action="start-campaign-asset" ${approved ? "" : "disabled"}>New asset for ${escapeHtml(campaign.name)} ›</button>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Navigation</h2></div>
+            <div class="result-actions">
+              <button class="button" type="button" data-action="back-to-campaigns">‹ All campaigns</button>
+              <button class="button" type="button" data-action="back-to-modes">‹ Start over</button>
+            </div>
+          </section>
+        </aside>
+      </div>
     </section>
   `);
 }
@@ -3808,7 +3942,28 @@ root.addEventListener("click", (event) => {
   if (!target) return;
   const action = target.dataset.action;
 
-  if (action === "chooser") navigate("chooser");
+  if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
+  if (action === "select-creative-mode") {
+    state.creativeMode = target.dataset.id;
+    if (target.dataset.id === "explore" || target.dataset.id === "standalone") {
+      state.activeCampaignId = null;
+      state.selectedDeliverable = deliverables[0];
+      navigate("brief");
+    } else {
+      render();
+    }
+  }
+  if (action === "select-campaign") {
+    state.activeCampaignId = target.dataset.id;
+    render();
+  }
+  if (action === "start-campaign-asset") {
+    state.selectedDeliverable = deliverables[0];
+    navigate("brief");
+  }
+  if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
+  if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
+  if (action === "create-campaign") { setToast("Campaign creation flow coming next. Using the sample campaign for now."); }
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
   if (action === "begin-brain-onboarding") {
