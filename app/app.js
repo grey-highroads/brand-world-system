@@ -715,17 +715,20 @@ const state = {
       paletteShift: "Warmer. Push the oat and clay tones. Less green.",
       productFocus: "Yuzu Ginger",
       channels: ["LinkedIn", "Instagram", "Email"],
-      outputs: [
-        { id: "co-001", label: "Summer Reset hero image", channel: "Instagram", format: "4:5 portrait", scene: "A woman on a balcony at golden hour, SLAKE can resting on the railing, city skyline soft in the background", brainVersion: 1 },
-        { id: "co-002", label: "LinkedIn announcement image", channel: "LinkedIn", format: "1.91:1 landscape", scene: "Close-up of the Yuzu Ginger can with condensation, warm afternoon kitchen light, cutting board with citrus in the background", brainVersion: 1 },
-        { id: "co-003", label: "Email header", channel: "Email", format: "16:9 landscape", scene: "Wide shot of a shared outdoor table, two SLAKE cans among plates and napkins, late afternoon shade", brainVersion: 1 },
-      ],
       learnings: [],
       createdAt: "2026-08-01T10:00:00Z",
     },
   ],
   activeCampaignId: null,
   campaignReferences: [],
+  // Single store for every generated output, draft or approved. Views filter it;
+  // nothing is filed into folders. Every record carries the compiled package so
+  // the brand language that produced it survives later brain revisions.
+  outputs: [
+    { id: "co-001", label: "Summer Reset hero image", status: "approved", campaignId: "sample-campaign", campaignName: "Summer Reset", assetType: "scene", channel: "Instagram", placement: "Instagram feed", format: "4:5 portrait", scene: "A woman on a balcony at golden hour, SLAKE can resting on the railing, city skyline soft in the background", brainVersion: 1, createdAt: "2026-08-02T11:00:00Z", imageUrl: null, package: null },
+    { id: "co-002", label: "LinkedIn announcement image", status: "approved", campaignId: "sample-campaign", campaignName: "Summer Reset", assetType: "product", channel: "LinkedIn", placement: "LinkedIn feed", format: "1.91:1 landscape", scene: "Close-up of the Yuzu Ginger can with condensation, warm afternoon kitchen light, cutting board with citrus in the background", brainVersion: 1, createdAt: "2026-08-03T09:30:00Z", imageUrl: null, package: null },
+    { id: "co-003", label: "Email header", status: "approved", campaignId: "sample-campaign", campaignName: "Summer Reset", assetType: "banner", channel: "Email", placement: "Website feature", format: "16:9 landscape", scene: "Wide shot of a shared outdoor table, two SLAKE cans among plates and napkins, late afternoon shade", brainVersion: 1, createdAt: "2026-08-04T14:15:00Z", imageUrl: null, package: null },
+  ],
   productAssetUploading: false,
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
@@ -755,53 +758,10 @@ const state = {
     feedbackOpen: false,
     feedbackDraft: "",
     feedbackScope: "this-output",
-    completedOutputs: [
-      {
-        jobId: "sample-001",
-        completedAt: "2026-07-28T14:22:00Z",
-        brandName: "SLAKE",
-        brainVersion: 1,
-        sourceCount: 6,
-        guidanceSections: ["Brand foundation / Purpose and positioning", "Identity / Approved assets and expressions", "World and story / Warm domestic moments", "Creative direction / Editorial naturalism"],
-        aestheticMode: "editorial-realism",
-        output: { placement: "Instagram feed", format: "4:5 portrait" },
-        lockedAsset: { name: "Yuzu Ginger packaging", format: "PNG" },
-        references: [{ name: "Afternoon kitchen scene", role: "environment", influence: "Primary" }],
-        palette: ["SLAKE palette"],
-        appliedRules: ["Never clinical"],
-        label: "Spring social hero",
-      },
-      {
-        jobId: "sample-002",
-        completedAt: "2026-07-30T09:45:00Z",
-        brandName: "SLAKE",
-        brainVersion: 1,
-        sourceCount: 6,
-        guidanceSections: ["Brand foundation / Purpose and positioning", "Identity / Approved assets and expressions", "Creative direction / Editorial naturalism", "Creative rules / Practical boundaries"],
-        aestheticMode: "editorial-realism",
-        output: { placement: "Website feature", format: "16:9 landscape" },
-        lockedAsset: { name: "Yuzu Ginger packaging", format: "PNG" },
-        references: [],
-        palette: ["SLAKE palette"],
-        appliedRules: ["Never clinical"],
-        label: "Website hero banner",
-      },
-      {
-        jobId: "sample-003",
-        completedAt: "2026-08-01T16:10:00Z",
-        brandName: "SLAKE",
-        brainVersion: 1,
-        sourceCount: 6,
-        guidanceSections: ["Brand foundation / Purpose and positioning", "Identity / Approved assets and expressions", "World and story / Warm domestic moments"],
-        aestheticMode: "editorial-realism",
-        output: { placement: "LinkedIn feed", format: "1:1 square" },
-        lockedAsset: null,
-        references: [{ name: "Brand world moodboard", role: "style", influence: "Supporting" }],
-        palette: ["SLAKE palette"],
-        appliedRules: [],
-        label: "LinkedIn brand moment",
-      },
-    ],
+    // Consumption records for change-impact classification (roadmap 11).
+    // Display now reads from the unified state.outputs store; this remains the
+    // audit trail. Consolidating the two is a deliberate follow-up.
+    completedOutputs: [],
   },
   brain: {
     stage: "empty",
@@ -1873,7 +1833,7 @@ function renderBrainHistory() {
 
 function renderChooser() {
   const approved = approvedBrainForProduction();
-  const affectedOutputs = state.production.completedOutputs.filter((o) => o.brainVersion < state.brain.approvedVersion);
+  const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
   const activeCampaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
 
   if (state.creativeMode === "campaign" && !state.activeCampaignId) return renderCampaignChooser();
@@ -1923,7 +1883,7 @@ function renderCampaignChooser() {
     <button class="card chooser-card" type="button" data-action="select-campaign" data-id="${escapeHtml(campaign.id)}">
       <div class="card-header">
         <h2>${escapeHtml(campaign.name)}</h2>
-        <span class="mini-pill">${campaign.outputs?.length || 0} outputs</span>
+        <span class="mini-pill">${outputsForCampaign(campaign.id).length} outputs</span>
       </div>
       <p>${escapeHtml(campaign.description)}</p>
       <span class="chooser-contract">${escapeHtml(campaign.objective)}</span>
@@ -1954,6 +1914,7 @@ function renderCampaignWorkspace() {
   const approved = approvedBrainForProduction();
   const formats = placementFormats[state.brief.placement] || ["1:1 square"];
   const needsProduct = state.brief.assetType === "product" && !state.lockedAssetId;
+  const campaignOutputs = outputsForCampaign(campaign.id).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
 
   return shell(`
     <section class="workspace">
@@ -2089,26 +2050,34 @@ function renderCampaignWorkspace() {
               : (state.brief.assetType !== "post" || state.brief.includeImage) ? renderLockedAssetPicker() : ""}
           </section>
 
-          ${campaign.outputs?.length ? `
+          ${campaignOutputs.length ? `
           <section class="card">
             <div class="card-header">
-              <h2>Previous campaign work</h2>
-              <span class="mini-pill">${state.campaignReferences.length ? `${state.campaignReferences.length} selected` : `${campaign.outputs.length} available`}</span>
+              <h2>Campaign work</h2>
+              <span class="mini-pill ${state.campaignReferences.length ? "pill-governed" : ""}">${state.campaignReferences.length ? `${state.campaignReferences.length} selected` : `${campaignOutputs.length} ${campaignOutputs.length === 1 ? "asset" : "assets"}`}</span>
             </div>
-            <p class="page-description">Select previous outputs to guide continuity. The system will reference their visual direction.</p>
+            <p class="page-description">Everything made for this campaign. Select any of it to guide the next asset.</p>
             <div class="campaign-outputs-list">
-              ${campaign.outputs.map((o) => {
+              ${campaignOutputs.map((o) => {
                 const selected = state.campaignReferences.find((r) => r.id === o.id);
                 return `
                 <div class="campaign-output-item ${selected ? "selected" : ""}">
                   <div class="campaign-output-header">
                     <button class="campaign-output-select" type="button" data-action="toggle-campaign-ref" data-id="${o.id}">
                       <span class="campaign-output-check">${selected ? "✓" : ""}</span>
-                      <span><strong>${escapeHtml(o.label)}</strong></span>
+                      <span class="output-thumb">${o.imageUrl
+                        ? `<img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();">`
+                        : ""}</span>
+                      <span><strong>${escapeHtml(o.label)}</strong><span class="output-meta">${escapeHtml(o.format || "")}${o.brainVersion ? ` · Brain v${o.brainVersion}` : ""}</span></span>
                     </button>
-                    <span class="mini-pill">${escapeHtml(o.channel)}</span>
+                    <span class="output-badges">
+                      <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+                    </span>
                   </div>
                   <p class="campaign-output-scene">${escapeHtml(o.scene || "")}</p>
+                  <div class="output-actions">
+                    ${o.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${o.id}">Make another like this</button>` : ""}
+                  </div>
                   ${selected ? `
                     <div class="campaign-ref-role">
                       <span class="section-label">How should this guide the new asset?</span>
@@ -2666,6 +2635,12 @@ function renderBrief() {
   const identity = approved?.guidanceSections?.find((section) => section.id === "identity");
   const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   const modeLabel = campaign ? campaign.name : state.creativeMode === "explore" ? "Brand exploration" : "Standalone asset";
+  // Drafts are kept deliberately, so the strip shows both. Recency is the default
+  // sort because the thing you just made is the thing you are most likely to reuse.
+  const recentOutputs = state.outputs
+    .slice()
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, 4);
 
   return shell(`
     <section class="workspace">
@@ -2729,6 +2704,31 @@ function renderBrief() {
         </section>
 
         <aside>
+          ${recentOutputs.length ? `
+          <section class="card">
+            <div class="card-header">
+              <h2>Recent work</h2>
+              <span class="mini-pill">${recentOutputs.length}</span>
+            </div>
+            <div class="recent-strip">
+              ${recentOutputs.map((o) => `
+                <div class="recent-item">
+                  <span class="output-thumb">${o.imageUrl
+                    ? `<img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();">`
+                    : ""}</span>
+                  <span class="recent-item-body">
+                    <strong>${escapeHtml(o.label)}</strong>
+                    <span class="output-meta">${escapeHtml(o.format || "")}${o.campaignName ? ` · ${escapeHtml(o.campaignName)}` : ""}</span>
+                  </span>
+                  <span class="output-badges">
+                    <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+                    ${o.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${o.id}">Reuse</button>` : ""}
+                  </span>
+                </div>
+              `).join("")}
+            </div>
+          </section>
+          ` : ""}
           ${campaign ? `
           <section class="card surface-accent surface-accent-governed">
             <div class="card-header">
@@ -3817,6 +3817,56 @@ async function prepareProductionPreflight() {
   render();
 }
 
+function outputsForCampaign(campaignId) {
+  return state.outputs.filter((o) => o.campaignId === campaignId);
+}
+
+function outputLabel(pkg, assetType) {
+  const typeNames = { scene: "Scene image", product: "Product in scene", post: "Post + image", banner: "Banner" };
+  const channel = (pkg?.output?.placement || "").split(" ")[0] || "Image";
+  return `${channel} ${typeNames[assetType] || "image"}`.trim();
+}
+
+// Upsert by job id. Generation writes a draft; approval promotes it. Re-entry
+// from a refresh or a recovered job updates the existing record rather than
+// creating a duplicate.
+function recordOutput(job, extras = {}) {
+  if (!job?.jobId) return null;
+  const pkg = job.generationPackage || null;
+  const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+  const assetType = state.brief.assetType || "scene";
+  const existing = state.outputs.find((o) => o.id === job.jobId);
+  const record = {
+    id: job.jobId,
+    label: outputLabel(pkg, assetType),
+    status: existing?.status === "approved" ? "approved" : "draft",
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    approvedAt: existing?.approvedAt || null,
+    campaignId: state.activeCampaignId || null,
+    campaignName: campaign?.name || null,
+    assetType,
+    brandName: pkg?.brandName || state.brandName,
+    brainVersion: pkg?.brainVersion || state.brain.approvedVersion || 1,
+    placement: pkg?.output?.placement || state.brief.placement,
+    channel: (pkg?.output?.placement || state.brief.placement || "").split(" ")[0],
+    format: pkg?.output?.format || state.brief.format,
+    scene: state.brief.scene || state.brief.postTopic || "",
+    lockedAsset: pkg?.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
+    // Presigned URLs expire. Treat this as a cache and fall back to a placeholder
+    // in the UI rather than showing a broken image.
+    imageUrl: extras.imageUrl || job.imageUrl || existing?.imageUrl || null,
+    postCopy: extras.postCopy || job.postCopy || existing?.postCopy || null,
+    model: job.model || existing?.model || null,
+    // The durable substrate. Guidance section names decay as the brain is revised;
+    // the compiled prompt is the only record of what the brand actually asserted
+    // at the moment this was made.
+    package: pkg || existing?.package || null,
+  };
+  if (existing) Object.assign(existing, record);
+  else state.outputs.push(record);
+  return existing || record;
+}
+
 function applyProductionJob(job, recovered = false) {
   if (!job) return false;
   state.production.job = job;
@@ -3824,6 +3874,7 @@ function applyProductionJob(job, recovered = false) {
   state.production.status = job.status === "complete" ? "complete" : job.status === "error" ? "error" : "generating";
   state.production.error = job.error || "";
   state.production.recovered = recovered;
+  if (job.status === "complete") recordOutput(job);
   if (recovered && job.status === "complete") setToast("The completed image was recovered after the connection dropped");
   return true;
 }
@@ -3955,6 +4006,7 @@ async function startLinkedInGeneration() {
 
     state.production.job.status = "complete";
     state.production.status = "complete";
+    recordOutput(state.production.job);
   } catch (error) {
     state.production.status = "error";
     state.production.error = error.message || "The post could not be generated.";
@@ -4264,6 +4316,32 @@ root.addEventListener("click", (event) => {
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
   if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
+  if (action === "reuse-output") {
+    const source = state.outputs.find((o) => o.id === target.dataset.id);
+    if (!source) return;
+    // Restore the brief that produced this output. The stored package is the
+    // record of intent, not a guarantee of an identical image.
+    state.brief.assetType = source.assetType || "scene";
+    state.brief.scene = source.package?.brief?.scene || source.scene || "";
+    state.brief.exclusions = source.package?.brief?.exclusions || state.brief.exclusions;
+    if (source.placement && placementFormats[source.placement]) state.brief.placement = source.placement;
+    if (source.format) state.brief.format = source.format;
+    if (source.assetType === "post") {
+      state.brief.postTopic = source.package?.brief?.postTopic || source.scene || "";
+      state.brief.postClaims = source.package?.brief?.postClaims || "";
+      state.brief.postCta = source.package?.brief?.postCta || "";
+      state.brief.includeImage = source.package?.brief?.includeImage ?? true;
+    }
+    state.lockedAssetId = "";
+    if (source.lockedAsset) {
+      const match = productionLockedAssets().find((a) => a.name === source.lockedAsset.name);
+      if (match) state.lockedAssetId = match.id;
+    }
+    setToast(source.lockedAsset && !state.lockedAssetId
+      ? "Brief restored. The original product image is no longer available, so add one before generating."
+      : "Brief restored from that asset. Adjust anything, then generate.");
+    render();
+  }
   if (action === "use-scene-starter") {
     const text = target.dataset.text || "";
     state.brief.scene = state.brief.scene.trim() ? `${state.brief.scene.trim()} ${text}` : text;
@@ -4276,7 +4354,7 @@ root.addEventListener("click", (event) => {
       state.campaignReferences.splice(existing, 1);
     } else {
       const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
-      const output = campaign?.outputs?.find((o) => o.id === id);
+      const output = outputsForCampaign(state.activeCampaignId).find((o) => o.id === id);
       if (output) state.campaignReferences.push({ id, role: "continue-direction", label: output.label, scene: output.scene, channel: output.channel, format: output.format });
     }
     render();
@@ -4456,7 +4534,7 @@ root.addEventListener("click", (event) => {
     state.brain.revisionPending = false;
     syncProductionReferences();
     // Check impact on completed outputs
-    const affectedCount = state.production.completedOutputs.filter((o) => o.brainVersion < state.brain.approvedVersion).length;
+    const affectedCount = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion).length;
     const impactNote = affectedCount > 0
       ? ` ${affectedCount} existing ${affectedCount === 1 ? "output uses" : "outputs use"} an earlier version.`
       : "";
@@ -4616,19 +4694,11 @@ root.addEventListener("click", (event) => {
         appliedRules: (pkg.treatments || []).filter((t) => t.treatment === "locked" && t.category === "Creative rules").map((t) => t.element),
         label: `${pkg.output?.placement} ${pkg.output?.format}`,
       });
-      // Add to active campaign's output list for continuity
-      if (state.activeCampaignId) {
-        const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
-        if (campaign) {
-          campaign.outputs.push({
-            id: `co-${Date.now()}`,
-            label: `${pkg.output?.placement} ${pkg.output?.format} (${state.brief.assetType || "scene"})`,
-            channel: pkg.output?.placement?.split(" ")[0] || "Image",
-            format: pkg.output?.format || "",
-            scene: state.brief.scene || state.brief.postTopic || "",
-            brainVersion: pkg.brainVersion,
-          });
-        }
+      // Promote the draft record written at generation time.
+      const record = recordOutput(job);
+      if (record) {
+        record.status = "approved";
+        record.approvedAt = new Date().toISOString();
       }
     }
     recordBrainHistory("Output approved", `A ${state.brandName} brand world image was approved for ${state.brief.placement} ${state.brief.format}.`, "complete");
