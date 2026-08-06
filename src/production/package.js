@@ -234,7 +234,7 @@ export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, campaign = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -274,6 +274,22 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 
   const sourceCount = approvedBrain.sourceCount || null;
 
+  // Campaign direction section (compiled when campaign context is provided)
+  const campaignSection = campaign?.campaignIdea ? {
+    title: "Campaign direction",
+    body: [
+      `This image is part of the "${cleanText(campaign.name || campaign.campaignIdea)}" campaign.`,
+      campaign.campaignIdea ? `Campaign idea: ${cleanText(campaign.campaignIdea)}.` : "",
+      campaign.messageTerritory ? `Message territory: ${cleanText(campaign.messageTerritory)}.` : "",
+      campaign.objective ? `Objective: ${cleanText(campaign.objective)}.` : "",
+      campaign.audience ? `Audience: ${cleanText(campaign.audience)}.` : "",
+      campaign.desiredBelief ? `The image should move the viewer toward believing: ${cleanText(campaign.desiredBelief)}.` : "",
+      campaign.explore ? `Explore for this campaign: ${cleanText(campaign.explore)}.` : "",
+      campaign.preserve ? `Preserve from the brand: ${cleanText(campaign.preserve)}.` : "",
+      campaign.paletteShift ? `Palette shift: ${cleanText(campaign.paletteShift)}.` : "",
+    ].filter(Boolean).join(" "),
+  } : null;
+
   const sections = [
     {
       title: "Assignment",
@@ -284,6 +300,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       body: `${cleanText(approvedBrain.brandName)} is ${cleanText(approvedBrain.brandDescription, "the approved brand")}. ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
     },
     ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
+    campaignSection,
     {
       title: "Audience and feeling",
       body: `${cleanText(dossier.audience)} ${cleanText(dossier.desiredFeeling)}`,
