@@ -401,6 +401,7 @@ select,
 }
 
 .campaign-outputs-list {
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--space-2);
   margin-top: var(--space-4);
 }
@@ -804,6 +805,22 @@ select,
   align-items: center;
 }
 
+.campaign-output-select {
+  min-width: 0;
+}
+
+.campaign-output-select > span:last-child {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.campaign-output-select strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .output-actions {
   display: flex;
   gap: var(--space-2);
@@ -812,7 +829,15 @@ select,
 
 .recent-strip {
   display: grid;
-  gap: 4px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+/* Grid items default to min-width:auto, so a nowrap label would force the
+   track wider than its container. Clamp both the track and the item. */
+.recent-item,
+.campaign-output-item {
+  min-width: 0;
 }
 
 .recent-item {
@@ -837,4 +862,94 @@ select,
   font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── Output preview ─────────────────────────────────────────────────────── */
+
+.output-thumb-button {
+  padding: 0;
+  cursor: zoom-in;
+  transition: border-color 0.15s;
+}
+
+.output-thumb-button:hover {
+  border-color: var(--lavender);
+}
+
+.preview-overlay {
+  position: fixed;
+  z-index: 60;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: rgb(0 0 0 / 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.preview-panel {
+  display: grid;
+  gap: var(--space-3);
+  width: min(720px, 100%);
+  max-height: 90vh;
+  padding: var(--space-5);
+  overflow-y: auto;
+  background: var(--paper-100);
+  border: 1px solid var(--paper-200);
+  border-radius: var(--radius-md, 6px);
+}
+
+.preview-header {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.preview-header strong {
+  display: block;
+  font-size: 13px;
+}
+
+.preview-media {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 160px;
+  overflow: hidden;
+  background: var(--ink-950);
+  border: 1px solid var(--paper-200);
+  border-radius: 4px;
+}
+
+.preview-media img {
+  display: block;
+  max-width: 100%;
+  max-height: 64vh;
+  object-fit: contain;
+}
+
+/* Presigned URLs expire, so a stale preview explains itself instead of
+   showing a broken image. */
+.preview-media-missing::after {
+  padding: var(--space-6);
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  content: "This preview link has expired. Open the asset from its job to refresh it.";
+}
+
+.preview-scene {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.preview-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
 }
