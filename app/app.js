@@ -3020,8 +3020,11 @@ function renderPreflight() {
             </div>
           </details>
 
-          <section class="card">
-            <div class="card-header"><h2>Production contract</h2></div>
+          <details class="card collapsible-card">
+            <summary class="card-header collapsible-header">
+              <h2>Production contract</h2>
+              <span class="collapsible-meta"><span class="mini-pill pill-neutral">${escapeHtml(generationPackage.aestheticMode?.name || "Compiled")}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            </summary>
             <ul class="contract-list">
               <li><strong>Grounded in:</strong> ${escapeHtml(generationPackage.policy.groundedIn)}</li>
               ${generationPackage.lockedAsset ? `<li><strong>Protected asset:</strong> ${escapeHtml(generationPackage.lockedAsset.name)} (${escapeHtml(generationPackage.lockedAsset.format)})</li>` : ""}
@@ -3030,21 +3033,8 @@ function renderPreflight() {
               <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
             </ul>
             ${generationPackage.stateNeutralizations?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the protected asset sealed</strong><span>${escapeHtml(generationPackage.stateNeutralizations.join(", "))} changed to match the supplied asset state.</span></span></div></div>` : ""}
-            ${generationPackage.constraintAudit?.length ? `
-              <div class="rule-card">
-                <span class="section-label">Brand boundaries checked</span>
-                ${generationPackage.constraintAudit.map((entry) => `
-                  <div class="rule">
-                    <span class="mini-pill ${entry.status === "carried" ? "pill-success" : "pill-warning"}">${entry.status === "carried" ? "Carried" : "Review"}</span>
-                    <span><strong>${escapeHtml(entry.rule)}</strong><span>${escapeHtml(entry.source)}</span></span>
-                  </div>
-                `).join("")}
-              </div>
-            ` : ""}
-          </section>
-        </div>
+          </details>
 
-        <aside>
           ${generationPackage.treatments?.length ? `
           <details class="card collapsible-card">
             <summary class="card-header collapsible-header">
@@ -3086,6 +3076,18 @@ function renderPreflight() {
             ` : ""}
           </details>
           ` : ""}
+        </div>
+
+        <aside>
+          <section class="card ready-card">
+            <div class="card-header"><h2>${generationPackage.ready !== false ? "Ready to generate" : "Needs your input"}</h2><span class="mini-pill">${generationPackage.ready !== false ? "Ready" : "Review"}</span></div>
+            <p>${generationPackage.ready !== false
+              ? "The exact prompt, approved Brand Brain version, creative sources, and output format are saved in this package."
+              : `${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).map((r) => r.label).join(", ")} ${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).length === 1 ? "is" : "are"} not available yet. You can still generate, but the result may be incomplete.`
+            }</p>
+            <button class="button secondary" type="button" data-action="generate">Generate with OpenAI</button>
+          </section>
+
 
           <section class="card">
             <div class="card-header">
@@ -3111,14 +3113,6 @@ function renderPreflight() {
             </div>
           </section>
 
-          <section class="card ready-card">
-            <div class="card-header"><h2>${generationPackage.ready !== false ? "Ready to generate" : "Needs your input"}</h2><span class="mini-pill">${generationPackage.ready !== false ? "Ready" : "Review"}</span></div>
-            <p>${generationPackage.ready !== false
-              ? "The exact prompt, approved Brand Brain version, creative sources, and output format are saved in this package."
-              : `${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).map((r) => r.label).join(", ")} ${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).length === 1 ? "is" : "are"} not available yet. You can still generate, but the result may be incomplete.`
-            }</p>
-            <button class="button secondary" type="button" data-action="generate">Generate with OpenAI</button>
-          </section>
         </aside>
       </div>
 
