@@ -1897,12 +1897,12 @@ function renderChooser() {
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
             <h2>Outputs using an earlier version</h2>
-            <span class="collapsible-meta"><span class="mini-pill" style="color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);">${affectedOutputs.length} ${affectedOutputs.length === 1 ? "output" : "outputs"} on v${affectedOutputs[0].brainVersion}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            <span class="collapsible-meta"><span class="mini-pill pill-warning">${affectedOutputs.length} ${affectedOutputs.length === 1 ? "output" : "outputs"} on v${affectedOutputs[0].brainVersion}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
           </summary>
           <div class="affected-outputs-list">
             ${affectedOutputs.map((o) => `
               <div class="rule">
-                <span class="mini-pill" style="color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);">v${o.brainVersion}</span>
+                <span class="mini-pill pill-warning">v${o.brainVersion}</span>
                 <span><strong>${escapeHtml(o.label || `${o.output.placement} ${o.output.format}`)}</strong><span>Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.${o.lockedAsset ? ` Used ${o.lockedAsset.name}.` : ""}</span></span>
               </div>
             `).join("")}
@@ -1965,13 +1965,13 @@ function renderCampaignWorkspace() {
 
             <div class="asset-type-chooser">
               ${[
-                { id: "scene", icon: "🖼", label: "Scene image" },
-                { id: "product", icon: "📦", label: "Product in scene" },
-                { id: "post", icon: "✍️", label: "Post + image" },
-                { id: "banner", icon: "🏷", label: "Banner" },
+                { id: "scene", icon: "image", label: "Scene image" },
+                { id: "product", icon: "product", label: "Product in scene" },
+                { id: "post", icon: "post", label: "Post + image" },
+                { id: "banner", icon: "banner", label: "Banner" },
               ].map((t) => `
                 <button class="asset-type-btn ${state.brief.assetType === t.id ? "selected" : ""}" type="button" data-action="set-asset-type" data-type="${t.id}">
-                  <span class="asset-type-icon">${t.icon}</span>
+                  <span class="asset-type-icon asset-icon-${t.icon}" aria-hidden="true"></span>
                   <span>${t.label}</span>
                 </button>
               `).join("")}
@@ -2031,9 +2031,9 @@ function renderCampaignWorkspace() {
             </div>
 
             ${state.brief.assetType === "product" ? `
-              <div class="rule-card" style="margin-top: 8px;">
+              <div class="rule-card rule-card-compact">
                 <span class="section-label">Product asset required</span>
-                <p class="page-description" style="margin: 4px 0 8px;">This asset type places a product in the scene. Select a protected asset below.</p>
+                <p class="page-description support-note">This asset type places a product in the scene. Select a protected asset below.</p>
               </div>
             ` : ""}
             ${(state.brief.assetType !== "post" || state.brief.includeImage) ? renderLockedAssetPicker() : ""}
@@ -2083,12 +2083,12 @@ function renderCampaignWorkspace() {
         </div>
 
         <aside>
-          <details class="card collapsible-card" style="border-color: var(--lavender); box-shadow: inset 3px 0 0 var(--lavender);">
+          <details class="card collapsible-card surface-accent surface-accent-governed">
             <summary class="card-header collapsible-header">
               <h2>Campaign direction</h2>
-              <span class="collapsible-meta"><span class="mini-pill" style="color: var(--lavender); background: rgb(142 132 211 / 0.08); border-color: rgb(142 132 211 / 0.25);">${escapeHtml(campaign.campaignIdea)}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+              <span class="collapsible-meta"><span class="mini-pill pill-governed">${escapeHtml(campaign.campaignIdea)}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
             </summary>
-            <ul class="exact-list" style="padding: 0 18px 12px;">
+            <ul class="exact-list collapsible-body-list">
               <li><strong>Objective</strong><span>${escapeHtml(campaign.objective)}</span></li>
               <li><strong>Audience</strong><span>${escapeHtml(campaign.audience)}</span></li>
               <li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>
@@ -2118,7 +2118,7 @@ function renderCampaignWorkspace() {
             <button class="button primary" type="button" data-action="start-campaign-asset" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
           </section>
 
-          <div class="actions" style="margin-top: 8px;">
+          <div class="actions actions-compact">
             <button class="button" type="button" data-action="back-to-campaigns">‹ All campaigns</button>
           </div>
         </aside>
@@ -2537,14 +2537,14 @@ function renderLockedAssetPicker() {
         ${assets.map((item) => {
           const active = item.id === state.lockedAssetId;
           return `
-            <article class="source-option" style="border-color: ${active ? "var(--coral)" : "var(--paper-200)"}; ${active ? "box-shadow: inset 3px 0 0 var(--coral);" : ""}">
+            <article class="source-option ${active ? "surface-accent surface-accent-protected" : ""}">
               <span class="source-kind-icon">P</span>
               <span><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.detail)} · ${escapeHtml(item.fileName)}</span></span>
-              <button class="button ghost" type="button" data-action="toggle-locked-asset" data-id="${escapeHtml(item.id)}" style="font-size: 11px; min-height: 34px;">${active ? "Remove" : "Include"}</button>
+              <button class="button ghost compact" type="button" data-action="toggle-locked-asset" data-id="${escapeHtml(item.id)}">${active ? "Remove" : "Include"}</button>
             </article>
           `;
         }).join("")}
-        ${selected ? '<p class="field-note" style="margin-top: 6px;">This asset will be preserved exactly. The prompt will include format-specific protection rules.</p>' : ""}
+        ${selected ? '<p class="field-note field-note-spaced">This asset will be preserved exactly. The prompt will include format-specific protection rules.</p>' : ""}
       </div>
     </div>
   `;
@@ -2623,10 +2623,10 @@ function renderBrief() {
 
         <aside>
           ${campaign ? `
-          <section class="card" style="border-color: var(--lavender); box-shadow: inset 3px 0 0 var(--lavender);">
+          <section class="card surface-accent surface-accent-governed">
             <div class="card-header">
               <h2>Campaign direction</h2>
-              <span class="mini-pill" style="color: var(--lavender); background: rgb(142 132 211 / 0.08); border-color: rgb(142 132 211 / 0.25);">${escapeHtml(campaign.name)}</span>
+              <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
             </div>
             <ul class="exact-list">
               <li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>
@@ -2725,13 +2725,13 @@ function renderLinkedInBrief() {
                 <span>Generate a supporting image for this post</span>
               </label>
               ${state.brief.includeImage ? `
-                <div class="field" style="margin-top: 8px;">
+                <div class="field field-spaced">
                   <label for="format">Image format</label>
                   <select id="format" data-action="format-change">
                     ${(placementFormats["LinkedIn feed"] || ["1:1 square"]).map((f) => option(f, state.brief.format)).join("")}
                   </select>
                 </div>
-                <div class="field" style="margin-top: 8px;">
+                <div class="field field-spaced">
                   <label for="scene">Image direction (optional)</label>
                   <input class="input-like" id="scene" data-action="scene-input" value="${escapeHtml(state.brief.scene)}" placeholder="Leave blank to let the system compose from brand guidance.">
                 </div>
@@ -2870,7 +2870,7 @@ function renderPreflight() {
           <details class="card collapsible-card">
             <summary class="card-header collapsible-header">
               <h2>Compiled prompt</h2>
-              <span class="collapsible-meta"><span class="mini-pill" style="color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);">${generationPackage.sections.length} sections compiled</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+              <span class="collapsible-meta"><span class="mini-pill pill-success">${generationPackage.sections.length} sections compiled</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
             </summary>
             <div class="prompt-panel">
               <span class="component-kicker">Compiled components</span>
@@ -2898,7 +2898,7 @@ function renderPreflight() {
                 <span class="section-label">Brand boundaries checked</span>
                 ${generationPackage.constraintAudit.map((entry) => `
                   <div class="rule">
-                    <span class="mini-pill" style="${entry.status === "carried" ? "color: #a9e6ca; background: rgb(104 198 155 / 0.1); border-color: rgb(104 198 155 / 0.3);" : ""}">${entry.status === "carried" ? "Carried" : "Review"}</span>
+                    <span class="mini-pill ${entry.status === "carried" ? "pill-success" : "pill-warning"}">${entry.status === "carried" ? "Carried" : "Review"}</span>
                     <span><strong>${escapeHtml(entry.rule)}</strong><span>${escapeHtml(entry.source)}</span></span>
                   </div>
                 `).join("")}
@@ -2912,24 +2912,24 @@ function renderPreflight() {
           <details class="card collapsible-card">
             <summary class="card-header collapsible-header">
               <h2>What the system will do</h2>
-              <span class="collapsible-meta"><span class="mini-pill" style="color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);">${generationPackage.treatments.filter((t) => t.treatment === "locked").length} exact · ${generationPackage.treatments.filter((t) => t.treatment === "suggested").length} interpreted</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+              <span class="collapsible-meta"><span class="mini-pill pill-success">${generationPackage.treatments.filter((t) => t.treatment === "locked").length} exact · ${generationPackage.treatments.filter((t) => t.treatment === "suggested").length} interpreted</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
             </summary>
             ${["locked", "suggested", "not_needed", "needs_input"].map((treatment) => {
               const items = generationPackage.treatments.filter((t) => t.treatment === treatment);
               if (!items.length) return "";
               const treatmentLabels = { locked: "Stays exact", suggested: "System interprets", not_needed: "Not needed for this job", needs_input: "Needs your input" };
-              const treatmentStyles = {
-                locked: "color: var(--coral); background: rgb(230 132 90 / 0.08); border-color: rgb(230 132 90 / 0.25);",
-                suggested: "color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);",
-                not_needed: "",
-                needs_input: "color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);",
+              const treatmentClasses = {
+                locked: "pill-protected",
+                suggested: "pill-success",
+                not_needed: "pill-neutral",
+                needs_input: "pill-warning",
               };
               return `
                 <div class="rule-card">
                   <span class="section-label">${treatmentLabels[treatment]}</span>
                   ${items.map((item) => `
                     <div class="rule">
-                      <span class="mini-pill" style="${treatmentStyles[treatment]}">${escapeHtml(item.category)}</span>
+                      <span class="mini-pill ${treatmentClasses[treatment]}">${escapeHtml(item.category)}</span>
                       <span><strong>${escapeHtml(item.element)}</strong><span>${escapeHtml(item.reason)}</span></span>
                     </div>
                   `).join("")}
@@ -2941,7 +2941,7 @@ function renderPreflight() {
                 <span class="section-label">Deliverable requirements</span>
                 ${generationPackage.requirementCheck.filter((r) => r.active).map((r) => `
                   <div class="rule">
-                    <span class="mini-pill" style="${r.met ? "color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);" : "color: #e6c765; background: rgb(230 199 101 / 0.08); border-color: rgb(230 199 101 / 0.25);"}">${r.met ? "Met" : "Missing"}</span>
+                    <span class="mini-pill ${r.met ? "pill-success" : "pill-warning"}">${r.met ? "Met" : "Missing"}</span>
                     <span><strong>${escapeHtml(r.label)}</strong><span>${escapeHtml(r.condition)}</span></span>
                   </div>
                 `).join("")}
@@ -2961,7 +2961,7 @@ function renderPreflight() {
                 <span><strong>${escapeHtml(state.brandName)} Brand Brain v${generationPackage.brainVersion}</strong><span>Approved guidance · applied to the full prompt</span></span>
               </article>
               ${generationPackage.lockedAsset ? `
-                <article class="input-row" style="border-color: rgb(230 132 90 / 0.42); box-shadow: inset 3px 0 0 var(--coral);">
+                <article class="input-row surface-accent surface-accent-protected">
                   <span class="thumb product" aria-hidden="true"></span>
                   <span><strong>${escapeHtml(generationPackage.lockedAsset.name)}</strong><span>Protected ${escapeHtml(generationPackage.lockedAsset.format)} · stays exact · sent as reference image</span></span>
                 </article>
@@ -3167,7 +3167,7 @@ function renderResult() {
               ${findings.map((f) => `
                 <li class="evaluation-item ${f.status}">
                   <div class="evaluation-item-header">
-                    <span class="mini-pill" style="${f.status === "enforced" ? "color: #a9e6ca; background: rgb(104 198 155 / 0.08); border-color: rgb(104 198 155 / 0.25);" : ""}">${f.status === "enforced" ? "Enforced" : "Verify"}</span>
+                    <span class="mini-pill ${f.status === "enforced" ? "pill-success" : "pill-warning"}">${f.status === "enforced" ? "Enforced" : "Verify"}</span>
                     <strong>${escapeHtml(f.element)}</strong>
                     <span class="evaluation-category">${escapeHtml(f.category)}</span>
                   </div>
@@ -3186,7 +3186,7 @@ function renderResult() {
             <div class="card-header"><h2>Actions</h2></div>
             <div class="result-actions">
               ${state.production.approved
-                ? `<button class="button" type="button" disabled style="opacity: 0.6; cursor: default;">Approved</button>`
+                ? `<button class="button is-disabled" type="button" disabled>Approved</button>`
                 : `<button class="button secondary" type="button" data-action="approve-output">Approve this output</button>`
               }
               <button class="button" type="button" data-action="open-feedback">Provide feedback</button>
@@ -3234,7 +3234,7 @@ function renderResult() {
               ${candidateRules.map((rule, index) => `
                 <li class="candidate-rule-item">
                   <div class="candidate-rule-header">
-                    <span class="mini-pill" style="${rule.scope === "brand-rule" ? "color: var(--coral); background: rgb(230 132 90 / 0.08); border-color: rgb(230 132 90 / 0.25);" : "color: var(--lavender); background: rgb(142 132 211 / 0.08); border-color: rgb(142 132 211 / 0.25);"}">${rule.scope === "brand-rule" ? "Brand rule proposal" : "Candidate rule"}</span>
+                    <span class="mini-pill ${rule.scope === "brand-rule" ? "pill-protected" : "pill-governed"}">${rule.scope === "brand-rule" ? "Brand rule proposal" : "Candidate rule"}</span>
                   </div>
                   <p>${escapeHtml(rule.feedback)}</p>
                   <span class="candidate-rule-source">From: ${escapeHtml(rule.sourceOutput || state.brandName + " production")} · ${escapeHtml(rule.time)}</span>

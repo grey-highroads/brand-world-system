@@ -4,7 +4,7 @@
 
 ### Technology
 
-- Vanilla CSS in `app/styles.css`; no Tailwind, CSS modules, component library, or theme provider.
+- Vanilla CSS in `app/styles.css` plus the system-wide consolidation layer in `app/polish.css`; no Tailwind, CSS modules, component library, or theme provider.
 - Dark, dense desktop product shell with responsive collapse at 1040px and 760px.
 
 ### Color tokens
@@ -43,8 +43,11 @@
 - Small shadow: `0 1px 2px rgb(8 13 20 / 0.22), 0 8px 24px rgb(8 13 20 / 0.12)`
 - Medium shadow: `0 18px 48px rgb(8 13 20 / 0.26)`
 - Sidebar width: 242px desktop, 210px medium, collapses to a top brand strip on mobile.
-- Workspace maximum width: 1320px; desktop padding 26px 32px 46px.
-- Main screen grids use 20–22px gaps.
+- Workspace maximum width: 1320px; shared desktop inset 32px and mobile inset 16px.
+- Shared spacing scale: 4, 8, 12, 16, 20, 24, 32, 40, and 48px.
+- Main screen grids and section stacks use 24px gaps; fields use 16px gaps.
+- Shared card padding is 20px desktop and 16px mobile.
+- Standard controls are 40px high; compact and large variants are 32px and 44px.
 
 ### Motion and accessibility
 
@@ -68,7 +71,7 @@ Category color is always paired with the tab label and active border, so color i
 
 ## Raw source: canonical token and global blocks
 
-Source file: `app/styles.css`. The full canonical file remains the source of truth and should be passed to design calls using the line-range policy because it is 1,475 lines.
+Source files: `app/styles.css` provides the product palette and feature composition; `app/polish.css` provides the approved shared spacing, surfaces, controls, semantic states, and readability floor. Pass both to future design calls using the line-range policy.
 
 ```css
 :root {

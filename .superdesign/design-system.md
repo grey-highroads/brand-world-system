@@ -68,11 +68,19 @@ Do not show semantic tags, schema field names, governance roles, lifecycle value
 
 ## Geometry and spacing
 
+The approved system-wide polish uses the Conservative composition for breathing room and the Hierarchy option for clearer containers and nested surfaces. `app/polish.css` is the canonical consolidation layer for these shared rules; feature-specific composition remains in `app/styles.css`.
+
+- Spacing scale: 4, 8, 12, 16, 20, 24, 32, 40, and 48px. Avoid one-off values outside this scale unless geometry requires them.
+- Desktop workspace inset: 32px. Mobile workspace inset: 16px.
+- Major page, column, and section gap: 24px desktop, 16px mobile.
+- Card padding: 20px desktop, 16px mobile.
+- Field and control-group gap: 16px. Tight clusters use 8 or 12px.
 - Card radius: 5px. Nested surface radius: 3–4px. Large containers: no more than 8px.
-- Pills: fully rounded but compact.
-- Standard workspace gaps: 20–22px.
-- Card padding: 18px.
-- Controls: 38–42px height.
+- Standard control height: 40px. Compact controls: 32px. Large controls: 44px.
+- Card headings: 17px. Functional support text must remain at least 10–11px with adequate line height.
+- Outer cards use `--paper-50`; repeated rows and grouped content use the darker `#27313e` inset surface.
+- Lavender left rails identify governed campaign or compiled context. Coral rails identify protected or exact assets. Green and warning treatments are reserved for explicit status, not decoration.
+- Pills are fully rounded but compact and use semantic classes rather than inline colors.
 - Borders do most of the hierarchy work; shadows are low, dark, and restrained.
 - Dense tables and queues are appropriate when row scanning is the user job, but each exception must expose a clear next action and evidence trail.
 
@@ -132,4 +140,4 @@ Brand guidance has two local views. Guidance is the editable knowledge organized
 - Do not make inference look canonical through color or copy.
 - Do not bury provenance or confidence behind unexplained icons.
 - Do not add a generic dashboard whose metrics are disconnected from decisions.
-- Use only the fonts, colors, spacing, and component styles defined here and in `app/styles.css`.
+- Use only the fonts, colors, spacing, and component styles defined here, in `app/styles.css`, and in the shared consolidation layer `app/polish.css`.

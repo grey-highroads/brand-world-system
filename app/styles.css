@@ -14,6 +14,7 @@
   --celery: #72b8d7;
   --celery-ink: #b9e7f7;
   --lavender: #9188c7;
+  --lavender-ink: #c8c1f2;
   --gold: #e6845a;
   --success: #68c69b;
   --danger: #ef765e;
@@ -1538,7 +1539,7 @@ select {
   flex: 1;
   padding: 12px 8px;
   color: var(--muted);
-  font-family: var(--body);
+  font-family: var(--sans);
   font-size: 11px;
   cursor: pointer;
   background: var(--ink-950);
@@ -1596,7 +1597,7 @@ select {
   gap: 8px;
   padding: 0;
   color: var(--text);
-  font-family: var(--body);
+  font-family: var(--sans);
   font-size: 12px;
   text-align: left;
   cursor: pointer;
@@ -1648,7 +1649,7 @@ select {
 .campaign-ref-btn {
   padding: 4px 10px;
   color: var(--muted);
-  font-family: var(--body);
+  font-family: var(--sans);
   font-size: 10px;
   cursor: pointer;
   background: var(--paper-100);
@@ -1681,7 +1682,7 @@ select {
 .linkedin-post-text {
   padding: 16px;
   color: var(--text);
-  font-family: var(--body);
+  font-family: var(--sans);
   font-size: 13px;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -1834,7 +1835,7 @@ select {
   min-height: 80px;
   padding: 10px 12px;
   color: var(--text);
-  font-family: var(--body);
+  font-family: var(--sans);
   font-size: 12px;
   line-height: 1.55;
   resize: vertical;

@@ -195,3 +195,21 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Prepare proposed update/);
   assert.match(session.appRoot.innerHTML, /Active v3/);
 });
+
+test("shared visual polish layer centralizes spacing, surfaces, and semantic states", () => {
+  const index = fs.readFileSync(path.join(rootPath, "app/index.html"), "utf8");
+  const styles = fs.readFileSync(path.join(rootPath, "app/styles.css"), "utf8");
+  const polish = fs.readFileSync(path.join(rootPath, "app/polish.css"), "utf8");
+  const app = fs.readFileSync(path.join(rootPath, "app/app.js"), "utf8");
+
+  assert.match(index, /polish\.css/);
+  assert.match(polish, /--section-gap: var\(--space-6\)/);
+  assert.match(polish, /--card-padding: var\(--space-5\)/);
+  assert.match(polish, /\.surface-accent-governed/);
+  assert.match(polish, /\.pill-protected/);
+  assert.match(polish, /\.asset-icon-image::before/);
+  assert.match(app, /surface-accent-governed/);
+  assert.match(app, /pill-success/);
+  assert.doesNotMatch(app, /style="color: #e6c765/);
+  assert.doesNotMatch(styles, /font-family: var\(--body\)/);
+});
