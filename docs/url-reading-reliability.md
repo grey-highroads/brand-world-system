@@ -1,6 +1,6 @@
 # URL Reading Reliability: Firecrawl Fallback
 
-Status: Specified, not yet implemented.
+Status: Implemented. Firecrawl fallback ships alongside the Tier 1 hardening.
 
 ## Problem
 
@@ -113,4 +113,4 @@ The fallback pattern means Firecrawl is only called when plain fetch fails, so t
 2. `.env.example` or README (document the new env var)
 3. Vercel project settings (add the key)
 
-Estimated implementation: 40-60 lines of code in one file. The hardest part is getting the API key set up, not the code.
+The code is implemented. The remaining setup is adding FIRECRAWL_API_KEY to .env.local and Vercel project environment variables. When the key is not set, the fallback is silently skipped and the user sees the original error suggesting they upload content directly.
