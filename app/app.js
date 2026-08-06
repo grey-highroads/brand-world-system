@@ -721,6 +721,7 @@ const state = {
   ],
   activeCampaignId: null,
   campaignReferences: [],
+  previewOutputId: null,
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
   // the brand language that produced it survives later brain revisions.
@@ -891,6 +892,35 @@ function shell(content) {
         ${content}
       </main>
       ${state.toast ? `<div class="toast" role="status">${escapeHtml(state.toast)}</div>` : ""}
+      ${renderOutputPreview()}
+    </div>
+  `;
+}
+
+function renderOutputPreview() {
+  const output = state.outputs.find((o) => o.id === state.previewOutputId);
+  if (!output) return "";
+  return `
+    <div class="preview-overlay" data-action="close-preview" role="dialog" aria-modal="true" aria-label="${escapeHtml(output.label)}">
+      <div class="preview-panel">
+        <div class="preview-header">
+          <span>
+            <strong>${escapeHtml(output.label)}</strong>
+            <span class="output-meta">${escapeHtml(output.format || "")}${output.campaignName ? ` · ${escapeHtml(output.campaignName)}` : ""}${output.brainVersion ? ` · Brain v${output.brainVersion}` : ""}</span>
+          </span>
+          <button class="button ghost compact" type="button" data-action="close-preview">Close</button>
+        </div>
+        <div class="preview-media">
+          ${output.imageUrl
+            ? `<img src="${escapeHtml(output.imageUrl)}" alt="${escapeHtml(output.label)}" onerror="this.closest('.preview-media').classList.add('preview-media-missing'); this.remove();">`
+            : ""}
+        </div>
+        ${output.scene ? `<p class="preview-scene">${escapeHtml(output.scene)}</p>` : ""}
+        <div class="preview-actions">
+          <span class="mini-pill ${output.status === "approved" ? "pill-success" : "pill-neutral"}">${output.status === "approved" ? "Approved" : "Draft"}</span>
+          ${output.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${output.id}">Make another like this</button>` : ""}
+        </div>
+      </div>
     </div>
   `;
 }
@@ -2063,11 +2093,11 @@ function renderCampaignWorkspace() {
                 return `
                 <div class="campaign-output-item ${selected ? "selected" : ""}">
                   <div class="campaign-output-header">
+                    ${o.imageUrl
+                      ? `<button class="output-thumb output-thumb-button" type="button" data-action="preview-output" data-id="${o.id}" aria-label="Preview ${escapeHtml(o.label)}"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();"></button>`
+                      : `<span class="output-thumb"></span>`}
                     <button class="campaign-output-select" type="button" data-action="toggle-campaign-ref" data-id="${o.id}">
                       <span class="campaign-output-check">${selected ? "✓" : ""}</span>
-                      <span class="output-thumb">${o.imageUrl
-                        ? `<img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();">`
-                        : ""}</span>
                       <span><strong>${escapeHtml(o.label)}</strong><span class="output-meta">${escapeHtml(o.format || "")}${o.brainVersion ? ` · Brain v${o.brainVersion}` : ""}</span></span>
                     </button>
                     <span class="output-badges">
@@ -2713,9 +2743,9 @@ function renderBrief() {
             <div class="recent-strip">
               ${recentOutputs.map((o) => `
                 <div class="recent-item">
-                  <span class="output-thumb">${o.imageUrl
-                    ? `<img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();">`
-                    : ""}</span>
+                  ${o.imageUrl
+                    ? `<button class="output-thumb output-thumb-button" type="button" data-action="preview-output" data-id="${o.id}" aria-label="Preview ${escapeHtml(o.label)}"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();"></button>`
+                    : `<span class="output-thumb"></span>`}
                   <span class="recent-item-body">
                     <strong>${escapeHtml(o.label)}</strong>
                     <span class="output-meta">${escapeHtml(o.format || "")}${o.campaignName ? ` · ${escapeHtml(o.campaignName)}` : ""}</span>
@@ -4276,6 +4306,16 @@ root.addEventListener("change", async (event) => {
   }
 });
 
+// Guarded: the test harness runs this file against a minimal document stub.
+if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && state.previewOutputId) {
+      state.previewOutputId = null;
+      render();
+    }
+  });
+}
+
 root.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target) return;
@@ -4316,6 +4356,13 @@ root.addEventListener("click", (event) => {
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
   if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
+  if (action === "preview-output") { state.previewOutputId = target.dataset.id; render(); }
+  if (action === "close-preview") {
+    // Only close on the overlay itself or the close button, not on panel clicks.
+    if (target.dataset.action === "close-preview" && event.target.closest(".preview-panel") && event.target.dataset.action !== "close-preview") return;
+    state.previewOutputId = null;
+    render();
+  }
   if (action === "reuse-output") {
     const source = state.outputs.find((o) => o.id === target.dataset.id);
     if (!source) return;
@@ -4337,6 +4384,7 @@ root.addEventListener("click", (event) => {
       const match = productionLockedAssets().find((a) => a.name === source.lockedAsset.name);
       if (match) state.lockedAssetId = match.id;
     }
+    state.previewOutputId = null;
     setToast(source.lockedAsset && !state.lockedAssetId
       ? "Brief restored. The original product image is no longer available, so add one before generating."
       : "Brief restored from that asset. Adjust anything, then generate.");
