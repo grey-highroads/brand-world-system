@@ -107,6 +107,41 @@ async function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+// ---------------------------------------------------------------------------
+// Firecrawl fallback for JS-rendered and bot-protected pages
+// ---------------------------------------------------------------------------
+
+async function readWithFirecrawl(url, fetchImpl) {
+  const apiKey = typeof process !== "undefined" && process.env?.FIRECRAWL_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const response = await fetchImpl("https://api.firecrawl.dev/v1/scrape", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify({
+        url: url.toString(),
+        formats: ["markdown"],
+        waitFor: 3000,
+        timeout: 30000,
+      }),
+      signal: AbortSignal.timeout(45_000),
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    if (data.success && data.data?.markdown) {
+      const content = data.data.markdown.trim().slice(0, 120_000);
+      if (content.length < 100) return null;
+      return content;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export async function readRemotePage(value, fetchImpl = fetch) {
   let current = await assertSafeRemoteUrl(value);
   let lastError = null;
@@ -121,9 +156,19 @@ export async function readRemotePage(value, fetchImpl = fetch) {
       lastError = error;
       // Only retry on transient failures (timeouts, 429, 5xx).
       const transient = error.message?.includes("status 5") || error.message?.includes("status 429") || error.name === "TimeoutError" || error.name === "AbortError";
-      if (!transient) throw error;
+      if (!transient) break;
     }
   }
+
+  // Plain fetch failed. If the failure looks like a rendering or bot-protection
+  // problem, try Firecrawl before giving up. Firecrawl handles JS execution,
+  // Cloudflare challenges, and complex redirect chains.
+  const renderingFailure = lastError?.message?.includes("bot-protection") || lastError?.message?.includes("very little readable text") || lastError?.message?.includes("redirected too many times");
+  if (renderingFailure) {
+    const firecrawlResult = await readWithFirecrawl(current, fetchImpl);
+    if (firecrawlResult) return firecrawlResult;
+  }
+
   throw lastError;
 }
 
