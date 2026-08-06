@@ -715,12 +715,17 @@ const state = {
       paletteShift: "Warmer. Push the oat and clay tones. Less green.",
       productFocus: "Yuzu Ginger",
       channels: ["LinkedIn", "Instagram", "Email"],
-      outputs: [],
+      outputs: [
+        { id: "co-001", label: "Summer Reset hero image", channel: "Instagram", format: "4:5 portrait", scene: "A woman on a balcony at golden hour, SLAKE can resting on the railing, city skyline soft in the background", brainVersion: 1 },
+        { id: "co-002", label: "LinkedIn announcement image", channel: "LinkedIn", format: "1.91:1 landscape", scene: "Close-up of the Yuzu Ginger can with condensation, warm afternoon kitchen light, cutting board with citrus in the background", brainVersion: 1 },
+        { id: "co-003", label: "Email header", channel: "Email", format: "16:9 landscape", scene: "Wide shot of a shared outdoor table, two SLAKE cans among plates and napkins, late afternoon shade", brainVersion: 1 },
+      ],
       learnings: [],
       createdAt: "2026-08-01T10:00:00Z",
     },
   ],
   activeCampaignId: null,
+  campaignReferences: [],
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
     exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
@@ -2036,15 +2041,42 @@ function renderCampaignWorkspace() {
 
           ${campaign.outputs?.length ? `
           <section class="card">
-            <div class="card-header"><h2>Previous campaign assets</h2><span class="mini-pill">${campaign.outputs.length}</span></div>
-            <p class="page-description">These outputs were created for this campaign. Use them as continuity references.</p>
-            <div class="affected-outputs-list">
-              ${campaign.outputs.map((o) => `
-                <div class="rule">
-                  <span class="mini-pill">${escapeHtml(o.channel || "Image")}</span>
-                  <span><strong>${escapeHtml(o.label)}</strong><span>${escapeHtml(o.format || "")}</span></span>
+            <div class="card-header">
+              <h2>Previous campaign work</h2>
+              <span class="mini-pill">${state.campaignReferences.length ? `${state.campaignReferences.length} selected` : `${campaign.outputs.length} available`}</span>
+            </div>
+            <p class="page-description">Select previous outputs to guide continuity. The system will reference their visual direction.</p>
+            <div class="campaign-outputs-list">
+              ${campaign.outputs.map((o) => {
+                const selected = state.campaignReferences.find((r) => r.id === o.id);
+                return `
+                <div class="campaign-output-item ${selected ? "selected" : ""}">
+                  <div class="campaign-output-header">
+                    <button class="campaign-output-select" type="button" data-action="toggle-campaign-ref" data-id="${o.id}">
+                      <span class="campaign-output-check">${selected ? "✓" : ""}</span>
+                      <span><strong>${escapeHtml(o.label)}</strong></span>
+                    </button>
+                    <span class="mini-pill">${escapeHtml(o.channel)}</span>
+                  </div>
+                  <p class="campaign-output-scene">${escapeHtml(o.scene || "")}</p>
+                  ${selected ? `
+                    <div class="campaign-ref-role">
+                      <span class="section-label">How should this guide the new asset?</span>
+                      <div class="campaign-ref-options">
+                        ${[
+                          { value: "continue-direction", label: "Continue this direction" },
+                          { value: "match-composition", label: "Match composition" },
+                          { value: "create-variation", label: "Create a variation" },
+                          { value: "use-treatment", label: "Use product treatment" },
+                          { value: "reference-only", label: "Use as loose reference" },
+                        ].map((opt) => `
+                          <button class="campaign-ref-btn ${selected.role === opt.value ? "active" : ""}" type="button" data-action="set-campaign-ref-role" data-id="${o.id}" data-role="${opt.value}">${opt.label}</button>
+                        `).join("")}
+                      </div>
+                    </div>
+                  ` : ""}
                 </div>
-              `).join("")}
+              `}).join("")}
             </div>
           </section>
           ` : ""}
@@ -3640,6 +3672,13 @@ function productionRequest(jobId) {
       explore: campaign.explore,
       paletteShift: campaign.paletteShift,
       productFocus: campaign.productFocus,
+      priorOutputs: state.campaignReferences.map((ref) => ({
+        label: ref.label,
+        scene: ref.scene,
+        role: ref.role,
+        channel: ref.channel,
+        format: ref.format,
+      })),
     } : undefined,
   };
 }
@@ -4033,6 +4072,23 @@ root.addEventListener("change", async (event) => {
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
+  if (action === "toggle-campaign-ref") {
+    const id = target.dataset.id;
+    const existing = state.campaignReferences.findIndex((r) => r.id === id);
+    if (existing >= 0) {
+      state.campaignReferences.splice(existing, 1);
+    } else {
+      const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+      const output = campaign?.outputs?.find((o) => o.id === id);
+      if (output) state.campaignReferences.push({ id, role: "continue-direction", label: output.label, scene: output.scene, channel: output.channel, format: output.format });
+    }
+    render();
+  }
+  if (action === "set-campaign-ref-role") {
+    const ref = state.campaignReferences.find((r) => r.id === target.dataset.id);
+    if (ref) ref.role = target.dataset.role;
+    render();
+  }
   if (action === "reference-role") {
     state.references[Number(event.target.dataset.index)].role = event.target.value;
   }
@@ -4406,6 +4462,20 @@ root.addEventListener("click", (event) => {
         appliedRules: (pkg.treatments || []).filter((t) => t.treatment === "locked" && t.category === "Creative rules").map((t) => t.element),
         label: `${pkg.output?.placement} ${pkg.output?.format}`,
       });
+      // Add to active campaign's output list for continuity
+      if (state.activeCampaignId) {
+        const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+        if (campaign) {
+          campaign.outputs.push({
+            id: `co-${Date.now()}`,
+            label: `${pkg.output?.placement} ${pkg.output?.format} (${state.brief.assetType || "scene"})`,
+            channel: pkg.output?.placement?.split(" ")[0] || "Image",
+            format: pkg.output?.format || "",
+            scene: state.brief.scene || state.brief.postTopic || "",
+            brainVersion: pkg.brainVersion,
+          });
+        }
+      }
     }
     recordBrainHistory("Output approved", `A ${state.brandName} brand world image was approved for ${state.brief.placement} ${state.brief.format}.`, "complete");
     setToast("Output approved. The image and production package are recorded.");
@@ -4471,6 +4541,7 @@ root.addEventListener("click", (event) => {
     state.production.feedbackOpen = false;
     state.production.feedbackDraft = "";
     state.production.feedbackScope = "this-output";
+    state.campaignReferences = [];
     navigate("chooser");
   }
   if (action === "copy-prompt") copyPrompt();
