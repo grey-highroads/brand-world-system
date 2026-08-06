@@ -2454,13 +2454,17 @@ function renderBrief() {
   const approved = approvedBrainForProduction();
   const rules = approved?.guidanceSections?.find((section) => section.id === "rules");
   const identity = approved?.guidanceSections?.find((section) => section.id === "identity");
+  const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+  const modeLabel = campaign ? campaign.name : state.creativeMode === "explore" ? "Brand exploration" : "Standalone asset";
 
   return shell(`
     <section class="workspace">
       ${pageHeader(
-        "New brand world image",
+        campaign ? `New image for ${campaign.name}` : "New brand world image",
         approved
-          ? `Describe the image you need. ${state.brandName} Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} will shape the result.`
+          ? campaign
+            ? `Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} + ${campaign.name} campaign direction shape the result.`
+            : `Describe the image you need. ${state.brandName} Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} will shape the result.`
           : "Describe the image you need after approving a Brand Brain.",
       )}
 
@@ -2515,6 +2519,21 @@ function renderBrief() {
         </section>
 
         <aside>
+          ${campaign ? `
+          <section class="card" style="border-color: var(--lavender); box-shadow: inset 3px 0 0 var(--lavender);">
+            <div class="card-header">
+              <h2>Campaign direction</h2>
+              <span class="mini-pill" style="color: var(--lavender); background: rgb(142 132 211 / 0.08); border-color: rgb(142 132 211 / 0.25);">${escapeHtml(campaign.name)}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>
+              <li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>
+              <li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>
+              ${campaign.paletteShift ? `<li><strong>Palette shift</strong><span>${escapeHtml(campaign.paletteShift)}</span></li>` : ""}
+              ${campaign.productFocus ? `<li><strong>Product focus</strong><span>${escapeHtml(campaign.productFocus)}</span></li>` : ""}
+            </ul>
+          </section>
+          ` : ""}
           <section class="card">
             <div class="card-header">
               <h2>Guidance applied</h2>
@@ -3528,6 +3547,7 @@ function wait(milliseconds) {
 }
 
 function productionRequest(jobId) {
+  const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   return {
     jobId,
     brief: { ...state.brief },
@@ -3538,6 +3558,18 @@ function productionRequest(jobId) {
       influence: item.influence,
       usageInstruction: item.usageInstruction,
     })),
+    campaign: campaign ? {
+      name: campaign.name,
+      campaignIdea: campaign.campaignIdea,
+      messageTerritory: campaign.messageTerritory,
+      objective: campaign.objective,
+      audience: campaign.audience,
+      desiredBelief: campaign.desiredBelief,
+      preserve: campaign.preserve,
+      explore: campaign.explore,
+      paletteShift: campaign.paletteShift,
+      productFocus: campaign.productFocus,
+    } : undefined,
   };
 }
 
