@@ -753,3 +753,88 @@ select,
     min-height: 0;
   }
 }
+
+/* ── Output records: thumbnails, badges, recent strip ───────────────────── */
+
+.output-thumb {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  overflow: hidden;
+  background: var(--paper-100);
+  border: 1px solid var(--paper-200);
+  border-radius: 3px;
+}
+
+.output-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Presigned image URLs expire. Rather than showing a broken image, the thumb
+   falls back to a neutral placeholder mark. */
+.output-thumb:empty::after,
+.output-thumb-missing::after {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  font-size: 13px;
+  content: "▣";
+  opacity: 0.45;
+}
+
+.output-meta {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.output-badges {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.output-actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.recent-strip {
+  display: grid;
+  gap: 4px;
+}
+
+.recent-item {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  background: var(--ink-950);
+  border: 1px solid var(--paper-200);
+  border-radius: 4px;
+}
+
+.recent-item-body {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.recent-item-body strong {
+  display: block;
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
