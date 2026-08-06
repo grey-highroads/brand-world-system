@@ -1483,6 +1483,54 @@ select {
   padding: 0 18px 16px;
 }
 
+/* LinkedIn post result */
+
+.linkedin-result {
+  display: grid;
+  gap: 16px;
+}
+
+.linkedin-post-copy {
+  display: grid;
+  gap: 10px;
+}
+
+.linkedin-post-text {
+  padding: 16px;
+  color: var(--text);
+  font-family: var(--body);
+  font-size: 13px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  background: var(--ink-950);
+  border: 1px solid var(--paper-200);
+  border-radius: 4px;
+}
+
+.linkedin-post-text p {
+  margin: 0 0 12px;
+}
+
+.linkedin-post-text p:last-child {
+  margin-bottom: 0;
+}
+
+.linkedin-image {
+  max-width: 400px;
+}
+
+.checkbox-label {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.checkbox-label input[type="checkbox"] {
+  accent-color: var(--lavender);
+}
+
 /* Collapsible cards (details/summary) */
 
 .collapsible-card {
