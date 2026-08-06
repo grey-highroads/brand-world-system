@@ -726,6 +726,7 @@ const state = {
     exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
     placement: "Instagram feed",
     format: "4:5 portrait",
+    assetType: "scene",
     postType: "Thought leadership",
     postTopic: "",
     postClaims: "",
@@ -1943,36 +1944,64 @@ function renderCampaignWorkspace() {
   const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   if (!campaign) return renderChooser();
   const approved = approvedBrainForProduction();
+  const formats = placementFormats[state.brief.placement] || ["1:1 square"];
 
   return shell(`
     <section class="workspace">
-      ${pageHeader(campaign.name, campaign.description)}
+      ${pageHeader(campaign.name, `Create a new asset for this campaign. Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} + campaign direction shape the result.`)}
 
       <div class="content-grid">
         <div>
           <section class="card">
-            <div class="card-header"><h2>Campaign direction</h2><span class="mini-pill">Campaign Brain</span></div>
-            <ul class="exact-list">
-              <li><strong>Objective</strong><span>${escapeHtml(campaign.objective)}</span></li>
-              <li><strong>Audience</strong><span>${escapeHtml(campaign.audience)}</span></li>
-              <li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>
-              <li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>
-            </ul>
-          </section>
+            <div class="card-header">
+              <h2>What are you making?</h2>
+              <span class="mini-pill">${escapeHtml(campaign.campaignIdea)}</span>
+            </div>
 
-          <section class="card">
-            <div class="card-header"><h2>Creative direction</h2></div>
-            <ul class="exact-list">
-              <li><strong>Preserve from brand</strong><span>${escapeHtml(campaign.preserve)}</span></li>
-              <li><strong>Explore for campaign</strong><span>${escapeHtml(campaign.explore)}</span></li>
-              ${campaign.paletteShift ? `<li><strong>Palette shift</strong><span>${escapeHtml(campaign.paletteShift)}</span></li>` : ""}
-              ${campaign.productFocus ? `<li><strong>Product focus</strong><span>${escapeHtml(campaign.productFocus)}</span></li>` : ""}
-            </ul>
+            <div class="asset-type-chooser">
+              ${[
+                { id: "scene", icon: "🖼", label: "Scene image" },
+                { id: "product", icon: "📦", label: "Product in scene" },
+                { id: "post", icon: "✍️", label: "Post + image" },
+                { id: "banner", icon: "🏷", label: "Banner" },
+              ].map((t) => `
+                <button class="asset-type-btn ${state.brief.assetType === t.id ? "selected" : ""}" type="button" data-action="set-asset-type" data-type="${t.id}">
+                  <span class="asset-type-icon">${t.icon}</span>
+                  <span>${t.label}</span>
+                </button>
+              `).join("")}
+            </div>
+
+            <div class="field-grid">
+              <div class="field full">
+                <label for="scene">Describe this asset</label>
+                <textarea id="scene" data-action="scene-input" placeholder="What should the image show? The campaign direction and brand guidance fill in the gaps.">${escapeHtml(state.brief.scene)}</textarea>
+              </div>
+              <div class="field">
+                <label for="placement">Channel</label>
+                <select id="placement" data-action="placement-change">
+                  ${Object.keys(placementFormats).map((p) => option(p, state.brief.placement)).join("")}
+                </select>
+              </div>
+              <div class="field">
+                <label for="format">Format</label>
+                <select id="format" data-action="format-change">
+                  ${formats.map((f) => option(f, state.brief.format)).join("")}
+                </select>
+              </div>
+              <div class="field full">
+                <label for="exclusions">Anything to avoid?</label>
+                <input class="input-like" id="exclusions" data-action="exclusions-input" value="${escapeHtml(state.brief.exclusions)}">
+              </div>
+            </div>
+
+            ${renderLockedAssetPicker()}
           </section>
 
           ${campaign.outputs?.length ? `
           <section class="card">
-            <div class="card-header"><h2>Campaign outputs</h2><span class="mini-pill">${campaign.outputs.length}</span></div>
+            <div class="card-header"><h2>Previous campaign assets</h2><span class="mini-pill">${campaign.outputs.length}</span></div>
+            <p class="page-description">These outputs were created for this campaign. Use them as continuity references.</p>
             <div class="affected-outputs-list">
               ${campaign.outputs.map((o) => `
                 <div class="rule">
@@ -1986,38 +2015,44 @@ function renderCampaignWorkspace() {
         </div>
 
         <aside>
-          <section class="card">
-            <div class="card-header"><h2>Audience</h2></div>
-            <ul class="exact-list">
+          <details class="card collapsible-card" style="border-color: var(--lavender); box-shadow: inset 3px 0 0 var(--lavender);">
+            <summary class="card-header collapsible-header">
+              <h2>Campaign direction</h2>
+              <span class="collapsible-meta"><span class="mini-pill" style="color: var(--lavender); background: rgb(142 132 211 / 0.08); border-color: rgb(142 132 211 / 0.25);">${escapeHtml(campaign.campaignIdea)}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            </summary>
+            <ul class="exact-list" style="padding: 0 18px 12px;">
+              <li><strong>Objective</strong><span>${escapeHtml(campaign.objective)}</span></li>
+              <li><strong>Audience</strong><span>${escapeHtml(campaign.audience)}</span></li>
+              <li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>
+              <li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>
+              ${campaign.paletteShift ? `<li><strong>Palette shift</strong><span>${escapeHtml(campaign.paletteShift)}</span></li>` : ""}
+              ${campaign.productFocus ? `<li><strong>Product focus</strong><span>${escapeHtml(campaign.productFocus)}</span></li>` : ""}
+              <li><strong>Preserve</strong><span>${escapeHtml(campaign.preserve)}</span></li>
               <li><strong>Current belief</strong><span>${escapeHtml(campaign.currentBelief)}</span></li>
               <li><strong>Desired belief</strong><span>${escapeHtml(campaign.desiredBelief)}</span></li>
-              <li><strong>Desired action</strong><span>${escapeHtml(campaign.desiredAction)}</span></li>
+            </ul>
+          </details>
+
+          <section class="card">
+            <div class="card-header">
+              <h2>Brand guidance</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>Foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not available")}</span></li>
+              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not available")}</span></li>
             </ul>
           </section>
 
-          <section class="card">
-            <div class="card-header"><h2>Proof points</h2></div>
-            <p class="page-description">${escapeHtml(campaign.proofPoints)}</p>
+          <section class="card ready-card">
+            <div class="card-header"><h2>${approved ? "Ready" : "Not ready"}</h2></div>
+            <p class="page-description">Campaign direction and brand guidance will both compile into the prompt.</p>
+            <button class="button primary" type="button" data-action="start-campaign-asset" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
           </section>
 
-          <section class="card">
-            <div class="card-header"><h2>Channels</h2></div>
-            <div class="source-chips">${(campaign.channels || []).map((c) => `<span class="source-chip">${escapeHtml(c)}</span>`).join("")}</div>
-          </section>
-
-          <section class="card">
-            <div class="card-header"><h2>Create an asset</h2></div>
-            <p class="page-description">The campaign direction will be compiled alongside Brand Brain guidance.</p>
-            <button class="button primary" type="button" data-action="start-campaign-asset" ${approved ? "" : "disabled"}>New asset for ${escapeHtml(campaign.name)} ›</button>
-          </section>
-
-          <section class="card">
-            <div class="card-header"><h2>Navigation</h2></div>
-            <div class="result-actions">
-              <button class="button" type="button" data-action="back-to-campaigns">‹ All campaigns</button>
-              <button class="button" type="button" data-action="back-to-modes">‹ Start over</button>
-            </div>
-          </section>
+          <div class="actions" style="margin-top: 8px;">
+            <button class="button" type="button" data-action="back-to-campaigns">‹ All campaigns</button>
+          </div>
         </aside>
       </div>
     </section>
@@ -3961,6 +3996,7 @@ root.addEventListener("change", async (event) => {
   if (action === "format-change") state.brief.format = event.target.value;
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
+  if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
   if (action === "reference-role") {
     state.references[Number(event.target.dataset.index)].role = event.target.value;
   }
@@ -3991,7 +4027,7 @@ root.addEventListener("click", (event) => {
   }
   if (action === "start-campaign-asset") {
     state.selectedDeliverable = deliverables[0];
-    navigate("brief");
+    void prepareProductionPreflight();
   }
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
   if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
