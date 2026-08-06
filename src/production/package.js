@@ -245,6 +245,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const exclusions = optionalText(brief?.exclusions, "The list of things to avoid", 2000);
   const placement = requiredText(brief?.placement, "Placement", 120);
   const format = requiredText(brief?.format, "Format", 120);
+  const assetType = cleanText(brief?.assetType) || "scene";
+  const bannerHeadline = optionalText(brief?.bannerHeadline, "The headline", 300);
+  const bannerTextSide = cleanText(brief?.bannerTextSide);
   const selected = new Map(approvedBrain.guidanceSections.map((section) => [section.id, section]));
   const guidance = guidanceOrder.map((id) => selected.get(id)).filter(Boolean);
   const dossier = approvedBrain.artifacts?.dossier || {};
@@ -309,6 +312,26 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     ].join(" "),
   } : null;
 
+  const textSideCopy = {
+    "Left third": "Keep the left third of the frame visually quiet. Place the subject and any focal detail in the centre or right so overlaid text stays readable.",
+    "Right third": "Keep the right third of the frame visually quiet. Place the subject and any focal detail in the centre or left so overlaid text stays readable.",
+    "Lower third": "Keep the lower third of the frame visually quiet. Place the subject in the upper two thirds so overlaid text stays readable.",
+    "No text area": "No text will be overlaid. Compose the full frame freely.",
+  };
+
+  const compositionSection = assetType === "banner" ? {
+    title: "Banner composition",
+    body: [
+      `This image is a banner. It will be viewed wide and may be cropped tighter on smaller screens, so keep the subject away from the outer edges.`,
+      textSideCopy[bannerTextSide] || textSideCopy["No text area"],
+      bannerHeadline ? `A headline reading "${bannerHeadline}" will be placed over this image by the layout, so do not render any text into the image itself.` : "",
+      `The image should read clearly at a glance rather than rewarding close inspection.`,
+    ].filter(Boolean).join(" "),
+  } : assetType === "product" ? {
+    title: "Product placement",
+    body: `The supplied product image is the subject of this frame. Build the surrounding scene so the product sits naturally within it at a believable scale, lit by the same light as the rest of the environment. Do not crop, rotate, restyle, or reinterpret the product itself.`,
+  } : null;
+
   const sections = [
     {
       title: "Assignment",
@@ -321,6 +344,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
     campaignSection,
     priorOutputs,
+    compositionSection,
     {
       title: "Audience and feeling",
       body: `${cleanText(dossier.audience)} ${cleanText(dossier.desiredFeeling)}`,
@@ -350,7 +374,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "Output",
       body: `Return one finished image only. Compose for ${format} in ${placement}. Keep the result visually specific, believable, and native to ${cleanText(approvedBrain.brandName)} rather than a generic category image.`,
     },
-  ].filter((section) => section.body);
+  ].filter((section) => section && section.body);
 
   const prompt = sections.map((section) => `${section.title.toUpperCase()}\n${section.body}`).join("\n\n");
 
