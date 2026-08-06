@@ -1973,10 +1973,37 @@ function renderCampaignWorkspace() {
             </div>
 
             <div class="field-grid">
-              <div class="field full">
-                <label for="scene">Describe this asset</label>
-                <textarea id="scene" data-action="scene-input" placeholder="What should the image show? The campaign direction and brand guidance fill in the gaps.">${escapeHtml(state.brief.scene)}</textarea>
-              </div>
+              ${state.brief.assetType === "post" ? `
+                <div class="field full">
+                  <label for="post-topic">What is this post about?</label>
+                  <textarea id="post-topic" data-action="post-topic-input" placeholder="The campaign idea and brand voice shape the writing. Describe the angle or key message.">${escapeHtml(state.brief.postTopic)}</textarea>
+                </div>
+                <div class="field full">
+                  <label for="post-claims">Approved claims or facts to include (optional)</label>
+                  <input class="input-like" id="post-claims" data-action="post-claims-input" value="${escapeHtml(state.brief.postClaims)}" placeholder="Only claims verified by the Brand Brain will appear.">
+                </div>
+                <div class="field full">
+                  <label for="post-cta">Call to action (optional)</label>
+                  <input class="input-like" id="post-cta" data-action="post-cta-input" value="${escapeHtml(state.brief.postCta)}" placeholder="e.g., Visit the link in bio, Try it this afternoon">
+                </div>
+                <div class="field full">
+                  <label class="checkbox-label">
+                    <input type="checkbox" data-action="toggle-include-image" ${state.brief.includeImage ? "checked" : ""}>
+                    <span>Generate a supporting image</span>
+                  </label>
+                </div>
+                ${state.brief.includeImage ? `
+                  <div class="field full">
+                    <label for="scene">Image direction (optional)</label>
+                    <textarea id="scene" data-action="scene-input" placeholder="Leave blank to let the campaign and brand direction shape the image.">${escapeHtml(state.brief.scene)}</textarea>
+                  </div>
+                ` : ""}
+              ` : `
+                <div class="field full">
+                  <label for="scene">${state.brief.assetType === "product" ? "Describe the scene around the product" : state.brief.assetType === "banner" ? "Describe the banner" : "Describe this image"}</label>
+                  <textarea id="scene" data-action="scene-input" placeholder="${state.brief.assetType === "product" ? "The product stays exact. Describe the setting, mood, and context around it." : "The campaign direction and brand guidance fill in the gaps."}">${escapeHtml(state.brief.scene)}</textarea>
+                </div>
+              `}
               <div class="field">
                 <label for="placement">Channel</label>
                 <select id="placement" data-action="placement-change">
@@ -1986,7 +2013,10 @@ function renderCampaignWorkspace() {
               <div class="field">
                 <label for="format">Format</label>
                 <select id="format" data-action="format-change">
-                  ${formats.map((f) => option(f, state.brief.format)).join("")}
+                  ${(state.brief.assetType === "banner"
+                    ? ["16:9 landscape", "1.91:1 landscape", "4:3 landscape"]
+                    : formats
+                  ).map((f) => option(f, state.brief.format)).join("")}
                 </select>
               </div>
               <div class="field full">
@@ -1995,7 +2025,13 @@ function renderCampaignWorkspace() {
               </div>
             </div>
 
-            ${renderLockedAssetPicker()}
+            ${state.brief.assetType === "product" ? `
+              <div class="rule-card" style="margin-top: 8px;">
+                <span class="section-label">Product asset required</span>
+                <p class="page-description" style="margin: 4px 0 8px;">This asset type places a product in the scene. Select a protected asset below.</p>
+              </div>
+            ` : ""}
+            ${(state.brief.assetType !== "post" || state.brief.includeImage) ? renderLockedAssetPicker() : ""}
           </section>
 
           ${campaign.outputs?.length ? `
@@ -4026,8 +4062,17 @@ root.addEventListener("click", (event) => {
     render();
   }
   if (action === "start-campaign-asset") {
-    state.selectedDeliverable = deliverables[0];
-    void prepareProductionPreflight();
+    if (state.brief.assetType === "post") {
+      state.selectedDeliverable = deliverables.find((d) => d.id === "linkedin-post") || deliverables[0];
+      state.brief.placement = "LinkedIn feed";
+      void startLinkedInGeneration();
+    } else {
+      state.selectedDeliverable = deliverables[0];
+      if (state.brief.assetType === "banner") {
+        state.brief.format = "16:9 landscape";
+      }
+      void prepareProductionPreflight();
+    }
   }
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
   if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
