@@ -14,6 +14,19 @@ const deliverables = [
     ],
   },
   {
+    id: "linkedin-post",
+    name: "LinkedIn post",
+    description: "Write a brand-grounded post with an optional supporting image.",
+    contract: "Post copy shaped by approved voice and claims. Optional image shaped by creative direction.",
+    available: true,
+    requirements: [
+      { id: "approved-brain", label: "Approved Brand Brain", condition: "always" },
+      { id: "foundation", label: "Brand foundation guidance", condition: "always" },
+      { id: "voice-guidance", label: "Voice and messaging", condition: "always" },
+      { id: "creative-direction", label: "Creative direction guidance", condition: "when image is included" },
+    ],
+  },
+  {
     id: "product-showcase",
     name: "Product showcase",
     description: "Create a polished, product-focused image with an approved pack.",
@@ -690,6 +703,11 @@ const state = {
     exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
     placement: "Instagram feed",
     format: "4:5 portrait",
+    postType: "Thought leadership",
+    postTopic: "",
+    postClaims: "",
+    postCta: "",
+    includeImage: true,
   },
   references: [],
   lockedAssetId: "",
@@ -2296,6 +2314,7 @@ function renderLockedAssetPicker() {
 }
 
 function renderBrief() {
+  if (state.selectedDeliverable.id === "linkedin-post") return renderLinkedInBrief();
   const formats = placementFormats[state.brief.placement];
   const referenceRows = state.references.map(referenceEditor).join("");
   const approved = approvedBrainForProduction();
@@ -2371,6 +2390,109 @@ function renderBrief() {
               <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((section) => section.id === "foundation")?.summary || "Approve the Brand Brain to use this guidance")}</span></li>
               <li><strong>Identity direction</strong><span>${escapeHtml(identity?.summary || "No approved identity direction is active")}</span></li>
               <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((section) => section.id === "creative")?.summary || "No approved creative direction is active")}</span></li>
+            </ul>
+            <div class="rule-card">
+              <span class="section-label">Boundaries in play</span>
+              <div class="rule">
+                <span class="mini-pill">Applied</span>
+                <span><strong>${escapeHtml(rules?.principles?.[0] || "Approved Brand Brain required")}</strong><span>${escapeHtml(rules?.summary || "Production remains unavailable until the Brand Brain is approved.")}</span></span>
+              </div>
+            </div>
+          </section>
+        </aside>
+      </div>
+
+      <div class="actions">
+        <button class="button" type="button" data-action="save-draft">Save draft</button>
+        <button class="button primary" type="button" data-action="continue-preflight" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
+      </div>
+    </section>
+  `);
+}
+
+function renderLinkedInBrief() {
+  const approved = approvedBrainForProduction();
+  const voice = approved?.guidanceSections?.find((section) => section.id === "voice");
+  const foundation = approved?.guidanceSections?.find((section) => section.id === "foundation");
+  const rules = approved?.guidanceSections?.find((section) => section.id === "rules");
+  const postTypes = ["Thought leadership", "Product announcement", "Case study", "Event promotion", "Industry insight", "Behind the scenes"];
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(
+        "New LinkedIn post",
+        approved
+          ? `Write a post grounded in ${state.brandName} voice and approved claims. Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} shapes the copy.`
+          : "Approve a Brand Brain before writing posts.",
+      )}
+
+      <div class="content-grid">
+        <section class="card">
+          <div class="card-header">
+            <h2>Your brief</h2>
+            <span class="mini-pill">Post + image</span>
+          </div>
+
+          <div class="field-grid">
+            <div class="field">
+              <label for="post-type">Post type</label>
+              <select id="post-type" data-action="post-type-change">
+                ${postTypes.map((t) => option(t, state.brief.postType)).join("")}
+              </select>
+            </div>
+            <div class="field">
+              <label for="placement">Placement</label>
+              <select id="placement" data-action="placement-change">
+                <option value="LinkedIn feed" selected>LinkedIn feed</option>
+              </select>
+            </div>
+            <div class="field full">
+              <label for="post-topic">What is this post about?</label>
+              <textarea id="post-topic" data-action="post-topic-input" placeholder="Describe the key message or angle. The approved voice guidance and brand foundation shape the writing.">${escapeHtml(state.brief.postTopic)}</textarea>
+            </div>
+            <div class="field full">
+              <label for="post-claims">Approved claims or product facts to include (optional)</label>
+              <input class="input-like" id="post-claims" data-action="post-claims-input" value="${escapeHtml(state.brief.postClaims)}" placeholder="Only claims verified by the Brand Brain will appear in the post.">
+              <span class="field-note">Leave blank to let the system draw from approved brand foundation only.</span>
+            </div>
+            <div class="field full">
+              <label for="post-cta">Call to action (optional)</label>
+              <input class="input-like" id="post-cta" data-action="post-cta-input" value="${escapeHtml(state.brief.postCta)}" placeholder="e.g., Visit the link in bio, Try it this afternoon">
+            </div>
+            <div class="field full">
+              <label for="exclusions">Anything to avoid?</label>
+              <input class="input-like" id="exclusions" data-action="exclusions-input" value="${escapeHtml(state.brief.exclusions)}">
+            </div>
+            <div class="field full">
+              <label class="checkbox-label">
+                <input type="checkbox" data-action="toggle-include-image" ${state.brief.includeImage ? "checked" : ""}>
+                <span>Generate a supporting image for this post</span>
+              </label>
+              ${state.brief.includeImage ? `
+                <div class="field" style="margin-top: 8px;">
+                  <label for="format">Image format</label>
+                  <select id="format" data-action="format-change">
+                    ${(placementFormats["LinkedIn feed"] || ["1:1 square"]).map((f) => option(f, state.brief.format)).join("")}
+                  </select>
+                </div>
+                <div class="field" style="margin-top: 8px;">
+                  <label for="scene">Image direction (optional)</label>
+                  <input class="input-like" id="scene" data-action="scene-input" value="${escapeHtml(state.brief.scene)}" placeholder="Leave blank to let the system compose from brand guidance.">
+                </div>
+              ` : ""}
+            </div>
+          </div>
+        </section>
+
+        <aside>
+          <section class="card">
+            <div class="card-header">
+              <h2>Guidance applied</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>Voice and messaging</strong><span>${escapeHtml(voice?.summary || "Approve the Brand Brain to use this guidance")}</span></li>
+              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(foundation?.summary || "No approved foundation is active")}</span></li>
             </ul>
             <div class="rule-card">
               <span class="section-label">Boundaries in play</span>
@@ -2710,8 +2832,42 @@ function renderResult() {
   const working = state.production.status === "generating" || job?.status === "working";
   const failed = state.production.status === "error" || job?.status === "error";
   const complete = job?.status === "complete" && job.imageUrl;
-  const generationMethod = job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
+  const isLinkedIn = job?.deliverable === "linkedin-post" || job?.generationPackage?.deliverable === "linkedin-post";
+  const generationMethod = isLinkedIn ? "Post copy + image" : job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
   const findings = complete ? buildEvaluationFindings(job) : [];
+
+  // Add LinkedIn-specific evaluation findings
+  if (complete && isLinkedIn && job.postCopy) {
+    findings.unshift(
+      {
+        id: "voice-fidelity",
+        element: "Voice and tone",
+        category: "Copy",
+        status: "verify",
+        finding: "Does the post sound like the approved brand voice? Check that it matches the tone, register, and vocabulary from the voice guidance.",
+        repairAction: "retry-with-direction",
+        repairLabel: "Retry with adjusted voice direction",
+      },
+      {
+        id: "claims-check",
+        element: "Claims and facts",
+        category: "Compliance",
+        status: "verify",
+        finding: "Verify that every factual claim in the post is approved by the Brand Brain. Check for implied health, performance, or efficacy claims that may violate scoped prohibitions.",
+        repairAction: "retry-exclude",
+        repairLabel: "Retry with explicit claim boundaries",
+      },
+      {
+        id: "structural-rules",
+        element: "Writing structure",
+        category: "Copy",
+        status: "verify",
+        finding: "Check for em dashes, fragment stacks, hedging verbs, filler intensifiers, or promotional register. These are structural violations of the prose ruleset.",
+        repairAction: "retry-with-direction",
+        repairLabel: "Retry with stricter structure",
+      },
+    );
+  }
   const candidateRules = state.production.candidateRules || [];
   const feedbackOpen = state.production.feedbackOpen || false;
   const feedbackDraft = state.production.feedbackDraft || "";
@@ -2735,7 +2891,12 @@ function renderResult() {
               <span class="mini-pill">${complete ? "Generated" : working ? "Working" : "Not generated"}</span>
             </div>
             ${complete
-              ? `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+              ? isLinkedIn
+                ? `<div class="linkedin-result">
+                    ${job.postCopy ? `<div class="linkedin-post-copy"><span class="section-label">Generated post</span><div class="linkedin-post-text">${escapeHtml(job.postCopy).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</div><button class="button small" type="button" data-action="copy-post-text">Copy text</button></div>` : ""}
+                    ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
+                  </div>`
+                : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
           </section>
@@ -3304,6 +3465,9 @@ async function recoverProductionJob(jobId) {
 }
 
 async function startProductionGeneration() {
+  if (state.selectedDeliverable.id === "linkedin-post") {
+    return startLinkedInGeneration();
+  }
   if (!state.production.package) {
     await prepareProductionPreflight();
     if (!state.production.package) return;
@@ -3335,6 +3499,83 @@ async function startProductionGeneration() {
       state.production.status = "error";
       state.production.error = `${error.message || "The image response was lost."} The reviewed package is still saved, so you can try again without rebuilding the Brand Brain.`;
     }
+  }
+  render();
+}
+
+async function startLinkedInGeneration() {
+  const jobId = newRequestId("linkedin");
+  state.production.status = "generating";
+  state.production.error = "";
+  state.production.recovered = false;
+  state.production.approved = false;
+  state.production.job = {
+    jobId,
+    status: "working",
+    model: "gpt-4o",
+    deliverable: "linkedin-post",
+    generationPackage: state.production.package || {
+      version: "linkedin-post-v1",
+      deliverable: "linkedin-post",
+      brandName: state.brandName,
+      brainVersion: state.brain.approvedVersion || state.brain.artifactVersion,
+      output: { placement: "LinkedIn feed", format: state.brief.format },
+      brief: { postType: state.brief.postType, postTopic: state.brief.postTopic, postClaims: state.brief.postClaims, postCta: state.brief.postCta, exclusions: state.brief.exclusions, includeImage: state.brief.includeImage, scene: state.brief.scene },
+      treatments: state.production.package?.treatments || [],
+      requirementCheck: state.production.package?.requirementCheck || [],
+      ready: true,
+    },
+  };
+  navigate("result");
+
+  try {
+    // Step 1: Generate copy
+    const copyResponse = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        postType: state.brief.postType,
+        postTopic: state.brief.postTopic,
+        postClaims: state.brief.postClaims,
+        postCta: state.brief.postCta,
+        exclusions: state.brief.exclusions,
+      }),
+    });
+    const copyBody = await readApiJson(copyResponse);
+    if (!copyResponse.ok) throw new Error(copyBody.error || "The post copy could not be generated.");
+
+    state.production.job.postCopy = copyBody.postCopy;
+    state.production.job.model = copyBody.model;
+    state.production.job.generationPackage.brainVersion = copyBody.brainVersion;
+    render();
+
+    // Step 2: Generate supporting image if requested
+    if (state.brief.includeImage) {
+      if (!state.production.package) {
+        // Build a package for the image component
+        state.brief.placement = "LinkedIn feed";
+        await prepareProductionPreflight();
+      }
+      if (state.production.package) {
+        const imageResponse = await fetch("/api/production/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(productionRequest(jobId)),
+        });
+        const imageBody = await readApiJson(imageResponse);
+        if (imageResponse.ok && imageBody.job?.imageUrl) {
+          state.production.job.imageUrl = imageBody.job.imageUrl;
+        }
+        // Image failure is non-fatal for a LinkedIn post
+      }
+    }
+
+    state.production.job.status = "complete";
+    state.production.status = "complete";
+  } catch (error) {
+    state.production.status = "error";
+    state.production.error = error.message || "The post could not be generated.";
+    state.production.job.status = "error";
   }
   render();
 }
@@ -3465,6 +3706,15 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="exclusions-input"]')) {
     state.brief.exclusions = event.target.value;
   }
+  if (event.target.matches('[data-action="post-topic-input"]')) {
+    state.brief.postTopic = event.target.value;
+  }
+  if (event.target.matches('[data-action="post-claims-input"]')) {
+    state.brief.postClaims = event.target.value;
+  }
+  if (event.target.matches('[data-action="post-cta-input"]')) {
+    state.brief.postCta = event.target.value;
+  }
   if (event.target.matches('[data-action="reference-guidance"]')) {
     state.references[Number(event.target.dataset.index)].usageInstruction = event.target.value;
   }
@@ -3543,6 +3793,8 @@ root.addEventListener("change", async (event) => {
     render();
   }
   if (action === "format-change") state.brief.format = event.target.value;
+  if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
+  if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
   if (action === "reference-role") {
     state.references[Number(event.target.dataset.index)].role = event.target.value;
   }
@@ -3857,6 +4109,13 @@ root.addEventListener("click", (event) => {
     })();
   }
   if (action === "generate" || action === "retry-generate") void startProductionGeneration();
+  if (action === "copy-post-text") {
+    const text = state.production.job?.postCopy || "";
+    if (text) {
+      try { navigator.clipboard.writeText(text); } catch { /* fallback not needed for prototype */ }
+      setToast("Post text copied");
+    }
+  }
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
     state.production.approved = true;
