@@ -5584,6 +5584,67 @@ select {
   max-width: 760px;
 }
 
+/* ── Campaign creation ──────────────────────────────────────────────── */
+
+.campaign-channel-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.campaign-channel-option {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 6px 12px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  transition: border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+
+.campaign-channel-option input[type="checkbox"] {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  border: 0;
+}
+
+.campaign-channel-option.selected,
+.campaign-channel-option:has(input:checked) {
+  color: var(--lavender-ink);
+  background: rgb(145 136 199 / 0.08);
+  border-color: var(--lavender);
+}
+
+.campaign-channel-option:hover {
+  border-color: var(--border-strong);
+}
+
+.campaign-inherit-list {
+  gap: 2px;
+}
+
+.campaign-inherit-list li {
+  padding: 8px 0;
+}
+
+.campaign-inherit-list li + li {
+  border-top: 1px solid var(--border-subtle);
+}
+
+.campaign-inherit-list li strong {
+  min-width: 100px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

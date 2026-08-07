@@ -721,6 +721,7 @@ const state = {
   ],
   activeCampaignId: null,
   campaignReferences: [],
+  campaignDraft: null,
   previewOutputId: null,
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
@@ -838,6 +839,7 @@ function currentCrumb() {
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
   if (state.screen === "chooser") return "Production";
+  if (state.screen === "campaign-creation") return "Production / New campaign";
   if (state.screen === "brief") return "Production / Brand world image";
   if (state.screen === "preflight") return "Production / Brand world image / Preflight";
   return "Production / Brand world image / Result";
@@ -1933,6 +1935,190 @@ function renderCampaignChooser() {
       </div>
       <div class="actions">
         <button class="button" type="button" data-action="back-to-modes">‹ Back</button>
+      </div>
+    </section>
+  `);
+}
+
+function newCampaignDraft() {
+  const dossier = brainArtifacts.find((a) => a.id === "dossier");
+  return {
+    name: "",
+    description: "",
+    objective: "",
+    audience: "",
+    currentBelief: "",
+    desiredBelief: "",
+    desiredAction: "",
+    campaignIdea: "",
+    messageTerritory: "",
+    proofPoints: "",
+    preserve: dossier ? dossier.materials.join(", ") + ", " + (dossier.palette || []).map((c) => c.name.toLowerCase()).join(", ") : "",
+    explore: "",
+    paletteShift: "",
+    productFocus: "",
+    channels: [],
+    startDate: "",
+    endDate: "",
+  };
+}
+
+function renderCampaignCreation() {
+  const draft = state.campaignDraft || newCampaignDraft();
+  const dossier = brainArtifacts.find((a) => a.id === "dossier");
+  const lived = brainArtifacts.find((a) => a.id === "lived");
+  const approved = approvedBrainForProduction();
+
+  const knownChannels = Object.keys(placementFormats).map((p) => p.replace(/ (feed|story|feature)$/i, "")).filter((v, i, a) => a.indexOf(v) === i);
+  const hasName = draft.name.trim().length > 0;
+  const hasObjective = draft.objective.trim().length > 0;
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader("New campaign", `Define the strategic context. The Brand Brain provides the foundation; the campaign narrows and directs it.`)}
+
+      <div class="content-grid">
+        <div>
+          <section class="card">
+            <div class="card-header"><h2>What is this campaign?</h2></div>
+            <div class="field-grid">
+              <div class="field">
+                <label for="campaign-name">Campaign name</label>
+                <input class="input-like" id="campaign-name" data-action="campaign-draft-input" data-field="name" value="${escapeHtml(draft.name)}" placeholder="Summer Reset, Back to School, Q4 Launch">
+              </div>
+              <div class="field">
+                <label for="campaign-objective">What is this campaign for?</label>
+                <input class="input-like" id="campaign-objective" data-action="campaign-draft-input" data-field="objective" value="${escapeHtml(draft.objective)}" placeholder="Awareness and trial, perception shift, product launch">
+              </div>
+              <div class="field full">
+                <label for="campaign-description">Describe the initiative in a sentence or two</label>
+                <textarea id="campaign-description" data-action="campaign-draft-input" data-field="description" placeholder="What is the campaign doing and why now? This is the context that shapes every asset.">${escapeHtml(draft.description)}</textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Who are you reaching?</h2></div>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="campaign-audience">Audience for this campaign</label>
+                <textarea id="campaign-audience" data-action="campaign-draft-input" data-field="audience" placeholder="Who specifically? Not the whole brand audience, just who this campaign is aimed at.">${escapeHtml(draft.audience)}</textarea>
+                ${dossier?.audience ? `<span class="field-note">Brand audience: ${escapeHtml(dossier.audience.length > 140 ? dossier.audience.slice(0, 140) + "..." : dossier.audience)}</span>` : ""}
+              </div>
+              <div class="field full">
+                <label for="campaign-current-belief">What do they believe now?</label>
+                <input class="input-like" id="campaign-current-belief" data-action="campaign-draft-input" data-field="currentBelief" value="${escapeHtml(draft.currentBelief)}" placeholder="The assumption or habit this campaign is trying to move">
+              </div>
+              <div class="field full">
+                <label for="campaign-desired-belief">What should they believe after?</label>
+                <input class="input-like" id="campaign-desired-belief" data-action="campaign-draft-input" data-field="desiredBelief" value="${escapeHtml(draft.desiredBelief)}" placeholder="The shift this campaign needs to make happen">
+              </div>
+              <div class="field full">
+                <label for="campaign-desired-action">What should they do?</label>
+                <input class="input-like" id="campaign-desired-action" data-action="campaign-draft-input" data-field="desiredAction" value="${escapeHtml(draft.desiredAction)}" placeholder="Try the product, visit the site, share with someone">
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Campaign idea and message</h2></div>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="campaign-idea">Theme or tagline</label>
+                <input class="input-like" id="campaign-idea" data-action="campaign-draft-input" data-field="campaignIdea" value="${escapeHtml(draft.campaignIdea)}" placeholder="The organizing idea. A phrase, not a paragraph.">
+                <span class="field-note">This appears across campaign assets as the connecting thread.</span>
+              </div>
+              <div class="field full">
+                <label for="campaign-message-territory">Message territory</label>
+                <textarea id="campaign-message-territory" data-action="campaign-draft-input" data-field="messageTerritory" placeholder="The space this campaign occupies. What idea ties the work together?">${escapeHtml(draft.messageTerritory)}</textarea>
+              </div>
+              <div class="field full">
+                <label for="campaign-proof-points">Proof points (optional)</label>
+                <textarea id="campaign-proof-points" data-action="campaign-draft-input" data-field="proofPoints" placeholder="Claims, facts, or evidence that support the message. Only approved claims will make it into copy.">${escapeHtml(draft.proofPoints)}</textarea>
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header"><h2>Products and channels</h2></div>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="campaign-product-focus">Product focus</label>
+                <input class="input-like" id="campaign-product-focus" data-action="campaign-draft-input" data-field="productFocus" value="${escapeHtml(draft.productFocus)}" placeholder="Which product or line is this campaign about? Leave blank for brand-level.">
+                ${dossier?.proof ? `<span class="field-note">Known products: ${escapeHtml(dossier.proof.filter((p) => p.includes("flavor") || p.includes("product")).map((p) => p.split(" flavor")[0].split(" with")[0]).join(", ") || "Yuzu Ginger")}</span>` : ""}
+              </div>
+              <div class="field full">
+                <label>Primary channels</label>
+                <div class="campaign-channel-picker">
+                  ${knownChannels.map((ch) => `
+                    <label class="campaign-channel-option ${draft.channels.includes(ch) ? "selected" : ""}">
+                      <input type="checkbox" data-action="campaign-toggle-channel" data-channel="${escapeHtml(ch)}" ${draft.channels.includes(ch) ? "checked" : ""}>
+                      <span>${escapeHtml(ch)}</span>
+                    </label>
+                  `).join("")}
+                </div>
+              </div>
+              <div class="field">
+                <label for="campaign-start-date">Start date (optional)</label>
+                <input class="input-like" id="campaign-start-date" type="date" data-action="campaign-draft-input" data-field="startDate" value="${escapeHtml(draft.startDate)}">
+              </div>
+              <div class="field">
+                <label for="campaign-end-date">End date (optional)</label>
+                <input class="input-like" id="campaign-end-date" type="date" data-action="campaign-draft-input" data-field="endDate" value="${escapeHtml(draft.endDate)}">
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="card">
+            <div class="card-header"><h2>Creative direction</h2></div>
+            <div class="field-grid">
+              <div class="field full">
+                <label for="campaign-explore">What visual territory should this campaign explore?</label>
+                <textarea id="campaign-explore" data-action="campaign-draft-input" data-field="explore" placeholder="New environments, moments, compositions, or moods this campaign can try.">${escapeHtml(draft.explore)}</textarea>
+                ${lived?.environments ? `<span class="field-note">Brand environments: ${escapeHtml(lived.environments.map((e) => e.name).join(", "))}</span>` : ""}
+              </div>
+              <div class="field full">
+                <label for="campaign-preserve">What should stay the same from the brand?</label>
+                <textarea id="campaign-preserve" data-action="campaign-draft-input" data-field="preserve" placeholder="Brand qualities to carry into this campaign unchanged.">${escapeHtml(draft.preserve)}</textarea>
+              </div>
+              <div class="field full">
+                <label for="campaign-palette-shift">Palette shift (optional)</label>
+                <input class="input-like" id="campaign-palette-shift" data-action="campaign-draft-input" data-field="paletteShift" value="${escapeHtml(draft.paletteShift)}" placeholder="Push warmer, cooler, brighter, or keep the brand palette as is.">
+                ${dossier?.palette ? `<span class="field-note">Brand palette: ${escapeHtml(dossier.palette.map((c) => c.name).join(", "))}</span>` : ""}
+              </div>
+            </div>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h2>Inheriting from Brand Brain</h2>
+              <span class="status-pill">${approved ? `v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list campaign-inherit-list">
+              <li><strong>Foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Build the Brand Brain first")}</span></li>
+              <li><strong>Identity</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not available")}</span></li>
+              <li><strong>Voice</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "voice")?.summary || "Not available")}</span></li>
+              <li><strong>Creative rules</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "rules")?.summary || "Not available")}</span></li>
+            </ul>
+            <p class="field-note field-note-spaced">Every campaign inherits these. The campaign narrows and directs; it does not override.</p>
+          </section>
+
+          <section class="card ready-card">
+            <div class="card-header"><h2>${!hasName ? "Name the campaign to continue" : !hasObjective ? "Add an objective" : "Ready to create"}</h2></div>
+            <p class="page-description">${!hasName
+              ? "A campaign needs at least a name and an objective. Everything else can come later."
+              : !hasObjective
+              ? "What is this campaign trying to accomplish? Even one sentence helps the system shape the work."
+              : `${escapeHtml(draft.name)} will inherit from Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion}. You can add more detail after creation.`}</p>
+            <button class="button primary" type="button" data-action="save-campaign" ${hasName && hasObjective ? "" : "disabled"}>Create campaign</button>
+          </section>
+
+          <div class="actions actions-compact">
+            <button class="button" type="button" data-action="back-to-campaigns">‹ Back to campaigns</button>
+          </div>
+        </aside>
       </div>
     </section>
   `);
@@ -3413,6 +3599,7 @@ function render() {
   else if (state.screen === "brain-guidance") root.innerHTML = renderBrainGuidance();
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
+  else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
   else if (state.screen === "brief") root.innerHTML = renderBrief();
   else if (state.screen === "preflight") root.innerHTML = renderPreflight();
   else if (state.screen === "result") root.innerHTML = renderResult();
@@ -4183,10 +4370,22 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-field="feedbackDraft"]')) {
     state.production.feedbackDraft = event.target.value;
   }
+  if (event.target.matches('[data-action="campaign-draft-input"]')) {
+    if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
+    state.campaignDraft[event.target.dataset.field] = event.target.value;
+  }
 });
 
 root.addEventListener("change", async (event) => {
   const action = event.target.dataset.action;
+  if (action === "campaign-toggle-channel") {
+    if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
+    const ch = event.target.dataset.channel;
+    const idx = state.campaignDraft.channels.indexOf(ch);
+    if (idx >= 0) state.campaignDraft.channels.splice(idx, 1);
+    else state.campaignDraft.channels.push(ch);
+    render();
+  }
   if (action === "source-file-input") {
     const file = Array.from(event.target.files ?? [])[0];
     if (file) {
@@ -4348,7 +4547,13 @@ root.addEventListener("click", (event) => {
     }
   }
   if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
-  if (action === "back-to-campaigns") { state.activeCampaignId = null; state.creativeMode = "campaign"; render(); }
+  if (action === "back-to-campaigns") {
+    state.activeCampaignId = null;
+    state.campaignDraft = null;
+    state.creativeMode = "campaign";
+    if (state.screen === "campaign-creation") navigate("chooser");
+    else render();
+  }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
   if (action === "preview-output") { state.previewOutputId = target.dataset.id; render(); }
   if (action === "close-preview") {
@@ -4406,7 +4611,43 @@ root.addEventListener("click", (event) => {
     if (ref) ref.role = target.dataset.role;
     render();
   }
-  if (action === "create-campaign") { setToast("Campaign creation flow coming next. Using the sample campaign for now."); }
+  if (action === "create-campaign") {
+    state.campaignDraft = newCampaignDraft();
+    navigate("campaign-creation");
+  }
+  if (action === "save-campaign") {
+    const draft = state.campaignDraft;
+    if (!draft || !draft.name.trim() || !draft.objective.trim()) return;
+    const id = "campaign-" + Date.now();
+    state.campaigns.push({
+      id,
+      name: draft.name.trim(),
+      description: draft.description.trim(),
+      objective: draft.objective.trim(),
+      audience: draft.audience.trim(),
+      currentBelief: draft.currentBelief.trim(),
+      desiredBelief: draft.desiredBelief.trim(),
+      desiredAction: draft.desiredAction.trim(),
+      campaignIdea: draft.campaignIdea.trim(),
+      messageTerritory: draft.messageTerritory.trim(),
+      proofPoints: draft.proofPoints.trim(),
+      preserve: draft.preserve.trim(),
+      explore: draft.explore.trim(),
+      paletteShift: draft.paletteShift.trim(),
+      productFocus: draft.productFocus.trim(),
+      channels: draft.channels.slice(),
+      startDate: draft.startDate || "",
+      endDate: draft.endDate || "",
+      learnings: [],
+      createdAt: new Date().toISOString(),
+    });
+    state.campaignDraft = null;
+    state.activeCampaignId = id;
+    state.creativeMode = "campaign";
+    recordBrainHistory(`Campaign created: ${draft.name.trim()}`, `New campaign with objective: ${draft.objective.trim()}`, "complete");
+    setToast(`${draft.name.trim()} created. Start making assets.`);
+    navigate("chooser");
+  }
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
   if (action === "begin-brain-onboarding") {
