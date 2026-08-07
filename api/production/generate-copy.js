@@ -17,7 +17,7 @@ export default async function handler(request, response) {
 
     // Load the approved brain
     const brainStore = createVercelBlobBrandBrainStore({ clientId });
-    const brainState = await brainStore.load();
+    const brainState = await brainStore.read();
     if (!brainState?.approvedResult) throw new Error("No approved Brand Brain is available.");
     const brain = brainState.approvedResult;
 
@@ -95,7 +95,7 @@ export default async function handler(request, response) {
     sendJson(response, 200, {
       postCopy,
       model: "gpt-4o",
-      brainVersion: brainState.artifactVersion || 1,
+      brainVersion: brainState.brain?.artifactVersion || 1,
       voiceApplied: !!voice,
       foundationApplied: !!foundation,
       rulesApplied: !!rules,
