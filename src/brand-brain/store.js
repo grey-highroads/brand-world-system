@@ -2,7 +2,27 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { get, put } from "@vercel/blob";
 
-const statePathname = "brand-world-system/state/current.json";
+// Every client's durable state lives under its own namespace. The client id is
+// server-resolved and threaded in through the store factory. See ADR 0011.
+const DEFAULT_CLIENT_ID = "default";
+// The pre-namespace deployment wrote the brain to a single flat path. The
+// default client reads through to it once so existing state is not stranded,
+// then the next save moves it into the namespace. Remove after the flat blob
+// is gone.
+const LEGACY_FLAT_STATE_PATHNAME = "brand-world-system/state/current.json";
+const LEGACY_SOURCES_PREFIX = "brand-world-system/sources/";
+
+function clientRoot(clientId) {
+  return `brand-world-system/clients/${clientId}`;
+}
+
+function brainStatePathname(clientId) {
+  return `${clientRoot(clientId)}/state/current.json`;
+}
+
+function sourcesPrefix(clientId) {
+  return `${clientRoot(clientId)}/sources/`;
+}
 
 export function createFileBrandBrainStore(storePath) {
   return {
@@ -26,16 +46,25 @@ export function createFileBrandBrainStore(storePath) {
 
 export function createVercelBlobBrandBrainStore(options = {}) {
   const token = options.token || process.env.BLOB_READ_WRITE_TOKEN;
+  const clientId = options.clientId || DEFAULT_CLIENT_ID;
   const credentials = token ? { token } : {};
+
+  async function readJsonBlobOrNull(pathname) {
+    const result = await get(pathname, { access: "private", ...credentials, useCache: false });
+    if (!result) return null;
+    if (result.statusCode !== 200 || !result.stream) throw new Error("The stored Brand Brain could not be read.");
+    return JSON.parse(await new Response(result.stream).text());
+  }
+
   return {
     async read() {
-      const result = await get(statePathname, { access: "private", ...credentials, useCache: false });
-      if (!result) return null;
-      if (result.statusCode !== 200 || !result.stream) throw new Error("The stored Brand Brain could not be read.");
-      return JSON.parse(await new Response(result.stream).text());
+      const current = await readJsonBlobOrNull(brainStatePathname(clientId));
+      if (current !== null) return current;
+      if (clientId === DEFAULT_CLIENT_ID) return readJsonBlobOrNull(LEGACY_FLAT_STATE_PATHNAME);
+      return null;
     },
     async write(value) {
-      await put(statePathname, JSON.stringify(value), {
+      await put(brainStatePathname(clientId), JSON.stringify(value), {
         access: "private",
         ...credentials,
         allowOverwrite: true,
@@ -45,7 +74,9 @@ export function createVercelBlobBrandBrainStore(options = {}) {
       });
     },
     async readSourceFile(pathname) {
-      if (!pathname || !String(pathname).startsWith("brand-world-system/sources/")) {
+      const namespaced = sourcesPrefix(clientId);
+      const allowed = pathname && (String(pathname).startsWith(namespaced) || String(pathname).startsWith(LEGACY_SOURCES_PREFIX));
+      if (!allowed) {
         throw new Error("The stored source file reference is invalid.");
       }
       const result = await get(pathname, { access: "private", ...credentials, useCache: false });
