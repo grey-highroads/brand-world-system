@@ -1,6 +1,6 @@
 # ADR 0007: Deliver isolated client installations first
 
-- Status: Accepted
+- Status: Superseded in part by ADR 0011
 - Date: 2026-08-02
 - Owner: Higher Roads
 
