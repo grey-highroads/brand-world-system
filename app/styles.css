@@ -6001,3 +6001,115 @@ button.ws-attention-item:hover {
   font-size: 12.5px;
   line-height: 1.45;
 }
+
+/* ── Generation banner (persistent shell indicator) ── */
+
+.gen-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 18px;
+  margin: 0 0 -1px;
+  border-bottom: 1px solid var(--paper-200);
+  font-size: 13px;
+  animation: gen-banner-in 0.2s ease-out;
+}
+
+@keyframes gen-banner-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.gen-banner-working {
+  background: rgb(230 199 101 / 0.06);
+  border-bottom-color: rgb(230 199 101 / 0.15);
+}
+
+.gen-banner-complete {
+  background: rgb(104 198 155 / 0.06);
+  border-bottom-color: rgb(104 198 155 / 0.15);
+}
+
+.gen-banner-error {
+  background: rgb(230 132 90 / 0.06);
+  border-bottom-color: rgb(230 132 90 / 0.15);
+}
+
+.gen-banner-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgb(230 199 101 / 0.3);
+  border-top-color: var(--warning);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.gen-banner-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.gen-banner-complete .gen-banner-icon {
+  background: rgb(104 198 155 / 0.15);
+  color: var(--success);
+}
+
+.gen-banner-error .gen-banner-icon {
+  background: rgb(230 132 90 / 0.15);
+  color: var(--coral);
+}
+
+.gen-banner-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.gen-banner-text strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gen-banner-text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.gen-banner .button.small {
+  flex-shrink: 0;
+}
+
+.gen-banner-dismiss {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.gen-banner-dismiss:hover {
+  color: var(--text);
+  background: rgb(255 255 255 / 0.06);
+}

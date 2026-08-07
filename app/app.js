@@ -763,6 +763,7 @@ const state = {
     feedbackOpen: false,
     feedbackDraft: "",
     feedbackScope: "this-output",
+    bannerDismissed: false,
     // Consumption records for change-impact classification (roadmap 11).
     // Display now reads from the unified state.outputs store; this remains the
     // audit trail. Consolidating the two is a deliberate follow-up.
@@ -898,12 +899,67 @@ function shell(content) {
           <div class="search">Search knowledge, jobs, and assets</div>
           <div class="attention-pill">Needs you <span>${attentionCount}</span></div>
         </header>
+        ${renderGenerationBanner()}
         ${content}
       </main>
       ${state.toast ? `<div class="toast" role="status">${escapeHtml(state.toast)}</div>` : ""}
       ${renderOutputPreview()}
     </div>
   `;
+}
+
+function renderGenerationBanner() {
+  const generating = state.production.status === "generating";
+  const completedElsewhere = state.production.status === "complete"
+    && state.screen !== "result"
+    && state.production.job?.status === "complete"
+    && !state.production.bannerDismissed;
+  const failedElsewhere = state.production.status === "error"
+    && state.screen !== "result"
+    && !state.production.bannerDismissed;
+
+  if (generating && state.screen !== "result") {
+    const isLinkedIn = state.production.job?.deliverable === "linkedin-post";
+    return `
+      <div class="gen-banner gen-banner-working" role="status">
+        <div class="gen-banner-spinner" aria-hidden="true"></div>
+        <span class="gen-banner-text">
+          <strong>${isLinkedIn ? "Generating post and image" : "Rendering your image"}</strong>
+          <span>You can keep working. We will let you know when it is ready.</span>
+        </span>
+      </div>
+    `;
+  }
+
+  if (completedElsewhere) {
+    const job = state.production.job;
+    const label = job?.generationPackage?.output?.format || "Image";
+    return `
+      <div class="gen-banner gen-banner-complete" role="status">
+        <span class="gen-banner-icon" aria-hidden="true">✓</span>
+        <span class="gen-banner-text">
+          <strong>Your ${escapeHtml(label)} is ready</strong>
+        </span>
+        <button class="button small" type="button" data-action="view-latest-result">View result</button>
+        <button class="gen-banner-dismiss" type="button" data-action="dismiss-gen-banner" aria-label="Dismiss">✕</button>
+      </div>
+    `;
+  }
+
+  if (failedElsewhere) {
+    return `
+      <div class="gen-banner gen-banner-error" role="status">
+        <span class="gen-banner-icon" aria-hidden="true">!</span>
+        <span class="gen-banner-text">
+          <strong>Generation needs attention</strong>
+        </span>
+        <button class="button small" type="button" data-action="view-latest-result">View details</button>
+        <button class="gen-banner-dismiss" type="button" data-action="dismiss-gen-banner" aria-label="Dismiss">✕</button>
+      </div>
+    `;
+  }
+
+  return "";
 }
 
 function renderOutputPreview() {
@@ -4336,6 +4392,7 @@ async function startProductionGeneration() {
   state.production.status = "generating";
   state.production.error = "";
   state.production.recovered = false;
+  state.production.bannerDismissed = false;
   state.production.job = {
     jobId,
     status: "working",
@@ -4369,6 +4426,7 @@ async function startLinkedInGeneration() {
   state.production.error = "";
   state.production.recovered = false;
   state.production.approved = false;
+  state.production.bannerDismissed = false;
   state.production.job = {
     jobId,
     status: "working",
@@ -5175,6 +5233,10 @@ root.addEventListener("click", (event) => {
       } catch { /* keep existing job state */ }
       navigate("result");
     })();
+  }
+  if (action === "dismiss-gen-banner") {
+    state.production.bannerDismissed = true;
+    render();
   }
   if (action === "generate" || action === "retry-generate") void startProductionGeneration();
   if (action === "copy-post-text") {
