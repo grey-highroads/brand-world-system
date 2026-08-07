@@ -92,3 +92,29 @@ export function sendPublicError(response, error) {
   console.error(`[brand-world-api] ${message}`);
   sendJson(response, status, { error: message });
 }
+
+// PROTOTYPE ONLY. The active client id is taken from the request and is NOT
+// validated against the caller's identity, because the shared-password gate
+// cannot express per-user client access (ADR 0011). When real authentication
+// lands, the session must determine which clients a caller may load and this
+// function must reject any id outside that set. Do not ship real auth without
+// closing this seam. The id becomes a Blob path segment, so it is sanitized to
+// a safe character set to prevent path traversal.
+export function resolveClientId(request) {
+  const header = request.headers["x-client-id"];
+  if (typeof header === "string" && header.trim()) return sanitizeClientId(header);
+  const cookies = request.headers.cookie || "";
+  const match = cookies.split(";").map((part) => part.trim()).find((part) => part.startsWith("bws_client="));
+  if (match) {
+    try {
+      const value = decodeURIComponent(match.slice("bws_client=".length));
+      if (value) return sanitizeClientId(value);
+    } catch {}
+  }
+  return "default";
+}
+
+export function sanitizeClientId(value) {
+  const cleaned = String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "default";
+}
