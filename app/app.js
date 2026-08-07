@@ -4604,6 +4604,52 @@ function readFileAsDataUrl(file) {
   });
 }
 
+async function uploadSourceToBlob(file) {
+  const clientId = readActiveClientCookie() || state.activeClientId || "default";
+  const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 80);
+  const pathname = `brand-world-system/clients/${clientId}/sources/${Date.now()}-${safeName}`;
+  const contentType = file.type || "application/octet-stream";
+
+  // Step 1: Get a presigned upload URL from the server.
+  const presignResponse = await fetch("/api/blob/upload", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ pathname, contentType, size: file.size }),
+  });
+  if (!presignResponse.ok) {
+    const body = await readApiJson(presignResponse);
+    throw new Error(body.error || "Could not prepare the upload.");
+  }
+  const { presignedUrl, pathname: confirmedPathname } = await readApiJson(presignResponse);
+
+  // Step 2: Upload the file directly to Vercel Blob.
+  const uploadResponse = await fetch(presignedUrl, {
+    method: "PUT",
+    headers: { "Content-Type": contentType, "x-content-length": String(file.size) },
+    body: file,
+  });
+  if (!uploadResponse.ok) throw new Error(`Could not upload ${file.name}. Try again.`);
+
+  return {
+    name: file.name,
+    type: contentType,
+    size: file.size,
+    blobPathname: confirmedPathname,
+  };
+}
+
+// Wire blob upload so source files go to storage instead of staying
+// as base64 data URLs in client-side state. The fallback to readFileAsDataUrl
+// keeps local development working when the blob endpoint is unavailable.
+window.storeBrandWorldSourceFile = async function storeSourceFile(file) {
+  try {
+    return await uploadSourceToBlob(file);
+  } catch {
+    // If blob upload fails (local dev, network issue), fall back to data URL.
+    return readFileAsDataUrl(file);
+  }
+};
+
 async function readApiJson(response) {
   const contentType = response.headers?.get?.("content-type") || "";
   if (!contentType.includes("application/json")) {

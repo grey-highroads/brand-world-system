@@ -11,7 +11,7 @@ export default async function handler(request, response) {
   }
   try {
     const clientId = resolveClientId(request);
-    const body = await readJsonBody(request);
+    const body = await readJsonBody(request, 45 * 1024 * 1024);
     const saved = await synthesizeBrandBrain(body, {
       store: createVercelBlobBrandBrainStore({ clientId }),
       env: process.env,
