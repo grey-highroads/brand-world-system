@@ -4352,7 +4352,7 @@ function applyProductionJob(job, recovered = false) {
   state.production.status = job.status === "complete" ? "complete" : job.status === "error" ? "error" : "generating";
   state.production.error = job.error || "";
   state.production.recovered = recovered;
-  if (job.status === "complete") recordOutput(job);
+  if (job.status === "complete") { recordOutput(job); void persistOutputs(); }
   if (recovered && job.status === "complete") setToast("The completed image was recovered after the connection dropped");
   return true;
 }
@@ -4487,6 +4487,7 @@ async function startLinkedInGeneration() {
     state.production.job.status = "complete";
     state.production.status = "complete";
     recordOutput(state.production.job);
+    void persistOutputs();
   } catch (error) {
     state.production.status = "error";
     state.production.error = error.message || "The post could not be generated.";
@@ -4502,6 +4503,39 @@ async function hydrateProductionJob() {
     if (job) applyProductionJob(job, true);
   } catch {
     // Production remains available even when no earlier job can be restored.
+  }
+}
+
+async function persistOutputs() {
+  if (typeof fetch !== "function") return;
+  try {
+    await fetch("/api/production/outputs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ outputs: state.outputs }),
+    });
+  } catch {
+    // The output log is still usable in-session if persistence fails.
+  }
+}
+
+async function hydrateOutputs() {
+  if (typeof fetch !== "function") return;
+  try {
+    const response = await fetch("/api/production/outputs", { headers: { Accept: "application/json" } });
+    if (!response.ok) return;
+    const payload = await readApiJson(response);
+    if (!Array.isArray(payload.outputs) || !payload.outputs.length) return;
+    // Merge: server outputs form the baseline, then any in-session outputs
+    // (from hydrateProductionJob or a generation that completed before this
+    // call returned) layer on top via the existing upsert-by-id logic.
+    const sessionOutputs = [...state.outputs];
+    const merged = new Map(payload.outputs.map((o) => [o.id, o]));
+    for (const o of sessionOutputs) merged.set(o.id, o);
+    state.outputs = [...merged.values()];
+    render();
+  } catch {
+    // The workspace still works with whatever outputs are already in state.
   }
 }
 
@@ -5273,6 +5307,7 @@ root.addEventListener("click", (event) => {
     }
     recordBrainHistory("Output approved", `A ${state.brandName} brand world image was approved for ${state.brief.placement} ${state.brief.format}.`, "complete");
     setToast("Output approved. The image and production package are recorded.");
+    void persistOutputs();
   }
   if (action === "open-feedback") {
     state.production.feedbackOpen = true;
@@ -5481,3 +5516,4 @@ render();
 void hydrateClients();
 void hydrateStoredBrain();
 void hydrateProductionJob();
+void hydrateOutputs();

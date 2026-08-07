@@ -23,6 +23,10 @@ function productionImagePathname(clientId, jobId, extension) {
   return `${clientRoot(clientId)}/production/jobs/${jobId}/output.${extension}`;
 }
 
+function outputsPathname(clientId) {
+  return `${clientRoot(clientId)}/production/outputs.json`;
+}
+
 export function createFileProductionStore(rootPath) {
   const statePath = path.join(rootPath, "current.json");
   const imageRoot = path.join(rootPath, "images");
@@ -48,6 +52,18 @@ export function createFileProductionStore(rootPath) {
     },
     async readImage(pathname) {
       return fs.readFile(pathname);
+    },
+    async readOutputs() {
+      try {
+        return JSON.parse(await fs.readFile(path.join(rootPath, "outputs.json"), "utf8"));
+      } catch (error) {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      }
+    },
+    async writeOutputs(value) {
+      await fs.mkdir(rootPath, { recursive: true });
+      await fs.writeFile(path.join(rootPath, "outputs.json"), `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
     },
   };
 }
@@ -99,6 +115,19 @@ export function createVercelBlobProductionStore(options = {}) {
       const signedToken = await issueSignedToken({ ...credentials, pathname, operations: ["get"], validUntil });
       const result = await presignUrl(signedToken, { access: "private", operation: "get", pathname, validUntil });
       return result.presignedUrl;
+    },
+    async readOutputs() {
+      return readJsonBlobOrNull(outputsPathname(clientId));
+    },
+    async writeOutputs(value) {
+      await put(outputsPathname(clientId), JSON.stringify(value), {
+        access: "private",
+        ...credentials,
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: "application/json",
+        cacheControlMaxAge: 60,
+      });
     },
   };
 }
