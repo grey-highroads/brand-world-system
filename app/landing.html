@@ -223,6 +223,10 @@
         line-height: 1.1;
         color: #fff;
         margin-bottom: 24px;
+        text-wrap: balance;
+        max-width: 14em;
+        margin-left: auto;
+        margin-right: auto;
       }
       .hero h1 em {
         font-style: italic;
@@ -233,8 +237,9 @@
         font-size: clamp(15px, 1.8vw, 18px);
         line-height: 1.65;
         color: var(--muted);
-        max-width: 540px;
+        max-width: 560px;
         margin: 0 auto 40px;
+        text-wrap: pretty;
       }
 
       .cta-btn {
@@ -270,6 +275,7 @@
         line-height: 1.2;
         color: #fff;
         max-width: 680px;
+        text-wrap: balance;
       }
 
       .band-caption {
@@ -277,12 +283,32 @@
         font-size: 15px;
         line-height: 1.65;
         color: var(--muted);
-        max-width: 480px;
+        max-width: 520px;
+        text-wrap: pretty;
       }
 
       /* Section: Brand Brain visual */
       .brain-section {
         border-top: 1px solid var(--paper-200);
+      }
+
+      .band-divider {
+        border-top: 1px solid var(--paper-200);
+      }
+
+      .band-caption-wide {
+        max-width: 580px;
+      }
+
+      .levels-sub {
+        text-align: center;
+        max-width: 540px;
+        margin: -20px auto 48px;
+        text-wrap: pretty;
+      }
+
+      .production-sub {
+        margin-bottom: 40px;
       }
 
       .brain-visual {
@@ -362,6 +388,7 @@
         text-align: center;
         max-width: 600px;
         margin: 0 auto 48px;
+        text-wrap: balance;
       }
 
       .levels-grid {
@@ -397,6 +424,7 @@
         font-size: 14px;
         line-height: 1.65;
         color: var(--muted);
+        text-wrap: pretty;
       }
 
       .level-locked    { --accent: var(--coral); }
@@ -409,7 +437,8 @@
       }
 
       .workflows-section h2 {
-        margin-bottom: 48px;
+        margin-bottom: 12px;
+        text-wrap: balance;
       }
 
       .wf-pair {
@@ -441,12 +470,14 @@
         font-weight: 400;
         color: #fff;
         margin-bottom: 12px;
+        text-wrap: balance;
       }
 
       .wf-card p {
         font-size: 14px;
         line-height: 1.7;
         color: var(--muted);
+        text-wrap: pretty;
       }
 
       /* Section: CTA close */
@@ -456,8 +487,9 @@
       }
 
       .cta-close h2 {
-        max-width: 560px;
+        max-width: 620px;
         margin: 0 auto 32px;
+        text-wrap: balance;
       }
 
       /* ── Footer ──────────────────────────────────────────── */
@@ -513,9 +545,9 @@
     <section class="hero">
       <div class="hero-bg"></div>
       <div class="hero-content">
-        <h1>Your brand is better than the way it <em>shows up</em> every day</h1>
+        <h1>Your brand vision is stronger than your <em>everyday creative</em></h1>
         <p class="hero-sub">
-          Brand World System helps teams close the gap between the brand they approved and the brand their audience actually sees.
+          Brand World System helps teams turn their brand strategy into a living visual world. It learns the choices, references, products, and creative signals that make your brand recognizable, then helps every new asset feel like it belongs.
         </p>
         <button class="cta-btn" onclick="openLogin()">Enter Brand World</button>
       </div>
@@ -525,19 +557,19 @@
     <section class="band brain-section">
       <div class="band-inner">
         <h2>You spent months building the brand. Now make sure people see it.</h2>
-        <p class="band-caption" style="max-width:580px;">
-          Most brands don't lose their identity. They lose the details that made the identity feel special. The campaigns drift. The website loses the feeling. The next round of creative feels close, but never quite there.
+        <p class="band-caption band-caption-wide">
+          Most brands don't lose their identity. They lose the details that make the identity feel special. The campaigns drift. The website loses the feeling. The next round of creative feels close, but not quite there.
         </p>
       </div>
     </section>
 
     <!-- ▌ BRAND WORLD ───────────────────────────────────── -->
-    <section class="band" style="border-top: 1px solid var(--paper-200);">
+    <section class="band band-divider">
       <div class="band-inner brain-visual">
         <div>
-          <h2>Your brand already has a world. We help you use it.</h2>
+          <h2>Your brand already has a world</h2>
           <p class="band-caption">
-            The colors, the textures, the photography, the moments, the feeling. Brand World System picks up those signals and turns them into a creative foundation your team uses every day. It captures the judgment your agency knew, the things your team learned along the way, and the decisions nobody ever wrote down.
+            The colors. The textures. The products. The photography. The moments. The feeling. Brand World System learns those signals and turns them into a creative foundation your team uses every day.
           </p>
         </div>
         <div class="brain-diagram">
@@ -554,26 +586,36 @@
       </div>
     </section>
 
+    <!-- ▌ HIDDEN KNOWLEDGE ──────────────────────────────── -->
+    <section class="band band-divider">
+      <div class="band-inner">
+        <h2>The things your agency knew. The things your team learned. The things nobody wrote down.</h2>
+        <p class="band-caption band-caption-wide">
+          Brand World System captures the creative judgment behind your visual language, so your team spends less time explaining and more time creating.
+        </p>
+      </div>
+    </section>
+
     <!-- ▌ CONTROLLED EXPANSION ──────────────────────────── -->
     <section class="band levels-section">
       <div class="band-inner">
         <h2>Stay true. Push further.</h2>
-        <p class="band-caption" style="text-align:center; max-width:520px; margin: -24px auto 48px;">Some things should never change. Others should evolve. The system knows the difference.</p>
+        <p class="band-caption levels-sub">Some choices should never change. Others should evolve. Brand World System protects what people recognize while helping teams explore new visual territory that still feels unmistakably yours.</p>
         <div class="levels-grid">
           <div class="level-card level-locked">
             <div class="level-dot"></div>
             <h3>Locked</h3>
-            <p>Your logo, product photography, and approved claims stay exact. Placed directly, never regenerated. The things that can't be wrong never are.</p>
+            <p>A precise brand asset. Your logo, product photography, and approved claims stay exact. Placed directly, never regenerated.</p>
           </div>
           <div class="level-card level-guided">
             <div class="level-dot"></div>
             <h3>Guided</h3>
-            <p>Palette, photographic tone, materials. They shape everything the system creates, so the work feels unmistakably yours without ever looking the same twice.</p>
+            <p>A campaign variation. Palette, photographic tone, and materials shape every output. Unmistakably yours without ever looking the same twice.</p>
           </div>
           <div class="level-card level-explore">
             <div class="level-dot"></div>
             <h3>Exploratory</h3>
-            <p>New environments, new compositions, visual territory you wouldn't have thought to brief. The brand grows while staying true to itself the whole way.</p>
+            <p>A new creative direction that still feels on-brand. New environments, new compositions, visual territory you wouldn't have thought to brief.</p>
           </div>
         </div>
       </div>
@@ -583,7 +625,7 @@
     <section class="band workflows-section">
       <div class="band-inner">
         <h2>From first concept to finished asset</h2>
-        <p class="band-caption" style="margin-bottom:40px;">Campaigns, product visuals, social content, marketing materials. Every asset carries a shared understanding of your visual world.</p>
+        <p class="band-caption production-sub">Create campaigns, product visuals, social content, and marketing materials with a shared understanding of your visual world.</p>
         <div class="wf-pair">
           <div class="wf-card">
             <div class="wf-number">Drop in what you have</div>
@@ -602,7 +644,7 @@
     <!-- ▌ CTA CLOSE ─────────────────────────────────────── -->
     <section class="band cta-close">
       <div class="band-inner">
-        <h2>Your brand doesn't need another document. It needs a creative partner that gets what makes it yours.</h2>
+        <h2>Your brand doesn't need another document. It needs a creative partner that understands what makes your brand yours.</h2>
         <button class="cta-btn" onclick="openLogin()">Enter Brand World</button>
       </div>
     </section>
