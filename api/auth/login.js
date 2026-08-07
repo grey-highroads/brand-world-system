@@ -1,43 +1,40 @@
+import { readJsonBody, sendJson } from "../../src/server/http.js";
+
 const SESSION_COOKIE = "bws_session";
 
-export default function handler(request) {
+export default async function handler(request, response) {
   if (request.method !== "POST") {
-    return new Response("Method not allowed", { status: 405 });
+    response.setHeader("Allow", "POST");
+    sendJson(response, 405, { ok: false, error: "method_not_allowed" });
+    return;
   }
 
-  return request.json().then(({ username, password }) => {
-    const expected = process.env.BRAND_WORLD_ACCESS_PASSWORD;
-    if (!expected) {
-      return new Response(JSON.stringify({ ok: false, error: "not_configured" }), {
-        status: 503,
-        headers: { "Content-Type": "application/json" },
-      });
-    }
+  const expected = process.env.BRAND_WORLD_ACCESS_PASSWORD;
+  if (!expected) {
+    sendJson(response, 503, { ok: false, error: "not_configured" });
+    return;
+  }
+
+  try {
+    const { username, password } = await readJsonBody(request);
 
     if (username === "brandworld" && password === expected) {
-      const token = btoa("brandworld:" + expected);
-      const cookie = [
+      const token = Buffer.from("brandworld:" + expected).toString("base64");
+      const parts = [
         `${SESSION_COOKIE}=${token}`,
         "Path=/",
         "HttpOnly",
         "SameSite=Lax",
         "Max-Age=86400",
-        process.env.VERCEL ? "Secure" : "",
-      ].filter(Boolean).join("; ");
-
-      return new Response(JSON.stringify({ ok: true }), {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          "Set-Cookie": cookie,
-          "Cache-Control": "no-store",
-        },
-      });
+      ];
+      if (process.env.VERCEL) parts.push("Secure");
+      response.setHeader("Set-Cookie", parts.join("; "));
+      sendJson(response, 200, { ok: true });
+      return;
     }
 
-    return new Response(JSON.stringify({ ok: false, error: "invalid" }), {
-      status: 401,
-      headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
-    });
-  });
+    sendJson(response, 401, { ok: false, error: "invalid" });
+  } catch (err) {
+    sendJson(response, 400, { ok: false, error: "bad_request" });
+  }
 }
