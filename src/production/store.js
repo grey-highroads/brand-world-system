@@ -2,7 +2,26 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { get, issueSignedToken, presignUrl, put } from "@vercel/blob";
 
-const productionStatePathname = "brand-world-system/production/current.json";
+// Client-namespaced production state and images. Client id is server-resolved
+// and threaded in through the store factory. See ADR 0011.
+const DEFAULT_CLIENT_ID = "default";
+// Pre-namespace deployments wrote production state to a single flat path. The
+// default client reads through to it once so an in-flight job is not stranded,
+// then the next save moves it into the namespace. Remove after the flat blob
+// is gone.
+const LEGACY_FLAT_PRODUCTION_PATHNAME = "brand-world-system/production/current.json";
+
+function clientRoot(clientId) {
+  return `brand-world-system/clients/${clientId}`;
+}
+
+function productionStatePathname(clientId) {
+  return `${clientRoot(clientId)}/production/current.json`;
+}
+
+function productionImagePathname(clientId, jobId, extension) {
+  return `${clientRoot(clientId)}/production/jobs/${jobId}/output.${extension}`;
+}
 
 export function createFileProductionStore(rootPath) {
   const statePath = path.join(rootPath, "current.json");
@@ -35,16 +54,25 @@ export function createFileProductionStore(rootPath) {
 
 export function createVercelBlobProductionStore(options = {}) {
   const token = options.token || process.env.BLOB_READ_WRITE_TOKEN;
+  const clientId = options.clientId || DEFAULT_CLIENT_ID;
   const credentials = token ? { token } : {};
+
+  async function readJsonBlobOrNull(pathname) {
+    const result = await get(pathname, { access: "private", ...credentials, useCache: false });
+    if (!result) return null;
+    if (result.statusCode !== 200 || !result.stream) throw new Error("The saved production job could not be read.");
+    return JSON.parse(await new Response(result.stream).text());
+  }
+
   return {
     async read() {
-      const result = await get(productionStatePathname, { access: "private", ...credentials, useCache: false });
-      if (!result) return null;
-      if (result.statusCode !== 200 || !result.stream) throw new Error("The saved production job could not be read.");
-      return JSON.parse(await new Response(result.stream).text());
+      const current = await readJsonBlobOrNull(productionStatePathname(clientId));
+      if (current !== null) return current;
+      if (clientId === DEFAULT_CLIENT_ID) return readJsonBlobOrNull(LEGACY_FLAT_PRODUCTION_PATHNAME);
+      return null;
     },
     async write(value) {
-      await put(productionStatePathname, JSON.stringify(value), {
+      await put(productionStatePathname(clientId), JSON.stringify(value), {
         access: "private",
         ...credentials,
         allowOverwrite: true,
@@ -55,7 +83,7 @@ export function createVercelBlobProductionStore(options = {}) {
     },
     async writeImage(jobId, bytes, contentType = "image/png") {
       const extension = contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
-      const pathname = `brand-world-system/production/jobs/${jobId}/output.${extension}`;
+      const pathname = productionImagePathname(clientId, jobId, extension);
       await put(pathname, bytes, {
         access: "private",
         ...credentials,
@@ -74,4 +102,3 @@ export function createVercelBlobProductionStore(options = {}) {
     },
   };
 }
-
