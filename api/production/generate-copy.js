@@ -1,5 +1,5 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
-import { readJsonBody, requireBrandWorldAccess, sendJson, sendPublicError } from "../../src/server/http.js";
+import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 import { compileBrandWorldImagePackage } from "../../src/production/package.js";
 
 export default async function handler(request, response) {
@@ -10,12 +10,13 @@ export default async function handler(request, response) {
     return;
   }
   try {
+    const clientId = resolveClientId(request);
     const body = await readJsonBody(request);
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) throw new Error("OpenAI API key is not configured.");
 
     // Load the approved brain
-    const brainStore = createVercelBlobBrandBrainStore();
+    const brainStore = createVercelBlobBrandBrainStore({ clientId });
     const brainState = await brainStore.load();
     if (!brainState?.approvedResult) throw new Error("No approved Brand Brain is available.");
     const brain = brainState.approvedResult;
