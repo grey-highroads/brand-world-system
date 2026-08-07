@@ -692,7 +692,7 @@ function sampleResultSnapshot() {
 }
 
 const state = {
-  screen: "chooser",
+  screen: "workspace",
   clients: [],
   activeClientId: "default",
   clientSwitcherOpen: false,
@@ -834,6 +834,7 @@ function escapeHtml(value = "") {
 }
 
 function currentCrumb() {
+  if (state.screen === "workspace") return "Workspace";
   if (state.screen === "brain-overview") return "Brand brain / Overview";
   if (state.screen === "brain-sources") return "Brand brain / Sources";
   if (state.screen === "brain-processing") return "Brand brain / Building";
@@ -871,8 +872,8 @@ function shell(content) {
         </div>
 
         <nav class="sidebar-nav" aria-label="Primary navigation">
-          ${navItem("Workspace", false)}
-          ${navItem("Production", !inBrain, "chooser")}
+          ${navItem("Workspace", state.screen === "workspace", "workspace")}
+          ${navItem("Production", !inBrain && state.screen !== "workspace", "chooser")}
           ${navItem("Brand brain", inBrain, "brand-brain")}
           ${navItem("Library", false)}
           ${navItem("Activity", false)}
@@ -1867,6 +1868,213 @@ function renderBrainHistory() {
         </section>
       `,
   );
+}
+
+function renderWorkspace() {
+  const approved = approvedBrainForProduction();
+  const hasBrain = Boolean(currentSynthesisResult);
+  const dossier = brainArtifacts.find((a) => a.id === "dossier");
+  const palette = dossier?.palette || [];
+  const guardrails = dossier?.guardrails || [];
+  const sourceCount = state.brain.sources.reduce((total, s) => total + s.count, 0);
+  const brainVersion = state.brain.approvedVersion || state.brain.artifactVersion || 0;
+  const brainDate = brainCreatedLabel();
+  const candidateRules = state.production.candidateRules || [];
+  const pendingCandidates = candidateRules.filter((r) => !r.dismissed);
+  const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
+  const unresolvedExceptions = state.brain.processingComplete
+    ? brainExceptions.filter((item) => !state.brain.resolutions[item.id])
+    : [];
+  const recentOutputs = state.outputs
+    .slice()
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, 6);
+  const campaigns = state.campaigns || [];
+
+  const needsAttention = [
+    ...unresolvedExceptions.map((e) => ({
+      kind: "exception",
+      label: e.title,
+      detail: e.summary || e.typeLabel,
+      pill: e.typeLabel || "Needs review",
+      pillClass: "pill-warning",
+      action: "navigate-brain",
+      screen: "brain",
+    })),
+    ...affectedOutputs.map((o) => ({
+      kind: "affected",
+      label: o.label || "Untitled output",
+      detail: `Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.`,
+      pill: `v${o.brainVersion}`,
+      pillClass: "pill-warning",
+      action: "preview-output",
+      id: o.id,
+    })),
+    ...pendingCandidates.map((r) => ({
+      kind: "candidate",
+      label: r.scope === "brand-rule" ? "Brand rule proposal" : "Candidate rule",
+      detail: r.text || "Pending review",
+      pill: r.scope === "brand-rule" ? "Brand rule" : "Candidate",
+      pillClass: "pill-governed",
+      action: "",
+    })),
+  ];
+
+  // Brand context header (only when brain exists)
+  const brandContext = hasBrain ? `
+    <section class="ws-brand-context">
+      <div class="ws-brand-header">
+        <div>
+          <h2 class="ws-brand-name">${escapeHtml(state.brandName)}</h2>
+          <p class="ws-brand-meta">${escapeHtml(state.brandDescription || "")}</p>
+        </div>
+        <div class="ws-brain-status">
+          <span class="mini-pill ${approved ? "pill-success" : "pill-neutral"}">${approved ? `Brain v${brainVersion}` : "Draft"}</span>
+          <span class="ws-brain-date">${sourceCount} sources · ${escapeHtml(brainDate)}</span>
+        </div>
+      </div>
+      ${palette.length ? `
+        <div class="ws-palette">
+          ${palette.map((c) => `<span class="ws-swatch" style="background: ${c.color}" title="${escapeHtml(c.name)}: ${escapeHtml(c.role)}"></span>`).join("")}
+          <span class="ws-palette-label">${palette.map((c) => c.name).join(", ")}</span>
+        </div>
+      ` : ""}
+      ${guardrails.length ? `
+        <div class="ws-guardrails">
+          ${guardrails.map((g) => `<span class="mini-pill pill-coral">${escapeHtml(g.title)}</span>`).join("")}
+        </div>
+      ` : ""}
+    </section>
+  ` : "";
+
+  // Needs attention
+  const attentionSection = needsAttention.length ? `
+    <section class="card ws-attention-card">
+      <div class="card-header">
+        <h2>Needs attention</h2>
+        <span class="mini-pill pill-warning">${needsAttention.length}</span>
+      </div>
+      <div class="ws-attention-list">
+        ${needsAttention.map((item) => `
+          <${item.action ? "button" : "div"} class="ws-attention-item" ${item.action ? `type="button" data-action="${item.action}" ${item.screen ? `data-screen="${item.screen}"` : ""} ${item.id ? `data-id="${item.id}"` : ""}` : ""}>
+            <span class="mini-pill ${item.pillClass}">${escapeHtml(item.pill)}</span>
+            <span class="ws-attention-text">
+              <strong>${escapeHtml(item.label)}</strong>
+              <span>${escapeHtml(item.detail)}</span>
+            </span>
+          </${item.action ? "button" : "div"}>
+        `).join("")}
+      </div>
+    </section>
+  ` : "";
+
+  // Recent work
+  const workSection = recentOutputs.length ? `
+    <section class="card">
+      <div class="card-header">
+        <h2>Recent work</h2>
+        <span class="mini-pill">${state.outputs.length} ${state.outputs.length === 1 ? "output" : "outputs"}</span>
+      </div>
+      <div class="ws-output-grid">
+        ${recentOutputs.map((o) => `
+          <button class="ws-output-card" type="button" data-action="preview-output" data-id="${o.id}">
+            ${o.imageUrl
+              ? `<span class="ws-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+              : `<span class="ws-output-thumb ws-thumb-empty"></span>`}
+            <span class="ws-output-info">
+              <strong>${escapeHtml(o.label || "Untitled")}</strong>
+              <span>${escapeHtml(o.campaignName || o.channel || "")}${o.format ? ` · ${escapeHtml(o.format)}` : ""}</span>
+            </span>
+            <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+          </button>
+        `).join("")}
+      </div>
+    </section>
+  ` : "";
+
+  // Campaigns
+  const campaignSection = campaigns.length ? `
+    <section class="card">
+      <div class="card-header">
+        <h2>Campaigns</h2>
+        <span class="mini-pill">${campaigns.length}</span>
+      </div>
+      <div class="ws-campaign-list">
+        ${campaigns.map((c) => {
+          const count = outputsForCampaign(c.id).length;
+          return `
+            <button class="ws-campaign-item" type="button" data-action="select-creative-mode" data-id="campaign" data-campaign-shortcut="${c.id}">
+              <span class="ws-campaign-info">
+                <strong>${escapeHtml(c.name)}</strong>
+                <span>${escapeHtml(c.objective || c.description || "")}</span>
+              </span>
+              <span class="mini-pill">${count} ${count === 1 ? "output" : "outputs"}</span>
+            </button>
+          `;
+        }).join("")}
+      </div>
+    </section>
+  ` : "";
+
+  // Quick starts
+  const quickStarts = `
+    <section class="ws-quick-starts">
+      <button class="card ws-quick-card" type="button" data-action="chooser">
+        <strong>Create an asset</strong>
+        <span>Start a new production job from the approved Brand Brain${campaigns.length ? " or a campaign" : ""}.</span>
+      </button>
+      <button class="card ws-quick-card" type="button" data-action="brand-brain">
+        <strong>${hasBrain ? "Review the Brand Brain" : "Build the Brand Brain"}</strong>
+        <span>${hasBrain ? "Review guidance, resolve exceptions, or add new sources." : "Add sources and build brand intelligence."}</span>
+      </button>
+    </section>
+  `;
+
+  // Guidance summary on sidebar
+  const guidanceSummary = hasBrain && guidanceSections.length ? `
+    <section class="card">
+      <div class="card-header">
+        <h2>Brand guidance</h2>
+        <button class="button ghost compact" type="button" data-action="brand-brain">View all</button>
+      </div>
+      <ul class="exact-list">
+        ${guidanceSections.map((s) => `
+          <li>
+            <strong>${escapeHtml(s.name)}</strong>
+            <span>${escapeHtml(s.summary)}</span>
+          </li>
+        `).join("")}
+      </ul>
+    </section>
+  ` : "";
+
+  // Not-yet-built brain state
+  if (!hasBrain) {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader("Workspace", "Your brand starts here. Add sources and build the Brand Brain to start producing.")}
+        ${quickStarts}
+      </section>
+    `);
+  }
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader("Workspace", "")}
+      ${brandContext}
+      <div class="content-grid">
+        <div>
+          ${attentionSection}
+          ${workSection}
+          ${campaignSection}
+          ${quickStarts}
+        </div>
+        <aside>
+          ${guidanceSummary}
+        </aside>
+      </div>
+    </section>
+  `);
 }
 
 function renderChooser() {
@@ -3598,7 +3806,8 @@ function renderResult() {
 }
 
 function render() {
-  if (state.screen === "brain-overview") root.innerHTML = renderBrainOverview();
+  if (state.screen === "workspace") root.innerHTML = renderWorkspace();
+  else if (state.screen === "brain-overview") root.innerHTML = renderBrainOverview();
   else if (state.screen === "brain-sources") root.innerHTML = renderBrainSources();
   else if (state.screen === "brain-processing") root.innerHTML = renderBrainProcessing();
   else if (state.screen === "brain") root.innerHTML = renderBrandBrain();
@@ -4530,10 +4739,14 @@ root.addEventListener("click", (event) => {
   if (action === "switch-client") { switchClient(target.dataset.id); return; }
   if (action === "create-client") { state.clientSwitcherOpen = false; void createClient(); return; }
 
+  if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
   if (action === "select-creative-mode") {
     state.creativeMode = target.dataset.id;
-    if (target.dataset.id === "explore" || target.dataset.id === "standalone") {
+    if (target.dataset.campaignShortcut) {
+      state.activeCampaignId = target.dataset.campaignShortcut;
+      navigate("chooser");
+    } else if (target.dataset.id === "explore" || target.dataset.id === "standalone") {
       state.activeCampaignId = null;
       state.selectedDeliverable = deliverables[0];
       navigate("brief");

@@ -5735,3 +5735,269 @@ select {
   color: var(--text);
   background: var(--paper-300);
 }
+
+/* ── Workspace ── */
+
+.ws-brand-context {
+  display: grid;
+  gap: 14px;
+  padding: 20px 22px;
+  margin-bottom: 22px;
+  background: var(--paper-50);
+  border: 1px solid var(--paper-200);
+  border-radius: var(--radius-lg);
+}
+
+.ws-brand-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ws-brand-name {
+  margin: 0;
+  color: var(--text);
+  font-family: var(--display);
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+
+.ws-brand-meta {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.ws-brain-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ws-brain-date {
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.ws-palette {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ws-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 1px solid rgb(255 255 255 / 0.08);
+  flex-shrink: 0;
+}
+
+.ws-palette-label {
+  margin-left: 4px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ws-guardrails {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.pill-coral {
+  color: var(--coral-dark);
+  background: rgb(230 132 90 / 0.12);
+}
+
+.ws-attention-card {
+  border-left: 3px solid var(--warning, #e6c765);
+}
+
+.ws-attention-list {
+  display: grid;
+  gap: 1px;
+}
+
+.ws-attention-item {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 10px 0;
+  border: none;
+  border-top: 1px solid var(--paper-200);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-attention-item:first-child {
+  border-top: none;
+}
+
+button.ws-attention-item:hover {
+  background: rgb(255 255 255 / 0.02);
+}
+
+.ws-attention-text {
+  display: grid;
+  gap: 2px;
+}
+
+.ws-attention-text strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ws-attention-text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ws-output-grid {
+  display: grid;
+  gap: 2px;
+}
+
+.ws-output-card {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 0;
+  border: none;
+  border-top: 1px solid var(--paper-200);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-output-card:first-child {
+  border-top: none;
+}
+
+.ws-output-card:hover {
+  background: rgb(255 255 255 / 0.02);
+}
+
+.ws-output-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-sm);
+  background: var(--paper-200);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.ws-output-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ws-thumb-empty,
+.ws-thumb-missing {
+  background: var(--paper-200);
+}
+
+.ws-output-info {
+  display: grid;
+  gap: 2px;
+}
+
+.ws-output-info strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ws-output-info span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ws-campaign-list {
+  display: grid;
+  gap: 2px;
+}
+
+.ws-campaign-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 12px 0;
+  border: none;
+  border-top: 1px solid var(--paper-200);
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ws-campaign-item:first-child {
+  border-top: none;
+}
+
+.ws-campaign-item:hover {
+  background: rgb(255 255 255 / 0.02);
+}
+
+.ws-campaign-info {
+  display: grid;
+  gap: 2px;
+}
+
+.ws-campaign-info strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.ws-campaign-info span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ws-quick-starts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 6px;
+}
+
+.ws-quick-card {
+  padding: 18px;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.ws-quick-card:hover {
+  border-color: var(--paper-300);
+}
+
+.ws-quick-card strong {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ws-quick-card span {
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
