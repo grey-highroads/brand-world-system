@@ -12,9 +12,25 @@ function safeFilename(filename) {
   return cleaned || "source-file";
 }
 
+// Mirrors sanitizeClientId in src/server/http.js so the client-built path
+// matches the prefix the upload route computes from the same cookie.
+function activeClientId() {
+  const match = (document.cookie || "").split(";").map((part) => part.trim()).find((part) => part.startsWith("bws_client="));
+  let value = "default";
+  if (match) {
+    try {
+      value = decodeURIComponent(match.slice("bws_client=".length)) || "default";
+    } catch {
+      value = "default";
+    }
+  }
+  const cleaned = String(value).toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/-+/g, "-").replace(/^-+|-+$/g, "");
+  return cleaned || "default";
+}
+
 function uniquePathname(filename) {
   const uniqueId = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
-  return `brand-world-system/sources/${uniqueId}-${safeFilename(filename)}`;
+  return `brand-world-system/clients/${activeClientId()}/sources/${uniqueId}-${safeFilename(filename)}`;
 }
 
 async function readPublicError(response, fallback) {
