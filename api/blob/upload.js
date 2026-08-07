@@ -1,5 +1,5 @@
 import { issueSignedToken, presignUrl } from "@vercel/blob";
-import { hasBrandWorldAccess, readJsonBody, sendJson, sendPublicError } from "../../src/server/http.js";
+import { hasBrandWorldAccess, readJsonBody, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 const maximumSizeInBytes = 20 * 1024 * 1024;
 const allowedContentTypes = [
@@ -34,11 +34,13 @@ export default async function handler(request, response) {
       sendJson(response, 401, { error: "Enter the Brand World installation password to upload a source." });
       return;
     }
+    const clientId = resolveClientId(request);
     const body = await readJsonBody(request, 1024 * 1024);
     const pathname = String(body.pathname || "");
     const contentType = String(body.contentType || "application/octet-stream").toLowerCase();
     const size = Number(body.size);
-    if (!pathname.startsWith("brand-world-system/sources/")) throw new Error("The upload path is invalid.");
+    // Uploads are confined to the caller's own client namespace (ADR 0011).
+    if (!pathname.startsWith(`brand-world-system/clients/${clientId}/sources/`)) throw new Error("The upload path is invalid.");
     if (!Number.isFinite(size) || size <= 0 || size > maximumSizeInBytes) throw new Error("Choose one source file no larger than 20 MB.");
     if (!isAllowedContentType(contentType)) throw new Error("That file format is not supported for this source.");
 
