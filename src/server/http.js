@@ -50,18 +50,29 @@ function sameValue(left, right) {
   return leftBytes.length === rightBytes.length && timingSafeEqual(leftBytes, rightBytes);
 }
 
+const SESSION_COOKIE = "bws_session";
+
 export function hasBrandWorldAccess(request, password = process.env.BRAND_WORLD_ACCESS_PASSWORD) {
   if (!password) return !process.env.VERCEL;
   const authorization = request.headers.authorization || "";
-  if (!authorization.startsWith("Basic ")) return false;
-  try {
-    const decoded = Buffer.from(authorization.slice(6), "base64").toString("utf8");
-    const separator = decoded.indexOf(":");
-    if (separator === -1) return false;
-    return sameValue(decoded.slice(0, separator), "brandworld") && sameValue(decoded.slice(separator + 1), password);
-  } catch {
-    return false;
+  if (authorization.startsWith("Basic ")) {
+    try {
+      const decoded = Buffer.from(authorization.slice(6), "base64").toString("utf8");
+      const separator = decoded.indexOf(":");
+      if (separator !== -1 && sameValue(decoded.slice(0, separator), "brandworld") && sameValue(decoded.slice(separator + 1), password)) {
+        return true;
+      }
+    } catch {}
   }
+  const cookies = request.headers.cookie || "";
+  const match = cookies.split(";").map(c => c.trim()).find(c => c.startsWith(SESSION_COOKIE + "="));
+  if (match) {
+    try {
+      const decoded = Buffer.from(match.slice(SESSION_COOKIE.length + 1), "base64").toString("utf8");
+      if (decoded === "brandworld:" + password) return true;
+    } catch {}
+  }
+  return false;
 }
 
 export function requireBrandWorldAccess(request, response) {
