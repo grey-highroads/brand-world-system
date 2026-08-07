@@ -729,11 +729,7 @@ const state = {
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
   // the brand language that produced it survives later brain revisions.
-  outputs: [
-    { id: "co-001", label: "Summer Reset hero image", status: "approved", campaignId: "sample-campaign", campaignName: "Summer Reset", assetType: "scene", channel: "Instagram", placement: "Instagram feed", format: "4:5 portrait", scene: "A woman on a balcony at golden hour, SLAKE can resting on the railing, city skyline soft in the background", brainVersion: 1, createdAt: "2026-08-02T11:00:00Z", imageUrl: null, package: null },
-    { id: "co-002", label: "LinkedIn announcement image", status: "approved", campaignId: "sample-campaign", campaignName: "Summer Reset", assetType: "product", channel: "LinkedIn", placement: "LinkedIn feed", format: "1.91:1 landscape", scene: "Close-up of the Yuzu Ginger can with condensation, warm afternoon kitchen light, cutting board with citrus in the background", brainVersion: 1, createdAt: "2026-08-03T09:30:00Z", imageUrl: null, package: null },
-    { id: "co-003", label: "Email header", status: "approved", campaignId: "sample-campaign", campaignName: "Summer Reset", assetType: "banner", channel: "Email", placement: "Website feature", format: "16:9 landscape", scene: "Wide shot of a shared outdoor table, two SLAKE cans among plates and napkins, late afternoon shade", brainVersion: 1, createdAt: "2026-08-04T14:15:00Z", imageUrl: null, package: null },
-  ],
+  outputs: [],
   productAssetUploading: false,
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
