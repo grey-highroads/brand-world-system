@@ -1,6 +1,6 @@
 import { saveBrandBrainSnapshot } from "../../src/brand-brain/service.js";
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
-import { readJsonBody, requireBrandWorldAccess, sendJson, sendPublicError } from "../../src/server/http.js";
+import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -10,8 +10,9 @@ export default async function handler(request, response) {
     return;
   }
   try {
+    const clientId = resolveClientId(request);
     const snapshot = await readJsonBody(request);
-    const saved = await saveBrandBrainSnapshot(snapshot, createVercelBlobBrandBrainStore());
+    const saved = await saveBrandBrainSnapshot(snapshot, createVercelBlobBrandBrainStore({ clientId }));
     sendJson(response, 200, { savedAt: saved.savedAt });
   } catch (error) {
     sendPublicError(response, error);
