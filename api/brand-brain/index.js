@@ -1,5 +1,5 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
-import { requireBrandWorldAccess, sendJson, sendPublicError } from "../../src/server/http.js";
+import { requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -9,7 +9,8 @@ export default async function handler(request, response) {
     return;
   }
   try {
-    const store = createVercelBlobBrandBrainStore();
+    const clientId = resolveClientId(request);
+    const store = createVercelBlobBrandBrainStore({ clientId });
     sendJson(response, 200, { saved: await store.read() });
   } catch (error) {
     sendPublicError(response, error);
