@@ -693,6 +693,9 @@ function sampleResultSnapshot() {
 
 const state = {
   screen: "chooser",
+  clients: [],
+  activeClientId: "default",
+  clientSwitcherOpen: false,
   brandName: "SLAKE",
   brandDescription: "Adaptogen sparkling water",
   selectedDeliverable: deliverables[0],
@@ -855,14 +858,17 @@ function shell(content) {
   return `
     <div class="app-shell">
       <aside class="sidebar">
-        <button class="brand-switcher" type="button" aria-label="Switch brand">
-          <span class="brand-mark">S</span>
-          <span>
-            <span class="brand-name">${escapeHtml(state.brandName)}</span>
-            <span class="brand-description">${escapeHtml(state.brandDescription)}</span>
-          </span>
-          <span aria-hidden="true">⌄</span>
-        </button>
+        <div class="brand-switcher-wrap">
+          <button class="brand-switcher" type="button" aria-label="Switch client" aria-haspopup="menu" aria-expanded="${state.clientSwitcherOpen ? "true" : "false"}" data-action="toggle-client-switcher">
+            <span class="brand-mark">${escapeHtml(activeClientInitial())}</span>
+            <span>
+              <span class="brand-name">${escapeHtml(activeClientName())}</span>
+              ${activeClientSecondary() ? `<span class="brand-description">${escapeHtml(activeClientSecondary())}</span>` : ""}
+            </span>
+            <span aria-hidden="true">⌄</span>
+          </button>
+          ${state.clientSwitcherOpen ? clientSwitcherMenu() : ""}
+        </div>
 
         <nav class="sidebar-nav" aria-label="Primary navigation">
           ${navItem("Workspace", false)}
@@ -4511,8 +4517,18 @@ if (typeof document !== "undefined" && typeof document.addEventListener === "fun
 
 root.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
-  if (!target) return;
+  if (!target) {
+    if (state.clientSwitcherOpen && !event.target.closest(".brand-switcher-wrap")) {
+      state.clientSwitcherOpen = false;
+      render();
+    }
+    return;
+  }
   const action = target.dataset.action;
+
+  if (action === "toggle-client-switcher") { state.clientSwitcherOpen = !state.clientSwitcherOpen; render(); return; }
+  if (action === "switch-client") { switchClient(target.dataset.id); return; }
+  if (action === "create-client") { state.clientSwitcherOpen = false; void createClient(); return; }
 
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
   if (action === "select-creative-mode") {
@@ -5075,6 +5091,122 @@ root.addEventListener("click", (event) => {
   }
 });
 
+function activeClient() {
+  return state.clients.find((client) => client.id === state.activeClientId) || null;
+}
+
+function activeClientName() {
+  return activeClient()?.name || state.brandName || "Brand";
+}
+
+function activeClientInitial() {
+  return (activeClientName() || "?").slice(0, 1).toUpperCase();
+}
+
+function activeClientSecondary() {
+  return currentSynthesisResult ? state.brandDescription : "";
+}
+
+function clientSwitcherMenu() {
+  const items = state.clients
+    .map((client) => {
+      const isActive = client.id === state.activeClientId;
+      const initial = escapeHtml((client.name || "?").slice(0, 1).toUpperCase());
+      return `
+        <button class="client-switcher-item${isActive ? " is-active" : ""}" type="button" role="menuitem" data-action="switch-client" data-id="${escapeHtml(client.id)}">
+          <span class="brand-mark">${initial}</span>
+          <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
+          ${isActive ? `<span class="client-switcher-check" aria-hidden="true">✓</span>` : ""}
+        </button>`;
+    })
+    .join("");
+  return `
+    <div class="client-switcher-menu" role="menu">
+      ${items}
+      <button class="client-switcher-item client-switcher-new" type="button" role="menuitem" data-action="create-client">
+        <span class="brand-mark" aria-hidden="true">+</span>
+        <span class="client-switcher-item-name">New client</span>
+      </button>
+    </div>`;
+}
+
+function readActiveClientCookie() {
+  const match = (document.cookie || "").split(";").map((part) => part.trim()).find((part) => part.startsWith("bws_client="));
+  if (!match) return "";
+  try {
+    return decodeURIComponent(match.slice("bws_client=".length));
+  } catch {
+    return "";
+  }
+}
+
+function setActiveClientCookie(id) {
+  document.cookie = `bws_client=${encodeURIComponent(id)}; path=/; max-age=31536000; samesite=lax`;
+}
+
+async function hydrateClients() {
+  const cookieId = readActiveClientCookie();
+  if (cookieId) state.activeClientId = cookieId;
+  try {
+    const response = await fetch("/api/clients", { headers: { Accept: "application/json" } });
+    if (response.ok) {
+      const payload = await readApiJson(response);
+      if (Array.isArray(payload.clients) && payload.clients.length) {
+        state.clients = payload.clients;
+        if (!payload.clients.some((client) => client.id === state.activeClientId)) {
+          state.activeClientId = payload.clients[0].id;
+        }
+      }
+    }
+  } catch {
+    // The switcher falls back to the default client if the list cannot load.
+  }
+  if (!state.clients.length) state.clients = [{ id: "default", name: "Default brand", status: "active" }];
+  if (!readActiveClientCookie()) setActiveClientCookie(state.activeClientId);
+  render();
+}
+
+function switchClient(id) {
+  if (!id || id === state.activeClientId) {
+    state.clientSwitcherOpen = false;
+    render();
+    return;
+  }
+  setActiveClientCookie(id);
+  window.location.reload();
+}
+
+async function createClient() {
+  const name = window.prompt("Name this client");
+  if (!name || !name.trim()) return;
+  try {
+    const response = await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    if (!response.ok) {
+      let message = "The client could not be created.";
+      try {
+        const body = await readApiJson(response);
+        if (body?.error) message = body.error;
+      } catch {}
+      window.alert(message);
+      return;
+    }
+    const payload = await readApiJson(response);
+    if (!payload?.client?.id) {
+      window.alert("The client could not be created.");
+      return;
+    }
+    setActiveClientCookie(payload.client.id);
+    window.location.reload();
+  } catch {
+    window.alert("The client could not be created.");
+  }
+}
+
 render();
+void hydrateClients();
 void hydrateStoredBrain();
 void hydrateProductionJob();
