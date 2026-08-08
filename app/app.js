@@ -70,6 +70,7 @@ const studioCategories = [
   { id: "presentation", name: "Presentation element", description: "Transparent elements and slide backgrounds.", icon: "slides" },
   { id: "collateral", name: "Sales collateral", description: "High-resolution elements for print and one-pagers.", icon: "print" },
   { id: "showcase", name: "Product showcase", description: "Product photography, device mockups, and lifestyle scenes.", icon: "product" },
+  { id: "template", name: "Brand template", description: "Reusable surfaces, environments, and composition foundations.", icon: "template" },
 ];
 
 const studioPlatformFormats = {
@@ -123,6 +124,44 @@ const studioPlatformFormats = {
     label: "TikTok",
     formats: [
       { id: "tt-cover", name: "Cover", ratio: "9:16", dim: "1080 x 1920", default: true },
+    ],
+  },
+};
+
+const studioTemplateFormats = {
+  social: {
+    label: "Social posts",
+    formats: [
+      { id: "tpl-social-square", name: "Square", ratio: "1:1", dim: "1080 x 1080", default: true },
+      { id: "tpl-social-portrait", name: "Portrait", ratio: "4:5", dim: "1080 x 1350", default: true },
+    ],
+  },
+  presentation: {
+    label: "Presentations",
+    formats: [
+      { id: "tpl-pres-16x9", name: "Widescreen", ratio: "16:9", dim: "1920 x 1080", default: true },
+      { id: "tpl-pres-4x3", name: "Standard", ratio: "4:3", dim: "1440 x 1080", default: false },
+    ],
+  },
+  website: {
+    label: "Website",
+    formats: [
+      { id: "tpl-web-hero", name: "Hero", ratio: "16:9", dim: "1920 x 1080", default: true },
+      { id: "tpl-web-hero-short", name: "Short hero", ratio: "2.4:1", dim: "1920 x 800", default: false },
+      { id: "tpl-web-feature", name: "Feature", ratio: "3:2", dim: "1200 x 800", default: false },
+    ],
+  },
+  collateral: {
+    label: "Print collateral",
+    formats: [
+      { id: "tpl-print-square", name: "Square", ratio: "1:1", dim: "2400 x 2400", default: true },
+      { id: "tpl-print-landscape", name: "Landscape", ratio: "3:2", dim: "2400 x 1600", default: false },
+    ],
+  },
+  flexible: {
+    label: "Flexible",
+    formats: [
+      { id: "tpl-flex-square", name: "High-res square", ratio: "1:1", dim: "2400 x 2400", default: true },
     ],
   },
 };
@@ -848,6 +887,9 @@ const state = {
     referenceOpen: false,
     directionOpen: false,
     direction: "",
+    // Template-specific fields
+    targetUses: [],
+    templateFormats: [],
   },
   brain: {
     stage: "empty",
@@ -2300,6 +2342,11 @@ function renderStudioSetup() {
   const cat = studioCategories.find((c) => c.id === state.studio.category);
   if (!cat) return renderChooser();
 
+  // Brand template has its own setup flow
+  if (cat.id === "template") {
+    return renderTemplateSetup(cat);
+  }
+
   // Social image is the first implemented category
   if (cat.id !== "social") {
     return shell(`
@@ -2492,6 +2539,174 @@ function renderStudioSetup() {
       <div class="actions">
         <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
         <button class="button primary" type="button" data-action="studio-continue-preflight" ${hasFormats && approved ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
+      </div>
+    </section>
+  `);
+}
+
+function renderTemplateSetup(cat) {
+  const approved = approvedBrainForProduction();
+  const campaigns = state.campaigns || [];
+  const targetUses = state.studio.targetUses;
+  const templateFormats = state.studio.templateFormats;
+  const hasFormats = templateFormats.length > 0;
+
+  // Build format groups by target use
+  const formatGroupsHtml = targetUses.map((useId) => {
+    const use = studioTemplateFormats[useId];
+    if (!use) return "";
+    const useHasActive = use.formats.some((f) => templateFormats.includes(f.id));
+    return `
+      <div class="studio-format-group">
+        <span class="studio-format-group-label">${escapeHtml(use.label)}</span>
+        <div class="studio-format-tags">
+          ${use.formats.map((f) => {
+            const isActive = templateFormats.includes(f.id);
+            return `
+              <button class="studio-format-tag ${isActive ? "active" : "inactive"}" type="button" data-action="toggle-template-format" data-id="${f.id}" data-use="${useId}">
+                <span>${escapeHtml(f.name)}</span>
+                <span class="studio-format-ratio">${escapeHtml(f.ratio)}</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+        ${!useHasActive ? `<span class="studio-format-warning">No formats selected for ${escapeHtml(use.label)}. Pick at least one, or deselect the use.</span>` : ""}
+      </div>
+    `;
+  }).join("");
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(cat.name, "Create a reusable surface, environment, or composition foundation. Approved templates become locked assets available as inputs for future production.")}
+
+      <div class="content-grid">
+        <div>
+          <section class="card">
+            <div class="card-header"><h2>Your brief</h2></div>
+
+            <div class="field-grid">
+              <div class="field full">
+                <label for="studio-brief">Describe the surface</label>
+                <span class="field-note">What it looks like and where to leave open space for elements and text.</span>
+                <textarea id="studio-brief" data-action="studio-brief-input" placeholder="Dark gradient using our navy and teal, lighter at the top third. Leave the bottom two-thirds open for product placement and text.">${escapeHtml(state.studio.brief)}</textarea>
+              </div>
+
+              <div class="field full">
+                <label>Where will this be used?</label>
+                <span class="field-note">Pick one or more. Drives output sizes and composition rules.</span>
+                <div class="studio-platform-grid">
+                  ${Object.entries(studioTemplateFormats).map(([id, u]) => `
+                    <button class="studio-platform-chip ${targetUses.includes(id) ? "selected" : ""}" type="button" data-action="toggle-template-use" data-id="${id}">
+                      ${escapeHtml(u.label)}
+                    </button>
+                  `).join("")}
+                </div>
+              </div>
+
+              ${targetUses.length ? `
+                <div class="field full">
+                  <div class="studio-formats-panel">
+                    <div class="studio-formats-header">
+                      <span class="section-label">Output formats</span>
+                      <span class="mini-pill">${templateFormats.length} ${templateFormats.length === 1 ? "image" : "images"}</span>
+                    </div>
+                    ${formatGroupsHtml}
+                  </div>
+                </div>
+              ` : ""}
+
+              <div class="field full">
+                <label for="studio-campaign">Campaign</label>
+                <div class="studio-campaign-row">
+                  <select id="studio-campaign" data-action="studio-campaign-change">
+                    <option value="">No campaign</option>
+                    ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">Optional. Links to a campaign direction.</span>
+                </div>
+              </div>
+            </div>
+
+            ${state.studio.referenceOpen ? `
+              <div class="studio-additive-section">
+                <div class="studio-additive-header">
+                  <span class="section-label">Reference image</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="referenceOpen" aria-label="Remove reference image">&times;</button>
+                </div>
+                <span class="field-note">A surface or texture to draw from. Used as creative direction, not copied.</span>
+                <div class="studio-dropzone">
+                  Drop an image or click to browse
+                </div>
+              </div>
+            ` : ""}
+
+            ${state.studio.directionOpen ? `
+              <div class="studio-additive-section">
+                <div class="studio-additive-header">
+                  <span class="section-label">Creative direction</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
+                </div>
+                <p class="field-note field-spaced">Art direction beyond the Brand Brain. This job only.</p>
+                <textarea data-action="studio-direction-input" placeholder="Moody, atmospheric. Inspired by the studio lighting in our spring campaign photography.">${escapeHtml(state.studio.direction)}</textarea>
+              </div>
+            ` : ""}
+
+            <div class="studio-additive-links">
+              ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
+              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+            </div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="card">
+            <div class="card-header">
+              <h2>How templates are evaluated</h2>
+            </div>
+            <ul class="exact-list">
+              <li>Works as a foundation for placing elements and text on top</li>
+              <li>Open zones are clear and usable at all selected sizes</li>
+              <li>Crops well across the target aspect ratios</li>
+              <li>No generated text or lettering</li>
+            </ul>
+            <p class="field-note" style="margin-top: var(--space-3);">The system evaluates whether the surface supports composition, not whether it stands on its own as a finished image.</p>
+          </section>
+          <section class="card">
+            <div class="card-header">
+              <h2>Guidance applied</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not active")}</span></li>
+              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
+              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not active")}</span></li>
+            </ul>
+          </section>
+          ${state.studio.campaignId ? (() => {
+            const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
+            return campaign ? `
+            <section class="card surface-accent surface-accent-governed">
+              <div class="card-header">
+                <h2>Campaign direction</h2>
+                <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
+              </div>
+              <ul class="exact-list">
+                ${campaign.campaignIdea ? `<li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>` : ""}
+                ${campaign.messageTerritory ? `<li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>` : ""}
+                ${campaign.explore ? `<li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>` : ""}
+              </ul>
+            </section>
+            ` : "";
+          })() : ""}
+          <div class="studio-aside-note">
+            <span class="field-note">Brand Brain, palette, and production knowledge applied automatically per format.</span>
+          </div>
+        </aside>
+      </div>
+
+      <div class="actions">
+        <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
+        <button class="button primary" type="button" data-action="template-continue-preflight" ${hasFormats && approved ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
       </div>
     </section>
   `);
@@ -5127,6 +5342,8 @@ root.addEventListener("click", (event) => {
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
+    state.studio.targetUses = [];
+    state.studio.templateFormats = [];
     navigate("studio-setup");
   }
   if (action === "back-to-studio") {
@@ -5206,6 +5423,50 @@ root.addEventListener("click", (event) => {
           const legacyPlacement = Object.keys(placementFormats).find((p) => p.toLowerCase().includes(platform.label.toLowerCase()));
           if (legacyPlacement) state.brief.placement = legacyPlacement;
           state.brief.format = match.ratio + (match.ratio.includes(":") && parseInt(match.ratio) > 1 ? " landscape" : parseInt(match.ratio.split(":")[0]) < parseInt(match.ratio.split(":")[1] || "1") ? " portrait" : " square");
+          break;
+        }
+      }
+    }
+    void prepareProductionPreflight();
+  }
+  if (action === "toggle-template-use") {
+    const useId = target.dataset.id;
+    const uses = state.studio.targetUses;
+    const idx = uses.indexOf(useId);
+    if (idx >= 0) {
+      uses.splice(idx, 1);
+      // Remove formats belonging to this use
+      const useFormats = studioTemplateFormats[useId]?.formats || [];
+      state.studio.templateFormats = state.studio.templateFormats.filter((fid) => !useFormats.some((f) => f.id === fid));
+    } else {
+      uses.push(useId);
+      // Add default formats for this use
+      const useFormats = studioTemplateFormats[useId]?.formats || [];
+      useFormats.forEach((f) => { if (f.default && !state.studio.templateFormats.includes(f.id)) state.studio.templateFormats.push(f.id); });
+    }
+    render();
+  }
+  if (action === "toggle-template-format") {
+    const fid = target.dataset.id;
+    const idx = state.studio.templateFormats.indexOf(fid);
+    if (idx >= 0) state.studio.templateFormats.splice(idx, 1);
+    else state.studio.templateFormats.push(fid);
+    render();
+  }
+  if (action === "template-continue-preflight") {
+    // Bridge template state to legacy preflight
+    state.selectedDeliverable = deliverables[0];
+    state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
+    state.activeCampaignId = state.studio.campaignId || null;
+    state.brief.scene = state.studio.brief;
+    // Use the first active template format for the legacy single-format path
+    const firstTplFormat = state.studio.templateFormats[0];
+    if (firstTplFormat) {
+      for (const [useId, use] of Object.entries(studioTemplateFormats)) {
+        const match = use.formats.find((f) => f.id === firstTplFormat);
+        if (match) {
+          state.brief.placement = "Brand template";
+          state.brief.format = match.dim.replace(" x ", "x");
           break;
         }
       }

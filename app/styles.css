@@ -6174,6 +6174,7 @@ button.ws-attention-item:hover {
 .studio-icon-slides::before { content: "▭"; }
 .studio-icon-print::before { content: "◫"; }
 .studio-icon-product::before { content: "◎"; }
+.studio-icon-template::before { content: "▤"; }
 
 /* Platform picker chips */
 
