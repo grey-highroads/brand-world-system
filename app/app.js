@@ -991,7 +991,8 @@ function renderGenerationBanner() {
   const completedElsewhere = state.production.status === "complete"
     && state.screen !== "result"
     && state.production.job?.status === "complete"
-    && !state.production.bannerDismissed;
+    && !state.production.bannerDismissed
+    && !state.production.approved;
   const failedElsewhere = state.production.status === "error"
     && state.screen !== "result"
     && !state.production.bannerDismissed;
@@ -2241,7 +2242,7 @@ function renderChooser() {
           ? `${state.brandName} Brand Brain v${state.brain.approvedVersion} is ready. Each type carries its own format options, composition rules, and production knowledge.`
           : `Build and approve the ${state.brandName} Brand Brain first, then start creating.`,
       )}
-      ${state.production.job?.status === "complete" ? `<section class="production-resume"><span><strong>Your latest output is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated output")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
+      ${state.production.job?.status === "complete" && !state.production.approved && !state.production.bannerDismissed ? `<section class="production-resume"><span><strong>Your latest output is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated output")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
       ${affectedOutputs.length ? `
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
@@ -5739,6 +5740,7 @@ root.addEventListener("click", (event) => {
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
     state.production.approved = true;
+    state.production.bannerDismissed = true;
     // Log consumption record
     const job = state.production.job;
     if (job?.generationPackage) {
@@ -5824,9 +5826,11 @@ root.addEventListener("click", (event) => {
   if (action === "start-new") {
     state.production.status = "idle";
     state.production.package = null;
+    state.production.job = null;
     state.production.error = "";
     state.production.recovered = false;
     state.production.approved = false;
+    state.production.bannerDismissed = true;
     state.production.feedbackOpen = false;
     state.production.feedbackDraft = "";
     state.production.feedbackScope = "this-output";
