@@ -922,7 +922,12 @@ function currentCrumb() {
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
   if (state.screen === "chooser") return "Design Studio";
   if (state.screen === "studio-setup") return `Design Studio / ${escapeHtml(studioCategoryLabel(state.studio.category))}`;
-  if (state.screen === "campaign-creation") return "Design Studio / New campaign";
+  if (state.screen === "campaigns") return "Campaigns";
+  if (state.screen === "campaign-creation") return "Campaigns / New campaign";
+  if (state.screen === "campaign-workspace") {
+    const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+    return `Campaigns / ${escapeHtml(campaign?.name || "Campaign")}`;
+  }
   if (state.screen === "brief") return "Design Studio / Brand world image";
   if (state.screen === "preflight") return "Design Studio / Brand world image / Preflight";
   return "Design Studio / Brand world image / Result";
@@ -952,10 +957,10 @@ function shell(content) {
 
         <nav class="sidebar-nav" aria-label="Primary navigation">
           ${navItem("Workspace", state.screen === "workspace", "workspace")}
-          ${navItem("Design Studio", !inBrain && state.screen !== "workspace", "chooser")}
           ${navItem("Brand brain", inBrain, "brand-brain")}
+          ${navItem("Design Studio", state.screen === "chooser" || state.screen === "studio-setup" || state.screen === "brief" || state.screen === "preflight" || state.screen === "result", "chooser")}
+          ${navItem("Campaigns", state.screen === "campaigns" || state.screen === "campaign-creation" || state.screen === "campaign-workspace", "campaigns")}
           ${navItem("Library", false)}
-          ${navItem("Activity", false)}
         </nav>
 
         <div class="sidebar-footer">
@@ -1286,7 +1291,7 @@ function brainOverviewAction() {
     };
   }
   return {
-    label: "Start production",
+    label: "Go to Design Studio",
     detail: `Brand Brain v${state.brain.artifactVersion} is ready to guide production work.`,
     action: "chooser",
   };
@@ -1946,7 +1951,7 @@ function renderBrainGuidance() {
             <p>${ready ? "Future production packages can pin this exact version. Later edits will create a new version." : "Approve this stored version, comment directly on a passage, or leave overall feedback."}</p>
             ${
               ready
-                ? `<button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Start production</button>`
+                ? `<button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Go to Design Studio</button>`
                 : `
                   <button class="button primary" type="button" data-action="approve-brain-artifact">Approve for production</button>
                   ${commentCount ? `<button class="button secondary" type="button" data-action="create-comment-revision">Prepare revision from inline feedback</button>` : ""}
@@ -2138,7 +2143,7 @@ function renderWorkspace() {
         ${campaigns.map((c) => {
           const count = outputsForCampaign(c.id).length;
           return `
-            <button class="ws-campaign-item" type="button" data-action="select-creative-mode" data-id="campaign" data-campaign-shortcut="${c.id}">
+            <button class="ws-campaign-item" type="button" data-action="open-campaign" data-id="${c.id}">
               <span class="ws-campaign-info">
                 <strong>${escapeHtml(c.name)}</strong>
                 <span>${escapeHtml(c.objective || c.description || "")}</span>
@@ -2215,9 +2220,6 @@ function renderWorkspace() {
 function renderChooser() {
   const approved = approvedBrainForProduction();
   const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
-
-  if (state.creativeMode === "campaign" && !state.activeCampaignId) return renderCampaignChooser();
-  if (state.activeCampaignId) return renderCampaignWorkspace();
 
   const recentOutputs = state.outputs
     .slice()
@@ -2492,35 +2494,47 @@ function renderStudioSetup() {
   `);
 }
 
-function renderCampaignChooser() {
+function renderCampaigns() {
   const campaigns = state.campaigns;
-  const campaignCards = campaigns.map((campaign) => `
-    <button class="card chooser-card" type="button" data-action="select-campaign" data-id="${escapeHtml(campaign.id)}">
-      <div class="card-header">
-        <h2>${escapeHtml(campaign.name)}</h2>
-        <span class="mini-pill">${outputsForCampaign(campaign.id).length} outputs</span>
-      </div>
-      <p>${escapeHtml(campaign.description)}</p>
-      <span class="chooser-contract">${escapeHtml(campaign.objective)}</span>
-    </button>
-  `).join("");
+  const approved = approvedBrainForProduction();
+
+  const campaignCards = campaigns.map((campaign) => {
+    const outputs = outputsForCampaign(campaign.id);
+    const approvedCount = outputs.filter((o) => o.status === "approved").length;
+    return `
+      <button class="card chooser-card" type="button" data-action="open-campaign" data-id="${escapeHtml(campaign.id)}">
+        <div class="card-header">
+          <h2>${escapeHtml(campaign.name)}</h2>
+          <span class="mini-pill">${outputs.length} ${outputs.length === 1 ? "output" : "outputs"}</span>
+        </div>
+        <p>${escapeHtml(campaign.description)}</p>
+        <span class="chooser-contract">${escapeHtml(campaign.objective)}${approvedCount ? ` · ${approvedCount} approved` : ""}</span>
+      </button>
+    `;
+  }).join("");
 
   return shell(`
     <section class="workspace">
-      ${pageHeader("Choose a campaign", `Select an existing campaign or create a new one for ${state.brandName}.`)}
+      ${pageHeader(
+        "Campaigns",
+        campaigns.length
+          ? `${campaigns.length} ${campaigns.length === 1 ? "campaign" : "campaigns"} for ${state.brandName}. Each carries its own creative direction and inherits from the Brand Brain.`
+          : `Define strategic contexts for ${state.brandName}. Each campaign inherits from the Brand Brain and adds its own creative direction.`,
+      )}
       <div class="grid mode-grid">
         ${campaignCards}
-        <button class="card chooser-card new-campaign-card" type="button" data-action="create-campaign">
+        <button class="card chooser-card new-campaign-card" type="button" data-action="create-campaign" ${!approved ? "disabled" : ""}>
           <div class="card-header"><h2>New campaign</h2></div>
-          <p>Define a new strategic context with its own objective, audience, and creative direction.</p>
-          <span class="chooser-contract">Campaign Brain inherits from Brand Brain</span>
+          <p>${approved ? "Define a new strategic context with its own objective, audience, and creative direction." : "Approve the Brand Brain first, then create campaigns."}</p>
+          <span class="chooser-contract">Inherits from Brand Brain${approved ? ` v${state.brain.approvedVersion}` : ""}</span>
         </button>
-      </div>
-      <div class="actions">
-        <button class="button" type="button" data-action="back-to-modes">‹ Back</button>
       </div>
     </section>
   `);
+}
+
+function renderCampaignChooser() {
+  return renderCampaigns();
 }
 
 function newCampaignDraft() {
@@ -4184,7 +4198,9 @@ function render() {
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
   else if (state.screen === "studio-setup") root.innerHTML = renderStudioSetup();
+  else if (state.screen === "campaigns") root.innerHTML = renderCampaigns();
   else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
+  else if (state.screen === "campaign-workspace") root.innerHTML = renderCampaignWorkspace();
   else if (state.screen === "brief") root.innerHTML = renderBrief();
   else if (state.screen === "preflight") root.innerHTML = renderPreflight();
   else if (state.screen === "result") root.innerHTML = renderResult();
@@ -5207,6 +5223,11 @@ root.addEventListener("click", (event) => {
 
   if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
+  if (action === "campaigns") { navigate("campaigns"); }
+  if (action === "open-campaign") {
+    state.activeCampaignId = target.dataset.id;
+    navigate("campaign-workspace");
+  }
   if (action === "select-studio-category") {
     state.studio.category = target.dataset.id;
     state.studio.brief = "";
@@ -5338,13 +5359,12 @@ root.addEventListener("click", (event) => {
       void prepareProductionPreflight();
     }
   }
-  if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; render(); }
+  if (action === "back-to-modes") { state.creativeMode = null; state.activeCampaignId = null; navigate("campaigns"); }
   if (action === "back-to-campaigns") {
     state.activeCampaignId = null;
     state.campaignDraft = null;
-    state.creativeMode = "campaign";
-    if (state.screen === "campaign-creation") navigate("chooser");
-    else render();
+    state.creativeMode = null;
+    navigate("campaigns");
   }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
   if (action === "preview-output") { state.previewOutputId = target.dataset.id; render(); }
@@ -5435,10 +5455,10 @@ root.addEventListener("click", (event) => {
     });
     state.campaignDraft = null;
     state.activeCampaignId = id;
-    state.creativeMode = "campaign";
+    state.creativeMode = null;
     recordBrainHistory(`Campaign created: ${draft.name.trim()}`, `New campaign with objective: ${draft.objective.trim()}`, "complete");
     setToast(`${draft.name.trim()} created. Start making assets.`);
-    navigate("chooser");
+    navigate("campaign-workspace");
   }
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
