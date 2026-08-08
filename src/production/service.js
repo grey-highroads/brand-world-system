@@ -188,7 +188,7 @@ export async function generateProductionImage(body, options) {
       completedAt: new Date().toISOString(),
       imagePathname: savedImage.pathname,
       imageContentType: savedImage.contentType,
-      imagePublicUrl: savedImage.url || null,
+      imagePublicUrl: null,
       usage: result.usage || null,
     };
     await options.productionStore.write(complete);
