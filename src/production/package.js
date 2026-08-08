@@ -9,6 +9,26 @@ import {
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
+// Template compilation uses a subset of guidance. World and creative storytelling
+// push the model toward narrative scenes with focal subjects. Templates need
+// abstract branded surfaces, so those sections are replaced with template-specific
+// production instructions.
+const templateGuidanceOrder = ["foundation", "identity", "rules"];
+
+const templateProductionInstructions = {
+  title: "Template production instructions",
+  body: [
+    "This image is a reusable background surface, not a finished piece.",
+    "Compose for reuse: this template will have product images, text blocks, and other elements placed on top of it in a layout tool.",
+    "Leave clear, intentional open zones where content will be placed. The brief describes where those zones should be.",
+    "Keep the surface abstract, environmental, or textural. Do not include people, products, devices, or narrative scenes.",
+    "Do not render any text, lettering, pseudo-text, or letter-like marks anywhere in the image.",
+    "Design elements (gradients, geometric shapes, subtle patterns, light effects) should support the brand palette and feel without competing with content that will be layered on top.",
+    "The surface should crop well across different aspect ratios if multiple formats are being produced.",
+    "Evaluate this template as a foundation: does it make everything placed on top of it look better and more branded?",
+  ].join(" "),
+};
+
 // ---------------------------------------------------------------------------
 // Deliverable requirements (roadmap item 2)
 // ---------------------------------------------------------------------------
@@ -182,6 +202,14 @@ const formatSizes = {
   "1.91:1 landscape": "1536x800",
   "16:9 landscape": "1536x864",
   "4:3 landscape": "1536x1152",
+  // Template formats (target-use driven)
+  "1080x1080": "1024x1024",
+  "1080x1350": "1024x1280",
+  "1920x1080": "1536x864",
+  "1440x1080": "1536x1152",
+  "1700x2200": "1024x1312",
+  "1920x800": "1536x640",
+  "1200x800": "1536x1024",
 };
 
 function cleanText(value, fallback = "") {
@@ -249,7 +277,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const bannerHeadline = optionalText(brief?.bannerHeadline, "The headline", 300);
   const bannerTextSide = cleanText(brief?.bannerTextSide);
   const selected = new Map(approvedBrain.guidanceSections.map((section) => [section.id, section]));
-  const guidance = guidanceOrder.map((id) => selected.get(id)).filter(Boolean);
+  const isTemplate = placement === "Brand template";
+  const activeGuidanceOrder = isTemplate ? templateGuidanceOrder : guidanceOrder;
+  const guidance = activeGuidanceOrder.map((id) => selected.get(id)).filter(Boolean);
   const dossier = approvedBrain.artifacts?.dossier || {};
 
   // Aesthetic mode from creative direction evidence
@@ -335,17 +365,20 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const sections = [
     {
       title: "Assignment",
-      body: `${modeOpeningLine} Create one ${format} brand world image for ${placement}. ${scene}`,
+      body: isTemplate
+        ? `Create one ${format} reusable brand template surface for ${cleanText(approvedBrain.brandName)}. ${scene}`
+        : `${modeOpeningLine} Create one ${format} brand world image for ${placement}. ${scene}`,
     },
     {
       title: "Brand foundation",
       body: `${cleanText(approvedBrain.brandName)} is ${cleanText(approvedBrain.brandDescription, "the approved brand")}. ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
     },
     ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
+    isTemplate ? templateProductionInstructions : null,
     campaignSection,
     priorOutputs,
     compositionSection,
-    {
+    isTemplate ? null : {
       title: "Audience and feeling",
       body: `${cleanText(dossier.audience)} ${cleanText(dossier.desiredFeeling)}`,
     },
@@ -353,7 +386,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "Visual materials",
       body: [
         dossier.palette?.length ? `Palette: ${dossier.palette.map((color) => `${color.name} (${color.role}, ${color.color})`).join(", ")}.` : "",
-        dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : "",
+        isTemplate ? "" : (dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : ""),
       ].filter(Boolean).join(" "),
     },
     {
@@ -366,13 +399,16 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "Protection",
       body: [
         protection,
+        isTemplate ? "Do not include any people, faces, hands, devices, screens, product packaging, or identifiable objects. The surface must work as a background layer." : "",
         dossier.guardrails?.length ? dossier.guardrails.map((rule) => `${rule.title}: ${rule.body}`).join(" ") : "",
         exclusions ? `Also avoid: ${exclusions}` : "",
       ].filter(Boolean).join(" "),
     },
     {
       title: "Output",
-      body: `Return one finished image only. Compose for ${format} in ${placement}. Keep the result visually specific, believable, and native to ${cleanText(approvedBrain.brandName)} rather than a generic category image.`,
+      body: isTemplate
+        ? `Return one finished background surface only. Compose for ${format}. The result must work as a foundation for placing product images, text, and brand elements on top. It should feel distinctly ${cleanText(approvedBrain.brandName)} rather than generic.`
+        : `Return one finished image only. Compose for ${format} in ${placement}. Keep the result visually specific, believable, and native to ${cleanText(approvedBrain.brandName)} rather than a generic category image.`,
     },
   ].filter((section) => section && section.body);
 
