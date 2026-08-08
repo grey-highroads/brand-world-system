@@ -3741,10 +3741,10 @@ async function ensureThumbnailUrls(pathnames) {
   let resolvedAny = false;
   await Promise.all(missing.map(async (pathname) => {
     try {
-      const response = await fetch("/api/blob/read", {
+      const response = await fetch("/api/blob/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pathname }),
+        body: JSON.stringify({ pathname, mode: "read" }),
       });
       if (!response.ok) return;
       const body = await readApiJson(response);
