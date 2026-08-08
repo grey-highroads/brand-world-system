@@ -63,6 +63,74 @@ const placementFormats = {
   "Website feature": ["16:9 landscape", "4:3 landscape"],
 };
 
+const studioCategories = [
+  { id: "social", name: "Social image", description: "Feed posts, stories, and carousels for any platform.", icon: "image" },
+  { id: "ad", name: "Ad image", description: "Paid social and display ads with copy governance.", icon: "ad" },
+  { id: "website", name: "Website image", description: "Heroes, features, cards, and share images.", icon: "web" },
+  { id: "presentation", name: "Presentation element", description: "Transparent elements and slide backgrounds.", icon: "slides" },
+  { id: "collateral", name: "Sales collateral", description: "High-resolution elements for print and one-pagers.", icon: "print" },
+  { id: "showcase", name: "Product showcase", description: "Product photography, device mockups, and lifestyle scenes.", icon: "product" },
+];
+
+const studioPlatformFormats = {
+  instagram: {
+    label: "Instagram",
+    formats: [
+      { id: "ig-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: true },
+      { id: "ig-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false },
+      { id: "ig-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false },
+      { id: "ig-carousel", name: "Carousel card", ratio: "4:5", dim: "1080 x 1350", default: false },
+    ],
+  },
+  linkedin: {
+    label: "LinkedIn",
+    formats: [
+      { id: "li-square", name: "Feed square", ratio: "1:1", dim: "1200 x 1200", default: true },
+      { id: "li-landscape", name: "Feed landscape", ratio: "1.91:1", dim: "1200 x 627", default: false },
+      { id: "li-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: false },
+    ],
+  },
+  facebook: {
+    label: "Facebook",
+    formats: [
+      { id: "fb-feed", name: "Feed", ratio: "1.91:1", dim: "1200 x 630", default: true },
+      { id: "fb-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: false },
+      { id: "fb-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false },
+      { id: "fb-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false },
+    ],
+  },
+  x: {
+    label: "X",
+    formats: [
+      { id: "x-landscape", name: "Feed", ratio: "16:9", dim: "1600 x 900", default: true },
+      { id: "x-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false },
+    ],
+  },
+  threads: {
+    label: "Threads",
+    formats: [
+      { id: "th-portrait", name: "Feed", ratio: "4:5", dim: "1080 x 1350", default: true },
+    ],
+  },
+  pinterest: {
+    label: "Pinterest",
+    formats: [
+      { id: "pin-standard", name: "Standard pin", ratio: "2:3", dim: "1000 x 1500", default: true },
+      { id: "pin-long", name: "Long pin", ratio: "1:2.1", dim: "1000 x 2100", default: false },
+    ],
+  },
+  tiktok: {
+    label: "TikTok",
+    formats: [
+      { id: "tt-cover", name: "Cover", ratio: "9:16", dim: "1080 x 1920", default: true },
+    ],
+  },
+};
+
+function studioCategoryLabel(id) {
+  return studioCategories.find((c) => c.id === id)?.name || "Setup";
+}
+
 let brainBatch = {
   id: "slake-foundational-library-001",
   name: "SLAKE foundational library",
@@ -765,6 +833,19 @@ const state = {
     // audit trail. Consolidating the two is a deliberate follow-up.
     completedOutputs: [],
   },
+  studio: {
+    category: null,
+    brief: "",
+    platforms: [],
+    activeFormats: [],
+    textOverlay: false,
+    campaignId: "",
+    caption: "",
+    captionOpen: false,
+    referenceOpen: false,
+    directionOpen: false,
+    direction: "",
+  },
   brain: {
     stage: "empty",
     sources: [],
@@ -839,11 +920,12 @@ function currentCrumb() {
   if (state.screen === "brain-guidance") return "Brand brain / Brand guidance";
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
-  if (state.screen === "chooser") return "Production";
-  if (state.screen === "campaign-creation") return "Production / New campaign";
-  if (state.screen === "brief") return "Production / Brand world image";
-  if (state.screen === "preflight") return "Production / Brand world image / Preflight";
-  return "Production / Brand world image / Result";
+  if (state.screen === "chooser") return "Design Studio";
+  if (state.screen === "studio-setup") return `Design Studio / ${escapeHtml(studioCategoryLabel(state.studio.category))}`;
+  if (state.screen === "campaign-creation") return "Design Studio / New campaign";
+  if (state.screen === "brief") return "Design Studio / Brand world image";
+  if (state.screen === "preflight") return "Design Studio / Brand world image / Preflight";
+  return "Design Studio / Brand world image / Result";
 }
 
 function shell(content) {
@@ -870,7 +952,7 @@ function shell(content) {
 
         <nav class="sidebar-nav" aria-label="Primary navigation">
           ${navItem("Workspace", state.screen === "workspace", "workspace")}
-          ${navItem("Production", !inBrain && state.screen !== "workspace", "chooser")}
+          ${navItem("Design Studio", !inBrain && state.screen !== "workspace", "chooser")}
           ${navItem("Brand brain", inBrain, "brand-brain")}
           ${navItem("Library", false)}
           ${navItem("Activity", false)}
@@ -2072,8 +2154,8 @@ function renderWorkspace() {
   const quickStarts = `
     <section class="ws-quick-starts">
       <button class="card ws-quick-card" type="button" data-action="chooser">
-        <strong>Create an asset</strong>
-        <span>Start a new production job from the approved Brand Brain${campaigns.length ? " or a campaign" : ""}.</span>
+        <strong>Design Studio</strong>
+        <span>Create social images, ad assets, product showcases, and more from the approved Brand Brain.</span>
       </button>
       <button class="card ws-quick-card" type="button" data-action="brand-brain">
         <strong>${hasBrain ? "Review the Brand Brain" : "Build the Brand Brain"}</strong>
@@ -2132,25 +2214,31 @@ function renderWorkspace() {
 function renderChooser() {
   const approved = approvedBrainForProduction();
   const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
-  const activeCampaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
 
   if (state.creativeMode === "campaign" && !state.activeCampaignId) return renderCampaignChooser();
   if (state.activeCampaignId) return renderCampaignWorkspace();
 
-  const modeCards = creativeModes.map((mode) => `
-    <button class="card chooser-card ${!approved ? "unavailable" : ""}" type="button" data-action="select-creative-mode" data-id="${mode.id}" ${!approved ? "disabled" : ""}>
-      <div class="card-header"><h2>${escapeHtml(mode.name)}</h2></div>
-      <p>${escapeHtml(mode.description)}</p>
-      <span class="chooser-contract">${escapeHtml(mode.detail)}</span>
+  const recentOutputs = state.outputs
+    .slice()
+    .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
+    .slice(0, 6);
+
+  const categoryCards = studioCategories.map((cat) => `
+    <button class="card studio-card ${!approved ? "unavailable" : ""}" type="button" data-action="select-studio-category" data-id="${cat.id}" ${!approved ? "disabled" : ""}>
+      <span class="studio-card-icon studio-icon-${cat.icon}" aria-hidden="true"></span>
+      <div class="studio-card-body">
+        <h2>${escapeHtml(cat.name)}</h2>
+        <p>${escapeHtml(cat.description)}</p>
+      </div>
     </button>
   `).join("");
 
   return shell(`
     <section class="workspace">
       ${pageHeader(
-        "What are you creating?",
+        "Design Studio",
         approved
-          ? `${state.brandName} Brand Brain v${state.brain.approvedVersion} is ready. Choose how you want to work.`
+          ? `${state.brandName} Brand Brain v${state.brain.approvedVersion} is ready. Each type carries its own format options, composition rules, and production knowledge.`
           : `Build and approve the ${state.brandName} Brand Brain first, then start creating.`,
       )}
       ${state.production.job?.status === "complete" ? `<section class="production-resume"><span><strong>Your latest output is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated output")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
@@ -2170,7 +2258,224 @@ function renderChooser() {
           </div>
         </details>
       ` : ""}
-      <div class="grid mode-grid">${modeCards}</div>
+      <div class="studio-grid">${categoryCards}</div>
+      ${recentOutputs.length ? `
+      <section class="card" style="margin-top: var(--section-gap)">
+        <div class="card-header">
+          <h2>Recent work</h2>
+          <span class="mini-pill">${state.outputs.length} ${state.outputs.length === 1 ? "output" : "outputs"}</span>
+        </div>
+        <div class="ws-output-grid">
+          ${recentOutputs.map((o) => `
+            <button class="ws-output-card" type="button" data-action="preview-output" data-id="${o.id}">
+              ${o.imageUrl
+                ? `<span class="ws-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+                : `<span class="ws-output-thumb ws-thumb-empty"></span>`}
+              <span class="ws-output-info">
+                <strong>${escapeHtml(o.label || "Untitled")}</strong>
+                <span>${escapeHtml(o.campaignName || o.channel || "")}${o.format ? ` &middot; ${escapeHtml(o.format)}` : ""}</span>
+              </span>
+              <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+            </button>
+          `).join("")}
+        </div>
+      </section>
+      ` : ""}
+    </section>
+  `);
+}
+
+function studioActiveFormatCount() {
+  return state.studio.activeFormats.length;
+}
+
+function renderStudioSetup() {
+  const approved = approvedBrainForProduction();
+  const cat = studioCategories.find((c) => c.id === state.studio.category);
+  if (!cat) return renderChooser();
+
+  // Social image is the first implemented category
+  if (cat.id !== "social") {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader(cat.name, cat.description)}
+        <section class="card">
+          <div class="card-header"><h2>Coming soon</h2></div>
+          <p class="page-description">This category is defined in the output type catalog but does not have a setup flow yet. Use the legacy production flow for now.</p>
+        </section>
+        <div class="actions">
+          <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
+          <button class="button primary" type="button" data-action="studio-use-legacy">Use legacy flow</button>
+        </div>
+      </section>
+    `);
+  }
+
+  const campaigns = state.campaigns || [];
+  const platforms = state.studio.platforms;
+  const activeFormats = state.studio.activeFormats;
+  const activeCount = activeFormats.length;
+  const hasFormats = activeCount > 0;
+
+  // Build format groups by platform
+  const formatGroupsHtml = platforms.map((platformId) => {
+    const platform = studioPlatformFormats[platformId];
+    if (!platform) return "";
+    return `
+      <div class="studio-format-group">
+        <span class="studio-format-group-label">${escapeHtml(platform.label)}</span>
+        <div class="studio-format-tags">
+          ${platform.formats.map((f) => {
+            const isActive = activeFormats.includes(f.id);
+            return `
+              <button class="studio-format-tag ${isActive ? "active" : "inactive"}" type="button" data-action="toggle-studio-format" data-id="${f.id}" data-platform="${platformId}">
+                <span>${escapeHtml(f.name)}</span>
+                <span class="studio-format-ratio">${escapeHtml(f.ratio)}</span>
+              </button>
+            `;
+          }).join("")}
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(cat.name, "Describe what you need and pick platforms. The system handles sizes, safe zones, and composition for each format.")}
+
+      <div class="content-grid">
+        <div>
+          <section class="card">
+            <div class="card-header"><h2>Your brief</h2></div>
+
+            <div class="field-grid">
+              <div class="field full">
+                <label for="studio-brief">What are you making?</label>
+                <textarea id="studio-brief" data-action="studio-brief-input" placeholder="Spring collection lifestyle shot with the Yuzu Ginger product on a wooden surface, warm afternoon light">${escapeHtml(state.studio.brief)}</textarea>
+              </div>
+
+              <div class="field full">
+                <label>Platforms</label>
+                <div class="studio-platform-grid">
+                  ${Object.entries(studioPlatformFormats).map(([id, p]) => `
+                    <button class="studio-platform-chip ${platforms.includes(id) ? "selected" : ""}" type="button" data-action="toggle-studio-platform" data-id="${id}">
+                      ${escapeHtml(p.label)}
+                    </button>
+                  `).join("")}
+                </div>
+              </div>
+
+              ${platforms.length ? `
+                <div class="field full">
+                  <div class="studio-formats-panel">
+                    <div class="studio-formats-header">
+                      <span class="section-label">Output formats</span>
+                      <span class="mini-pill">${activeCount} ${activeCount === 1 ? "image" : "images"}</span>
+                    </div>
+                    ${formatGroupsHtml}
+                  </div>
+                </div>
+
+                <div class="field full">
+                  <button class="studio-toggle-row" type="button" data-action="toggle-studio-text-overlay">
+                    <span class="studio-toggle-track ${state.studio.textOverlay ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+                    <span class="studio-toggle-content">
+                      <strong>This image will have text on it</strong>
+                      <span class="field-note">Adjusts composition to leave space for headlines or captions you add in your layout tool.</span>
+                      ${state.studio.textOverlay ? `<span class="field-note" style="margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border-subtle);">The system keeps the subject clear of text-safe zones. You place text in Canva, Figma, or your design tool after export.</span>` : ""}
+                    </span>
+                  </button>
+                </div>
+              ` : ""}
+
+              <div class="field full">
+                <label for="studio-campaign">Campaign</label>
+                <div class="studio-campaign-row">
+                  <select id="studio-campaign" data-action="studio-campaign-change">
+                    <option value="">No campaign</option>
+                    ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">Optional. Links to a campaign direction.</span>
+                </div>
+              </div>
+            </div>
+
+            ${state.studio.captionOpen ? `
+              <div class="studio-additive-section">
+                <div class="studio-additive-header">
+                  <span class="section-label">Post caption</span>
+                  <span class="field-note">Governed by brand voice</span>
+                </div>
+                <p class="field-note" style="margin-bottom: 6px;">Text that accompanies the image in the feed. Not rendered on the image.</p>
+                <textarea data-action="studio-caption-input" placeholder="Write your post text, or leave blank to draft from your Brand Brain">${escapeHtml(state.studio.caption)}</textarea>
+                <span class="field-note">Approved claims available. Prohibited claims blocked.</span>
+              </div>
+            ` : ""}
+
+            ${state.studio.referenceOpen ? `
+              <div class="studio-additive-section">
+                <span class="section-label">Reference image</span>
+                <div class="studio-dropzone">
+                  Drop an image or click to browse
+                </div>
+                <span class="field-note">Used as creative direction, not source material. Provenance and influence tracked.</span>
+              </div>
+            ` : ""}
+
+            ${state.studio.directionOpen ? `
+              <div class="studio-additive-section">
+                <span class="section-label">Creative direction</span>
+                <p class="field-note" style="margin-bottom: 6px;">Art direction beyond the Brand Brain. This job only.</p>
+                <textarea data-action="studio-direction-input" placeholder="Mood, lighting, composition preferences.">${escapeHtml(state.studio.direction)}</textarea>
+              </div>
+            ` : ""}
+
+            <div class="studio-additive-links">
+              ${!state.studio.captionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="captionOpen">+ Add post caption</button>` : ""}
+              ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
+              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+            </div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="card">
+            <div class="card-header">
+              <h2>Guidance applied</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Approve the Brand Brain to use this guidance")}</span></li>
+              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
+              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not active")}</span></li>
+            </ul>
+          </section>
+          ${state.studio.campaignId ? (() => {
+            const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
+            return campaign ? `
+            <section class="card surface-accent surface-accent-governed">
+              <div class="card-header">
+                <h2>Campaign direction</h2>
+                <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
+              </div>
+              <ul class="exact-list">
+                ${campaign.campaignIdea ? `<li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>` : ""}
+                ${campaign.messageTerritory ? `<li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>` : ""}
+                ${campaign.explore ? `<li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>` : ""}
+              </ul>
+            </section>
+            ` : "";
+          })() : ""}
+          <div class="studio-aside-note">
+            <span class="field-note">Brand Brain, palette, and production knowledge applied automatically per format.</span>
+          </div>
+        </aside>
+      </div>
+
+      <div class="actions">
+        <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
+        <button class="button primary" type="button" data-action="studio-continue-preflight" ${hasFormats && approved ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
+      </div>
     </section>
   `);
 }
@@ -3866,6 +4171,7 @@ function render() {
   else if (state.screen === "brain-guidance") root.innerHTML = renderBrainGuidance();
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
+  else if (state.screen === "studio-setup") root.innerHTML = renderStudioSetup();
   else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
   else if (state.screen === "brief") root.innerHTML = renderBrief();
   else if (state.screen === "preflight") root.innerHTML = renderPreflight();
@@ -4875,6 +5181,96 @@ root.addEventListener("click", (event) => {
 
   if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
+  if (action === "select-studio-category") {
+    state.studio.category = target.dataset.id;
+    state.studio.brief = "";
+    state.studio.platforms = [];
+    state.studio.activeFormats = [];
+    state.studio.textOverlay = false;
+    state.studio.campaignId = "";
+    state.studio.caption = "";
+    state.studio.captionOpen = false;
+    state.studio.referenceOpen = false;
+    state.studio.directionOpen = false;
+    state.studio.direction = "";
+    navigate("studio-setup");
+  }
+  if (action === "back-to-studio") {
+    state.studio.category = null;
+    navigate("chooser");
+  }
+  if (action === "studio-use-legacy") {
+    state.creativeMode = "explore";
+    state.activeCampaignId = null;
+    state.selectedDeliverable = deliverables[0];
+    navigate("brief");
+  }
+  if (action === "toggle-studio-platform") {
+    const platformId = target.dataset.id;
+    const platforms = state.studio.platforms;
+    const idx = platforms.indexOf(platformId);
+    if (idx >= 0) {
+      platforms.splice(idx, 1);
+      const platformFormats = studioPlatformFormats[platformId]?.formats || [];
+      state.studio.activeFormats = state.studio.activeFormats.filter((fid) => !platformFormats.some((f) => f.id === fid));
+    } else {
+      platforms.push(platformId);
+      const platformFormats = studioPlatformFormats[platformId]?.formats || [];
+      platformFormats.forEach((f) => { if (f.default && !state.studio.activeFormats.includes(f.id)) state.studio.activeFormats.push(f.id); });
+    }
+    render();
+  }
+  if (action === "toggle-studio-format") {
+    const fid = target.dataset.id;
+    const idx = state.studio.activeFormats.indexOf(fid);
+    if (idx >= 0) state.studio.activeFormats.splice(idx, 1);
+    else state.studio.activeFormats.push(fid);
+    render();
+  }
+  if (action === "toggle-studio-text-overlay") {
+    state.studio.textOverlay = !state.studio.textOverlay;
+    render();
+  }
+  if (action === "studio-brief-input") {
+    state.studio.brief = target.value;
+  }
+  if (action === "studio-campaign-change") {
+    state.studio.campaignId = target.value;
+    render();
+  }
+  if (action === "studio-caption-input") {
+    state.studio.caption = target.value;
+  }
+  if (action === "studio-direction-input") {
+    state.studio.direction = target.value;
+  }
+  if (action === "studio-toggle-section") {
+    const section = target.dataset.section;
+    state.studio[section] = !state.studio[section];
+    render();
+  }
+  if (action === "studio-continue-preflight") {
+    // Bridge to existing preflight: map studio state to legacy brief state
+    state.selectedDeliverable = deliverables[0];
+    state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
+    state.activeCampaignId = state.studio.campaignId || null;
+    state.brief.scene = state.studio.brief;
+    // Use the first active format for the legacy single-format path
+    const firstFormat = state.studio.activeFormats[0];
+    if (firstFormat) {
+      for (const [platformId, platform] of Object.entries(studioPlatformFormats)) {
+        const match = platform.formats.find((f) => f.id === firstFormat);
+        if (match) {
+          // Map to legacy placement format
+          const legacyPlacement = Object.keys(placementFormats).find((p) => p.toLowerCase().includes(platform.label.toLowerCase()));
+          if (legacyPlacement) state.brief.placement = legacyPlacement;
+          state.brief.format = match.ratio + (match.ratio.includes(":") && parseInt(match.ratio) > 1 ? " landscape" : parseInt(match.ratio.split(":")[0]) < parseInt(match.ratio.split(":")[1] || "1") ? " portrait" : " square");
+          break;
+        }
+      }
+    }
+    void prepareProductionPreflight();
+  }
   if (action === "select-creative-mode") {
     state.creativeMode = target.dataset.id;
     if (target.dataset.campaignShortcut) {
