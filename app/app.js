@@ -4663,15 +4663,17 @@ function recordOutput(job, extras = {}) {
   return existing || record;
 }
 
-function applyProductionJob(job, recovered = false) {
+function applyProductionJob(job, hydrating = false) {
   if (!job) return false;
   state.production.job = job;
   state.production.package = job.generationPackage || state.production.package;
   state.production.status = job.status === "complete" ? "complete" : job.status === "error" ? "error" : "generating";
   state.production.error = job.error || "";
-  state.production.recovered = recovered;
-  if (job.status === "complete") { recordOutput(job); void persistOutputs(); }
-  if (recovered && job.status === "complete") setToast("The completed image was recovered after the connection dropped");
+  state.production.recovered = hydrating;
+  if (job.status === "complete" && !hydrating) {
+    recordOutput(job);
+    void persistOutputs();
+  }
   return true;
 }
 
@@ -4725,7 +4727,10 @@ async function startProductionGeneration() {
     applyProductionJob(body.job);
   } catch (error) {
     const recovered = await recoverProductionJob(jobId);
-    if (recovered) applyProductionJob(recovered, true);
+    if (recovered) {
+      applyProductionJob(recovered);
+      setToast("The completed image was recovered after the connection dropped");
+    }
     else {
       state.production.status = "error";
       state.production.error = `${error.message || "The image response was lost."} The reviewed package is still saved, so you can try again without rebuilding the Brand Brain.`;
@@ -4818,7 +4823,16 @@ async function hydrateProductionJob() {
   if (typeof fetch !== "function") return;
   try {
     const job = await fetchCurrentProductionJob();
-    if (job) applyProductionJob(job, true);
+    if (!job) return;
+    // If the output was already approved (persisted in the outputs list),
+    // restore the job reference for the result screen but do not reactivate
+    // banners or the resume card.
+    const alreadyApproved = state.outputs.some((o) => o.id === job.jobId && o.status === "approved");
+    applyProductionJob(job, true);
+    if (alreadyApproved) {
+      state.production.approved = true;
+      state.production.bannerDismissed = true;
+    }
   } catch {
     // Production remains available even when no earlier job can be restored.
   }
@@ -5979,5 +5993,6 @@ async function createClient() {
 render();
 void hydrateClients();
 void hydrateStoredBrain();
-void hydrateProductionJob();
-void hydrateOutputs();
+// Outputs must hydrate before the production job so the job hydration
+// can check whether its output was already approved.
+void hydrateOutputs().then(() => hydrateProductionJob());
