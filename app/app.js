@@ -864,6 +864,8 @@ const state = {
   references: [],
   lockedAssetId: "",
   sourcePickerOpen: false,
+  // Cache of presigned GET URLs for private source-file thumbnails, keyed by blobPathname.
+  thumbnailUrls: {},
   production: {
     status: "idle",
     package: null,
@@ -2749,6 +2751,9 @@ function renderSalesSetup(cat) {
 
   // Find templates tagged in the brain sources, filtered by the selected format ratio
   const templates = productionTemplates(fmt.ratio);
+  // Resolve any missing thumbnail URLs in the background; re-renders when ready.
+  const unresolvedThumbs = templates.filter((t) => !t.thumbUrl && t.blobPathname).map((t) => t.blobPathname);
+  if (unresolvedThumbs.length) void ensureThumbnailUrls(unresolvedThumbs);
 
   const selectedTemplate = templates.find((t) => t.id === state.studio.salesTemplateId);
   const hasElement = (state.studio.salesElement || "").trim().length > 0;
@@ -3695,16 +3700,47 @@ function productionTemplates(ratioFilter) {
       const ratio = source.templateMeta.ratio || "";
       if (ratioFilter && ratio !== ratioFilter) return null;
       const ratioLabels = { "16:9": "Slide 16:9", "4:3": "Slide 4:3", "17:22": "One-pager" };
+      // Private blobs need a presigned URL. Use a data-URL fallback (local dev)
+      // or the cached presigned URL resolved by ensureThumbnailUrls().
+      const cachedThumb = file.data || state.thumbnailUrls[file.blobPathname] || null;
       return {
         id: source.id,
         name: source.name,
         ratio,
         ratioLabel: ratioLabels[ratio] || ratio,
         fileName: file.name,
-        thumbUrl: file.blobUrl || null,
+        blobPathname: file.blobPathname,
+        thumbUrl: cachedThumb,
       };
     })
     .filter(Boolean);
+}
+
+// Resolve presigned GET URLs for private source thumbnails and cache them.
+// Called when a screen needs to display thumbnails; re-renders once resolved.
+async function ensureThumbnailUrls(pathnames) {
+  if (typeof fetch !== "function") return;
+  const missing = pathnames.filter((p) => p && !state.thumbnailUrls[p]);
+  if (!missing.length) return;
+  let resolvedAny = false;
+  await Promise.all(missing.map(async (pathname) => {
+    try {
+      const response = await fetch("/api/blob/read", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pathname }),
+      });
+      if (!response.ok) return;
+      const body = await readApiJson(response);
+      if (body.presignedUrl) {
+        state.thumbnailUrls[pathname] = body.presignedUrl;
+        resolvedAny = true;
+      }
+    } catch {
+      // Leave unresolved; the thumbnail stays blank.
+    }
+  }));
+  if (resolvedAny) render();
 }
 
 function renderLockedAssetPicker(options = {}) {
