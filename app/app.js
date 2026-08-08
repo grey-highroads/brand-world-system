@@ -2784,71 +2784,66 @@ function renderCampaignWorkspace() {
 
   return shell(`
     <section class="workspace">
-      ${pageHeader(campaign.name, campaign.description || campaign.objective)}
-
-      <div class="content-grid">
-        <div>
-          <section class="card">
-            <div class="card-header">
-              <h2>Campaign direction</h2>
-              ${campaign.channels?.length ? `<span class="mini-pill">${campaign.channels.join(", ")}</span>` : ""}
-            </div>
-            <div class="cparam-grid">
-              ${fieldCards}
-            </div>
-          </section>
-
-          <section class="card">
-            <div class="card-header">
-              <h2>Campaign work</h2>
-              <span class="mini-pill">${campaignOutputs.length} ${campaignOutputs.length === 1 ? "output" : "outputs"}${approvedCount ? `, ${approvedCount} approved` : ""}</span>
-            </div>
-            ${campaignOutputs.length ? `
-              <div class="campaign-output-grid">
-                ${campaignOutputs.map((o) => `
-                  <button class="campaign-output-card" type="button" data-action="preview-output" data-id="${o.id}">
-                    ${o.imageUrl
-                      ? `<span class="campaign-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.campaign-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
-                      : `<span class="campaign-output-thumb ws-thumb-empty"></span>`}
-                    <span class="campaign-output-info">
-                      <strong>${escapeHtml(o.label || "Untitled")}</strong>
-                      <span>${escapeHtml(o.format || "")}${o.brainVersion ? ` · Brain v${o.brainVersion}` : ""}</span>
-                    </span>
-                    <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
-                  </button>
-                `).join("")}
-              </div>
-            ` : `
-              <p class="page-description">No outputs yet. Create assets in the Design Studio and link them to this campaign.</p>
-            `}
-          </section>
-        </div>
-
-        <aside>
-          <section class="card">
-            <div class="card-header">
-              <h2>Create for this campaign</h2>
-            </div>
-            <p class="page-description">Open the Design Studio to create new assets. Select this campaign from the campaign picker to link them here.</p>
-            <button class="button primary" type="button" data-action="studio-from-campaign" ${approved ? "" : "disabled"}>Open Design Studio</button>
-          </section>
-
-          <section class="card">
-            <div class="card-header">
-              <h2>Brand guidance</h2>
-              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
-            </div>
-            <ul class="exact-list">
-              <li><strong>Foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not available")}</span></li>
-              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not available")}</span></li>
-            </ul>
-          </section>
-
-          <div class="actions actions-compact">
-            <button class="button" type="button" data-action="back-to-campaigns">&lsaquo; All campaigns</button>
+      <header class="page-header">
+        <div class="campaign-header-row">
+          <div>
+            <h1 class="page-title">${escapeHtml(campaign.name)}</h1>
+            <p class="page-description">${escapeHtml(campaign.description || campaign.objective)}</p>
           </div>
-        </aside>
-      </div>
+          <button class="button" type="button" data-action="back-to-campaigns">&lsaquo; All campaigns</button>
+        </div>
+      </header>
+
+      <section class="campaign-cta-bar">
+        <span>Create assets for this campaign in the Design Studio. The campaign direction compiles into every output.</span>
+        <button class="button primary" type="button" data-action="studio-from-campaign" ${approved ? "" : "disabled"}>Open Design Studio</button>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Campaign direction</h2>
+          ${campaign.channels?.length ? `<span class="mini-pill">${campaign.channels.join(", ")}</span>` : ""}
+        </div>
+        <div class="cparam-grid cparam-grid-wide">
+          ${fieldCards}
+        </div>
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Campaign work</h2>
+          <span class="mini-pill">${campaignOutputs.length} ${campaignOutputs.length === 1 ? "output" : "outputs"}${approvedCount ? `, ${approvedCount} approved` : ""}</span>
+        </div>
+        ${campaignOutputs.length ? `
+          <div class="campaign-output-grid">
+            ${campaignOutputs.map((o) => `
+              <button class="campaign-output-card" type="button" data-action="preview-output" data-id="${o.id}">
+                ${o.imageUrl
+                  ? `<span class="campaign-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.campaign-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+                  : `<span class="campaign-output-thumb ws-thumb-empty"></span>`}
+                <span class="campaign-output-info">
+                  <strong>${escapeHtml(o.label || "Untitled")}</strong>
+                  <span>${escapeHtml(o.format || "")}${o.brainVersion ? ` · Brain v${o.brainVersion}` : ""}</span>
+                </span>
+                <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+              </button>
+            `).join("")}
+          </div>
+        ` : `
+          <p class="page-description">No outputs yet. Use the Design Studio button above to create assets linked to this campaign.</p>
+        `}
+      </section>
+
+      <section class="card">
+        <div class="card-header">
+          <h2>Brand guidance</h2>
+          <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+        </div>
+        <ul class="exact-list">
+          <li><strong>Foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not available")}</span></li>
+          <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not available")}</span></li>
+        </ul>
+      </section>
     </section>
   `);
 }

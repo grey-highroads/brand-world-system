@@ -6634,3 +6634,47 @@ button.ws-attention-item:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Campaign single-column layout ───────────────────────────── */
+
+.campaign-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.campaign-cta-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  margin-bottom: var(--section-gap);
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.campaign-cta-bar .button {
+  flex-shrink: 0;
+}
+
+.cparam-grid-wide {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+@media (max-width: 900px) {
+  .cparam-grid-wide {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .cparam-grid-wide {
+    grid-template-columns: 1fr;
+  }
+}
