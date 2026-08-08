@@ -153,6 +153,12 @@ const studioTemplateFormats = {
   },
 };
 
+const salesOutputFormats = {
+  "slide-16x9": { label: "Slide (16:9 widescreen)", ratio: "16:9", dim: "1920 x 1080", size: "1536x864" },
+  "slide-4x3": { label: "Slide (4:3 standard)", ratio: "4:3", dim: "1440 x 1080", size: "1536x1152" },
+  "one-pager": { label: "One-pager (8.5 x 11)", ratio: "17:22", dim: "1700 x 2200", size: "1024x1312" },
+};
+
 function studioCategoryLabel(id) {
   return studioCategories.find((c) => c.id === id)?.name || "Setup";
 }
@@ -877,6 +883,11 @@ const state = {
     // Template-specific fields
     targetUses: [],
     templateFormats: [],
+    // Sales enablement fields
+    salesFormat: "slide-16x9",
+    salesTemplateId: "",
+    salesElement: "",
+    salesFeature: "",
   },
   brain: {
     stage: "empty",
@@ -2334,6 +2345,11 @@ function renderStudioSetup() {
     return renderTemplateSetup(cat);
   }
 
+  // Sales enablement has its own setup flow
+  if (cat.id === "sales") {
+    return renderSalesSetup(cat);
+  }
+
   // Social image is the first implemented category
   if (cat.id !== "social") {
     return shell(`
@@ -2694,6 +2710,182 @@ function renderTemplateSetup(cat) {
       <div class="actions">
         <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
         <button class="button primary" type="button" data-action="template-continue-preflight" ${hasFormats && approved ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
+      </div>
+    </section>
+  `);
+}
+
+function renderSalesSetup(cat) {
+  const approved = approvedBrainForProduction();
+  const campaigns = state.campaigns || [];
+  const fmt = salesOutputFormats[state.studio.salesFormat] || salesOutputFormats["slide-16x9"];
+
+  // Find templates tagged in the brain sources (future: real template assets)
+  // For now, show an empty state that explains the upload path.
+  const templates = [];
+
+  const selectedTemplate = templates.find((t) => t.id === state.studio.salesTemplateId);
+  const hasElement = (state.studio.salesElement || "").trim().length > 0;
+  const canProceed = approved && hasElement;
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(cat.name, "Pick a template, describe the content element, and the system generates a polished visual on your branded background.")}
+
+      <div class="content-grid">
+        <div>
+          <section class="card">
+            <div class="card-header"><h2>Setup</h2></div>
+
+            <div class="field-grid">
+              <div class="field full">
+                <label>Output format</label>
+                <span class="field-note">Determines dimensions and which templates are available.</span>
+                <div class="studio-platform-grid">
+                  ${Object.entries(salesOutputFormats).map(([id, f]) => `
+                    <button class="studio-platform-chip ${state.studio.salesFormat === id ? "selected" : ""}" type="button" data-action="sales-set-format" data-id="${id}">
+                      ${escapeHtml(f.label)}
+                    </button>
+                  `).join("")}
+                </div>
+                <div style="margin-top: var(--space-2);">
+                  <span class="mini-pill">${escapeHtml(fmt.dim)}</span>
+                  <span class="mini-pill">${escapeHtml(fmt.ratio)}</span>
+                </div>
+              </div>
+
+              <div class="field full">
+                <label>Background template</label>
+                <span class="field-note">Uploaded during brain build and tagged as templates. The selected template becomes the locked background layer.</span>
+                ${templates.length ? `
+                  <div class="sales-template-grid">
+                    ${templates.map((t) => `
+                      <button class="sales-template-card ${state.studio.salesTemplateId === t.id ? "selected" : ""}" type="button" data-action="sales-select-template" data-id="${t.id}">
+                        <span class="sales-template-thumb">${t.thumbUrl ? `<img src="${escapeHtml(t.thumbUrl)}" alt="">` : ""}</span>
+                        <span class="sales-template-name">${escapeHtml(t.name)}</span>
+                      </button>
+                    `).join("")}
+                  </div>
+                ` : `
+                  <div class="sales-empty-templates">
+                    <p>No templates uploaded yet.</p>
+                    <p class="field-note">Upload branded backgrounds during the Brand Brain build, then tag them as templates with their dimensions. They will appear here as selectable locked backgrounds.</p>
+                    <span class="field-note">You can still generate a content element without a template. The element will be produced on a transparent or brand-colored background.</span>
+                  </div>
+                `}
+              </div>
+
+              <div class="field full">
+                <label for="sales-element">Content element</label>
+                <span class="field-note">What should be generated on top of the template. Describe the visual, not the copy.</span>
+                <textarea id="sales-element" data-action="sales-element-input" placeholder="A premium phone mockup showing a text conversation between the system and a patient confirming an appointment. The phone should look modern and high-end, angled slightly.">${escapeHtml(state.studio.salesElement)}</textarea>
+              </div>
+
+              <div class="field full">
+                <label for="sales-feature">Feature or product focus</label>
+                <span class="field-note">Optional. If this showcases a specific feature, name it here.</span>
+                <input id="sales-feature" type="text" data-action="sales-feature-input" placeholder="RCS messaging, appointment reminders, two-way texting..." value="${escapeHtml(state.studio.salesFeature)}">
+              </div>
+
+              <div class="field full">
+                <label for="sales-campaign">Campaign</label>
+                <div class="studio-campaign-row">
+                  <select id="sales-campaign" data-action="studio-campaign-change">
+                    <option value="">No campaign</option>
+                    ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">Optional. Links to a campaign direction.</span>
+                </div>
+              </div>
+            </div>
+
+            ${state.studio.referenceOpen ? `
+              <div class="studio-additive-section">
+                <div class="studio-additive-header">
+                  <span class="section-label">Reference image</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="referenceOpen" aria-label="Remove reference image">&times;</button>
+                </div>
+                <span class="field-note">A visual reference for the content element. Used as creative direction, not copied.</span>
+                <div class="studio-dropzone">
+                  Drop an image or click to browse
+                </div>
+              </div>
+            ` : ""}
+
+            ${state.studio.directionOpen ? `
+              <div class="studio-additive-section">
+                <div class="studio-additive-header">
+                  <span class="section-label">Creative direction</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
+                </div>
+                <p class="field-note field-spaced">Art direction for the content element. This job only.</p>
+                <textarea data-action="studio-direction-input" placeholder="High-end product photography feel. Studio lighting, subtle reflections on the screen.">${escapeHtml(state.studio.direction)}</textarea>
+              </div>
+            ` : ""}
+
+            <div class="studio-additive-links">
+              ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
+              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+            </div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="card">
+            <div class="card-header">
+              <h2>How this works</h2>
+            </div>
+            <ul class="exact-list">
+              <li><strong>Template</strong><span>Locked background. Placed exactly, never regenerated.</span></li>
+              <li><strong>Element</strong><span>Generated content (device mockup, feature graphic, product shot) composed on top.</span></li>
+              <li><strong>Result</strong><span>A single composed image ready for your slide or one-pager.</span></li>
+            </ul>
+            <p class="field-note" style="margin-top: var(--space-3);">The system applies backend production knowledge to make the element look premium: lighting, reflections, perspective, and scale that match the template.</p>
+          </section>
+          ${selectedTemplate ? `
+            <section class="card surface-accent">
+              <div class="card-header">
+                <h2>Selected template</h2>
+                <span class="mini-pill pill-governed">Locked</span>
+              </div>
+              <p>${escapeHtml(selectedTemplate.name)}</p>
+              <p class="field-note">${escapeHtml(selectedTemplate.ratio)} &middot; Placed exactly as approved</p>
+            </section>
+          ` : ""}
+          <section class="card">
+            <div class="card-header">
+              <h2>Guidance applied</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not active")}</span></li>
+              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
+            </ul>
+          </section>
+          ${state.studio.campaignId ? (() => {
+            const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
+            return campaign ? `
+            <section class="card surface-accent surface-accent-governed">
+              <div class="card-header">
+                <h2>Campaign direction</h2>
+                <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
+              </div>
+              <ul class="exact-list">
+                ${campaign.campaignIdea ? `<li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>` : ""}
+                ${campaign.messageTerritory ? `<li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>` : ""}
+              </ul>
+            </section>
+            ` : "";
+          })() : ""}
+          <div class="studio-aside-note">
+            <span class="field-note">Brand Brain and production knowledge applied automatically to the generated element.</span>
+          </div>
+        </aside>
+      </div>
+
+      <div class="actions">
+        <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
+        <button class="button primary" type="button" data-action="sales-continue-preflight" ${canProceed ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
       </div>
     </section>
   `);
@@ -5331,6 +5523,10 @@ root.addEventListener("click", (event) => {
     state.studio.direction = "";
     state.studio.targetUses = [];
     state.studio.templateFormats = [];
+    state.studio.salesFormat = "slide-16x9";
+    state.studio.salesTemplateId = "";
+    state.studio.salesElement = "";
+    state.studio.salesFeature = "";
     navigate("studio-setup");
   }
   if (action === "back-to-studio") {
@@ -5458,6 +5654,33 @@ root.addEventListener("click", (event) => {
         }
       }
     }
+    void prepareProductionPreflight();
+  }
+  if (action === "sales-set-format") {
+    state.studio.salesFormat = target.dataset.id;
+    state.studio.salesTemplateId = "";
+    render();
+  }
+  if (action === "sales-select-template") {
+    state.studio.salesTemplateId = state.studio.salesTemplateId === target.dataset.id ? "" : target.dataset.id;
+    render();
+  }
+  if (action === "sales-element-input") {
+    state.studio.salesElement = target.value;
+  }
+  if (action === "sales-feature-input") {
+    state.studio.salesFeature = target.value;
+  }
+  if (action === "sales-continue-preflight") {
+    const fmt = salesOutputFormats[state.studio.salesFormat] || salesOutputFormats["slide-16x9"];
+    state.selectedDeliverable = deliverables[0];
+    state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
+    state.activeCampaignId = state.studio.campaignId || null;
+    // Compose the brief from element description and feature focus
+    const featureNote = state.studio.salesFeature ? ` This showcases the ${state.studio.salesFeature} capability.` : "";
+    state.brief.scene = state.studio.salesElement + featureNote;
+    state.brief.placement = "Sales enablement";
+    state.brief.format = fmt.dim.replace(" x ", "x");
     void prepareProductionPreflight();
   }
   if (action === "select-creative-mode") {

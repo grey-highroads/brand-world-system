@@ -6457,6 +6457,74 @@ button.ws-attention-item:hover {
   margin-top: var(--section-gap);
 }
 
+/* ── Sales enablement ──────────────────────────────────────── */
+
+.sales-template-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: var(--space-3);
+}
+
+.sales-template-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-inset);
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.12s;
+}
+
+.sales-template-card:hover {
+  border-color: var(--border-strong);
+}
+
+.sales-template-card.selected {
+  border-color: var(--lavender);
+  box-shadow: inset 0 0 0 1px var(--lavender);
+}
+
+.sales-template-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: var(--radius-sm);
+  background: var(--paper-200);
+  overflow: hidden;
+}
+
+.sales-template-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sales-template-name {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+
+.sales-empty-templates {
+  padding: var(--space-4);
+  border: 1px dashed var(--border-subtle);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.sales-empty-templates p {
+  margin: 0 0 var(--space-2);
+  font-size: 13px;
+}
+
+.sales-empty-templates p:first-child {
+  color: var(--muted);
+  font-weight: 500;
+}
+
 /* ── Campaign detail and thumbnails ──────────────────────────── */
 
 .campaign-card-thumbs {
