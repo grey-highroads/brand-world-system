@@ -95,20 +95,56 @@ function resolveLockedAsset(stored, lockedAssetId) {
   };
 }
 
+/**
+ * Resolve a template asset for composition. Templates are exact-asset sources
+ * tagged with templateMeta. The generated element is placed onto it. Returns
+ * null when no template is selected.
+ */
+function resolveTemplateAsset(stored, templateAssetId) {
+  if (!templateAssetId) return null;
+  const sourceById = new Map((stored?.sources || []).map((source) => [source.id, source]));
+  const source = sourceById.get(templateAssetId);
+  if (!source) {
+    const error = new Error("The selected template was not found.");
+    error.status = 400;
+    throw error;
+  }
+  if (!source.templateMeta?.isTemplate) {
+    const error = new Error("The selected source is not a template.");
+    error.status = 400;
+    throw error;
+  }
+  const file = (source.files || []).find((candidate) => rasterTypes.has(String(candidate.type || "").toLowerCase()) && candidate.blobPathname);
+  if (!file) {
+    const error = new Error(`${source.name || "The selected template"} does not contain a usable image.`);
+    error.status = 400;
+    throw error;
+  }
+  return {
+    source,
+    file,
+    name: source.name || "Background template",
+    ratio: source.templateMeta.ratio || "",
+    fileName: file.name,
+  };
+}
+
 export async function prepareProductionPackage(body, options) {
   const stored = await options.brainStore.read();
   const { approvedBrain, brainVersion } = approvedContext(stored);
   const references = resolveReferences(stored, body.references || []);
   const lockedAsset = resolveLockedAsset(stored, body.lockedAssetId);
+  const templateAsset = resolveTemplateAsset(stored, body.templateAssetId);
   const generationPackage = compileBrandWorldImagePackage({
     approvedBrain,
     brainVersion,
     brief: body.brief,
     references,
     lockedAsset,
+    templateAsset,
     campaign: body.campaign || null,
   });
-  return { generationPackage, references, lockedAsset, stored };
+  return { generationPackage, references, lockedAsset, templateAsset, stored };
 }
 
 function publicJob(job, imageUrl) {
@@ -135,11 +171,15 @@ export async function generateProductionImage(body, options) {
   const current = await options.productionStore.read();
   if (current?.jobId === jobId && current.status === "complete") return readProductionJob(options);
 
-  const { generationPackage, references, lockedAsset } = await prepareProductionPackage(body, options);
+  const { generationPackage, references, lockedAsset, templateAsset } = await prepareProductionPackage(body, options);
 
-  // The locked asset is always the first reference image so the renderer
-  // treats it as the primary identity source. Creative references follow.
+  // The template (when present) is the first reference image: the base layer
+  // the element is composed onto. The locked asset follows as the identity
+  // source, then creative references.
   const allReferenceEntries = [];
+  if (templateAsset) {
+    allReferenceEntries.push({ file: templateAsset.file, name: templateAsset.fileName, isTemplate: true });
+  }
   if (lockedAsset) {
     allReferenceEntries.push({ file: lockedAsset.file, name: lockedAsset.fileName, isLockedAsset: true });
   }

@@ -29,19 +29,33 @@ const templateProductionInstructions = {
   ].join(" "),
 };
 
-const salesElementInstructions = {
-  title: "Sales element production instructions",
-  body: [
+function buildSalesElementInstructions(hasTemplate) {
+  const base = [
     "This image is a polished content element for sales and presentation materials.",
     "The element should look like it was produced by a top-tier design studio: clean lighting, precise rendering, premium materials, subtle reflections and shadows.",
     "For device mockups (phones, tablets, laptops): use a current-generation device, render the screen content clearly and legibly, angle the device naturally, and light it with soft studio lighting.",
     "For product graphics and feature illustrations: keep the visual clean, specific, and informative rather than abstract or decorative.",
-    "The element should sit on a clean, simple background (white, light neutral, or brand-colored) so it can be placed directly onto a branded template in a layout tool.",
+  ];
+  const backgroundHandling = hasTemplate
+    ? [
+        "The first supplied image is the approved branded background template. Place the element onto this exact background.",
+        "Preserve the template background exactly: do not alter, recolor, redraw, crop, or regenerate it. Keep its existing graphics, colors, and any logos or lockups unchanged.",
+        "Position the element within the template's open space, leaving its branded edges and design elements visible. Composite the element so it sits naturally on the surface with appropriate shadow and scale.",
+      ]
+    : [
+        "The element should sit on a clean, simple background (white, light neutral, or brand-colored) so it can be placed directly onto a branded template in a layout tool.",
+      ];
+  const closing = [
     "Do not include people, lifestyle scenes, or environmental backgrounds. The element is the subject.",
+    "Do not invent, redraw, or approximate any brand logo, wordmark, or identity lockup. If a logo is not supplied as an exact asset, do not render one at all.",
     "Do not render any text outside of on-screen UI content. Headlines, labels, and captions will be added in the layout tool.",
     "The element must look premium at the actual output dimensions. Avoid compositions that require zooming to appreciate.",
-  ].join(" "),
-};
+  ];
+  return {
+    title: "Sales element production instructions",
+    body: [...base, ...backgroundHandling, ...closing].join(" "),
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Deliverable requirements (roadmap item 2)
@@ -276,7 +290,7 @@ export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, campaign = null }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -293,6 +307,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const selected = new Map(approvedBrain.guidanceSections.map((section) => [section.id, section]));
   const isTemplate = placement === "Brand template";
   const isSalesEnablement = placement === "Sales enablement";
+  const hasTemplate = !!templateAsset;
   const activeGuidanceOrder = (isTemplate || isSalesEnablement) ? templateGuidanceOrder : guidanceOrder;
   const guidance = activeGuidanceOrder.map((id) => selected.get(id)).filter(Boolean);
   const dossier = approvedBrain.artifacts?.dossier || {};
@@ -392,7 +407,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     },
     ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
     isTemplate ? templateProductionInstructions : null,
-    isSalesEnablement ? salesElementInstructions : null,
+    isSalesEnablement ? buildSalesElementInstructions(hasTemplate) : null,
     campaignSection,
     priorOutputs,
     compositionSection,
@@ -418,7 +433,8 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       body: [
         protection,
         isTemplate ? "Do not include any people, faces, hands, devices, screens, product packaging, or identifiable objects. The surface must work as a background layer." : "",
-        isSalesEnablement ? "Do not include people, lifestyle environments, or narrative scenes. The element is the subject, rendered cleanly for placement onto a branded background." : "",
+        isSalesEnablement && !hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. The element is the subject, rendered cleanly for placement onto a branded background." : "",
+        isSalesEnablement && hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. Preserve the supplied template background exactly and place the element onto it." : "",
         dossier.guardrails?.length ? dossier.guardrails.map((rule) => `${rule.title}: ${rule.body}`).join(" ") : "",
         exclusions ? `Also avoid: ${exclusions}` : "",
       ].filter(Boolean).join(" "),
@@ -428,7 +444,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       body: isTemplate
         ? `Return one finished background surface only. Compose for ${format}. The result must work as a foundation for placing product images, text, and brand elements on top. It should feel distinctly ${cleanText(approvedBrain.brandName)} rather than generic.`
         : isSalesEnablement
-        ? `Return one polished content element only. Compose for ${format}. The element should sit on a clean background, ready for placement onto a branded template in a slide or one-pager. It must look premium and distinctly ${cleanText(approvedBrain.brandName)}.`
+        ? (hasTemplate
+          ? `Return one finished composite only. Compose for ${format}. The element sits on the supplied branded template, which is preserved exactly. The result is ready to drop into a slide or one-pager. It must look premium and distinctly ${cleanText(approvedBrain.brandName)}.`
+          : `Return one polished content element only. Compose for ${format}. The element should sit on a clean background, ready for placement onto a branded template in a slide or one-pager. It must look premium and distinctly ${cleanText(approvedBrain.brandName)}.`)
         : `Return one finished image only. Compose for ${format} in ${placement}. Keep the result visually specific, believable, and native to ${cleanText(approvedBrain.brandName)} rather than a generic category image.`,
     },
   ].filter((section) => section && section.body);
@@ -459,6 +477,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     brief: { scene, exclusions },
     aestheticMode: { id: mode.id, name: mode.name },
     lockedAsset: lockedAsset ? { name: lockedAsset.name, format: packageFormat } : null,
+    templateAsset: templateAsset ? { name: templateAsset.name, ratio: templateAsset.ratio } : null,
     stateNeutralizations,
     prompt,
     sections,

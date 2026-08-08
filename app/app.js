@@ -4947,6 +4947,7 @@ function productionRequest(jobId) {
     jobId,
     brief: { ...state.brief },
     lockedAssetId: state.lockedAssetId || undefined,
+    templateAssetId: state.studio.salesTemplateId || undefined,
     references: state.references.map((item) => ({
       id: item.id,
       role: item.role,
