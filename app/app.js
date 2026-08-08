@@ -2260,7 +2260,7 @@ function renderChooser() {
       ` : ""}
       <div class="studio-grid">${categoryCards}</div>
       ${recentOutputs.length ? `
-      <section class="card" style="margin-top: var(--section-gap)">
+      <section class="card studio-recent-card">
         <div class="card-header">
           <h2>Recent work</h2>
           <span class="mini-pill">${state.outputs.length} ${state.outputs.length === 1 ? "output" : "outputs"}</span>
@@ -2384,7 +2384,7 @@ function renderStudioSetup() {
                     <span class="studio-toggle-content">
                       <strong>This image will have text on it</strong>
                       <span class="field-note">Adjusts composition to leave space for headlines or captions you add in your layout tool.</span>
-                      ${state.studio.textOverlay ? `<span class="field-note" style="margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--border-subtle);">The system keeps the subject clear of text-safe zones. You place text in Canva, Figma, or your design tool after export.</span>` : ""}
+                      ${state.studio.textOverlay ? `<span class="field-note studio-toggle-detail">The system keeps the subject clear of text-safe zones. You place text in Canva, Figma, or your design tool after export.</span>` : ""}
                     </span>
                   </button>
                 </div>
@@ -2408,7 +2408,7 @@ function renderStudioSetup() {
                   <span class="section-label">Post caption</span>
                   <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="captionOpen" aria-label="Remove post caption">&times;</button>
                 </div>
-                <div class="studio-additive-header" style="margin-bottom: 6px;">
+                <div class="studio-additive-header">
                   <span class="field-note">Text that accompanies the image in the feed. Not rendered on the image.</span>
                   <span class="field-note">Governed by brand voice</span>
                 </div>
@@ -2436,7 +2436,7 @@ function renderStudioSetup() {
                   <span class="section-label">Creative direction</span>
                   <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
                 </div>
-                <p class="field-note" style="margin-bottom: 6px;">Art direction beyond the Brand Brain. This job only.</p>
+                <p class="field-note field-spaced">Art direction beyond the Brand Brain. This job only.</p>
                 <textarea data-action="studio-direction-input" placeholder="Mood, lighting, composition preferences.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
