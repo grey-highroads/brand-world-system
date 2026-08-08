@@ -2744,6 +2744,21 @@ function renderTemplateSetup(cat) {
   `);
 }
 
+// Lightweight DOM update for the sales preflight validation message. Called on
+// textarea input so the button hint updates without a full re-render (which
+// would wipe the textarea cursor position).
+function updateSalesReadyState() {
+  const msg = document.getElementById("sales-validation-msg");
+  if (!msg) return;
+  const approved = !!approvedBrainForProduction();
+  const hasElement = (state.studio.salesElement || "").trim().length > 0;
+  const canProceed = approved && hasElement;
+  msg.classList.toggle("is-hidden", canProceed);
+  if (!canProceed) {
+    msg.textContent = approved ? "Describe the content element to continue." : "Approve the Brand Brain before producing.";
+  }
+}
+
 function renderSalesSetup(cat) {
   const approved = approvedBrainForProduction();
   const campaigns = state.campaigns || [];
@@ -2916,8 +2931,9 @@ function renderSalesSetup(cat) {
 
       <div class="actions">
         <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
-        <button class="button primary" type="button" data-action="sales-continue-preflight" ${canProceed ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
+        <button id="sales-preflight-btn" class="button primary" type="button" data-action="sales-continue-preflight">Continue to preflight &rsaquo;</button>
       </div>
+      <p id="sales-validation-msg" class="field-note sales-validation ${canProceed ? "is-hidden" : ""}">${approved ? "Describe the content element to continue." : "Approve the Brand Brain before producing."}</p>
     </section>
   `);
 }
@@ -5449,10 +5465,30 @@ root.addEventListener("input", (event) => {
     if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
     state.campaignDraft[event.target.dataset.field] = event.target.value;
   }
+  if (event.target.matches('[data-action="studio-brief-input"]')) {
+    state.studio.brief = event.target.value;
+  }
+  if (event.target.matches('[data-action="studio-caption-input"]')) {
+    state.studio.caption = event.target.value;
+  }
+  if (event.target.matches('[data-action="studio-direction-input"]')) {
+    state.studio.direction = event.target.value;
+  }
+  if (event.target.matches('[data-action="sales-element-input"]')) {
+    state.studio.salesElement = event.target.value;
+    updateSalesReadyState();
+  }
+  if (event.target.matches('[data-action="sales-feature-input"]')) {
+    state.studio.salesFeature = event.target.value;
+  }
 });
 
 root.addEventListener("change", async (event) => {
   const action = event.target.dataset.action;
+  if (action === "studio-campaign-change") {
+    state.studio.campaignId = event.target.value;
+    render();
+  }
   if (action === "campaign-toggle-channel") {
     if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
     const ch = event.target.dataset.channel;
@@ -5662,19 +5698,6 @@ root.addEventListener("click", (event) => {
     state.studio.textOverlay = !state.studio.textOverlay;
     render();
   }
-  if (action === "studio-brief-input") {
-    state.studio.brief = target.value;
-  }
-  if (action === "studio-campaign-change") {
-    state.studio.campaignId = target.value;
-    render();
-  }
-  if (action === "studio-caption-input") {
-    state.studio.caption = target.value;
-  }
-  if (action === "studio-direction-input") {
-    state.studio.direction = target.value;
-  }
   if (action === "studio-toggle-section") {
     const section = target.dataset.section;
     state.studio[section] = !state.studio[section];
@@ -5762,13 +5785,20 @@ root.addEventListener("click", (event) => {
     state.studio.salesTemplateId = state.studio.salesTemplateId === target.dataset.id ? "" : target.dataset.id;
     render();
   }
-  if (action === "sales-element-input") {
-    state.studio.salesElement = target.value;
-  }
-  if (action === "sales-feature-input") {
-    state.studio.salesFeature = target.value;
-  }
   if (action === "sales-continue-preflight") {
+    const approved = approvedBrainForProduction();
+    const hasElement = (state.studio.salesElement || "").trim().length > 0;
+    if (!approved) {
+      setToast("Approve the Brand Brain before producing");
+      return;
+    }
+    if (!hasElement) {
+      setToast("Describe the content element before continuing");
+      const el = document.getElementById("sales-element");
+      if (el) el.focus();
+      updateSalesReadyState();
+      return;
+    }
     const fmt = salesOutputFormats[state.studio.salesFormat] || salesOutputFormats["slide-16x9"];
     state.selectedDeliverable = deliverables[0];
     state.creativeMode = state.studio.campaignId ? "campaign" : "explore";

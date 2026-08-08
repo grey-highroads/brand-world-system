@@ -6525,6 +6525,15 @@ button.ws-attention-item:hover {
   font-weight: 500;
 }
 
+.sales-validation {
+  margin-top: var(--space-3);
+  color: var(--warning);
+}
+
+.is-hidden {
+  display: none;
+}
+
 /* ── Campaign detail and thumbnails ──────────────────────────── */
 
 .campaign-card-thumbs {
