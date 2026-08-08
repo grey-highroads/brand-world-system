@@ -1,11 +1,15 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
-import { normalizeSourcesForSynthesis } from "../../src/brand-brain/source-normalizer.js";
 import { synthesizeProductRecord } from "../../src/products/prototype-provider.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 // ADR 0012 prototype endpoint. Runs per-product synthesis against one existing
 // brain source and returns the raw record. Persists nothing. Remove or replace
 // when the product record schema graduates.
+//
+// This bypasses source-normalizer.js on purpose: it pulls in officeparser as a
+// native dependency, which fails to bundle into a fresh serverless function.
+// The stored source is already normalized because it went through synthesis
+// when it was added to the brain.
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
   try {
@@ -35,14 +39,23 @@ export default async function handler(request, response) {
       return;
     }
 
-    const [normalized] = await normalizeSourcesForSynthesis([source], {
-      readStoredFile: store.readSourceFile?.bind(store),
-    });
+    // Load raw bytes for raster files so vision content reaches the model.
+    // Text sources pass through unchanged.
+    const filesWithBytes = await Promise.all((source.files || []).map(async (file) => {
+      if (!file.blobPathname || !String(file.type || "").startsWith("image/")) return file;
+      try {
+        const stored = await store.readSourceFile(file.blobPathname);
+        const base64 = Buffer.from(stored.bytes).toString("base64");
+        return { ...file, data: `data:${stored.mimeType || file.type};base64,${base64}` };
+      } catch {
+        return file;
+      }
+    }));
 
     const result = await synthesizeProductRecord({
       apiKey: process.env.OPENAI_API_KEY,
       model: process.env.OPENAI_MODEL,
-      source: normalized,
+      source: { ...source, files: filesWithBytes },
     });
 
     sendJson(response, 200, {
