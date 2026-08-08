@@ -793,6 +793,8 @@ const state = {
   activeCampaignId: null,
   campaignReferences: [],
   campaignDraft: null,
+  campaignEditing: false,
+  campaignEditDraft: null,
   previewOutputId: null,
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
@@ -2501,6 +2503,7 @@ function renderCampaigns() {
   const campaignCards = campaigns.map((campaign) => {
     const outputs = outputsForCampaign(campaign.id);
     const approvedCount = outputs.filter((o) => o.status === "approved").length;
+    const thumbs = outputs.filter((o) => o.imageUrl).slice(0, 4);
     return `
       <button class="card chooser-card" type="button" data-action="open-campaign" data-id="${escapeHtml(campaign.id)}">
         <div class="card-header">
@@ -2508,6 +2511,11 @@ function renderCampaigns() {
           <span class="mini-pill">${outputs.length} ${outputs.length === 1 ? "output" : "outputs"}</span>
         </div>
         <p>${escapeHtml(campaign.description)}</p>
+        ${thumbs.length ? `
+          <div class="campaign-card-thumbs">
+            ${thumbs.map((o) => `<span class="campaign-card-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.campaign-card-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`).join("")}
+          </div>
+        ` : ""}
         <span class="chooser-contract">${escapeHtml(campaign.objective)}${approvedCount ? ` · ${approvedCount} approved` : ""}</span>
       </button>
     `;
@@ -2723,215 +2731,117 @@ function renderCampaignCreation() {
 
 function renderCampaignWorkspace() {
   const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
-  if (!campaign) return renderChooser();
+  if (!campaign) return renderCampaigns();
   const approved = approvedBrainForProduction();
-  const formats = placementFormats[state.brief.placement] || ["1:1 square"];
-  const needsProduct = state.brief.assetType === "product" && !state.lockedAssetId;
   const campaignOutputs = outputsForCampaign(campaign.id).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+  const approvedCount = campaignOutputs.filter((o) => o.status === "approved").length;
+  const editing = state.campaignEditing;
+  const draft = state.campaignEditDraft || campaign;
+
+  // Read-only field row helper
+  const fieldRow = (label, value) => value ? `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>` : "";
+
+  // Edit field helper
+  const editField = (label, field, placeholder, textarea = false) => `
+    <div class="field full">
+      <label for="edit-${field}">${escapeHtml(label)}</label>
+      ${textarea
+        ? `<textarea id="edit-${field}" data-action="campaign-edit-input" data-field="${field}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(draft[field] || "")}</textarea>`
+        : `<input class="input-like" id="edit-${field}" data-action="campaign-edit-input" data-field="${field}" value="${escapeHtml(draft[field] || "")}" placeholder="${escapeHtml(placeholder)}">`
+      }
+    </div>
+  `;
 
   return shell(`
     <section class="workspace">
-      ${pageHeader(campaign.name, `Create a new asset for this campaign. Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} + campaign direction shape the result.`)}
+      ${pageHeader(campaign.name, campaign.description || campaign.objective)}
 
       <div class="content-grid">
         <div>
+          ${editing ? `
           <section class="card">
             <div class="card-header">
-              <h2>What are you making?</h2>
-              <span class="mini-pill">${escapeHtml(campaign.campaignIdea)}</span>
+              <h2>Edit campaign</h2>
+              <div class="card-header-actions">
+                <button class="button compact" type="button" data-action="cancel-campaign-edit">Cancel</button>
+                <button class="button compact primary" type="button" data-action="save-campaign-edit">Save changes</button>
+              </div>
             </div>
-
-            <div class="asset-type-chooser">
-              ${[
-                { id: "scene", icon: "image", label: "Scene image" },
-                { id: "product", icon: "product", label: "Product in scene" },
-                { id: "post", icon: "post", label: "Post + image" },
-                { id: "banner", icon: "banner", label: "Banner" },
-              ].map((t) => `
-                <button class="asset-type-btn ${state.brief.assetType === t.id ? "selected" : ""}" type="button" data-action="set-asset-type" data-type="${t.id}">
-                  <span class="asset-type-icon asset-icon-${t.icon}" aria-hidden="true"></span>
-                  <span>${t.label}</span>
-                </button>
-              `).join("")}
-            </div>
-
             <div class="field-grid">
-              ${state.brief.assetType === "post" ? `
-                <div class="field full">
-                  <label for="post-topic">What is this post about?</label>
-                  <textarea id="post-topic" data-action="post-topic-input" placeholder="The angle or key message. Campaign idea and brand voice shape the writing.">${escapeHtml(state.brief.postTopic)}</textarea>
-                  ${campaign.messageTerritory ? `<span class="field-note">Campaign territory: ${escapeHtml(campaign.messageTerritory)}</span>` : ""}
-                </div>
-                <div class="field full">
-                  <label for="post-claims">Claims or facts to include (optional)</label>
-                  <input class="input-like" id="post-claims" data-action="post-claims-input" value="${escapeHtml(state.brief.postClaims)}" placeholder="Only claims the Brand Brain has approved will appear.">
-                  ${campaign.proofPoints ? `<span class="field-note">Campaign proof points: ${escapeHtml(campaign.proofPoints)}</span>` : ""}
-                </div>
-                <div class="field full">
-                  <label for="post-cta">Call to action (optional)</label>
-                  <input class="input-like" id="post-cta" data-action="post-cta-input" value="${escapeHtml(state.brief.postCta)}" placeholder="${escapeHtml(campaign.desiredAction || "What should the reader do next?")}">
-                </div>
-                <div class="field full">
-                  <label class="checkbox-label">
-                    <input type="checkbox" data-action="toggle-include-image" ${state.brief.includeImage ? "checked" : ""}>
-                    <span>Generate a supporting image</span>
-                  </label>
-                  <span class="field-note">The image supports the post rather than repeating it.</span>
-                </div>
-                ${state.brief.includeImage ? `
-                  <div class="field full">
-                    <label for="scene">Image direction (optional)</label>
-                    <textarea id="scene" data-action="scene-input" placeholder="Leave blank and the image will be composed from the post topic, campaign direction, and brand world.">${escapeHtml(state.brief.scene)}</textarea>
-                  </div>
-                ` : ""}
-              ` : state.brief.assetType === "product" ? `
-                <div class="field full">
-                  <label for="scene">Where is the product and what is happening around it?</label>
-                  <textarea id="scene" data-action="scene-input" placeholder="Describe the moment. For example: resting on a kitchen counter in late afternoon light, someone reaching for it mid-conversation.">${escapeHtml(state.brief.scene)}</textarea>
-                  <span class="field-note">The product is placed exactly as uploaded. Describe the world around it, not the packaging itself.</span>
-                </div>
-                ${sceneStarters(approved, campaign).length ? `
-                  <div class="field full">
-                    <span class="section-label">Starting points from the brand and campaign</span>
-                    <div class="scene-starters">
-                      ${sceneStarters(approved, campaign).map((s) => `
-                        <button class="scene-starter-btn" type="button" data-action="use-scene-starter" data-text="${escapeHtml(s.text)}">
-                          <strong>${escapeHtml(s.label)}</strong><span>${escapeHtml(s.source)}</span>
-                        </button>
-                      `).join("")}
-                    </div>
-                  </div>
-                ` : ""}
-              ` : state.brief.assetType === "banner" ? `
-                <div class="field full">
-                  <label for="scene">What should the banner show?</label>
-                  <textarea id="scene" data-action="scene-input" placeholder="Banners are wide and often cropped. Describe a scene that reads clearly at a glance.">${escapeHtml(state.brief.scene)}</textarea>
-                </div>
-                <div class="field full">
-                  <label for="banner-headline">Headline that will sit over the image (optional)</label>
-                  <input class="input-like" id="banner-headline" data-action="banner-headline-input" value="${escapeHtml(state.brief.bannerHeadline)}" placeholder="${escapeHtml(campaign.campaignIdea || "Leave blank for image only")}">
-                  <span class="field-note">The headline is not rendered into the image. Naming it keeps that area of the composition clear.</span>
-                </div>
-                <div class="field full">
-                  <label for="banner-text-side">Where should the text area sit?</label>
-                  <select id="banner-text-side" data-action="banner-text-side-change">
-                    ${["Left third", "Right third", "Lower third", "No text area"].map((s) => option(s, state.brief.bannerTextSide)).join("")}
-                  </select>
-                  <span class="field-note">The subject is composed away from this area so the headline stays readable.</span>
-                </div>
-              ` : `
-                <div class="field full">
-                  <label for="scene">Describe this image</label>
-                  <textarea id="scene" data-action="scene-input" placeholder="A moment from the brand world. Campaign direction and brand guidance fill in the gaps.">${escapeHtml(state.brief.scene)}</textarea>
-                </div>
-                ${sceneStarters(approved, campaign).length ? `
-                  <div class="field full">
-                    <span class="section-label">Starting points from the brand and campaign</span>
-                    <div class="scene-starters">
-                      ${sceneStarters(approved, campaign).map((s) => `
-                        <button class="scene-starter-btn" type="button" data-action="use-scene-starter" data-text="${escapeHtml(s.text)}">
-                          <strong>${escapeHtml(s.label)}</strong><span>${escapeHtml(s.source)}</span>
-                        </button>
-                      `).join("")}
-                    </div>
-                  </div>
-                ` : ""}
-              `}
-              <div class="field">
-                <label for="placement">Channel</label>
-                <select id="placement" data-action="placement-change">
-                  ${Object.keys(placementFormats).map((p) => option(p, state.brief.placement)).join("")}
-                </select>
-              </div>
-              <div class="field">
-                <label for="format">Format</label>
-                <select id="format" data-action="format-change">
-                  ${(state.brief.assetType === "banner"
-                    ? ["16:9 landscape", "1.91:1 landscape", "4:3 landscape"]
-                    : formats
-                  ).map((f) => option(f, state.brief.format)).join("")}
-                </select>
-              </div>
-              <div class="field full">
-                <label for="exclusions">Anything to avoid?</label>
-                <input class="input-like" id="exclusions" data-action="exclusions-input" value="${escapeHtml(state.brief.exclusions)}">
-              </div>
+              ${editField("Campaign name", "name", "Summer Reset, Back to School, Q4 Launch")}
+              ${editField("Objective", "objective", "Awareness and trial, perception shift, product launch")}
+              ${editField("Description", "description", "What is the campaign doing and why now?", true)}
+              ${editField("Campaign idea", "campaignIdea", "The organizing idea. A phrase, not a paragraph.")}
+              ${editField("Audience", "audience", "Who specifically is this campaign aimed at?", true)}
+              ${editField("Current belief", "currentBelief", "What does the audience believe now?")}
+              ${editField("Desired belief", "desiredBelief", "What should they believe after?")}
+              ${editField("Desired action", "desiredAction", "What should they do?")}
+              ${editField("Message territory", "messageTerritory", "The space this campaign occupies.", true)}
+              ${editField("Proof points", "proofPoints", "Claims, facts, or evidence.", true)}
+              ${editField("Preserve", "preserve", "What to carry forward from the brand.")}
+              ${editField("Explore", "explore", "New territory for this campaign.", true)}
+              ${editField("Palette shift", "paletteShift", "Color direction for the campaign.")}
+              ${editField("Product focus", "productFocus", "Which product or line?")}
             </div>
-
-            ${state.brief.assetType === "product"
-              ? renderLockedAssetPicker({ required: true })
-              : (state.brief.assetType !== "post" || state.brief.includeImage) ? renderLockedAssetPicker() : ""}
           </section>
+          ` : `
+          <section class="card">
+            <div class="card-header">
+              <h2>Campaign direction</h2>
+              <button class="button ghost compact" type="button" data-action="start-campaign-edit">Edit</button>
+            </div>
+            <ul class="exact-list">
+              ${fieldRow("Objective", campaign.objective)}
+              ${fieldRow("Campaign idea", campaign.campaignIdea)}
+              ${fieldRow("Audience", campaign.audience)}
+              ${fieldRow("Message territory", campaign.messageTerritory)}
+              ${fieldRow("Explore", campaign.explore)}
+              ${fieldRow("Preserve", campaign.preserve)}
+              ${fieldRow("Palette shift", campaign.paletteShift)}
+              ${fieldRow("Product focus", campaign.productFocus)}
+              ${fieldRow("Proof points", campaign.proofPoints)}
+              ${fieldRow("Current belief", campaign.currentBelief)}
+              ${fieldRow("Desired belief", campaign.desiredBelief)}
+              ${fieldRow("Desired action", campaign.desiredAction)}
+              ${campaign.channels?.length ? `<li><strong>Channels</strong><span>${campaign.channels.join(", ")}</span></li>` : ""}
+            </ul>
+          </section>
+          `}
 
-          ${campaignOutputs.length ? `
           <section class="card">
             <div class="card-header">
               <h2>Campaign work</h2>
-              <span class="mini-pill ${state.campaignReferences.length ? "pill-governed" : ""}">${state.campaignReferences.length ? `${state.campaignReferences.length} selected` : `${campaignOutputs.length} ${campaignOutputs.length === 1 ? "asset" : "assets"}`}</span>
+              <span class="mini-pill">${campaignOutputs.length} ${campaignOutputs.length === 1 ? "output" : "outputs"}${approvedCount ? `, ${approvedCount} approved` : ""}</span>
             </div>
-            <p class="page-description">Everything made for this campaign. Select any of it to guide the next asset.</p>
-            <div class="campaign-outputs-list">
-              ${campaignOutputs.map((o) => {
-                const selected = state.campaignReferences.find((r) => r.id === o.id);
-                return `
-                <div class="campaign-output-item ${selected ? "selected" : ""}">
-                  <div class="campaign-output-header">
+            ${campaignOutputs.length ? `
+              <div class="campaign-output-grid">
+                ${campaignOutputs.map((o) => `
+                  <button class="campaign-output-card" type="button" data-action="preview-output" data-id="${o.id}">
                     ${o.imageUrl
-                      ? `<button class="output-thumb output-thumb-button" type="button" data-action="preview-output" data-id="${o.id}" aria-label="Preview ${escapeHtml(o.label)}"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();"></button>`
-                      : `<span class="output-thumb"></span>`}
-                    <button class="campaign-output-select" type="button" data-action="toggle-campaign-ref" data-id="${o.id}">
-                      <span class="campaign-output-check">${selected ? "✓" : ""}</span>
-                      <span><strong>${escapeHtml(o.label)}</strong><span class="output-meta">${escapeHtml(o.format || "")}${o.brainVersion ? ` · Brain v${o.brainVersion}` : ""}</span></span>
-                    </button>
-                    <span class="output-badges">
-                      <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+                      ? `<span class="campaign-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.campaign-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+                      : `<span class="campaign-output-thumb ws-thumb-empty"></span>`}
+                    <span class="campaign-output-info">
+                      <strong>${escapeHtml(o.label || "Untitled")}</strong>
+                      <span>${escapeHtml(o.format || "")}${o.brainVersion ? ` · Brain v${o.brainVersion}` : ""}</span>
                     </span>
-                  </div>
-                  <p class="campaign-output-scene">${escapeHtml(o.scene || "")}</p>
-                  <div class="output-actions">
-                    ${o.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${o.id}">Make another like this</button>` : ""}
-                  </div>
-                  ${selected ? `
-                    <div class="campaign-ref-role">
-                      <span class="section-label">How should this guide the new asset?</span>
-                      <div class="campaign-ref-options">
-                        ${[
-                          { value: "continue-direction", label: "Continue this direction" },
-                          { value: "match-composition", label: "Match composition" },
-                          { value: "create-variation", label: "Create a variation" },
-                          { value: "use-treatment", label: "Use product treatment" },
-                          { value: "reference-only", label: "Use as loose reference" },
-                        ].map((opt) => `
-                          <button class="campaign-ref-btn ${selected.role === opt.value ? "active" : ""}" type="button" data-action="set-campaign-ref-role" data-id="${o.id}" data-role="${opt.value}">${opt.label}</button>
-                        `).join("")}
-                      </div>
-                    </div>
-                  ` : ""}
-                </div>
-              `}).join("")}
-            </div>
+                    <span class="mini-pill ${o.status === "approved" ? "pill-success" : "pill-neutral"}">${o.status === "approved" ? "Approved" : "Draft"}</span>
+                  </button>
+                `).join("")}
+              </div>
+            ` : `
+              <p class="page-description">No outputs yet. Create assets in the Design Studio and link them to this campaign.</p>
+            `}
           </section>
-          ` : ""}
         </div>
 
         <aside>
-          <details class="card collapsible-card surface-accent surface-accent-governed">
-            <summary class="card-header collapsible-header">
-              <h2>Campaign direction</h2>
-              <span class="collapsible-meta"><span class="mini-pill pill-governed">${escapeHtml(campaign.campaignIdea)}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
-            </summary>
-            <ul class="exact-list collapsible-body-list">
-              <li><strong>Objective</strong><span>${escapeHtml(campaign.objective)}</span></li>
-              <li><strong>Audience</strong><span>${escapeHtml(campaign.audience)}</span></li>
-              <li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>
-              <li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>
-              ${campaign.paletteShift ? `<li><strong>Palette shift</strong><span>${escapeHtml(campaign.paletteShift)}</span></li>` : ""}
-              ${campaign.productFocus ? `<li><strong>Product focus</strong><span>${escapeHtml(campaign.productFocus)}</span></li>` : ""}
-              <li><strong>Preserve</strong><span>${escapeHtml(campaign.preserve)}</span></li>
-              <li><strong>Current belief</strong><span>${escapeHtml(campaign.currentBelief)}</span></li>
-              <li><strong>Desired belief</strong><span>${escapeHtml(campaign.desiredBelief)}</span></li>
-            </ul>
-          </details>
+          <section class="card">
+            <div class="card-header">
+              <h2>Create for this campaign</h2>
+            </div>
+            <p class="page-description">Open the Design Studio to create new assets. Select this campaign from the campaign picker to link them here.</p>
+            <button class="button primary" type="button" data-action="studio-from-campaign" ${approved ? "" : "disabled"}>Open Design Studio</button>
+          </section>
 
           <section class="card">
             <div class="card-header">
@@ -2944,16 +2854,8 @@ function renderCampaignWorkspace() {
             </ul>
           </section>
 
-          <section class="card ready-card">
-            <div class="card-header"><h2>${!approved ? "Not ready" : needsProduct ? "Needs a product image" : "Ready"}</h2></div>
-            <p class="page-description">${needsProduct
-              ? "Product in scene places a real product image into the generated scene. Add one below the brief, or switch to Scene image."
-              : "Campaign direction and brand guidance will both compile into the prompt."}</p>
-            <button class="button primary" type="button" data-action="start-campaign-asset" ${approved && !needsProduct ? "" : "disabled"}>Continue to preflight ›</button>
-          </section>
-
           <div class="actions actions-compact">
-            <button class="button" type="button" data-action="back-to-campaigns">‹ All campaigns</button>
+            <button class="button" type="button" data-action="back-to-campaigns">&lsaquo; All campaigns</button>
           </div>
         </aside>
       </div>
@@ -5363,8 +5265,47 @@ root.addEventListener("click", (event) => {
   if (action === "back-to-campaigns") {
     state.activeCampaignId = null;
     state.campaignDraft = null;
+    state.campaignEditing = false;
+    state.campaignEditDraft = null;
     state.creativeMode = null;
     navigate("campaigns");
+  }
+  if (action === "start-campaign-edit") {
+    const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+    if (campaign) {
+      state.campaignEditing = true;
+      state.campaignEditDraft = { ...campaign };
+    }
+    render();
+  }
+  if (action === "cancel-campaign-edit") {
+    state.campaignEditing = false;
+    state.campaignEditDraft = null;
+    render();
+  }
+  if (action === "save-campaign-edit") {
+    const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+    const draft = state.campaignEditDraft;
+    if (campaign && draft) {
+      const editableFields = ["name", "description", "objective", "audience", "currentBelief", "desiredBelief", "desiredAction", "campaignIdea", "messageTerritory", "proofPoints", "preserve", "explore", "paletteShift", "productFocus"];
+      for (const field of editableFields) {
+        campaign[field] = (draft[field] || "").trim();
+      }
+      recordBrainHistory(`Campaign updated: ${campaign.name}`, "Campaign parameters were edited.", "complete");
+      setToast("Campaign updated");
+    }
+    state.campaignEditing = false;
+    state.campaignEditDraft = null;
+    render();
+  }
+  if (action === "campaign-edit-input") {
+    if (state.campaignEditDraft) {
+      state.campaignEditDraft[target.dataset.field] = target.value;
+    }
+  }
+  if (action === "studio-from-campaign") {
+    state.studio.campaignId = state.activeCampaignId;
+    navigate("chooser");
   }
   if (action === "set-asset-type") { state.brief.assetType = target.dataset.type; render(); }
   if (action === "preview-output") { state.previewOutputId = target.dataset.id; render(); }
