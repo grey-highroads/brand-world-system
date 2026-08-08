@@ -2321,6 +2321,7 @@ function renderStudioSetup() {
   const formatGroupsHtml = platforms.map((platformId) => {
     const platform = studioPlatformFormats[platformId];
     if (!platform) return "";
+    const platformHasActive = platform.formats.some((f) => activeFormats.includes(f.id));
     return `
       <div class="studio-format-group">
         <span class="studio-format-group-label">${escapeHtml(platform.label)}</span>
@@ -2335,6 +2336,7 @@ function renderStudioSetup() {
             `;
           }).join("")}
         </div>
+        ${!platformHasActive ? `<span class="studio-format-warning">No formats selected for ${escapeHtml(platform.label)}. Pick at least one, or deselect the platform.</span>` : ""}
       </div>
     `;
   }).join("");
@@ -2404,9 +2406,12 @@ function renderStudioSetup() {
               <div class="studio-additive-section">
                 <div class="studio-additive-header">
                   <span class="section-label">Post caption</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="captionOpen" aria-label="Remove post caption">&times;</button>
+                </div>
+                <div class="studio-additive-header" style="margin-bottom: 6px;">
+                  <span class="field-note">Text that accompanies the image in the feed. Not rendered on the image.</span>
                   <span class="field-note">Governed by brand voice</span>
                 </div>
-                <p class="field-note" style="margin-bottom: 6px;">Text that accompanies the image in the feed. Not rendered on the image.</p>
                 <textarea data-action="studio-caption-input" placeholder="Write your post text, or leave blank to draft from your Brand Brain">${escapeHtml(state.studio.caption)}</textarea>
                 <span class="field-note">Approved claims available. Prohibited claims blocked.</span>
               </div>
@@ -2414,7 +2419,10 @@ function renderStudioSetup() {
 
             ${state.studio.referenceOpen ? `
               <div class="studio-additive-section">
-                <span class="section-label">Reference image</span>
+                <div class="studio-additive-header">
+                  <span class="section-label">Reference image</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="referenceOpen" aria-label="Remove reference image">&times;</button>
+                </div>
                 <div class="studio-dropzone">
                   Drop an image or click to browse
                 </div>
@@ -2424,7 +2432,10 @@ function renderStudioSetup() {
 
             ${state.studio.directionOpen ? `
               <div class="studio-additive-section">
-                <span class="section-label">Creative direction</span>
+                <div class="studio-additive-header">
+                  <span class="section-label">Creative direction</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
+                </div>
                 <p class="field-note" style="margin-bottom: 6px;">Art direction beyond the Brand Brain. This job only.</p>
                 <textarea data-action="studio-direction-input" placeholder="Mood, lighting, composition preferences.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
@@ -5247,6 +5258,13 @@ root.addEventListener("click", (event) => {
   if (action === "studio-toggle-section") {
     const section = target.dataset.section;
     state.studio[section] = !state.studio[section];
+    render();
+  }
+  if (action === "studio-close-section") {
+    const section = target.dataset.section;
+    state.studio[section] = false;
+    if (section === "captionOpen") state.studio.caption = "";
+    if (section === "directionOpen") state.studio.direction = "";
     render();
   }
   if (action === "studio-continue-preflight") {
