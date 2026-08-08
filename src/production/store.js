@@ -101,7 +101,7 @@ export function createVercelBlobProductionStore(options = {}) {
       const extension = contentType === "image/jpeg" ? "jpg" : contentType === "image/webp" ? "webp" : "png";
       const pathname = productionImagePathname(clientId, jobId, extension);
       const blob = await put(pathname, bytes, {
-        access: "public",
+        access: "private",
         ...credentials,
         allowOverwrite: true,
         addRandomSuffix: false,
@@ -111,9 +111,8 @@ export function createVercelBlobProductionStore(options = {}) {
       return { pathname, contentType, url: blob.url };
     },
     async imageUrl(pathname) {
-      // Images are now public. The permanent URL is stored on the job record.
-      // This method remains for backward compatibility with jobs created before
-      // the switch to public access.
+      // Images are stored privately. Generate a short-lived presigned URL for
+      // the client to display the image.
       const validUntil = Date.now() + 15 * 60 * 1000;
       const signedToken = await issueSignedToken({ ...credentials, pathname, operations: ["get"], validUntil });
       const result = await presignUrl(signedToken, { access: "private", operation: "get", pathname, validUntil });
