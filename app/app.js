@@ -67,9 +67,8 @@ const studioCategories = [
   { id: "social", name: "Social image", description: "Feed posts, stories, and carousels for any platform.", icon: "image" },
   { id: "ad", name: "Ad image", description: "Paid social and display ads with copy governance.", icon: "ad" },
   { id: "website", name: "Website image", description: "Heroes, features, cards, and share images.", icon: "web" },
-  { id: "presentation", name: "Presentation element", description: "Transparent elements and slide backgrounds.", icon: "slides" },
-  { id: "collateral", name: "Sales collateral", description: "High-resolution elements for print and one-pagers.", icon: "print" },
   { id: "showcase", name: "Product showcase", description: "Product photography, device mockups, and lifestyle scenes.", icon: "product" },
+  { id: "sales", name: "Sales enablement", description: "Elements and backgrounds for slides, one-pagers, and pitch materials.", icon: "sales" },
   { id: "template", name: "Brand template", description: "Reusable surfaces, environments, and composition foundations.", icon: "template" },
 ];
 
@@ -136,11 +135,12 @@ const studioTemplateFormats = {
       { id: "tpl-social-portrait", name: "Portrait", ratio: "4:5", dim: "1080 x 1350", default: true },
     ],
   },
-  presentation: {
-    label: "Presentations",
+  sales: {
+    label: "Sales and presentations",
     formats: [
-      { id: "tpl-pres-16x9", name: "Widescreen", ratio: "16:9", dim: "1920 x 1080", default: true },
-      { id: "tpl-pres-4x3", name: "Standard", ratio: "4:3", dim: "1440 x 1080", default: false },
+      { id: "tpl-sales-16x9", name: "Slide (widescreen)", ratio: "16:9", dim: "1920 x 1080", default: true },
+      { id: "tpl-sales-4x3", name: "Slide (standard)", ratio: "4:3", dim: "1440 x 1080", default: false },
+      { id: "tpl-sales-letter", name: "One-pager (8.5 x 11)", ratio: "17:22", dim: "1700 x 2200", default: false },
     ],
   },
   website: {
@@ -149,19 +149,6 @@ const studioTemplateFormats = {
       { id: "tpl-web-hero", name: "Hero", ratio: "16:9", dim: "1920 x 1080", default: true },
       { id: "tpl-web-hero-short", name: "Short hero", ratio: "2.4:1", dim: "1920 x 800", default: false },
       { id: "tpl-web-feature", name: "Feature", ratio: "3:2", dim: "1200 x 800", default: false },
-    ],
-  },
-  collateral: {
-    label: "Print collateral",
-    formats: [
-      { id: "tpl-print-square", name: "Square", ratio: "1:1", dim: "2400 x 2400", default: true },
-      { id: "tpl-print-landscape", name: "Landscape", ratio: "3:2", dim: "2400 x 1600", default: false },
-    ],
-  },
-  flexible: {
-    label: "Flexible",
-    formats: [
-      { id: "tpl-flex-square", name: "High-res square", ratio: "1:1", dim: "2400 x 2400", default: true },
     ],
   },
 };
