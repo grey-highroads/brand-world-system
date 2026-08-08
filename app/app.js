@@ -4794,8 +4794,14 @@ async function startBrainSynthesis() {
     state.brain.approvedVersion = state.brain.artifactVersion;
   }
   const requestSources = incremental
-    ? state.brain.sources.filter((source) => state.brain.pendingSourceIds.includes(source.id))
-    : state.brain.sources;
+    ? state.brain.sources.filter((source) => state.brain.pendingSourceIds.includes(source.id) && !source.templateMeta)
+    : state.brain.sources.filter((source) => !source.templateMeta);
+  if (!requestSources.length) {
+    // Only templates were added, no evidence to synthesize. Templates are stored
+    // but the brain doesn't need to re-synthesize for them.
+    setToast("Templates saved. They do not change the Brand Brain synthesis.");
+    return;
+  }
   if (sourceFileBytes(requestSources.map((source) => source.id)) > MAX_SYNTHESIS_FILE_BYTES) {
     setToast("This build can read up to 40 MB of uploaded files in one synthesis. Prepare a smaller batch.");
     return;
