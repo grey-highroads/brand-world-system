@@ -4799,6 +4799,9 @@ async function startBrainSynthesis() {
   if (!requestSources.length) {
     // Only templates were added, no evidence to synthesize. Templates are stored
     // but the brain doesn't need to re-synthesize for them.
+    if (currentSynthesisResult) {
+      void persistBrainState();
+    }
     setToast("Templates saved. They do not change the Brand Brain synthesis.");
     return;
   }
