@@ -6545,3 +6545,92 @@ button.ws-attention-item:hover {
   gap: var(--space-2);
   flex-shrink: 0;
 }
+
+/* ── Campaign parameter cards ────────────────────────────────── */
+
+.cparam-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-2);
+}
+
+.cparam-card {
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.cparam-card.cparam-editing {
+  grid-column: 1 / -1;
+  border-color: var(--lavender);
+}
+
+.cparam-display {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  transition: background 0.1s;
+}
+
+.cparam-display:hover {
+  background: rgb(255 255 255 / 0.03);
+}
+
+.cparam-icon {
+  font-size: 14px;
+  color: var(--muted);
+  flex-shrink: 0;
+  margin-top: 1px;
+  width: 16px;
+  text-align: center;
+}
+
+.cparam-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.cparam-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.cparam-value {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text);
+}
+
+.cparam-edit-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) var(--space-2);
+}
+
+.cparam-edit-header .cparam-label {
+  flex: 1;
+}
+
+.cparam-editing textarea {
+  margin: 0 var(--space-4) var(--space-3);
+  width: calc(100% - var(--space-4) * 2);
+}
+
+@media (max-width: 700px) {
+  .cparam-grid {
+    grid-template-columns: 1fr;
+  }
+}

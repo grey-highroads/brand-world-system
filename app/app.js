@@ -794,6 +794,7 @@ const state = {
   campaignReferences: [],
   campaignDraft: null,
   campaignEditing: false,
+  campaignEditField: null,
   campaignEditDraft: null,
   previewOutputId: null,
   // Single store for every generated output, draft or approved. Views filter it;
@@ -2735,22 +2736,51 @@ function renderCampaignWorkspace() {
   const approved = approvedBrainForProduction();
   const campaignOutputs = outputsForCampaign(campaign.id).slice().sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
   const approvedCount = campaignOutputs.filter((o) => o.status === "approved").length;
-  const editing = state.campaignEditing;
+  const editingField = state.campaignEditField;
   const draft = state.campaignEditDraft || campaign;
 
-  // Read-only field row helper
-  const fieldRow = (label, value) => value ? `<li><strong>${escapeHtml(label)}</strong><span>${escapeHtml(value)}</span></li>` : "";
+  const fields = [
+    { id: "campaignIdea", label: "Campaign idea", icon: "◇", placeholder: "The organizing idea" },
+    { id: "objective", label: "Objective", icon: "◎", placeholder: "What this campaign is for" },
+    { id: "audience", label: "Audience", icon: "◉", placeholder: "Who this reaches" },
+    { id: "messageTerritory", label: "Message territory", icon: "◈", placeholder: "The space this campaign occupies" },
+    { id: "currentBelief", label: "Current belief", icon: "←", placeholder: "What the audience believes now" },
+    { id: "desiredBelief", label: "Desired belief", icon: "→", placeholder: "What they should believe after" },
+    { id: "desiredAction", label: "Desired action", icon: "▸", placeholder: "What they should do" },
+    { id: "proofPoints", label: "Proof points", icon: "✓", placeholder: "Claims, facts, or evidence" },
+    { id: "explore", label: "Explore", icon: "◻", placeholder: "New territory for this campaign" },
+    { id: "preserve", label: "Preserve", icon: "◼", placeholder: "What to carry forward from the brand" },
+    { id: "paletteShift", label: "Palette shift", icon: "◔", placeholder: "Color direction" },
+    { id: "productFocus", label: "Product focus", icon: "▢", placeholder: "Which product or line" },
+  ].filter((f) => campaign[f.id] || editingField === f.id);
 
-  // Edit field helper
-  const editField = (label, field, placeholder, textarea = false) => `
-    <div class="field full">
-      <label for="edit-${field}">${escapeHtml(label)}</label>
-      ${textarea
-        ? `<textarea id="edit-${field}" data-action="campaign-edit-input" data-field="${field}" placeholder="${escapeHtml(placeholder)}">${escapeHtml(draft[field] || "")}</textarea>`
-        : `<input class="input-like" id="edit-${field}" data-action="campaign-edit-input" data-field="${field}" value="${escapeHtml(draft[field] || "")}" placeholder="${escapeHtml(placeholder)}">`
-      }
-    </div>
-  `;
+  const fieldCards = fields.map((f) => {
+    const isEditing = editingField === f.id;
+    const value = campaign[f.id] || "";
+    return `
+      <div class="cparam-card ${isEditing ? "cparam-editing" : ""}">
+        ${isEditing ? `
+          <div class="cparam-edit-header">
+            <span class="cparam-icon" aria-hidden="true">${f.icon}</span>
+            <span class="cparam-label">${escapeHtml(f.label)}</span>
+            <div class="card-header-actions">
+              <button class="button compact" type="button" data-action="cancel-field-edit">Cancel</button>
+              <button class="button compact primary" type="button" data-action="save-field-edit" data-field="${f.id}">Save</button>
+            </div>
+          </div>
+          <textarea data-action="campaign-edit-input" data-field="${f.id}" placeholder="${escapeHtml(f.placeholder)}">${escapeHtml(draft[f.id] || "")}</textarea>
+        ` : `
+          <button class="cparam-display" type="button" data-action="start-field-edit" data-field="${f.id}">
+            <span class="cparam-icon" aria-hidden="true">${f.icon}</span>
+            <span class="cparam-body">
+              <span class="cparam-label">${escapeHtml(f.label)}</span>
+              <span class="cparam-value">${escapeHtml(value)}</span>
+            </span>
+          </button>
+        `}
+      </div>
+    `;
+  }).join("");
 
   return shell(`
     <section class="workspace">
@@ -2758,55 +2788,15 @@ function renderCampaignWorkspace() {
 
       <div class="content-grid">
         <div>
-          ${editing ? `
-          <section class="card">
-            <div class="card-header">
-              <h2>Edit campaign</h2>
-              <div class="card-header-actions">
-                <button class="button compact" type="button" data-action="cancel-campaign-edit">Cancel</button>
-                <button class="button compact primary" type="button" data-action="save-campaign-edit">Save changes</button>
-              </div>
-            </div>
-            <div class="field-grid">
-              ${editField("Campaign name", "name", "Summer Reset, Back to School, Q4 Launch")}
-              ${editField("Objective", "objective", "Awareness and trial, perception shift, product launch")}
-              ${editField("Description", "description", "What is the campaign doing and why now?", true)}
-              ${editField("Campaign idea", "campaignIdea", "The organizing idea. A phrase, not a paragraph.")}
-              ${editField("Audience", "audience", "Who specifically is this campaign aimed at?", true)}
-              ${editField("Current belief", "currentBelief", "What does the audience believe now?")}
-              ${editField("Desired belief", "desiredBelief", "What should they believe after?")}
-              ${editField("Desired action", "desiredAction", "What should they do?")}
-              ${editField("Message territory", "messageTerritory", "The space this campaign occupies.", true)}
-              ${editField("Proof points", "proofPoints", "Claims, facts, or evidence.", true)}
-              ${editField("Preserve", "preserve", "What to carry forward from the brand.")}
-              ${editField("Explore", "explore", "New territory for this campaign.", true)}
-              ${editField("Palette shift", "paletteShift", "Color direction for the campaign.")}
-              ${editField("Product focus", "productFocus", "Which product or line?")}
-            </div>
-          </section>
-          ` : `
           <section class="card">
             <div class="card-header">
               <h2>Campaign direction</h2>
-              <button class="button ghost compact" type="button" data-action="start-campaign-edit">Edit</button>
+              ${campaign.channels?.length ? `<span class="mini-pill">${campaign.channels.join(", ")}</span>` : ""}
             </div>
-            <ul class="exact-list">
-              ${fieldRow("Objective", campaign.objective)}
-              ${fieldRow("Campaign idea", campaign.campaignIdea)}
-              ${fieldRow("Audience", campaign.audience)}
-              ${fieldRow("Message territory", campaign.messageTerritory)}
-              ${fieldRow("Explore", campaign.explore)}
-              ${fieldRow("Preserve", campaign.preserve)}
-              ${fieldRow("Palette shift", campaign.paletteShift)}
-              ${fieldRow("Product focus", campaign.productFocus)}
-              ${fieldRow("Proof points", campaign.proofPoints)}
-              ${fieldRow("Current belief", campaign.currentBelief)}
-              ${fieldRow("Desired belief", campaign.desiredBelief)}
-              ${fieldRow("Desired action", campaign.desiredAction)}
-              ${campaign.channels?.length ? `<li><strong>Channels</strong><span>${campaign.channels.join(", ")}</span></li>` : ""}
-            </ul>
+            <div class="cparam-grid">
+              ${fieldCards}
+            </div>
           </section>
-          `}
 
           <section class="card">
             <div class="card-header">
@@ -5269,6 +5259,32 @@ root.addEventListener("click", (event) => {
     state.campaignEditDraft = null;
     state.creativeMode = null;
     navigate("campaigns");
+  }
+  if (action === "start-field-edit") {
+    const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+    if (campaign) {
+      state.campaignEditField = target.dataset.field;
+      state.campaignEditDraft = { ...campaign };
+    }
+    render();
+  }
+  if (action === "cancel-field-edit") {
+    state.campaignEditField = null;
+    state.campaignEditDraft = null;
+    render();
+  }
+  if (action === "save-field-edit") {
+    const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
+    const draft = state.campaignEditDraft;
+    const field = target.dataset.field;
+    if (campaign && draft && field) {
+      campaign[field] = (draft[field] || "").trim();
+      recordBrainHistory(`Campaign updated: ${campaign.name}`, `${field} was edited.`, "complete");
+      setToast("Campaign updated");
+    }
+    state.campaignEditField = null;
+    state.campaignEditDraft = null;
+    render();
   }
   if (action === "start-campaign-edit") {
     const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);

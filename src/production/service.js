@@ -115,8 +115,9 @@ function publicJob(job, imageUrl) {
   if (!job) return null;
   return {
     ...job,
-    imageUrl: imageUrl || undefined,
+    imageUrl: job.imagePublicUrl || imageUrl || undefined,
     imagePathname: undefined,
+    imagePublicUrl: undefined,
     errorDetail: undefined,
   };
 }
@@ -187,6 +188,7 @@ export async function generateProductionImage(body, options) {
       completedAt: new Date().toISOString(),
       imagePathname: savedImage.pathname,
       imageContentType: savedImage.contentType,
+      imagePublicUrl: savedImage.url || null,
       usage: result.usage || null,
     };
     await options.productionStore.write(complete);
