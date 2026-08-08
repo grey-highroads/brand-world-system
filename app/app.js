@@ -300,6 +300,19 @@ const sourceMaterialTypes = [
     extensions: ["png", "jpg", "jpeg", "webp", "gif"],
   },
   {
+    id: "brand-template",
+    label: "Background template",
+    shortLabel: "Template",
+    description: "A branded background surface for slides, one-pagers, or other collateral. Used as a locked background layer in the Sales enablement workflow.",
+    examples: "PNG, JPG, WEBP",
+    authority: "exact-asset",
+    handling: "Keep exact",
+    forms: ["files"],
+    accept: ".png,.jpg,.jpeg,.webp",
+    extensions: ["png", "jpg", "jpeg", "webp"],
+    isTemplate: true,
+  },
+  {
     id: "image-grid",
     label: "Image grid or moodboard",
     shortLabel: "Image grid",
@@ -903,6 +916,7 @@ const state = {
     sourceInfluence: "Supporting",
     sourceUsage: "",
     sourceExclusions: "",
+    sourceTemplateRatio: "",
     pendingFiles: [],
     sourceFileReading: false,
     selectedSourceId: "",
@@ -1246,6 +1260,7 @@ function resetSourceComposer() {
   state.brain.sourceUsage = "";
   state.brain.sourceExclusions = "";
   state.brain.sourceMaterialType = "";
+  state.brain.sourceTemplateRatio = "";
   state.brain.pendingFiles = [];
   state.brain.sourceFileReading = false;
 }
@@ -1561,6 +1576,18 @@ function sourceComposer() {
           <span>What should we leave out? <small>Optional</small></span>
           <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
         </label>
+        ${material?.isTemplate ? `
+        <label>
+          <span>Template format</span>
+          <select data-action="brain-source-template-ratio">
+            <option value="" ${!state.brain.sourceTemplateRatio ? "selected" : ""}>Choose a format</option>
+            <option value="16:9" ${state.brain.sourceTemplateRatio === "16:9" ? "selected" : ""}>Slide (16:9 widescreen)</option>
+            <option value="4:3" ${state.brain.sourceTemplateRatio === "4:3" ? "selected" : ""}>Slide (4:3 standard)</option>
+            <option value="17:22" ${state.brain.sourceTemplateRatio === "17:22" ? "selected" : ""}>One-pager (8.5 x 11)</option>
+          </select>
+          <small>Determines where this template appears in the Sales enablement workflow.</small>
+        </label>
+        ` : ""}
         <button class="button primary source-add-button" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add source to proposed update" : "Add source"}</button>
       </div>
 
@@ -2720,9 +2747,8 @@ function renderSalesSetup(cat) {
   const campaigns = state.campaigns || [];
   const fmt = salesOutputFormats[state.studio.salesFormat] || salesOutputFormats["slide-16x9"];
 
-  // Find templates tagged in the brain sources (future: real template assets)
-  // For now, show an empty state that explains the upload path.
-  const templates = [];
+  // Find templates tagged in the brain sources, filtered by the selected format ratio
+  const templates = productionTemplates(fmt.ratio);
 
   const selectedTemplate = templates.find((t) => t.id === state.studio.salesTemplateId);
   const hasElement = (state.studio.salesElement || "").trim().length > 0;
@@ -3651,11 +3677,32 @@ function sceneStarters(approved, campaign) {
 function productionLockedAssets() {
   if (state.brain.synthesisKind === "sample") return [];
   return state.brain.sources
-    .filter((source) => source.authority === "exact-asset" || source.sessionProductAsset)
+    .filter((source) => (source.authority === "exact-asset" || source.sessionProductAsset) && !source.templateMeta)
     .map((source) => {
       const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
       if (!file) return null;
       return { id: source.id, name: source.name, detail: source.detail || source.declaredType || "Protected asset", fileName: file.name };
+    })
+    .filter(Boolean);
+}
+
+function productionTemplates(ratioFilter) {
+  return state.brain.sources
+    .filter((source) => source.templateMeta?.isTemplate)
+    .map((source) => {
+      const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
+      if (!file) return null;
+      const ratio = source.templateMeta.ratio || "";
+      if (ratioFilter && ratio !== ratioFilter) return null;
+      const ratioLabels = { "16:9": "Slide 16:9", "4:3": "Slide 4:3", "17:22": "One-pager" };
+      return {
+        id: source.id,
+        name: source.name,
+        ratio,
+        ratioLabel: ratioLabels[ratio] || ratio,
+        fileName: file.name,
+        thumbUrl: file.blobUrl || null,
+      };
     })
     .filter(Boolean);
 }
@@ -5307,6 +5354,10 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="brain-source-exclusions"]')) {
     state.brain.sourceExclusions = event.target.value;
   }
+  if (event.target.matches('[data-action="brain-source-template-ratio"]')) {
+    state.brain.sourceTemplateRatio = event.target.value;
+    render();
+  }
   if (event.target.matches('[data-action="brain-source-item-usage"]')) {
     const source = state.brain.sources.find((item) => item.id === event.target.dataset.id);
     if (source) source.usage = event.target.value;
@@ -5922,9 +5973,12 @@ root.addEventListener("click", (event) => {
       setToast("Choose one file first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
+    } else if (material.isTemplate && !state.brain.sourceTemplateRatio) {
+      setToast("Choose a template format before adding");
     } else {
       const file = files[0];
       const sourceId = `file-${Date.now()}`;
+      const templateMeta = material.isTemplate ? { isTemplate: true, ratio: state.brain.sourceTemplateRatio } : undefined;
       state.brain.sources.push({
         id: sourceId,
         name: file.name,
@@ -5933,6 +5987,7 @@ root.addEventListener("click", (event) => {
         count: 1,
         status: "Ready",
         files: [{ ...file }],
+        templateMeta,
         ...sourceContract(material.id),
       });
       markSourceAdded(sourceId);
