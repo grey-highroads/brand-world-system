@@ -839,6 +839,7 @@ const state = {
     addUrl: "",
     creating: false,
     questionDrafts: {},
+    questionCustomOpen: {},
     resolvingQuestionIndex: null,
   },
   clientSwitcherOpen: false,
@@ -3221,10 +3222,20 @@ function renderProductDetail() {
           </div>
         ` : `
           <div class="product-question-answer">
-            <textarea rows="2" data-action="product-question-input" data-index="${index}" placeholder="Write what you established, so the answer travels with the record." ${answering ? "disabled" : ""}>${escapeHtml(draft)}</textarea>
-            <div class="actions">
-              <button class="button" type="button" data-action="resolve-product-question" data-index="${index}" ${answering || !draft.trim() ? "disabled" : ""}>${answering ? "Recording..." : "Record answer"}</button>
-            </div>
+            ${(q.suggested_answers || []).length && !state.products.questionCustomOpen[index] ? `
+              <div class="product-answer-options">
+                ${(q.suggested_answers || []).map((option, optionIndex) => `
+                  <button class="button product-answer-option" type="button" data-action="resolve-product-question-option" data-index="${index}" data-option="${optionIndex}" ${answering ? "disabled" : ""}>${escapeHtml(option)}</button>
+                `).join("")}
+              </div>
+              <button class="studio-add-link" type="button" data-action="product-question-custom" data-index="${index}" ${answering ? "disabled" : ""}>None of these fit. Write the answer</button>
+            ` : `
+              <textarea rows="2" data-action="product-question-input" data-index="${index}" placeholder="Write what you established, so the answer travels with the record." ${answering ? "disabled" : ""}>${escapeHtml(draft)}</textarea>
+              <div class="actions">
+                <button class="button" type="button" data-action="resolve-product-question" data-index="${index}" ${answering || !draft.trim() ? "disabled" : ""}>${answering ? "Recording..." : "Record answer"}</button>
+                ${(q.suggested_answers || []).length ? `<button class="button" type="button" data-action="product-question-options" data-index="${index}" ${answering ? "disabled" : ""}>Back to options</button>` : ""}
+              </div>
+            `}
           </div>
         `}
       </div>
@@ -3268,7 +3279,7 @@ function renderProductDetail() {
           <h2>Features</h2>
           <span class="collapsible-meta"><span class="mini-pill pill-neutral">${record.features.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
-        <div class="product-record-list">${featureRows}</div>
+        <div class="product-record-list collapsible-body-list">${featureRows}</div>
       </details>
       ` : ""}
 
@@ -3278,7 +3289,7 @@ function renderProductDetail() {
           <h2>Proof points</h2>
           <span class="collapsible-chevron" aria-hidden="true"></span>
         </summary>
-        <ul class="contract-list">${proofPoints}</ul>
+        <ul class="contract-list collapsible-body-list">${proofPoints}</ul>
       </details>
       ` : ""}
 
@@ -3288,7 +3299,7 @@ function renderProductDetail() {
           <h2>What production must not do</h2>
           <span class="collapsible-meta"><span class="mini-pill pill-warning">${record.exclusions.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
-        <ul class="contract-list">${exclusions}</ul>
+        <ul class="contract-list collapsible-body-list">${exclusions}</ul>
       </details>
       ` : ""}
 
@@ -3298,7 +3309,7 @@ function renderProductDetail() {
           <h2>Review questions</h2>
           <span class="collapsible-meta"><span class="mini-pill ${record.review_questions.every((q) => q.resolution) ? "pill-success" : "pill-neutral"}">${record.review_questions.filter((q) => q.resolution).length}/${record.review_questions.length} answered</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
-        <div class="product-record-list">${reviewQuestions}</div>
+        <div class="product-record-list collapsible-body-list">${reviewQuestions}</div>
       </details>
       ` : ""}
     </section>
@@ -6050,6 +6061,21 @@ root.addEventListener("click", (event) => {
   if (action === "resolve-product-question") {
     void resolveProductQuestion(Number(target.dataset.index));
   }
+  if (action === "resolve-product-question-option") {
+    const qIndex = Number(target.dataset.index);
+    const optIndex = Number(target.dataset.option);
+    const question = (state.products.detail?.review_questions || [])[qIndex];
+    const option = (question?.suggested_answers || [])[optIndex];
+    if (option) void resolveProductQuestion(qIndex, option);
+  }
+  if (action === "product-question-custom") {
+    state.products.questionCustomOpen[Number(target.dataset.index)] = true;
+    render();
+  }
+  if (action === "product-question-options") {
+    delete state.products.questionCustomOpen[Number(target.dataset.index)];
+    render();
+  }
   if (action === "open-campaign") {
     state.activeCampaignId = target.dataset.id;
     navigate("campaign-workspace");
@@ -6992,6 +7018,7 @@ async function loadProductDetail(productId) {
   state.products.detail = null;
   state.products.error = "";
   state.products.questionDrafts = {};
+  state.products.questionCustomOpen = {};
   state.products.resolvingQuestionIndex = null;
   render();
   try {
@@ -7066,10 +7093,10 @@ function outputsAffectedByProductVersion() {
 // still requires review and approval on the Products screen before production
 // can consume it.
 // Record a reviewer's answer to a review question on the open product record.
-async function resolveProductQuestion(index) {
+async function resolveProductQuestion(index, noteOverride) {
   const record = state.products.detail;
   if (!record) return;
-  const note = (state.products.questionDrafts[index] || "").trim();
+  const note = (noteOverride || state.products.questionDrafts[index] || "").trim();
   if (!note) {
     setToast("Write the answer before recording it");
     return;

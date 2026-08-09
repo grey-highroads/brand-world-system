@@ -71,8 +71,14 @@ const SYNTHESIS_SCHEMA = {
           summary: { type: "string" },
           evidence_quote: { type: "string" },
           confidence: { type: "string", enum: ["high", "medium", "low"] },
+          suggested_answers: {
+            type: "array",
+            items: { type: "string" },
+            minItems: 0,
+            maxItems: 4,
+          },
         },
-        required: ["title", "summary", "evidence_quote", "confidence"],
+        required: ["title", "summary", "evidence_quote", "confidence", "suggested_answers"],
         additionalProperties: false,
       },
       minItems: 0,
@@ -113,7 +119,8 @@ Writing rules:
 - benefit describes the outcome for the buyer or user, not a restatement of the feature name.
 - visual_direction describes what production imagery should show for this product, drawn only from what the source shows or describes.
 - exclusions list things production must not claim or depict for this product, drawn from the source's own caveats.
-- confidence on review questions uses lowercase: "high", "medium", or "low".`;
+- confidence on review questions uses lowercase: "high", "medium", or "low".
+- For each review question, offer suggested_answers: 2 to 4 short, mutually exclusive statements a reviewer could confirm as the answer (for example, availability states, scope boundaries, or definitions the source leaves open). Phrase each so it can be recorded verbatim as the resolution. These are candidate answers for a human to confirm, not facts; leave the array empty when no plausible set of answers exists.`;
 
 function buildSynthesisRequest(source, options = {}) {
   const model = options.model || DEFAULT_PRODUCT_MODEL;

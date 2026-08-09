@@ -207,6 +207,14 @@
             }
           },
           "description": "A reviewer's recorded answer. Optional; absent while the question is open. Recording an answer does not change the record version or approval state."
+        },
+        "suggested_answers": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "$ref": "common.schema.json#/$defs/non_empty_string"
+          },
+          "description": "Candidate resolutions the reviewer can confirm with one click. Model-drafted phrasings of possible answers; the reviewer choosing one is what makes it the recorded answer. Optional; may be empty when no plausible answer set exists."
         }
       }
     }
