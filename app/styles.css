@@ -6864,14 +6864,75 @@ button.ws-attention-item:hover {
   line-height: 1.35;
 }
 
+.product-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.product-actions-primary,
+.product-actions-manage {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Management actions sit apart from the primary approve/back group, and are
+   quieter: these are heavier operations (rebuild, delete), not the main task. */
+.product-actions-manage {
+  padding-left: var(--space-4);
+  border-left: 1px solid var(--border-subtle);
+}
+
+.button-ghost {
+  background: none;
+  border-color: var(--border-subtle);
+  color: var(--muted);
+}
+
+.button-ghost:hover:not(:disabled) {
+  color: var(--text);
+  border-color: var(--border-strong);
+}
+
 .product-delete-button {
   color: var(--danger);
+}
+
+.product-delete-button:hover:not(:disabled) {
+  color: var(--danger);
   border-color: var(--danger);
-  margin-left: auto;
+}
+
+.product-version-note {
+  margin-top: var(--space-3);
+}
+
+@media (max-width: 720px) {
+  .product-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .product-actions-manage {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--border-subtle);
+    padding-top: var(--space-3);
+  }
 }
 
 .product-answer-links {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-4);
+}
+
+.product-detail-stack {
+  display: grid;
+  gap: var(--section-gap);
 }

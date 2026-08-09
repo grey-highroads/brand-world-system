@@ -3278,18 +3278,24 @@ function renderProductDetail() {
     <section class="workspace">
       ${pageHeader(record.product_name, record.one_true_thing || record.category || "Product record")}
 
-      <div class="page-actions">
-        <button class="button" type="button" data-action="products">Back to products</button>
-        ${isApproved
-          ? `<span class="mini-pill pill-success">Approved · ${new Date(record.approved_at).toLocaleDateString()}</span>${openQuestionCount ? `<span class="mini-pill pill-warning">${openQuestionCount} open ${openQuestionCount === 1 ? "question" : "questions"}</span>` : ""}`
-          : `<button class="button primary" type="button" data-action="approve-product" data-id="${escapeHtml(record.product_id)}" ${approving ? "disabled" : ""}>${approving ? "Approving..." : "Approve product record"}</button>`
-        }
-        <button class="button" type="button" data-action="resynthesize-product" ${state.products.resynthesizing || approving ? "disabled" : ""}>${state.products.resynthesizing ? "Rebuilding..." : "Re-synthesize from brief"}</button>
-        <button class="button product-delete-button" type="button" data-action="delete-product" ${state.products.deleting || approving || state.products.resynthesizing ? "disabled" : ""}>${state.products.deleting ? "Removing..." : "Delete"}</button>
+      <div class="product-actions">
+        <div class="product-actions-primary">
+          <button class="button" type="button" data-action="products">&lsaquo; Back</button>
+          ${isApproved
+            ? `<span class="mini-pill pill-success">Approved · ${new Date(record.approved_at).toLocaleDateString()}</span>${openQuestionCount ? `<span class="mini-pill pill-warning">${openQuestionCount} open ${openQuestionCount === 1 ? "question" : "questions"}</span>` : ""}`
+            : `<button class="button primary" type="button" data-action="approve-product" data-id="${escapeHtml(record.product_id)}" ${approving ? "disabled" : ""}>${approving ? "Approving..." : "Approve product record"}</button>`
+          }
+        </div>
+        <div class="product-actions-manage">
+          <button class="button button-ghost" type="button" data-action="resynthesize-product" ${state.products.resynthesizing || approving ? "disabled" : ""}>${state.products.resynthesizing ? "Rebuilding..." : "Re-synthesize"}</button>
+          <button class="button button-ghost product-delete-button" type="button" data-action="delete-product" ${state.products.deleting || approving || state.products.resynthesizing ? "disabled" : ""}>${state.products.deleting ? "Removing..." : "Delete"}</button>
+        </div>
       </div>
-      <p class="page-description">Version ${escapeHtml(String(record.version || "1"))}. Re-synthesizing reads the brief again, builds a new version, and resets approval so the revised claims get reviewed.</p>
+      <p class="page-description product-version-note">Version ${escapeHtml(String(record.version || "1"))}. Re-synthesizing reads the brief again, builds a new version, and resets approval for review.</p>
 
       ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
+
+      <div class="product-detail-stack">
 
       <details class="card collapsible-card" data-psection="summary" ${sections.summary ? "open" : ""}>
         <summary class="card-header collapsible-header">
@@ -3343,6 +3349,7 @@ function renderProductDetail() {
         <div class="product-record-list collapsible-body-list">${reviewQuestions}</div>
       </details>
       ` : ""}
+      </div>
     </section>
   `);
 }
