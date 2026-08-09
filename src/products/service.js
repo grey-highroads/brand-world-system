@@ -223,15 +223,38 @@ export async function synthesizeAndPersistProduct({
   const synthesis = await callSynthesis({ apiKey, source: normalized, model });
   const content = synthesis.content;
 
-  // Read existing products to avoid id collisions.
+  // A source that has already produced a product record bumps the version of
+  // that record instead of creating a new one. Find any existing product whose
+  // provenance points back to this source id.
   const existingProducts = await store.listProducts();
-  const existingIds = existingProducts.map((p) => p.product_id);
-  const productId = generateProductId(content.product_name, existingIds);
+  let existingRecord = null;
+  for (const entry of existingProducts) {
+    const full = await store.readProduct(entry.product_id);
+    if (full?.provenance?.source_ref === source.id) {
+      existingRecord = full;
+      break;
+    }
+  }
+
+  let productId;
+  let version;
+  if (existingRecord) {
+    // Re-synthesis. Bump the version and clear approval so the revised record
+    // must be reviewed and re-approved before production can consume it.
+    productId = existingRecord.product_id;
+    const previousVersion = Number(existingRecord.version || "1");
+    version = String(Number.isFinite(previousVersion) ? previousVersion + 1 : 1);
+  } else {
+    // First synthesis for this source. Generate a fresh product id.
+    const existingIds = existingProducts.map((p) => p.product_id);
+    productId = generateProductId(content.product_name, existingIds);
+    version = "1";
+  }
 
   const record = {
     schema_version: "1.0.0",
     product_id: productId,
-    version: "1",
+    version,
     ...content,
     provenance: {
       source_kind: "product_synthesis",
@@ -239,6 +262,8 @@ export async function synthesizeAndPersistProduct({
       captured_by: "brand-world-system",
     },
     synthesized_at: new Date().toISOString(),
+    // Every synthesis produces a candidate. Re-synthesis explicitly resets
+    // approval so the revised claims must be reviewed before use.
     approved_at: null,
     response_id: synthesis.responseId,
     model: synthesis.model,
@@ -268,28 +293,5 @@ export async function readProduct({ store, productId }) {
     throw error;
   }
   return record;
-}
-
-// Approve a candidate product record. Sets approved_at and returns the updated
-// record. Production only consumes approved product records; a candidate can
-// be reviewed and revised but not used in generation. This is the "approve
-// guidance" action from the glossary, distinct from output approval and
-// canonical promotion.
-export async function approveProduct({ store, productId }) {
-  const record = await store.readProduct(productId);
-  if (!record) {
-    const error = new Error(`Product "${productId}" was not found.`);
-    error.status = 404;
-    throw error;
-  }
-  if (record.approved_at) {
-    return record;
-  }
-  const updated = {
-    ...record,
-    approved_at: new Date().toISOString(),
-  };
-  await store.writeProduct(updated);
-  return updated;
 }
 

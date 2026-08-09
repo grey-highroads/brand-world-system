@@ -937,6 +937,8 @@ const state = {
     sourceTextType: "Notes",
     sourceMaterialType: "",
     sourceAuthority: "brand-evidence",
+    // Which source id is currently running product synthesis (empty when idle).
+    productSynthesizingId: "",
     sourceRole: "Multiple areas",
     sourceInfluence: "Supporting",
     sourceUsage: "",
@@ -1663,6 +1665,19 @@ function sourceGroupRow(source) {
               }
               <label><span>Usage instruction</span><textarea data-action="brain-source-item-usage" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${escapeHtml(source.usage)}</textarea></label>
               <label><span>What should we leave out?</span><textarea data-action="brain-source-item-exclusions" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${escapeHtml(source.exclusions)}</textarea></label>
+              ${source.productMeta ? `
+                <div class="source-product-synthesis">
+                  <div class="rule">
+                    <span class="mini-pill ${source.productMeta.synthesizedProductId ? "pill-success" : "pill-neutral"}">${source.productMeta.synthesizedProductId ? "Synthesized" : "Product brief"}</span>
+                    <span>
+                      <strong>${escapeHtml(source.productMeta.productName)}</strong>
+                      <span>${source.productMeta.synthesizedProductId ? "A candidate product record was built from this brief. Review and approve it on the Products screen." : "Build a governed product record from this brief. Every claim will trace back to the source and remain a candidate until you approve it."}</span>
+                    </span>
+                    <button class="button ${source.productMeta.synthesizedProductId ? "" : "primary"}" type="button" data-action="synthesize-product-from-source" data-id="${escapeHtml(source.id)}" ${state.brain.productSynthesizingId === source.id ? "disabled" : ""}>${state.brain.productSynthesizingId === source.id ? "Working..." : source.productMeta.synthesizedProductId ? "Re-synthesize" : "Synthesize product record"}</button>
+                    ${source.productMeta.synthesizedProductId ? `<button class="button" type="button" data-action="view-product" data-id="${escapeHtml(source.productMeta.synthesizedProductId)}">Review</button>` : ""}
+                  </div>
+                </div>
+              ` : ""}
             </div>`
           : ""
       }
@@ -2122,6 +2137,10 @@ function renderWorkspace() {
   const candidateRules = state.production.candidateRules || [];
   const pendingCandidates = candidateRules.filter((r) => !r.dismissed);
   const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
+  const productAffectedOutputs = outputsAffectedByProductVersion();
+  // Warm the product list so change-impact reflects current versions. loadProducts
+  // is a no-op when the list is already cached for this client.
+  if (typeof fetch === "function") void loadProducts();
   const unresolvedExceptions = state.brain.processingComplete
     ? brainExceptions.filter((item) => !state.brain.resolutions[item.id])
     : [];
@@ -2146,6 +2165,15 @@ function renderWorkspace() {
       label: o.label || "Untitled output",
       detail: `Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.`,
       pill: `v${o.brainVersion}`,
+      pillClass: "pill-warning",
+      action: "preview-output",
+      id: o.id,
+    })),
+    ...productAffectedOutputs.map((o) => ({
+      kind: "product-affected",
+      label: o.label || "Untitled output",
+      detail: `Made with ${o.package.product.product_name} v${o.package.product.version}. Product record has been revised.`,
+      pill: `Product v${o.package.product.version}`,
       pillClass: "pill-warning",
       action: "preview-output",
       id: o.id,
@@ -2320,6 +2348,10 @@ function renderWorkspace() {
 function renderChooser() {
   const approved = approvedBrainForProduction();
   const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
+  const productAffectedOutputs = outputsAffectedByProductVersion();
+  // Warm the product list so change-impact reflects current versions. loadProducts
+  // is a no-op when the list is already cached for this client.
+  if (typeof fetch === "function") void loadProducts();
 
   const recentOutputs = state.outputs
     .slice()
@@ -2348,7 +2380,7 @@ function renderChooser() {
       ${affectedOutputs.length ? `
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
-            <h2>Outputs using an earlier version</h2>
+            <h2>Outputs using an earlier Brand Brain version</h2>
             <span class="collapsible-meta"><span class="mini-pill pill-warning">${affectedOutputs.length} ${affectedOutputs.length === 1 ? "output" : "outputs"} on v${affectedOutputs[0].brainVersion}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
           </summary>
           <div class="affected-outputs-list">
@@ -2356,6 +2388,22 @@ function renderChooser() {
               <div class="rule">
                 <span class="mini-pill pill-warning">v${o.brainVersion}</span>
                 <span><strong>${escapeHtml(o.label || `${o.output.placement} ${o.output.format}`)}</strong><span>Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.${o.lockedAsset ? ` Used ${o.lockedAsset.name}.` : ""}</span></span>
+              </div>
+            `).join("")}
+          </div>
+        </details>
+      ` : ""}
+      ${productAffectedOutputs.length ? `
+        <details class="card collapsible-card affected-outputs-card">
+          <summary class="card-header collapsible-header">
+            <h2>Outputs using an earlier product record version</h2>
+            <span class="collapsible-meta"><span class="mini-pill pill-warning">${productAffectedOutputs.length} ${productAffectedOutputs.length === 1 ? "output" : "outputs"} on older product version</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+          </summary>
+          <div class="affected-outputs-list">
+            ${productAffectedOutputs.map((o) => `
+              <div class="rule">
+                <span class="mini-pill pill-warning">Product v${escapeHtml(String(o.package.product.version))}</span>
+                <span><strong>${escapeHtml(o.label || "Untitled output")}</strong><span>Made with ${escapeHtml(o.package.product.product_name)} v${escapeHtml(String(o.package.product.version))}. That product record has been revised.</span></span>
               </div>
             `).join("")}
           </div>
@@ -5870,6 +5918,9 @@ root.addEventListener("click", (event) => {
   if (action === "approve-product") {
     void approveProductRecord(target.dataset.id);
   }
+  if (action === "synthesize-product-from-source") {
+    void synthesizeProductFromSource(target.dataset.id);
+  }
   if (action === "open-campaign") {
     state.activeCampaignId = target.dataset.id;
     navigate("campaign-workspace");
@@ -6847,6 +6898,63 @@ function approvedProducts() {
   return state.products.list.filter((p) => p.status === "approved");
 }
 
+// Return outputs that were produced with an older version of a product record
+// than what is currently approved for that product. Only approved outputs
+// against approved products are considered; drafts and candidates change
+// often enough that flagging them creates noise. This is the product-scoped
+// counterpart to the brain-version drift already surfaced on the workspace.
+function outputsAffectedByProductVersion() {
+  if (!state.products.list.length) return [];
+  const currentVersionByProductId = new Map(state.products.list.filter((p) => p.status === "approved").map((p) => [p.product_id, String(p.version || "1")]));
+  return state.outputs.filter((o) => {
+    if (o.status !== "approved") return false;
+    const product = o.package?.product;
+    if (!product?.product_id) return false;
+    const current = currentVersionByProductId.get(product.product_id);
+    if (!current) return false;
+    return String(product.version || "1") !== current;
+  });
+}
+
+// Synthesize a product record from a tagged brain source. The button lives on
+// product-brief source rows so the user does not have to leave the sources
+// screen or hit the API by hand. The resulting record is a candidate; it
+// still requires review and approval on the Products screen before production
+// can consume it.
+async function synthesizeProductFromSource(sourceId) {
+  if (typeof fetch !== "function") return;
+  const source = state.brain.sources.find((s) => s.id === sourceId);
+  if (!source) {
+    setToast("The source could not be found");
+    return;
+  }
+  state.brain.productSynthesizingId = sourceId;
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "synthesize", sourceId }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The product record could not be synthesized.");
+    // Mark the source so the row shows the resulting record id and can link
+    // to it. This is UI-only state; the durable record lives in the product
+    // store keyed by product_id.
+    if (source.productMeta) {
+      source.productMeta.synthesizedProductId = body.product_id;
+    }
+    setToast(`Product record for ${source.productMeta?.productName || "the product"} is ready to review`);
+    // Refresh the product list so the new candidate appears everywhere.
+    void loadProducts(true);
+  } catch (error) {
+    setToast(error.message || "The product record could not be synthesized");
+  } finally {
+    state.brain.productSynthesizingId = "";
+    render();
+  }
+}
+
 function switchClient(id) {
   if (!id || id === state.activeClientId) {
     state.clientSwitcherOpen = false;
@@ -6893,6 +7001,7 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
 
 
 
