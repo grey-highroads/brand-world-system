@@ -1,6 +1,6 @@
 # ADR 0013: Govern copy through derived claims and a copy audit
 
-- Status: Proposed
+- Status: Accepted (mechanism test passed 2026-08-09)
 - Date: 2026-08-09
 - Owner: Higher Roads
 - Supersedes: Nothing
