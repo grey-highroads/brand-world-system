@@ -61,15 +61,12 @@ export default async function handler(request, response) {
       jobScope,
     });
 
-    // Brain guardrails also contribute to the prohibited list (interim,
-    // until guardrails are migrated into the claims document proper).
-    for (const guardrail of dossier.guardrails || []) {
-      claimsSet.prohibited.push({
-        text: `${guardrail.title}: ${guardrail.body}`,
-        source: "Brand Brain guardrail",
-        scope: "brand",
-      });
-    }
+    // Brain guardrails steer generation through the BOUNDARIES prompt section
+    // below but are not injected into the audited prohibited-claims list.
+    // Prose rules like "Never clinical" are not claims, and asking the claim
+    // auditor to match them adds noise. Guardrail migration into the claims
+    // document is future work; until then guardrails steer generation but are
+    // not audited as claims.
 
     // Build the copy-generation prompt
     const systemPromptParts = [
@@ -240,8 +237,6 @@ async function auditCopyAgainstClaims({ copy, approvedClaims, prohibitedClaims, 
     `- If a sentence makes a claim that matches or violates a prohibited claim or exclusion, classify it as "prohibited". Note which prohibition it matches (e.g., P1).`,
     `- If a sentence makes a claim that matches neither list, classify it as "unapproved". This is advisory, not a violation.`,
     ``,
-    `Be conservative about what counts as a claim. A sentence that describes a feature without asserting superiority, quantified benefit, or regulatory status is a description, not a claim. Err toward "description" over "unapproved" when the sentence is neutral and factual.`,
-    ``,
     `Return ONLY a JSON array. Each element: {"sentence": "...", "classification": "description|approved|unapproved|prohibited", "match": "A1|P2|null", "reason": "brief explanation"}. No preamble, no markdown fences.`,
   ].join("\n");
 
@@ -311,10 +306,10 @@ async function auditCopyAgainstClaims({ copy, approvedClaims, prohibitedClaims, 
 // ---------------------------------------------------------------------------
 
 function checkDisclosurePresence(copy, disclosures) {
-  const copyLower = copy.toLowerCase();
+  const copyNorm = copy.replace(/\s+/g, " ").toLowerCase();
   return disclosures.map((d) => ({
     text: d.text,
     trigger_scope: d.trigger_scope,
-    present: copyLower.includes(d.text.toLowerCase()),
+    present: copyNorm.includes(d.text.replace(/\s+/g, " ").toLowerCase()),
   }));
 }
