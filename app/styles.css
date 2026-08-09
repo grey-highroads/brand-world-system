@@ -6755,3 +6755,23 @@ button.ws-attention-item:hover {
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Products: add-a-product panel ───────────────────────────── */
+
+.product-add-panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--field-gap);
+}
+
+.product-add-panel .page-description {
+  margin: 0;
+}
+
+.product-add-panel .source-method-tabs {
+  margin: 0;
+}
+
+.product-add-panel .actions {
+  margin-top: var(--space-2);
+}

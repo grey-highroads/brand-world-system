@@ -829,6 +829,14 @@ const state = {
     activeId: "",
     error: "",
     loadedForClient: "",
+    // Add-a-product flow (owned by the Products screen).
+    addOpen: false,
+    addName: "",
+    addTab: "file",
+    addFile: null,
+    addFileReading: false,
+    addText: "",
+    creating: false,
   },
   clientSwitcherOpen: false,
   brandName: "SLAKE",
@@ -3065,6 +3073,47 @@ function renderCampaigns() {
   `);
 }
 
+function renderProductAddPanel() {
+  const p = state.products;
+  const creating = p.creating;
+  const tab = p.addTab;
+  const hasBrief = tab === "file" ? !!p.addFile : !!p.addText.trim();
+  return `
+    <div class="card product-add-panel">
+      <div class="card-header">
+        <span><span class="section-label">New product</span><h2>Add a product</h2></span>
+        <button class="button" type="button" data-action="cancel-product-add" ${creating ? "disabled" : ""}>Cancel</button>
+      </div>
+      <p class="page-description">Give the product a name and its brief. The system reads the brief and builds a governed record: features, approved claim language, and rules production must follow. Every claim traces back to the brief, and nothing is usable until you review and approve it.</p>
+      <div class="field">
+        <label for="product-add-name">Product name</label>
+        <input id="product-add-name" type="text" data-action="product-add-name-input" value="${escapeHtml(p.addName)}" placeholder="e.g. RCS Messaging" ${creating ? "disabled" : ""} />
+      </div>
+      <div class="source-method-tabs" role="tablist" aria-label="Brief source">
+        <button class="${tab === "file" ? "active" : ""}" type="button" data-action="product-add-tab" data-tab="file" ${creating ? "disabled" : ""}>Upload a brief</button>
+        <button class="${tab === "text" ? "active" : ""}" type="button" data-action="product-add-tab" data-tab="text" ${creating ? "disabled" : ""}>Paste text</button>
+      </div>
+      ${tab === "file" ? `
+        <div class="field">
+          <label for="product-add-file">Product brief, spec sheet, or feature deck</label>
+          <input id="product-add-file" type="file" data-action="product-add-file" accept=".pdf,.docx,.pptx,.txt,.md,image/png,image/jpeg,image/webp" ${creating || p.addFileReading ? "disabled" : ""} />
+          ${p.addFileReading ? `<p class="field-note">Uploading...</p>` : ""}
+          ${p.addFile ? `<p class="field-note">Ready: ${escapeHtml(p.addFile.name)} (${formatFileSize(p.addFile.size)})</p>` : ""}
+        </div>
+      ` : `
+        <div class="field">
+          <label for="product-add-text">Paste the brief</label>
+          <textarea id="product-add-text" rows="8" data-action="product-add-text-input" placeholder="Paste the product description, feature list, claims, or spec content here." ${creating ? "disabled" : ""}>${escapeHtml(p.addText)}</textarea>
+        </div>
+      `}
+      <div class="actions">
+        <button class="button primary" type="button" data-action="create-product-record" ${creating ? "disabled" : ""}>${creating ? "Building the record..." : "Create product record"}</button>
+      </div>
+      ${creating ? `<p class="field-note">Reading the brief and building the governed record. This usually takes under a minute.</p>` : !hasBrief || !p.addName.trim() ? `<p class="field-note">A product name and a brief are needed before the record can be built.</p>` : ""}
+    </div>
+  `;
+}
+
 function renderProducts() {
   const list = state.products.list;
   const loading = state.products.loading;
@@ -3090,14 +3139,19 @@ function renderProducts() {
         "Products",
         list.length
           ? `${list.length} ${list.length === 1 ? "product record" : "product records"} for ${state.brandName}. Approved records are available to production; candidates are waiting for review.`
-          : `Product records live here. Tag a source as a product brief on the Brand Brain sources screen, then synthesize a governed record from it.`
+          : `The system builds a governed record for each product: what it does, its approved claim language, and the rules production must follow.`
       )}
+      ${!state.products.addOpen ? `
+        <div class="actions">
+          <button class="button primary" type="button" data-action="open-product-add">+ Add a product</button>
+        </div>
+      ` : renderProductAddPanel()}
       ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
       ${loading && !list.length ? `<p class="page-description">Loading product records...</p>` : ""}
-      ${list.length ? `<div class="grid mode-grid">${cards}</div>` : loading ? "" : `
+      ${list.length ? `<div class="grid mode-grid">${cards}</div>` : loading || state.products.addOpen ? "" : `
         <div class="card">
-          <div class="card-header"><h2>No product records yet</h2></div>
-          <p>Add a product brief to the Brand Brain sources, then run a product synthesis. The resulting record will appear here for review and approval.</p>
+          <div class="card-header"><h2>No products yet</h2></div>
+          <p>Add your first product above. You will review everything the system builds before it can be used in production.</p>
         </div>
       `}
     </section>
@@ -5104,7 +5158,7 @@ async function startBrainSynthesis() {
     }
     const hasProductBriefs = state.brain.sources.some((s) => s.productMeta);
     setToast(hasProductBriefs
-      ? "Product briefs saved. Use the Products endpoint to synthesize product records from them."
+      ? "Product briefs saved. Build their product records from the Products screen."
       : "Templates saved. They do not change the Brand Brain synthesis.");
     return;
   }
@@ -5740,6 +5794,12 @@ root.addEventListener("input", (event) => {
     state.studio.salesProductId = event.target.value;
     render();
   }
+  if (event.target.matches('[data-action="product-add-name-input"]')) {
+    state.products.addName = event.target.value;
+  }
+  if (event.target.matches('[data-action="product-add-text-input"]')) {
+    state.products.addText = event.target.value;
+  }
 });
 
 root.addEventListener("change", async (event) => {
@@ -5747,6 +5807,22 @@ root.addEventListener("change", async (event) => {
   if (action === "studio-campaign-change") {
     state.studio.campaignId = event.target.value;
     render();
+  }
+  if (action === "product-add-file") {
+    const file = Array.from(event.target.files ?? [])[0];
+    if (file) {
+      state.products.addFileReading = true;
+      render();
+      try {
+        state.products.addFile = await window.storeBrandWorldSourceFile(file);
+      } catch {
+        state.products.addFile = null;
+        setToast(`Could not read ${file.name}. Try again.`);
+      } finally {
+        state.products.addFileReading = false;
+        render();
+      }
+    }
   }
   if (action === "campaign-toggle-channel") {
     if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
@@ -5911,6 +5987,25 @@ root.addEventListener("click", (event) => {
   }
   if (action === "synthesize-product-from-source") {
     void synthesizeProductFromSource(target.dataset.id);
+  }
+  if (action === "open-product-add") {
+    state.products.addOpen = true;
+    state.products.addName = "";
+    state.products.addTab = "file";
+    state.products.addFile = null;
+    state.products.addText = "";
+    render();
+  }
+  if (action === "cancel-product-add") {
+    state.products.addOpen = false;
+    render();
+  }
+  if (action === "product-add-tab") {
+    state.products.addTab = target.dataset.tab;
+    render();
+  }
+  if (action === "create-product-record") {
+    void createProductRecord();
   }
   if (action === "open-campaign") {
     state.activeCampaignId = target.dataset.id;
@@ -6925,6 +7020,103 @@ function outputsAffectedByProductVersion() {
 // screen or hit the API by hand. The resulting record is a candidate; it
 // still requires review and approval on the Products screen before production
 // can consume it.
+// The Products screen's own add flow (one screen, birth to approval). Creates
+// the product-brief source, persists it so the server can read it, runs the
+// per-product synthesis, and lands on the candidate record for review. The
+// brief still becomes a tagged source under the hood for provenance, but the
+// user never experiences product creation as file intake.
+async function createProductRecord() {
+  const p = state.products;
+  const name = p.addName.trim();
+  const usingFile = p.addTab === "file";
+  if (!name) {
+    setToast("Give the product a name first");
+    document.getElementById("product-add-name")?.focus();
+    return;
+  }
+  if (usingFile && !p.addFile) {
+    setToast("Upload the product brief first");
+    return;
+  }
+  if (!usingFile && !p.addText.trim()) {
+    setToast("Paste the brief content first");
+    return;
+  }
+  if (!currentSynthesisResult) {
+    setToast("Build the Brand Brain first. Products build on the approved brand foundation.");
+    return;
+  }
+
+  p.creating = true;
+  render();
+  try {
+    // Create the product-brief source. Same shape the intake flow produces,
+    // with the usage instruction supplied automatically since its role is
+    // fixed: this brief exists to build the product record.
+    const sourceId = usingFile ? `file-${Date.now()}` : `text-${Date.now()}`;
+    const material = sourceMaterialType("product-brief");
+    const source = {
+      id: sourceId,
+      name: usingFile ? p.addFile.name : `${name} brief`,
+      type: material?.label || "Product brief or spec",
+      detail: usingFile
+        ? `${fileExtension(p.addFile).toUpperCase()} · ${formatFileSize(p.addFile.size)}`
+        : (p.addText.length > 92 ? `${p.addText.slice(0, 92)}...` : p.addText),
+      count: 1,
+      status: "Ready",
+      productMeta: { isProductBrief: true, productName: name },
+      materialType: "product-brief",
+      declaredType: material?.label || "Product brief or spec",
+      intakeVersion: "single-source-v1",
+      authority: material?.authority || "brand-evidence",
+      role: "Product knowledge",
+      influence: "Not weighted",
+      usage: `Product brief for ${name}. Used to build the governed product record.`,
+      exclusions: "No additional exclusions supplied.",
+      verification: "Pending content check",
+    };
+    if (usingFile) {
+      source.files = [{ ...p.addFile }];
+    } else {
+      source.content = p.addText.trim();
+    }
+    state.brain.sources.push(source);
+    recordBrainHistory("Product brief added", `${source.name} was added as the brief for ${name}.`, "complete");
+
+    // The synthesis endpoint reads sources from the server-side brain store,
+    // so the new source must be persisted before the call, not after.
+    await persistBrainState();
+
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "synthesize", sourceId }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The product record could not be built.");
+
+    source.productMeta.synthesizedProductId = body.product_id;
+    void persistBrainState();
+
+    setToast(`${name} is ready to review`);
+    p.addOpen = false;
+    void loadProducts(true);
+
+    // Land on the candidate record so review and approval happen in place.
+    state.products.activeId = body.product_id;
+    state.products.detail = null;
+    state.screen = "product-detail";
+    render();
+    void loadProductDetail(body.product_id);
+  } catch (error) {
+    setToast(error.message || "The product record could not be built");
+    render();
+  } finally {
+    p.creating = false;
+    render();
+  }
+}
+
 async function synthesizeProductFromSource(sourceId) {
   if (typeof fetch !== "function") return;
   const source = state.brain.sources.find((s) => s.id === sourceId);
