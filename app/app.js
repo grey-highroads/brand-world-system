@@ -2138,9 +2138,6 @@ function renderWorkspace() {
   const pendingCandidates = candidateRules.filter((r) => !r.dismissed);
   const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
   const productAffectedOutputs = outputsAffectedByProductVersion();
-  // Warm the product list so change-impact reflects current versions. loadProducts
-  // is a no-op when the list is already cached for this client.
-  if (typeof fetch === "function") void loadProducts();
   const unresolvedExceptions = state.brain.processingComplete
     ? brainExceptions.filter((item) => !state.brain.resolutions[item.id])
     : [];
@@ -2349,9 +2346,6 @@ function renderChooser() {
   const approved = approvedBrainForProduction();
   const affectedOutputs = state.outputs.filter((o) => o.status === "approved" && o.brainVersion < state.brain.approvedVersion);
   const productAffectedOutputs = outputsAffectedByProductVersion();
-  // Warm the product list so change-impact reflects current versions. loadProducts
-  // is a no-op when the list is already cached for this client.
-  if (typeof fetch === "function") void loadProducts();
 
   const recentOutputs = state.outputs
     .slice()
@@ -6825,7 +6819,12 @@ async function hydrateClients() {
 // Full records are loaded on demand via loadProductDetail.
 async function loadProducts(force = false) {
   if (typeof fetch !== "function") return;
+  // Guard against concurrent loads. Without this, renderWorkspace/renderChooser
+  // fire void loadProducts() on every render, which sets loading state and
+  // triggers another render before the first fetch resolves. Runaway loop.
+  if (state.products.loading) return;
   if (!force && state.products.loadedForClient === state.activeClientId) return;
+  const attemptingClientId = state.activeClientId;
   state.products.loading = true;
   state.products.error = "";
   render();
@@ -6834,10 +6833,14 @@ async function loadProducts(force = false) {
     const body = await readApiJson(response);
     if (!response.ok) throw new Error(body.error || "The product list could not be loaded.");
     state.products.list = Array.isArray(body.products) ? body.products : [];
-    state.products.loadedForClient = state.activeClientId;
   } catch (error) {
     state.products.error = error.message || "The product list could not be loaded.";
+    state.products.list = [];
   } finally {
+    // Record the attempt even on failure so we do not retry infinitely from
+    // repeated render passes. An explicit force=true bypasses this on demand
+    // (e.g., after an approval succeeds).
+    state.products.loadedForClient = attemptingClientId;
     state.products.loading = false;
     render();
   }
@@ -7001,6 +7004,7 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
 
 
 
