@@ -27,4 +27,4 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 - [`0010-route-production-feedback-through-candidate-rules.md`](0010-route-production-feedback-through-candidate-rules.md) — Accepted
 - [`0011-operate-a-shared-multi-client-deployment.md`](0011-operate-a-shared-multi-client-deployment.md) — Accepted
 - [`0012-model-products-as-governed-records.md`](0012-model-products-as-governed-records.md) — Accepted (implemented 2026-08-09)
-
+- [`0013-govern-copy-through-derived-claims.md`](0013-govern-copy-through-derived-claims.md) — Proposed
