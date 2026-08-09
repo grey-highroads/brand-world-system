@@ -2832,9 +2832,6 @@ function updateSalesReadyState() {
 function renderSalesSetup(cat) {
   const approved = approvedBrainForProduction();
   const campaigns = state.campaigns || [];
-  // Load the product list so the picker below has options. loadProducts is a
-  // no-op when the list is already loaded for this client.
-  void loadProducts();
   const fmt = salesOutputFormats[state.studio.salesFormat] || salesOutputFormats["slide-16x9"];
 
   // Find templates tagged in the brain sources, filtered by the selected format ratio
@@ -5921,6 +5918,10 @@ root.addEventListener("click", (event) => {
   }
   if (action === "select-studio-category") {
     state.studio.category = target.dataset.id;
+    // Preload the product list when entering the sales enablement setup so
+    // the picker has options ready. Loaders belong in action handlers, not in
+    // render functions. See docs/ui-contribution-guide.md.
+    if (target.dataset.id === "sales") void loadProducts();
     state.studio.brief = "";
     state.studio.platforms = [];
     state.studio.activeFormats = [];
@@ -7004,6 +7005,7 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
 
 
 

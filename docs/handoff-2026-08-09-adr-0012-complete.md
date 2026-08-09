@@ -95,6 +95,8 @@ The following flow works end to end in the deployed app:
 
 ## Follow-ups noted but not blocking
 
+- **Index read-modify-write race.** `writeProduct` and `deleteProduct` in `src/products/store.js` read the index, modify in memory, and write back. Two concurrent synthesis calls can drop an index entry (last write wins). Cheapest mitigation is a rebuild-index utility that regenerates `index.json` from a blob list of the products folder, so any corruption is recoverable in one call. Real fix (compare-and-swap or single-writer queueing) can wait for real multi-user evidence.
+- **N+1 reads on re-synthesis lookup.** `synthesizeAndPersistProduct` finds the existing record for a source by iterating every product and reading each full record to check `provenance.source_ref`. Adding `source_ref` to the index entry makes the lookup one read. Fine at three products, ugly at forty SKUs.
 - **`classifyChangeImpact` extension.** The client compares product versions directly to power the affected-outputs cards. If any headless consumer of `classifyChangeImpact` in `package.js` needs product-aware impact classification, that piece was not extended. Small piece of tidying.
 - **Vision handling for image-dense product briefs.** The evaluation used a text-legible PDF. A design-heavy brief may need the vision path exercised before the schema is trusted on it. Worth a second test source.
 - **Text extraction at intake, not synthesis.** Every synthesis call re-parses the same PDF via `normalizeSourcesForSynthesis`. Persisting extracted text on the source record at intake would remove this cost. Cheap, not urgent.
@@ -112,6 +114,13 @@ The following flow works end to end in the deployed app:
 - `cdae93d` feat: ADR 0012 follow-ups, in-UI product synthesis and version drift
 
 Plus corresponding `chore: trigger deploy` commits reusing each tree SHA to trigger the Vercel webhook.
+
+### Post-close fixes
+
+- `0adf4c3` fix: prevent loadProducts render loop when product list is empty (partial, insufficient)
+- `90b2d67` fix: stop loadProducts render loop completely (concurrent-call guard, failure idempotency, remove auto-load from workspace and chooser)
+- `c6b5f2a` docs: capture learning from loadProducts render loop incident
+- One more fix commit landed this session restoring `approveProduct` in `src/products/service.js`, extending `product-record.schema.json` with the operational metadata fields the service actually writes, and moving `void loadProducts()` out of `renderSalesSetup` per the incident rule. External code review caught all three.
 
 ## What not to change without discussion
 

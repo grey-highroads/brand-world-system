@@ -44,7 +44,7 @@ All values come from the `:root` block in `polish.css`. These are the ones that 
 
 **Match existing component patterns.** Before writing a new card, field, pill, toggle, or list, search styles.css and polish.css for the existing version. The card pattern (`.card` + `.card-header` + `h2`), the field pattern (`.field` + `label` + input), the additive-link pattern, the collapsible-card pattern, the exact-list pattern: these all exist and handle spacing, typography, and surface treatment consistently. A new component that reinvents these patterns will look slightly different even if the author tries to match them.
 
-**Fetch CSS files before editing them.** The designer's polish pass introduced a utility class system that earlier file copies do not contain. Always pull the current `polish.css` and `styles.css` from the repo before making changes, or the edit will overwrite work that has already been reviewed and approved.
+**Fetch files fresh before editing them.** This applies to CSS, JS, schemas, and any file being modified. When rebuilding a file from a copy that predates recent changes, exports and features silently disappear from the tree. The `polish.css` utility class system, the `approveProduct` export in `src/products/service.js`, and the schema fields declared in `schemas/v1/product-record.schema.json` have each been overwritten by stale-copy edits at least once. The rule is: pull the file from `main` immediately before editing it, edit only the specific block that changes, and diff before pushing.
 
 ## When you need something new
 
