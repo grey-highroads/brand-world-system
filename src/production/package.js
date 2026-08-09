@@ -6,6 +6,7 @@ import {
   neutralizeStateLanguage,
   auditConstraints,
 } from "./prompt-craft.js";
+import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
@@ -93,39 +94,18 @@ export function checkRequirements(deliverableId, { approvedBrain, lockedAsset, h
 
 // ---------------------------------------------------------------------------
 // Applicability resolution (roadmap item 3)
+// Delegated to src/scope/resolver.js. The shared resolver handles channel,
+// placement, product, and campaign axes for both image and copy governance.
 // ---------------------------------------------------------------------------
-
-const placementScopes = {
-  "Instagram feed": { channel: "social", platform: "instagram" },
-  "Instagram story": { channel: "social", platform: "instagram" },
-  "LinkedIn feed": { channel: "social", platform: "linkedin" },
-  "Website feature": { channel: "web", platform: "website" },
-};
-
-function scopeAppliesToPlacement(ruleScope, placement) {
-  if (!ruleScope || !ruleScope.length) return true;
-  const target = placementScopes[placement];
-  if (!target) return true;
-  for (const entry of ruleScope) {
-    const label = (Array.isArray(entry) ? entry[0] : entry.label || "").toLowerCase();
-    const value = (Array.isArray(entry) ? entry[1] : entry.value || "").toLowerCase();
-    if (label === "channel" || label === "channels") {
-      if (value !== "all channels" && !value.includes(target.channel)) return false;
-    }
-    if (label === "placements") {
-      if (!value.startsWith("all") && !value.includes(target.platform || "")) return false;
-    }
-  }
-  return true;
-}
 
 // ---------------------------------------------------------------------------
 // Job-specific treatments (roadmap item 1)
 // ---------------------------------------------------------------------------
 
-export function resolveTreatments({ approvedBrain, lockedAsset, brief, references = [] }) {
+export function resolveTreatments({ approvedBrain, lockedAsset, brief, references = [], productId, campaignId }) {
   const treatments = [];
   const placement = brief?.placement || "";
+  const jobScope = buildJobScope({ placement, productId, campaignId });
   const dossier = approvedBrain?.artifacts?.dossier || {};
   const rulesSection = (approvedBrain?.guidanceSections || []).find((s) => s.id === "rules");
 
@@ -154,7 +134,7 @@ export function resolveTreatments({ approvedBrain, lockedAsset, brief, reference
   for (const question of reviewQuestions) {
     if (question.type !== "brand-rule" || !question.scope?.length) continue;
     const scoped = question.scope.map ? question.scope : [];
-    const applies = scopeAppliesToPlacement(scoped, placement);
+    const applies = arrayScopeAppliesToJob(scoped, jobScope);
     if (applies) {
       treatments.push({
         element: question.title || question.statement || "Scoped rule",

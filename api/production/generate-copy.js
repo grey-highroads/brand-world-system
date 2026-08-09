@@ -2,6 +2,7 @@ import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js"
 import { createVercelBlobProductStore } from "../../src/products/store.js";
 import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
 import { assembleClaimsSet } from "../../src/claims/assembly.js";
+import { buildJobScope } from "../../src/scope/resolver.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 export default async function handler(request, response) {
@@ -47,12 +48,11 @@ export default async function handler(request, response) {
     // Uses the claims store and assembly function instead of inline assembly.
     const claimsStore = createVercelBlobClaimsStore({ clientId });
     const claimsDocument = await claimsStore.read();
-    const jobScope = {
-      channel: body.channel || null,
-      placement: body.placement || null,
-      product_id: body.productId || null,
-      campaign_id: body.campaignId || null,
-    };
+    const jobScope = buildJobScope({
+      placement: body.placement,
+      productId: body.productId,
+      campaignId: body.campaignId,
+    });
 
     const claimsSet = assembleClaimsSet({
       claimsDocument,
