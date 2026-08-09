@@ -65,3 +65,12 @@ The production compiler foundation was selected through an explicit implementati
 - Standardize stable schemas, policies, evaluators, and operational tooling
 - Define security, ownership, portability, hosting, and support packages
 - Reassess whether the proven implementation kit should become a broader platform
+
+## Status appendix (2026-08-09)
+
+Recent implementation has run ahead of the phase outline above, driven by real-client testing on Dialog Health. Tracking the tactical production roadmap (the 14-item list in project knowledge):
+
+- Products as governed records (ADR 0012): complete and hardened. Per-product synthesis with evidence-fidelity discipline, candidate/approved lifecycle, versioning, re-synthesis, deletion, review-question workflow with suggested answers and tabling, and an approved-but-incomplete production warning. Products are born on their own screen and consumed by the sales enablement flow.
+- Item 6, copy governance: selected as the next slice. Handoff at `docs/handoff-copy-governance.md`. Direction set, six open questions to settle, first artifact is an ADR for where brand claims live.
+
+Still open from the tactical list: preservation and fidelity levels (item 5), declared success criteria per deliverable (item 7), element-level targeted repair (item 9), full failure-disclosure options (item 10), reusable campaign-scoped creative directions (item 13), effort transparency (item 14). The intake page restructure (three-door intake, library demotion, event-driven update flow) is partially done: products got their own workflow; the evidence and asset doors and the library cleanup remain.
