@@ -6825,7 +6825,7 @@ async function hydrateClients() {
 // Full records are loaded on demand via loadProductDetail.
 async function loadProducts(force = false) {
   if (typeof fetch !== "function") return;
-  if (!force && state.products.loadedForClient === state.activeClientId && state.products.list.length) return;
+  if (!force && state.products.loadedForClient === state.activeClientId) return;
   state.products.loading = true;
   state.products.error = "";
   render();
@@ -7001,6 +7001,7 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
 
 
 
