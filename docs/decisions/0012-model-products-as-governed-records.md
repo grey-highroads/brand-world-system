@@ -1,6 +1,6 @@
 # ADR 0012: Model products as governed records outside the brain document
 
-- Status: Accepted
+- Status: Accepted (implemented 2026-08-09)
 - Date: 2026-08-08
 - Owner: Higher Roads
 - Supersedes: Nothing. Extends ADR 0006 (portable generation package) with a product-scoped input.
@@ -61,3 +61,18 @@ The base coat hierarchy gains a second inheritance dimension. The Brand Brain re
 3. **Intake tagging** for product-brief sources, following the template material-type pattern.
 4. **Product-scoped compilation** in the live compiler, keyed off the sales enablement feature field first.
 5. **Product management surface**: list, review, approve. Consumption records and change-impact extended to product scope.
+
+## Implementation
+
+All five steps in the sequencing landed by 2026-08-09.
+
+- **Step 1** (2026-08-08). Prototype synthesis passed the evidence-fidelity gate. See `docs/evaluations/2026-08-08-adr-0012-product-synthesis.md`.
+- **Step 2** (commit `4ecb393`). Frozen schema at `schemas/v1/product-record.schema.json`. Store at `src/products/store.js`. Service at `src/products/service.js`. Endpoint at `api/products/index.js`. Three prototype files deleted.
+- **Step 3** (commit `c2c3a70`). Intake tagging in `app/app.js`. Product-brief material type with per-source `productMeta`. Excluded from brain synthesis.
+- **Step 4** (commit `8ea3ad5`). Product-scoped compilation in `src/production/package.js`. `resolveProduct` in `src/production/service.js` with approval guard.
+- **Step 5** (commit `bdd5d43`). Products navigation entry, list and detail screens, approve action, sales enablement product picker.
+- **Follow-ups** (commit `cdae93d`). Product synthesis button on product-brief source rows. Re-synthesis bumps version and clears approval. Product-version drift on workspace and Design Studio chooser.
+
+The closing handoff for this phase is `docs/handoff-2026-08-09-adr-0012-complete.md`.
+
+Known follow-ups not blocking closure: server-side `classifyChangeImpact` extension for product-version comparisons, vision handling for image-dense product briefs, text extraction at intake, product picker across production surfaces beyond sales enablement.
