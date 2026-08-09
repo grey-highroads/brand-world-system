@@ -51,3 +51,59 @@ All values come from the `:root` block in `polish.css`. These are the ones that 
 If the design requires a pattern that does not exist (the studio platform chips, the format resolution panel, the toggle row), add it to `styles.css` as a new block that uses the token vocabulary from `polish.css`. Follow the naming convention of the feature: `.studio-*` for Design Studio components, `.brain-*` for Brand Brain components. Group the new CSS together rather than scattering it among existing rules.
 
 If the design requires a new token (a spacing value or color that genuinely does not fit the existing grid), add it to the `:root` block in `polish.css` alongside the existing tokens, not in a separate file or an inline declaration. This is rare. The existing grid covers almost everything.
+
+## Data loading and async state
+
+The app is a vanilla JS SPA. There is no framework-managed effect hook or component lifecycle. Every async load, mutation, and re-render is explicit code that must be placed deliberately. Three rules govern how loaders should be written.
+
+**Render functions must be pure with respect to state.** `render*` functions read state and return HTML. They do not mutate state. They do not fire side effects that mutate state. When a render function calls an async loader, and that loader calls `render()` internally, and the loader is invoked before it records its completion, every render triggers another load, which triggers another render. The tab hangs.
+
+If a screen needs data on entry, fire the loader from the action handler that navigates to the screen:
+
+```js
+if (action === "products") {
+  navigate("products");
+  void loadProducts();
+}
+```
+
+Not from the render function.
+
+**Async loaders need three guards, not one.** Every async function that mutates shared state and calls `render()` needs three protections:
+
+1. **Concurrent-call guard.** `if (state.x.loading) return;` at the top. Without this, a re-render fired during the load can spawn a parallel load before the first completes.
+2. **Successful-load idempotency.** After the load completes, record a flag that lets subsequent calls skip the fetch. For scoped loads (per-client, per-screen), the flag should include the scope: `state.x.loadedForClient = clientId`.
+3. **Failed-load idempotency.** In the `finally` block, record the attempt even on failure. Otherwise a broken API turns into an infinite retry from repeated render passes. Explicit force reloads for user actions bypass this via a `force = true` argument.
+
+A canonical implementation:
+
+```js
+async function loadX(force = false) {
+  if (typeof fetch !== "function") return;
+  if (state.x.loading) return;
+  if (!force && state.x.loadedForClient === state.activeClientId) return;
+  const attemptingClientId = state.activeClientId;
+  state.x.loading = true;
+  state.x.error = "";
+  render();
+  try {
+    const response = await fetch("/api/x", { headers: { Accept: "application/json" } });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The list could not be loaded.");
+    state.x.list = Array.isArray(body.list) ? body.list : [];
+  } catch (error) {
+    state.x.error = error.message || "The list could not be loaded.";
+    state.x.list = [];
+  } finally {
+    state.x.loadedForClient = attemptingClientId;
+    state.x.loading = false;
+    render();
+  }
+}
+```
+
+**Test the empty state.** A feature works in the state where its data exists. It has to also work in the state where its data does not yet exist. Empty-state testing catches loops, null accesses, and misleading UI that happy-path testing misses. Before pushing a new loader-backed feature, cold-start the app with a client that has none of the relevant data. Every screen that references the feature must render cleanly and not fire loads it does not need.
+
+### Reference incident
+
+On 2026-08-09, the initial ADR 0012 step 5 implementation put `void loadProducts()` inside `renderWorkspace`, `renderChooser`, and `renderSalesSetup` to keep product-version drift cards populated. Combined with a guard that treated empty results as unloaded and no concurrent-call protection, this created a runaway render/fetch loop on any client with no products yet. Every existing client fit that description. The tab pegged 100% CPU, hydrateClients never got room to complete its render, the client switcher stayed empty, and hard refresh timed out. Full chain and fix in `docs/incidents/2026-08-09-loadproducts-render-loop.md`.
