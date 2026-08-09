@@ -1290,13 +1290,19 @@ function fileExtension(file) {
   return String(file?.name || "").split(".").pop()?.toLowerCase() || "";
 }
 
-function validateSourceFile(file, material = sourceMaterialType()) {
-  if (!material) return "Choose what kind of material this is first.";
+function validateSourceFileSize(file) {
   if (!file) return "Choose one file.";
   if (file.size > MAX_SOURCE_FILE_BYTES) return "Choose a file smaller than 20 MB.";
-  if (!material.extensions.includes(fileExtension(file))) return `${material.label} accepts ${material.examples}.`;
   const currentBytes = sourceHasApprovedBaseline() ? sourceFileBytes(state.brain.pendingSourceIds) : sourceFileBytes();
   if (currentBytes + file.size > MAX_SYNTHESIS_FILE_BYTES) return "This build can read up to 40 MB of uploaded files at once. Remove a large file or prepare a smaller update.";
+  return "";
+}
+
+function validateSourceFile(file, material = sourceMaterialType()) {
+  if (!material) return "Choose what kind of material this is first.";
+  const sizeError = validateSourceFileSize(file);
+  if (sizeError) return sizeError;
+  if (!material.extensions.includes(fileExtension(file))) return `${material.label} accepts ${material.examples}.`;
   return "";
 }
 
@@ -6063,7 +6069,10 @@ root.addEventListener("change", async (event) => {
     const file = Array.from(event.target.files ?? [])[0];
     const door = event.target.dataset.door;
     if (file) {
-      const validationError = validateSourceFile(file);
+      // The evidence door validates size only at upload, because the material
+      // type is suggested afterward. The extension check runs when the type is
+      // selected. The asset door already has a type chosen, so validate fully.
+      const validationError = door === "evidence" ? validateSourceFileSize(file) : validateSourceFile(file);
       if (validationError) {
         state.brain.pendingFiles = [];
         setToast(validationError);
