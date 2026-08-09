@@ -1577,15 +1577,8 @@ function intakeChooser() {
           </span>
           <i aria-hidden="true">&rsaquo;</i>
         </button>
-        <button class="intake-door" type="button" data-action="open-product-from-intake">
-          <span class="intake-door-mark" aria-hidden="true">P</span>
-          <span class="intake-door-body">
-            <strong>Add a product</strong>
-            <small>A product brief becomes a governed record with approved claim language. Built and reviewed on the Products screen.</small>
-          </span>
-          <i aria-hidden="true">&rsaquo;</i>
-        </button>
       </div>
+      <p class="intake-product-note">Adding a product or feature? Products are built and reviewed on the <button class="studio-add-link" type="button" data-action="open-product-from-intake">Products screen</button>.</p>
     </section>
   `;
 }

@@ -7108,3 +7108,17 @@ button.ws-attention-item:hover {
     grid-template-columns: 1fr;
   }
 }
+
+.intake-product-note {
+  margin: var(--space-3) 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.intake-product-note .studio-add-link {
+  display: inline;
+  font-size: 12px;
+  vertical-align: baseline;
+  text-decoration: underline;
+}
