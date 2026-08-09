@@ -836,7 +836,10 @@ const state = {
     addFile: null,
     addFileReading: false,
     addText: "",
+    addUrl: "",
     creating: false,
+    questionDrafts: {},
+    resolvingQuestionIndex: null,
   },
   clientSwitcherOpen: false,
   brandName: "SLAKE",
@@ -3077,7 +3080,7 @@ function renderProductAddPanel() {
   const p = state.products;
   const creating = p.creating;
   const tab = p.addTab;
-  const hasBrief = tab === "file" ? !!p.addFile : !!p.addText.trim();
+  const hasBrief = tab === "file" ? !!p.addFile : tab === "url" ? !!(p.addUrl || "").trim() : !!p.addText.trim();
   return `
     <div class="card product-add-panel">
       <div class="card-header">
@@ -3091,6 +3094,7 @@ function renderProductAddPanel() {
       </div>
       <div class="source-method-tabs" role="tablist" aria-label="Brief source">
         <button class="${tab === "file" ? "active" : ""}" type="button" data-action="product-add-tab" data-tab="file" ${creating ? "disabled" : ""}>Upload a brief</button>
+        <button class="${tab === "url" ? "active" : ""}" type="button" data-action="product-add-tab" data-tab="url" ${creating ? "disabled" : ""}>From a URL</button>
         <button class="${tab === "text" ? "active" : ""}" type="button" data-action="product-add-tab" data-tab="text" ${creating ? "disabled" : ""}>Paste text</button>
       </div>
       ${tab === "file" ? `
@@ -3099,6 +3103,12 @@ function renderProductAddPanel() {
           <input id="product-add-file" type="file" data-action="product-add-file" accept=".pdf,.docx,.pptx,.txt,.md,image/png,image/jpeg,image/webp" ${creating || p.addFileReading ? "disabled" : ""} />
           ${p.addFileReading ? `<p class="field-note">Uploading...</p>` : ""}
           ${p.addFile ? `<p class="field-note">Ready: ${escapeHtml(p.addFile.name)} (${formatFileSize(p.addFile.size)})</p>` : ""}
+        </div>
+      ` : tab === "url" ? `
+        <div class="field">
+          <label for="product-add-url">Product page or spec URL</label>
+          <input id="product-add-url" type="url" data-action="product-add-url-input" value="${escapeHtml(p.addUrl || "")}" placeholder="https://example.com/products/analytics-pro" ${creating ? "disabled" : ""} />
+          <p class="field-note">The system reads the page and builds the record from what it actually says.</p>
         </div>
       ` : `
         <div class="field">
@@ -3182,31 +3192,45 @@ function renderProductDetail() {
 
   const isApproved = !!record.approved_at;
   const featureRows = (record.features || []).map((f) => `
-    <div class="rule-card">
-      <div class="rule">
-        <span class="mini-pill ${f.origin === "stated" ? "pill-neutral" : "pill-warning"}">${escapeHtml(f.origin === "stated" ? "From source" : "Inferred")}</span>
-        <span>
-          <strong>${escapeHtml(f.name)}</strong>
-          <span>${escapeHtml(f.benefit)}</span>
-          ${f.approved_claim_language ? `<span class="rule-note"><strong>Approved language:</strong> "${escapeHtml(f.approved_claim_language)}"</span>` : ""}
-          ${f.accuracy_note ? `<span class="rule-note"><strong>Accuracy:</strong> ${escapeHtml(f.accuracy_note)}</span>` : ""}
-        </span>
+    <div class="product-rule">
+      <span class="mini-pill ${f.origin === "stated" ? "pill-neutral" : "pill-warning"}">${escapeHtml(f.origin === "stated" ? "From source" : "Inferred")}</span>
+      <div class="product-rule-body">
+        <strong>${escapeHtml(f.name)}</strong>
+        <span>${escapeHtml(f.benefit)}</span>
+        ${f.approved_claim_language ? `<span class="product-rule-note"><strong>Approved language:</strong> "${escapeHtml(f.approved_claim_language)}"</span>` : ""}
+        ${f.accuracy_note ? `<span class="product-rule-note"><strong>Accuracy:</strong> ${escapeHtml(f.accuracy_note)}</span>` : ""}
       </div>
     </div>
   `).join("");
 
-  const reviewQuestions = (record.review_questions || []).map((q) => `
-    <div class="rule-card">
-      <div class="rule">
-        <span class="mini-pill ${q.confidence === "high" ? "pill-warning" : "pill-neutral"}">${escapeHtml(String(q.confidence || "").toUpperCase())}</span>
-        <span>
-          <strong>${escapeHtml(q.title)}</strong>
-          <span>${escapeHtml(q.summary)}</span>
-          ${q.evidence_quote ? `<span class="rule-note">"${escapeHtml(q.evidence_quote)}"</span>` : ""}
-        </span>
+  const reviewQuestions = (record.review_questions || []).map((q, index) => {
+    const resolved = !!q.resolution;
+    const draft = state.products.questionDrafts[index] || "";
+    const answering = state.products.resolvingQuestionIndex === index;
+    return `
+    <div class="product-rule">
+      <span class="mini-pill ${resolved ? "pill-success" : q.confidence === "high" ? "pill-warning" : "pill-neutral"}">${resolved ? "Answered" : escapeHtml(String(q.confidence || "").toUpperCase())}</span>
+      <div class="product-rule-body">
+        <strong>${escapeHtml(q.title)}</strong>
+        <span>${escapeHtml(q.summary)}</span>
+        ${q.evidence_quote ? `<span class="product-rule-note">"${escapeHtml(q.evidence_quote)}"</span>` : ""}
+        ${resolved ? `
+          <div class="product-question-answer">
+            <span class="product-rule-note"><strong>Answer:</strong> ${escapeHtml(q.resolution.note)}</span>
+            <span class="product-answer-meta">Recorded ${new Date(q.resolution.resolved_at).toLocaleString()}</span>
+          </div>
+        ` : `
+          <div class="product-question-answer">
+            <textarea rows="2" data-action="product-question-input" data-index="${index}" placeholder="Write what you established, so the answer travels with the record." ${answering ? "disabled" : ""}>${escapeHtml(draft)}</textarea>
+            <div class="actions">
+              <button class="button" type="button" data-action="resolve-product-question" data-index="${index}" ${answering || !draft.trim() ? "disabled" : ""}>${answering ? "Recording..." : "Record answer"}</button>
+            </div>
+          </div>
+        `}
       </div>
     </div>
-  `).join("");
+  `;
+  }).join("");
 
   const exclusions = (record.exclusions || []).map((ex) => `<li>${escapeHtml(ex)}</li>`).join("");
   const proofPoints = (record.proof_points || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
@@ -3244,7 +3268,7 @@ function renderProductDetail() {
           <h2>Features</h2>
           <span class="collapsible-meta"><span class="mini-pill pill-neutral">${record.features.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
-        <div class="brain-source-list">${featureRows}</div>
+        <div class="product-record-list">${featureRows}</div>
       </details>
       ` : ""}
 
@@ -3272,9 +3296,9 @@ function renderProductDetail() {
       <details class="card collapsible-card">
         <summary class="card-header collapsible-header">
           <h2>Review questions</h2>
-          <span class="collapsible-meta"><span class="mini-pill pill-neutral">${record.review_questions.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+          <span class="collapsible-meta"><span class="mini-pill ${record.review_questions.every((q) => q.resolution) ? "pill-success" : "pill-neutral"}">${record.review_questions.filter((q) => q.resolution).length}/${record.review_questions.length} answered</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
-        <div class="brain-source-list">${reviewQuestions}</div>
+        <div class="product-record-list">${reviewQuestions}</div>
       </details>
       ` : ""}
     </section>
@@ -5800,6 +5824,21 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="product-add-text-input"]')) {
     state.products.addText = event.target.value;
   }
+  if (event.target.matches('[data-action="product-add-url-input"]')) {
+    state.products.addUrl = event.target.value;
+  }
+  if (event.target.matches('[data-action="product-question-input"]')) {
+    const index = Number(event.target.dataset.index);
+    const hadDraft = !!(state.products.questionDrafts[index] || "").trim();
+    state.products.questionDrafts[index] = event.target.value;
+    // Enable or disable the matching button without a full re-render, which
+    // would wipe the textarea cursor.
+    const hasDraft = !!event.target.value.trim();
+    if (hadDraft !== hasDraft) {
+      const btn = document.querySelector(`[data-action="resolve-product-question"][data-index="${index}"]`);
+      if (btn) btn.disabled = !hasDraft;
+    }
+  }
 });
 
 root.addEventListener("change", async (event) => {
@@ -5994,6 +6033,7 @@ root.addEventListener("click", (event) => {
     state.products.addTab = "file";
     state.products.addFile = null;
     state.products.addText = "";
+    state.products.addUrl = "";
     render();
   }
   if (action === "cancel-product-add") {
@@ -6006,6 +6046,9 @@ root.addEventListener("click", (event) => {
   }
   if (action === "create-product-record") {
     void createProductRecord();
+  }
+  if (action === "resolve-product-question") {
+    void resolveProductQuestion(Number(target.dataset.index));
   }
   if (action === "open-campaign") {
     state.activeCampaignId = target.dataset.id;
@@ -6948,6 +6991,8 @@ async function loadProductDetail(productId) {
   state.products.activeId = productId;
   state.products.detail = null;
   state.products.error = "";
+  state.products.questionDrafts = {};
+  state.products.resolvingQuestionIndex = null;
   render();
   try {
     const response = await fetch("/api/products", {
@@ -7020,6 +7065,36 @@ function outputsAffectedByProductVersion() {
 // screen or hit the API by hand. The resulting record is a candidate; it
 // still requires review and approval on the Products screen before production
 // can consume it.
+// Record a reviewer's answer to a review question on the open product record.
+async function resolveProductQuestion(index) {
+  const record = state.products.detail;
+  if (!record) return;
+  const note = (state.products.questionDrafts[index] || "").trim();
+  if (!note) {
+    setToast("Write the answer before recording it");
+    return;
+  }
+  state.products.resolvingQuestionIndex = index;
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resolve_question", productId: record.product_id, questionIndex: index, note }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The answer could not be recorded.");
+    state.products.detail = body.record;
+    delete state.products.questionDrafts[index];
+    setToast("Answer recorded on the product record");
+  } catch (error) {
+    setToast(error.message || "The answer could not be recorded");
+  } finally {
+    state.products.resolvingQuestionIndex = null;
+    render();
+  }
+}
+
 // The Products screen's own add flow (one screen, birth to approval). Creates
 // the product-brief source, persists it so the server can read it, runs the
 // per-product synthesis, and lands on the candidate record for review. The
@@ -7028,17 +7103,23 @@ function outputsAffectedByProductVersion() {
 async function createProductRecord() {
   const p = state.products;
   const name = p.addName.trim();
-  const usingFile = p.addTab === "file";
+  const tab = p.addTab;
+  const url = (p.addUrl || "").trim();
   if (!name) {
     setToast("Give the product a name first");
     document.getElementById("product-add-name")?.focus();
     return;
   }
-  if (usingFile && !p.addFile) {
+  if (tab === "file" && !p.addFile) {
     setToast("Upload the product brief first");
     return;
   }
-  if (!usingFile && !p.addText.trim()) {
+  if (tab === "url" && !/^https?:\/\//.test(url)) {
+    setToast("Add the full web address, starting with https://");
+    document.getElementById("product-add-url")?.focus();
+    return;
+  }
+  if (tab === "text" && !p.addText.trim()) {
     setToast("Paste the brief content first");
     return;
   }
@@ -7053,14 +7134,16 @@ async function createProductRecord() {
     // Create the product-brief source. Same shape the intake flow produces,
     // with the usage instruction supplied automatically since its role is
     // fixed: this brief exists to build the product record.
-    const sourceId = usingFile ? `file-${Date.now()}` : `text-${Date.now()}`;
+    const sourceId = tab === "file" ? `file-${Date.now()}` : tab === "url" ? `url-${Date.now()}` : `text-${Date.now()}`;
     const material = sourceMaterialType("product-brief");
     const source = {
       id: sourceId,
-      name: usingFile ? p.addFile.name : `${name} brief`,
+      name: tab === "file" ? p.addFile.name : tab === "url" ? `${name} page` : `${name} brief`,
       type: material?.label || "Product brief or spec",
-      detail: usingFile
+      detail: tab === "file"
         ? `${fileExtension(p.addFile).toUpperCase()} · ${formatFileSize(p.addFile.size)}`
+        : tab === "url"
+        ? url
         : (p.addText.length > 92 ? `${p.addText.slice(0, 92)}...` : p.addText),
       count: 1,
       status: "Ready",
@@ -7075,8 +7158,10 @@ async function createProductRecord() {
       exclusions: "No additional exclusions supplied.",
       verification: "Pending content check",
     };
-    if (usingFile) {
+    if (tab === "file") {
       source.files = [{ ...p.addFile }];
+    } else if (tab === "url") {
+      source.url = url;
     } else {
       source.content = p.addText.trim();
     }

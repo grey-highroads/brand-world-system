@@ -3,6 +3,7 @@ import {
   extractChatCompletionText,
 } from "../brand-brain/chat-completions-provider.js";
 import { normalizeSourcesForSynthesis } from "../brand-brain/source-normalizer.js";
+import { enrichUrlSources } from "../brand-brain/source-reader.js";
 import { generateProductId } from "./store.js";
 
 const DEFAULT_PRODUCT_MODEL = "gpt-5.6";
@@ -214,9 +215,12 @@ export async function synthesizeAndPersistProduct({
   store,
   brainStore,
 }) {
-  // Normalize the source the same way the brain does: extract text from PDFs,
-  // DOCX, PPTX; prepare vision entries for raster files.
-  const [normalized] = await normalizeSourcesForSynthesis([source], {
+  // Enrich URL sources first (fetch the page with retry and the Firecrawl
+  // fallback, same as brain synthesis), then normalize the same way the
+  // brain does: extract text from PDFs, DOCX, PPTX; prepare vision entries
+  // for raster files.
+  const [enriched] = await enrichUrlSources([source], fetch);
+  const [normalized] = await normalizeSourcesForSynthesis([enriched], {
     readStoredFile: brainStore.readSourceFile?.bind(brainStore),
   });
 
@@ -318,3 +322,35 @@ export async function approveProduct({ store, productId }) {
   return updated;
 }
 
+// Record a reviewer's answer to a review question. Review activity, not a
+// claim change: the version does not bump and the approval state does not
+// reset. The resolved question keeps its original text so the record shows
+// both what was asked and what the reviewer established.
+export async function resolveReviewQuestion({ store, productId, questionIndex, note }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  const index = Number(questionIndex);
+  const questions = Array.isArray(record.review_questions) ? record.review_questions : [];
+  if (!Number.isInteger(index) || index < 0 || index >= questions.length) {
+    const error = new Error("That review question was not found on this record.");
+    error.status = 400;
+    throw error;
+  }
+  const cleanNote = String(note || "").trim();
+  if (!cleanNote) {
+    const error = new Error("Write the answer before recording it.");
+    error.status = 400;
+    throw error;
+  }
+  questions[index] = {
+    ...questions[index],
+    resolution: { note: cleanNote, resolved_at: new Date().toISOString() },
+  };
+  const updated = { ...record, review_questions: questions };
+  await store.writeProduct(updated);
+  return updated;
+}

@@ -189,6 +189,24 @@
             "medium",
             "low"
           ]
+        },
+        "resolution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "note",
+            "resolved_at"
+          ],
+          "properties": {
+            "note": {
+              "$ref": "common.schema.json#/$defs/non_empty_string"
+            },
+            "resolved_at": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          "description": "A reviewer's recorded answer. Optional; absent while the question is open. Recording an answer does not change the record version or approval state."
         }
       }
     }

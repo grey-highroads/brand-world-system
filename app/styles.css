@@ -6775,3 +6775,68 @@ button.ws-attention-item:hover {
 .product-add-panel .actions {
   margin-top: var(--space-2);
 }
+
+/* ── Products: record detail rows ────────────────────────────── */
+/* Token-conforming replacement for the legacy .rule-card spacing on the
+   product detail screen. .rule-card keeps its hardcoded values elsewhere;
+   product detail uses this block instead. */
+
+.product-record-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.product-rule {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  padding: var(--space-3) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.product-rule:first-child {
+  border-top: 0;
+  padding-top: var(--space-1);
+}
+
+.product-rule:last-child {
+  padding-bottom: var(--space-1);
+}
+
+.product-rule-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.product-rule-body > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.product-rule-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.product-question-answer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.product-question-answer textarea {
+  width: 100%;
+  max-width: 640px;
+}
+
+.product-question-answer .actions {
+  margin: 0;
+}
+
+.product-answer-meta {
+  font-size: 11px;
+  color: var(--muted);
+}
