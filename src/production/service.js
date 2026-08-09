@@ -1,4 +1,5 @@
 import { selectApprovedBaseline } from "../brand-brain/service.js";
+import { createVercelBlobProductStore } from "../products/store.js";
 import { OPENAI_IMAGE_MODEL, chooseOpenAIImageEndpoint, renderWithOpenAIImages } from "../renderers/openai-images.js";
 import { compileBrandWorldImagePackage } from "./package.js";
 
@@ -129,12 +130,34 @@ function resolveTemplateAsset(stored, templateAssetId) {
   };
 }
 
+/**
+ * Resolve a product record by id from the product store. Returns null when
+ * no product is requested. The product record's claims, features, exclusions,
+ * and visual direction feed into the compiled prompt (ADR 0012 step 4).
+ */
+async function resolveProduct(productStore, productId) {
+  if (!productId) return null;
+  const record = await productStore.readProduct(productId);
+  if (!record) {
+    const error = new Error(`The selected product "${productId}" was not found. Synthesize the product record first.`);
+    error.status = 400;
+    throw error;
+  }
+  return record;
+}
+
 export async function prepareProductionPackage(body, options) {
   const stored = await options.brainStore.read();
   const { approvedBrain, brainVersion } = approvedContext(stored);
   const references = resolveReferences(stored, body.references || []);
   const lockedAsset = resolveLockedAsset(stored, body.lockedAssetId);
   const templateAsset = resolveTemplateAsset(stored, body.templateAssetId);
+  // Resolve the product record when the request names one (ADR 0012 step 4).
+  // The product store is passed in by the endpoint or constructed here from
+  // the client id when available.
+  const productStore = options.productStore || null;
+  const product = productStore ? await resolveProduct(productStore, body.productId || null) : null;
+
   const generationPackage = compileBrandWorldImagePackage({
     approvedBrain,
     brainVersion,
@@ -143,6 +166,7 @@ export async function prepareProductionPackage(body, options) {
     lockedAsset,
     templateAsset,
     campaign: body.campaign || null,
+    product,
   });
   return { generationPackage, references, lockedAsset, templateAsset, stored };
 }
@@ -243,3 +267,4 @@ export async function generateProductionImage(body, options) {
     throw error;
   }
 }
+

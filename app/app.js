@@ -916,6 +916,7 @@ const state = {
     salesTemplateId: "",
     salesElement: "",
     salesFeature: "",
+    salesProductId: "",
   },
   brain: {
     stage: "empty",
@@ -4206,6 +4207,7 @@ function renderPreflight() {
             <ul class="contract-list">
               <li><strong>Grounded in:</strong> ${escapeHtml(generationPackage.policy.groundedIn)}</li>
               ${generationPackage.lockedAsset ? `<li><strong>Protected asset:</strong> ${escapeHtml(generationPackage.lockedAsset.name)} (${escapeHtml(generationPackage.lockedAsset.format)})</li>` : ""}
+              ${generationPackage.product ? `<li><strong>Product record:</strong> ${escapeHtml(generationPackage.product.product_name)} v${escapeHtml(generationPackage.product.version)}</li>` : ""}
               ${generationPackage.aestheticMode ? `<li><strong>Visual register:</strong> ${escapeHtml(generationPackage.aestheticMode.name)}</li>` : ""}
               <li><strong>Flexible:</strong> ${escapeHtml(generationPackage.policy.flexible.join(", "))}</li>
               <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
@@ -4981,6 +4983,7 @@ function productionRequest(jobId) {
   return {
     jobId,
     brief: { ...state.brief },
+    productId: state.studio.salesProductId || undefined,
     lockedAssetId: state.lockedAssetId || undefined,
     templateAssetId: state.studio.salesTemplateId || undefined,
     references: state.references.map((item) => ({
@@ -5682,6 +5685,7 @@ root.addEventListener("click", (event) => {
     state.studio.salesTemplateId = "";
     state.studio.salesElement = "";
     state.studio.salesFeature = "";
+    state.studio.salesProductId = "";
     navigate("studio-setup");
   }
   if (action === "back-to-studio") {
@@ -6604,4 +6608,5 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
 

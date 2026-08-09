@@ -290,7 +290,35 @@ export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null }) {
+// Compile a product record into a prompt section. The product's approved claim
+// language, features, and visual direction feed into the generation prompt so
+// product-specific outputs draw on governed knowledge (ADR 0012 step 4).
+function compileProductSection(product) {
+  const parts = [];
+  if (product.one_true_thing) {
+    parts.push(`This output is for the product "${product.product_name}." ${product.one_true_thing}`);
+  }
+  if (product.audience_note) {
+    parts.push(`Audience: ${product.audience_note}`);
+  }
+  if (product.features?.length) {
+    const featureLines = product.features.map((f) => {
+      const claim = f.approved_claim_language ? ` Approved language: "${f.approved_claim_language}"` : "";
+      const note = f.accuracy_note ? ` Note: ${f.accuracy_note}` : "";
+      return `${f.name}: ${f.benefit}.${claim}${note}`;
+    });
+    parts.push(`Key features: ${featureLines.join(" ")}`);
+  }
+  if (product.visual_direction) {
+    parts.push(`Visual direction for this product: ${product.visual_direction}`);
+  }
+  if (product.proof_points?.length) {
+    parts.push(`Proof points: ${product.proof_points.join("; ")}.`);
+  }
+  return parts.join(" ");
+}
+
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -405,6 +433,10 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "Brand foundation",
       body: `${cleanText(approvedBrain.brandName)} is ${cleanText(approvedBrain.brandDescription, "the approved brand")}. ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
     },
+    product ? {
+      title: "Product knowledge",
+      body: compileProductSection(product),
+    } : null,
     ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
     isTemplate ? templateProductionInstructions : null,
     isSalesEnablement ? buildSalesElementInstructions(hasTemplate) : null,
@@ -436,6 +468,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         isSalesEnablement && !hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. The element is the subject, rendered cleanly for placement onto a branded background." : "",
         isSalesEnablement && hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. Preserve the supplied template background exactly and place the element onto it." : "",
         dossier.guardrails?.length ? dossier.guardrails.map((rule) => `${rule.title}: ${rule.body}`).join(" ") : "",
+        product?.exclusions?.length ? product.exclusions.map((ex) => `Product rule: ${ex}`).join(" ") : "",
         exclusions ? `Also avoid: ${exclusions}` : "",
       ].filter(Boolean).join(" "),
     },
@@ -495,6 +528,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     treatments,
     requirementCheck,
     ready,
+    product: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version } : null,
     policy: {
       groundedIn: sourceCount
         ? `Approved Brand Brain v${Number(brainVersion || 1)}, built from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`
@@ -565,3 +599,4 @@ export function classifyChangeImpact(record, currentBrainVersion, changedElement
   }
   return { level: "review", label: "Review recommended", description: `${overlapping.join(", ")} changed between v${record.brainVersion} and v${currentBrainVersion}. The visual difference may or may not matter.`, affected: overlapping };
 }
+
