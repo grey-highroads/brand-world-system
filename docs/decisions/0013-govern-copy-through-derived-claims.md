@@ -60,12 +60,20 @@ The same argument as ADR 0012. A variable-length claims list in the brain docume
 
 ## Sequencing
 
-1. **Prototype the copy audit** against real Dialog Health generated copy. Generate several LinkedIn posts from the existing endpoint. Hand-label every sentence in the output as claim or not-claim, and cross-reference each claim against the product record's approved claims and exclusions. Run the claim-detection model against the same output and compare. The prototype passes when: (a) every prohibited-list match is correctly flagged (zero false negatives on prohibitions), (b) every approved-list match passes cleanly (zero false negatives on safe harbor), (c) false positives (descriptive sentences flagged as claims) stay below 20% of total sentences, and (d) the advisory "unapproved claim, review recommended" findings are actionable rather than noise. If (c) fails, the detection heuristic needs tuning before the schema is committed. If (d) fails, the safe-harbor model may be too strict and the boundary between claim and description needs recalibration. No schema commitment until this passes.
+1. **Mechanism test of the copy audit** against a synthetic claims fixture. The fixture carries prohibited claims spanning four types (quantified benefit, regulatory property, superlative comparative, capability assertion) and copy samples in three groups: verbatim violations, paraphrase violations, and adjacent non-violations. The test passes when: (a) every verbatim violation is flagged as prohibited, (b) every paraphrase violation is flagged as prohibited, (c) no adjacent non-violation is flagged as prohibited, and (d) the audit-error path is exercised and distinguishable from a clean pass. See `fixtures/copy-audit-fixture.json` and `fixtures/copy-audit-mechanism-test.mjs`.
 2. **Brand-level claims document schema and store**, namespaced per client, thin and human-authored. Three sections: approved, prohibited, disclosures. Each entry carries text, scope, source reference, and date.
 3. **Assembly function in the compiler.** Union of brand-level claims (scope-matched) and product claims (product-matched). Included in the generation package.
 4. **Copy audit wired to generate-copy.** Prompt-level steering (claims and prohibitions in the system prompt) plus post-hoc audit on the output. Findings surfaced in the response.
 5. **Applicability resolver extended** to handle product and campaign scope alongside channel and placement.
 6. **Copy audit surfaced in preflight and evaluation** for image+copy production flows (social image with caption, future ad copy).
+
+## Revision: 2026-08-09
+
+**Finding:** The original step 1 pass criteria (false-positive ceiling below 20%, advisory-findings quality check) were calibrated at client granularity against Dialog Health copy. A code review identified this as a platform-mechanism-versus-client-calibration mismatch: tuning the claim-detection boundary against one regulated healthcare client's copy patterns risks encoding that client's distribution into a global rule. This is the over-prescription failure mode the project has already learned from (PWP).
+
+**Change:** Step 1 is replaced by a fixture-based mechanism test covering the prohibited-match hard stop and audit-failure semantics. These are platform invariants that hold regardless of client. The original criteria (c) and (d) are deferred, not dropped: they run when real client production volume provides a distribution to calibrate against. Until then, the safe-harbor design contains the over-flagging risk at the product level (unapproved findings are advisory, never blocking).
+
+**Scope-matching fail direction.** The same review identified that scope matching on approved claims failed open: a claim scoped to product X passed into every job with no product, leaking product-specific safe-harbor language into unscoped jobs. Fixed by making the fail direction asymmetric: approved claims and disclosures fail closed (excluded when the job lacks the scoped axis), prohibited claims fail open (included, because over-blocking is the safe error). See `src/scope/resolver.js`.
 
 ## Options considered
 
