@@ -364,6 +364,38 @@ const sourceMaterialTypes = [
 ];
 
 const sourceRoleOptions = ["Multiple areas", "Brand foundation", "Identity", "World and story", "Voice and messaging", "Creative direction", "Creative rules"];
+
+// Intake doors group material types by what the user is doing, not by the
+// system's internal handling. Evidence feeds synthesis; assets are locked and
+// consumed by production; products are born on the Products screen.
+const evidenceMaterialIds = ["approved-guidance", "past-work-research", "business-document", "cultural-reference", "single-image", "image-grid"];
+const assetMaterialIds = ["protected-asset", "brand-template"];
+
+function evidenceMaterialOptions(form) {
+  return sourceMaterialTypes.filter((item) => evidenceMaterialIds.includes(item.id) && item.forms.includes(form));
+}
+
+function assetMaterialOptions() {
+  return sourceMaterialTypes.filter((item) => assetMaterialIds.includes(item.id));
+}
+
+// Suggest a material type from a file's name and extension so the taxonomy
+// step becomes a confirmation rather than a quiz. Conservative: only guesses
+// when a signal is clear, otherwise returns "" and the user picks.
+function guessEvidenceMaterialType(file) {
+  if (!file) return "";
+  const ext = fileExtension(file).toLowerCase();
+  const name = (file.name || "").toLowerCase();
+  const rasterExts = ["png", "jpg", "jpeg", "webp", "gif"];
+  if (/(brand|guide|guideline|identity|style|standards)/.test(name)) return "approved-guidance";
+  if (/(case.?study|campaign|research|audit|interview|report)/.test(name)) return "past-work-research";
+  if (/(moodboard|mood.?board|grid|collage)/.test(name)) return "image-grid";
+  if (rasterExts.includes(ext)) return "single-image";
+  if (["pdf", "docx", "pptx"].includes(ext)) return "approved-guidance";
+  if (["txt", "md", "rtf", "csv"].includes(ext)) return "business-document";
+  return "";
+}
+
 const sourceInfluenceOptions = ["Lead", "Strong", "Supporting", "Light"];
 
 const synthesisSteps = [
@@ -947,6 +979,8 @@ const state = {
     stage: "empty",
     sources: [],
     sourceForm: "files",
+    // Which intent door is open: "" (chooser), "evidence", "asset".
+    intakeDoor: "",
     sourceUrl: "",
     sourceTitle: "",
     sourceText: "",
@@ -1311,6 +1345,7 @@ function resetSourceComposer() {
   state.brain.sourceProductName = "";
   state.brain.pendingFiles = [];
   state.brain.sourceFileReading = false;
+  state.brain.intakeDoor = "";
 }
 
 function commentsForTarget(target) {
@@ -1503,141 +1538,155 @@ function renderBrainOverview() {
   );
 }
 
-function sourceComposer() {
+function intakeChooser() {
+  return `
+    <section class="card intake-chooser">
+      <div class="card-header">
+        <span><span class="section-label">Add material</span><h2>What are you adding?</h2></span>
+      </div>
+      <div class="intake-door-grid">
+        <button class="intake-door" type="button" data-action="open-intake-door" data-door="evidence">
+          <span class="intake-door-mark" aria-hidden="true">B</span>
+          <span class="intake-door-body">
+            <strong>Teach the system about the brand</strong>
+            <small>Brand guides, past work, research, references, and images the system reads to build brand knowledge.</small>
+          </span>
+          <i aria-hidden="true">&rsaquo;</i>
+        </button>
+        <button class="intake-door" type="button" data-action="open-intake-door" data-door="asset">
+          <span class="intake-door-mark" aria-hidden="true">A</span>
+          <span class="intake-door-body">
+            <strong>Add an exact asset</strong>
+            <small>Logos, packaging, type, or background templates that production must use unchanged. Never altered, never synthesized.</small>
+          </span>
+          <i aria-hidden="true">&rsaquo;</i>
+        </button>
+        <button class="intake-door" type="button" data-action="open-product-from-intake">
+          <span class="intake-door-mark" aria-hidden="true">P</span>
+          <span class="intake-door-body">
+            <strong>Add a product</strong>
+            <small>A product brief becomes a governed record with approved claim language. Built and reviewed on the Products screen.</small>
+          </span>
+          <i aria-hidden="true">&rsaquo;</i>
+        </button>
+      </div>
+    </section>
+  `;
+}
+
+// The shared contract fields (role, influence, usage, exclusions, template
+// ratio) reused by both the evidence and asset doors.
+function sourceContractFields(material) {
+  return `
+    <div class="source-contract-block">
+      <div class="source-contract-heading">
+        <span><strong>How should we use this source?</strong><small>Your instructions travel with this one source into synthesis and future updates.</small></span>
+        <span class="source-handling-pill">${escapeHtml(material?.handling || "")}</span>
+      </div>
+      <div class="source-entry-row source-contract-row">
+        <label>
+          <span>What should it inform?</span>
+          <select data-action="brain-source-role">${sourceRoleOptions.map((value) => option(value, state.brain.sourceRole)).join("")}</select>
+        </label>
+        ${
+          sourceUsesInfluence(material?.authority)
+            ? `<label>
+                <span>Influence</span>
+                <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
+                <small>Creative priority, not a blend percentage.</small>
+              </label>`
+            : `<div class="source-fixed-handling"><span>How it is weighted</span><strong>It is not weighted</strong><small>${material?.authority === "exact-asset" ? "The supplied file stays exact." : "Approved guidance applies wherever it is relevant."}</small></div>`
+        }
+      </div>
+      <label>
+        <span>Usage instruction <b>Required</b></span>
+        <textarea data-action="brain-source-usage" placeholder="Example: use only the color temperature and material contrast; ignore the subject matter.">${escapeHtml(state.brain.sourceUsage)}</textarea>
+      </label>
+      <label>
+        <span>What should we leave out? <small>Optional</small></span>
+        <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
+      </label>
+      ${material?.isTemplate ? `
+      <label>
+        <span>Template format</span>
+        <select data-action="brain-source-template-ratio">
+          <option value="" ${!state.brain.sourceTemplateRatio ? "selected" : ""}>Choose a format</option>
+          <option value="16:9" ${state.brain.sourceTemplateRatio === "16:9" ? "selected" : ""}>Slide (16:9 widescreen)</option>
+          <option value="4:3" ${state.brain.sourceTemplateRatio === "4:3" ? "selected" : ""}>Slide (4:3 standard)</option>
+          <option value="17:22" ${state.brain.sourceTemplateRatio === "17:22" ? "selected" : ""}>One-pager (8.5 x 11)</option>
+        </select>
+        <small>Determines where this template appears in the Sales enablement workflow.</small>
+      </label>
+      ` : ""}
+    </div>
+  `;
+}
+
+function evidenceDoor() {
   const mode = state.brain.sourceForm;
   const material = sourceMaterialType();
   const pendingFile = state.brain.pendingFiles[0];
   const contentReady = mode === "files" ? Boolean(pendingFile) : true;
-  const canAdd = Boolean(material && contentReady && !state.brain.sourceFileReading);
+  const canAdd = Boolean(material && contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim());
+  // The type step only appears once there is content to classify. For files it
+  // appears after upload with a suggestion; for url/text it appears once the
+  // door is open since there is nothing to read ahead of entry.
+  const showType = mode === "files" ? Boolean(pendingFile) : true;
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
-        <span><span class="section-label">Add one source</span><h2>Start with what the material is</h2></span>
+        <span><span class="section-label">Teach the system about the brand</span><h2>Add one source</h2></span>
+        <button class="button" type="button" data-action="close-intake-door">Back</button>
       </div>
       <div class="source-method-tabs" role="tablist" aria-label="Source type">
-        ${[
-          ["files", "File"],
-          ["url", "URL"],
-          ["text", "Written material"],
-        ]
-          .map(
-            ([id, label]) => `<button class="${mode === id ? "active" : ""}" type="button" data-action="set-source-form" data-kind="${id}">${label}</button>`,
-          )
+        ${[["files", "File"], ["url", "URL"], ["text", "Written material"]]
+          .map(([id, label]) => `<button class="${mode === id ? "active" : ""}" type="button" data-action="set-source-form" data-kind="${id}">${label}</button>`)
           .join("")}
       </div>
 
-      <div class="source-type-step">
-        <span class="source-step-label">Step 1</span>
-        <div class="source-type-heading">
-          <span><strong>What kind of material are you adding?</strong><small>Choose the closest real-world type. This sets safe handling before the system reads anything.</small></span>
-        </div>
-        <div class="source-material-grid">
-          ${sourceMaterialOptions(mode)
-            .map(
-              (item) => `
-                <button class="source-material-option ${material?.id === item.id ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
-                  <span class="source-material-mark" aria-hidden="true">${escapeHtml(item.label.slice(0, 1))}</span>
-                  <span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
-                  <i aria-hidden="true">${material?.id === item.id ? "✓" : ""}</i>
-                </button>
-              `,
-            )
-            .join("")}
-        </div>
-      </div>
-
-      ${
-        mode === "files"
-          ? `
-            <div class="source-upload-step ${material ? "" : "disabled"}">
-              <span class="source-step-label">Step 2</span>
-              <label class="source-drop-zone ${material ? "" : "disabled"}">
-              <input type="file" data-action="source-file-input" accept="${escapeHtml(material?.accept || "")}" ${material ? "" : "disabled"}>
-              <span class="source-drop-icon">+</span>
-              <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : material ? "Choose one file" : "Choose a material type first"}</strong>
-              <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : material ? `${escapeHtml(material.examples)} · 20 MB maximum` : "Folders and multi-file batches are not accepted in this step."}</span>
-              </label>
-              ${material?.formatAdvice ? `<small class="source-content-note">${escapeHtml(material.formatAdvice)}</small>` : ""}
-              ${
-                material
-                  ? `<div class="source-verification-note"><span aria-hidden="true">!</span><p>The system will compare the file with <strong>${escapeHtml(material.label)}</strong>. If the contents do not line up, it will ask you to review the mismatch instead of silently trusting the label.</p></div>`
-                  : ""
-              }
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        mode === "url"
-          ? `
-            <div class="source-entry-form source-content-form">
-              <span class="source-step-label">Step 2</span>
-              <label><span>Web address</span><input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com/about"></label>
-              <label><span>Name this source</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="About page"></label>
-              <small class="source-content-note">The page contents will be checked against the material type you selected.</small>
-            </div>
-          `
-          : ""
-      }
-
-      ${
-        mode === "text"
-          ? `
-            <div class="source-entry-form source-content-form">
-              <span class="source-step-label">Step 2</span>
-              <label><span>Title</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="What should we call this?"></label>
-              <label><span>Paste the material</span><textarea data-action="brain-source-text" placeholder="Paste notes, a brief, transcript, observation, or reference context here.">${escapeHtml(state.brain.sourceText)}</textarea></label>
-            </div>
-          `
-          : ""
-      }
-
-      <div class="source-contract ${material ? "" : "disabled"}">
-        <span class="source-step-label">Step 3</span>
-        <div class="source-contract-heading">
-          <span><strong>How should we use this source?</strong><small>Your instructions travel with this one source into synthesis and future updates.</small></span>
-          <span class="source-handling-pill">${escapeHtml(material?.handling || "Choose a type first")}</span>
-        </div>
-
-        <div class="source-entry-row source-contract-row">
-          <label>
-            <span>What should it inform?</span>
-            <select data-action="brain-source-role">${sourceRoleOptions.map((value) => option(value, state.brain.sourceRole)).join("")}</select>
-          </label>
-          ${
-            sourceUsesInfluence(material?.authority)
-              ? `<label>
-                  <span>Influence</span>
-                  <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
-                  <small>Creative priority, not a blend percentage.</small>
-                </label>`
-              : `<div class="source-fixed-handling"><span>How it is weighted</span><strong>It is not weighted</strong><small>${material?.authority === "exact-asset" ? "The supplied file stays exact." : material ? "Approved guidance applies wherever it is relevant." : "Choose the material type first."}</small></div>`
-          }
-        </div>
-
-        <label>
-          <span>Usage instruction <b>Required</b></span>
-          <textarea data-action="brain-source-usage" placeholder="Example: use only the color temperature and material contrast; ignore the subject matter.">${escapeHtml(state.brain.sourceUsage)}</textarea>
+      ${mode === "files" ? `
+        <label class="source-drop-zone ${state.brain.sourceFileReading ? "reading" : ""}">
+          <input type="file" data-action="source-file-input" accept="${escapeHtml(evidenceAcceptString())}" data-door="evidence">
+          <span class="source-drop-icon">+</span>
+          <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : "Choose one file"}</strong>
+          <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : "Documents or images, 20 MB maximum. One file at a time."}</span>
         </label>
-        <label>
-          <span>What should we leave out? <small>Optional</small></span>
-          <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
-        </label>
-        ${material?.isTemplate ? `
-        <label>
-          <span>Template format</span>
-          <select data-action="brain-source-template-ratio">
-            <option value="" ${!state.brain.sourceTemplateRatio ? "selected" : ""}>Choose a format</option>
-            <option value="16:9" ${state.brain.sourceTemplateRatio === "16:9" ? "selected" : ""}>Slide (16:9 widescreen)</option>
-            <option value="4:3" ${state.brain.sourceTemplateRatio === "4:3" ? "selected" : ""}>Slide (4:3 standard)</option>
-            <option value="17:22" ${state.brain.sourceTemplateRatio === "17:22" ? "selected" : ""}>One-pager (8.5 x 11)</option>
-          </select>
-          <small>Determines where this template appears in the Sales enablement workflow.</small>
-        </label>
-        ` : ""}
-        <button class="button primary source-add-button" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add source to proposed update" : "Add source"}</button>
-      </div>
+      ` : ""}
+
+      ${mode === "url" ? `
+        <div class="source-entry-form source-content-form">
+          <label><span>Web address</span><input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com/about"></label>
+          <label><span>Name this source</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="About page"></label>
+        </div>
+      ` : ""}
+
+      ${mode === "text" ? `
+        <div class="source-entry-form source-content-form">
+          <label><span>Title</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="What should we call this?"></label>
+          <label><span>Paste the material</span><textarea data-action="brain-source-text" placeholder="Paste notes, a brief, transcript, observation, or reference context here.">${escapeHtml(state.brain.sourceText)}</textarea></label>
+        </div>
+      ` : ""}
+
+      ${showType ? `
+        <div class="source-type-step">
+          <div class="source-type-heading">
+            <span><strong>What kind of material is this?</strong><small>${mode === "files" && material ? "Suggested from the file. Change it if this is not right." : "Sets safe handling before the system reads anything."}</small></span>
+          </div>
+          <div class="source-material-grid">
+            ${evidenceMaterialOptions(mode).map((item) => `
+              <button class="source-material-option ${material?.id === item.id ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
+                <span class="source-material-mark" aria-hidden="true">${escapeHtml(item.label.slice(0, 1))}</span>
+                <span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
+                <i aria-hidden="true">${material?.id === item.id ? "✓" : ""}</i>
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
+
+      ${material && showType ? sourceContractFields(material) : ""}
+
+      <button class="button primary source-add-button" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add source"}</button>
 
       <div class="source-sample-callout">
         <span><strong>Want to walk through the full prototype?</strong><span>Load the sanitized 50-item SLAKE source batch.</span></span>
@@ -1647,23 +1696,85 @@ function sourceComposer() {
   `;
 }
 
+function assetDoor() {
+  const material = sourceMaterialType();
+  const isAsset = material && assetMaterialIds.includes(material.id);
+  const pendingFile = state.brain.pendingFiles[0];
+  const canAdd = Boolean(isAsset && pendingFile && !state.brain.sourceFileReading && state.brain.sourceUsage.trim() && (!material.isTemplate || state.brain.sourceTemplateRatio));
+  return `
+    <section class="card brain-source-composer">
+      <div class="card-header">
+        <span><span class="section-label">Add an exact asset</span><h2>Register a locked file</h2></span>
+        <button class="button" type="button" data-action="close-intake-door">Back</button>
+      </div>
+      <p class="page-description">These files are used exactly as supplied. They are never altered and never fed into brand synthesis.</p>
+
+      <div class="source-type-step">
+        <div class="source-material-grid">
+          ${assetMaterialOptions().map((item) => `
+            <button class="source-material-option ${material?.id === item.id ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
+              <span class="source-material-mark" aria-hidden="true">${escapeHtml(item.label.slice(0, 1))}</span>
+              <span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
+              <i aria-hidden="true">${material?.id === item.id ? "✓" : ""}</i>
+            </button>
+          `).join("")}
+        </div>
+      </div>
+
+      ${isAsset ? `
+        <label class="source-drop-zone ${state.brain.sourceFileReading ? "reading" : ""}">
+          <input type="file" data-action="source-file-input" accept="${escapeHtml(material.accept || "")}" data-door="asset">
+          <span class="source-drop-icon">+</span>
+          <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : "Choose one file"}</strong>
+          <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : `${escapeHtml(material.examples)} · 20 MB maximum`}</span>
+        </label>
+        ${sourceContractFields(material)}
+        <button class="button primary source-add-button" type="button" data-action="add-file-source" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add asset"}</button>
+      ` : `<p class="field-note">Choose an asset type to continue.</p>`}
+    </section>
+  `;
+}
+
+function evidenceAcceptString() {
+  const exts = new Set();
+  evidenceMaterialOptions("files").forEach((m) => (m.extensions || []).forEach((e) => exts.add(e)));
+  return [...exts].map((e) => `.${e}`).join(",");
+}
+
+function sourceComposer() {
+  const door = state.brain.intakeDoor;
+  if (door === "evidence") return evidenceDoor();
+  if (door === "asset") return assetDoor();
+  return intakeChooser();
+}
+
+// Compact library row: kind mark, name, one differentiating label, status.
+// Repeated pills (role, influence, active-version) are demoted into the
+// expandable detail rather than shown on every row. Editing lives in the
+// expand, not on the row.
 function sourceGroupRow(source) {
   const material = sourceMaterialType(source);
   const expanded = state.brain.selectedSourceId === source.id;
   const pending = state.brain.pendingSourceIds.includes(source.id);
   const locked = sourceHasApprovedBaseline() && !pending;
   const weighted = sourceUsesInfluence(source.authority);
+  const statusPill = pending
+    ? `<span class="mini-pill pill-warning">Pending</span>`
+    : source.productMeta
+    ? (source.productMeta.synthesizedProductId ? `<span class="mini-pill pill-success">Record built</span>` : `<span class="mini-pill pill-neutral">Brief</span>`)
+    : locked
+    ? `<span class="mini-pill pill-governed">Active</span>`
+    : "";
   return `
     <article class="brain-source-item ${expanded ? "expanded" : ""} ${pending ? "pending" : ""} ${locked ? "locked" : ""}">
       <div class="brain-source-row">
-        <span class="source-kind-icon">${escapeHtml(source.type.slice(0, 1))}</span>
+        <span class="source-kind-icon" aria-hidden="true">${escapeHtml((material?.shortLabel || source.type).slice(0, 1))}</span>
         <span class="brain-source-copy">
           <strong>${escapeHtml(source.name)}</strong>
-          <span>${escapeHtml(source.type)} · ${escapeHtml(source.detail)}</span>
-          <span class="source-row-meta"><i>${escapeHtml(material?.shortLabel || "Past work or research")}</i><i>${escapeHtml(source.role)}</i><i>${escapeHtml(weighted ? source.influence : material?.handling || "Not weighted")}</i>${source.productMeta ? `<i>${escapeHtml(source.productMeta.productName)}</i>` : ""}${pending ? "<i>Proposed update</i>" : locked ? `<i>Active v${state.brain.approvedVersion || state.brain.artifactVersion}</i>` : ""}</span>
+          <span>${escapeHtml(material?.shortLabel || source.type)} · ${escapeHtml(source.detail)}</span>
         </span>
-        <span class="brain-source-count"><strong>${source.count}</strong><span>${source.count === 1 ? "item" : "items"}</span></span>
-        <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Review details"}</button>
+        ${statusPill}
+        <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Details"}</button>
         <button class="icon-button" type="button" data-action="remove-brain-source" data-id="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.name)}" ${locked ? "disabled" : ""}>×</button>
       </div>
       ${
@@ -1701,18 +1812,37 @@ function sourceGroupRow(source) {
   `;
 }
 
+// Group library rows by lifecycle so the three kinds are visible instead of
+// flattened into one list.
+function sourceLibraryGroups() {
+  const sources = state.brain.sources;
+  const groups = [
+    { key: "evidence", label: "Brand evidence", rows: [] },
+    { key: "asset", label: "Exact assets", rows: [] },
+    { key: "product", label: "Product briefs", rows: [] },
+  ];
+  for (const source of sources) {
+    const material = sourceMaterialType(source);
+    if (source.productMeta) groups[2].rows.push(source);
+    else if (material && assetMaterialIds.includes(material.id)) groups[1].rows.push(source);
+    else groups[0].rows.push(source);
+  }
+  return groups.filter((g) => g.rows.length);
+}
+
 function renderBrainSources() {
   const hasSources = state.brain.sources.length > 0;
   const hasApproved = sourceHasApprovedBaseline();
   const pending = pendingSourceCount();
   const canSynthesize = hasApproved ? pending > 0 : hasSources;
+  const groups = sourceLibraryGroups();
   return brainWorkspace(
     "Sources",
-    "Add one clearly described source at a time so its meaning, handling, and instructions stay attached.",
+    "Add material the system reads to build brand knowledge, plus the exact assets and product briefs it works from.",
     `
       ${
-        hasApproved
-          ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span><span><strong>Your approved Brand Brain stays active</strong><p>New sources create a proposed update. Only guidance touched by the new material is reconsidered, and nothing changes for production until you review and approve the next version.</p></span></section>`
+        hasApproved && pending > 0
+          ? `<section class="brain-source-update-callout"><span class="brain-status governed">${pending} pending</span><span><strong>You have a proposed update ready</strong><p>New material creates a proposed update. Only guidance touched by it is reconsidered, and nothing changes for production until you review and approve the next version.</p></span><button class="button primary" type="button" data-action="start-brain-synthesis">Prepare proposed update</button></section>`
           : ""
       }
       <div class="brain-sources-layout ${hasSources ? "has-sources" : ""}">
@@ -1720,21 +1850,30 @@ function renderBrainSources() {
 
         <section class="card brain-source-batch">
           <div class="card-header">
-            <span><span class="section-label">${hasApproved ? "Source library and proposed update" : "Current batch"}</span><h2>${hasApproved ? `${pending} new ${pending === 1 ? "source" : "sources"} pending` : hasSources ? `${brainSourceCount()} items ready` : "Nothing added yet"}</h2></span>
-            ${hasSources ? `<span class="mini-pill">${state.brain.sources.length} ${state.brain.sources.length === 1 ? "source" : "sources"}</span>` : ""}
+            <span><span class="section-label">${hasApproved ? "Source library" : "Current batch"}</span><h2>${hasSources ? `${state.brain.sources.length} ${state.brain.sources.length === 1 ? "source" : "sources"}` : "Nothing added yet"}</h2></span>
+            ${hasApproved && !pending && hasSources ? `<span class="mini-pill pill-governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span>` : ""}
           </div>
           ${
             hasSources
-              ? `<div class="brain-source-list">${state.brain.sources.map(sourceGroupRow).join("")}</div>`
-              : `<div class="brain-source-empty"><strong>Your source batch will appear here</strong><span>Add individual materials or use the SLAKE sample batch to continue through the prototype.</span></div>`
+              ? `<div class="brain-source-groups">${groups.map((g) => `
+                  <div class="brain-source-group">
+                    <span class="brain-source-group-label">${escapeHtml(g.label)} <i>${g.rows.length}</i></span>
+                    <div class="brain-source-list">${g.rows.map(sourceGroupRow).join("")}</div>
+                  </div>
+                `).join("")}</div>`
+              : `<div class="brain-source-empty"><strong>Your sources will appear here</strong><span>Add material above, or use the SLAKE sample batch to walk through the prototype.</span></div>`
           }
-          <div class="brain-source-footer">
-            <span>
-              <strong>${hasApproved ? (pending ? `Ready to check ${pending} proposed ${pending === 1 ? "addition" : "additions"}` : "Your approved source library is unchanged") : hasSources ? "Ready to build from these sources" : "Add at least one source to continue"}</strong>
-              <span>${hasApproved ? (pending ? `Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion} remains active while the system prepares the smallest supported update.` : "Add a source above when new material should be considered. The active version will not be reset.") : hasSources ? "The system will read the supplied material, check the declared types, and prepare guidance and artifacts for review." : "Nothing is processed or approved until you start."}</span>
-            </span>
-            <button class="button primary" type="button" data-action="start-brain-synthesis" ${canSynthesize ? "" : "disabled"}>${hasApproved ? "Prepare proposed update" : "Build Brand Brain draft"}</button>
-          </div>
+          ${
+            !hasApproved
+              ? `<div class="brain-source-footer">
+                  <span>
+                    <strong>${hasSources ? "Ready to build from these sources" : "Add at least one source to continue"}</strong>
+                    <span>${hasSources ? "The system reads the material, checks the declared types, and prepares guidance and artifacts for review." : "Nothing is processed or approved until you start."}</span>
+                  </span>
+                  <button class="button primary" type="button" data-action="start-brain-synthesis" ${canSynthesize ? "" : "disabled"}>Build Brand Brain draft</button>
+                </div>`
+              : ""
+          }
         </section>
       </div>
     `,
@@ -5922,6 +6061,7 @@ root.addEventListener("change", async (event) => {
   }
   if (action === "source-file-input") {
     const file = Array.from(event.target.files ?? [])[0];
+    const door = event.target.dataset.door;
     if (file) {
       const validationError = validateSourceFile(file);
       if (validationError) {
@@ -5934,6 +6074,18 @@ root.addEventListener("change", async (event) => {
         try {
           const storeFile = window.storeBrandWorldSourceFile || readFileAsDataUrl;
           state.brain.pendingFiles = [await storeFile(file)];
+          // In the evidence door, suggest a material type from the file so the
+          // taxonomy step becomes a confirmation. Only when nothing is chosen
+          // yet, so a returning user's pick is never overwritten.
+          if (door === "evidence" && !state.brain.sourceMaterialType) {
+            const guess = guessEvidenceMaterialType(file);
+            if (guess) {
+              const material = sourceMaterialType(guess);
+              state.brain.sourceMaterialType = guess;
+              state.brain.sourceAuthority = material.authority;
+              if (!sourceUsesInfluence(material.authority)) state.brain.sourceInfluence = "Supporting";
+            }
+          }
         } catch (error) {
           state.brain.pendingFiles = [];
           setToast(error.message);
@@ -6528,8 +6680,32 @@ root.addEventListener("click", (event) => {
     navigate("brain-sources");
   }
   if (action === "load-sample-sources") loadSampleSources();
-  if (action === "set-source-form") {
+  if (action === "open-intake-door") {
     resetSourceComposer();
+    state.brain.intakeDoor = target.dataset.door;
+    state.brain.sourceForm = "files";
+    render();
+  }
+  if (action === "close-intake-door") {
+    resetSourceComposer();
+    state.brain.intakeDoor = "";
+    render();
+  }
+  if (action === "open-product-from-intake") {
+    state.screen = "products";
+    state.products.addOpen = true;
+    state.products.addName = "";
+    state.products.addTab = "file";
+    state.products.addFile = null;
+    state.products.addText = "";
+    state.products.addUrl = "";
+    void loadProducts();
+    render();
+  }
+  if (action === "set-source-form") {
+    const door = state.brain.intakeDoor;
+    resetSourceComposer();
+    state.brain.intakeDoor = door;
     state.brain.sourceForm = target.dataset.kind;
     render();
   }
