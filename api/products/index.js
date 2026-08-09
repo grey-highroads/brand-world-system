@@ -4,6 +4,7 @@ import {
   synthesizeAndPersistProduct,
   listProducts,
   readProduct,
+  approveProduct,
 } from "../../src/products/service.js";
 import {
   readJsonBody,
@@ -20,6 +21,7 @@ import {
 // GET                           -> list product index entries
 // POST { action: "synthesize" } -> synthesize from a brain source and persist
 // POST { action: "read" }       -> read one full product record
+// POST { action: "approve" }    -> approve a candidate product record
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
   try {
@@ -53,8 +55,13 @@ export default async function handler(request, response) {
       return;
     }
 
+    if (action === "approve") {
+      await handleApprove(body, productStore, response);
+      return;
+    }
+
     sendJson(response, 400, {
-      error: `Unknown action "${action}". Supported: synthesize, read.`,
+      error: `Unknown action "${action}". Supported: synthesize, read, approve.`,
     });
   } catch (error) {
     sendPublicError(response, error);
@@ -109,3 +116,14 @@ async function handleRead(body, productStore, response) {
   const record = await readProduct({ store: productStore, productId });
   sendJson(response, 200, { record });
 }
+
+async function handleApprove(body, productStore, response) {
+  const productId = String(body.productId || "").trim();
+  if (!productId) {
+    sendJson(response, 400, { error: "productId is required." });
+    return;
+  }
+  const record = await approveProduct({ store: productStore, productId });
+  sendJson(response, 200, { record });
+}
+

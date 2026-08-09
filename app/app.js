@@ -821,6 +821,15 @@ const state = {
   screen: "workspace",
   clients: [],
   activeClientId: "default",
+  products: {
+    list: [],
+    detail: null,
+    loading: false,
+    approving: false,
+    activeId: "",
+    error: "",
+    loadedForClient: "",
+  },
   clientSwitcherOpen: false,
   brandName: "SLAKE",
   brandDescription: "Adaptogen sparkling water",
@@ -998,6 +1007,8 @@ function currentCrumb() {
   if (state.screen === "studio-setup") return `Design Studio / ${escapeHtml(studioCategoryLabel(state.studio.category))}`;
   if (state.screen === "campaigns") return "Campaigns";
   if (state.screen === "campaign-creation") return "Campaigns / New campaign";
+  if (state.screen === "products") return "Products";
+  if (state.screen === "product-detail") return state.products.detail?.product_name ? `Products / ${state.products.detail.product_name}` : "Products / Loading";
   if (state.screen === "campaign-workspace") {
     const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
     return `Campaigns / ${escapeHtml(campaign?.name || "Campaign")}`;
@@ -1034,6 +1045,7 @@ function shell(content) {
           ${navItem("Brand brain", inBrain, "brand-brain")}
           ${navItem("Design Studio", state.screen === "chooser" || state.screen === "studio-setup" || state.screen === "brief" || state.screen === "preflight" || state.screen === "result", "chooser")}
           ${navItem("Campaigns", state.screen === "campaigns" || state.screen === "campaign-creation" || state.screen === "campaign-workspace", "campaigns")}
+          ${navItem("Products", state.screen === "products" || state.screen === "product-detail", "products")}
           ${navItem("Library", false)}
         </nav>
 
@@ -2778,6 +2790,9 @@ function updateSalesReadyState() {
 function renderSalesSetup(cat) {
   const approved = approvedBrainForProduction();
   const campaigns = state.campaigns || [];
+  // Load the product list so the picker below has options. loadProducts is a
+  // no-op when the list is already loaded for this client.
+  void loadProducts();
   const fmt = salesOutputFormats[state.studio.salesFormat] || salesOutputFormats["slide-16x9"];
 
   // Find templates tagged in the brain sources, filtered by the selected format ratio
@@ -2844,8 +2859,20 @@ function renderSalesSetup(cat) {
               </div>
 
               <div class="field full">
-                <label for="sales-feature">Feature or product focus</label>
-                <span class="field-note">Optional. If this showcases a specific feature, name it here.</span>
+                <label for="sales-product">Product record</label>
+                <span class="field-note">Pick an approved product to pull in its governed claims, exclusions, and visual direction. Add a product on the Products screen.</span>
+                <div class="studio-campaign-row">
+                  <select id="sales-product" data-action="sales-product-change">
+                    <option value="">No product record</option>
+                    ${approvedProducts().map((p) => `<option value="${escapeHtml(p.product_id)}" ${state.studio.salesProductId === p.product_id ? "selected" : ""}>${escapeHtml(p.product_name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">${approvedProducts().length ? "" : "No approved products yet."}</span>
+                </div>
+              </div>
+
+              <div class="field full">
+                <label for="sales-feature">Feature focus</label>
+                <span class="field-note">Optional. A specific feature or angle to emphasize. Free text.</span>
                 <input id="sales-feature" type="text" data-action="sales-feature-input" placeholder="RCS messaging, appointment reminders, two-way texting..." value="${escapeHtml(state.studio.salesFeature)}">
               </div>
 
@@ -2995,6 +3022,168 @@ function renderCampaigns() {
           <span class="chooser-contract">Inherits from Brand Brain${approved ? ` v${state.brain.approvedVersion}` : ""}</span>
         </button>
       </div>
+    </section>
+  `);
+}
+
+function renderProducts() {
+  const list = state.products.list;
+  const loading = state.products.loading;
+  const error = state.products.error;
+
+  const cards = list.map((entry) => {
+    const isApproved = entry.status === "approved";
+    return `
+      <button class="card chooser-card" type="button" data-action="view-product" data-id="${escapeHtml(entry.product_id)}">
+        <div class="card-header">
+          <h2>${escapeHtml(entry.product_name)}</h2>
+          <span class="mini-pill ${isApproved ? "pill-success" : "pill-neutral"}">${isApproved ? "Approved" : "Needs review"}</span>
+        </div>
+        <p>Version ${escapeHtml(String(entry.version || "1"))} · Updated ${new Date(entry.updated_at || Date.now()).toLocaleString()}</p>
+        <span class="chooser-contract">${isApproved ? "Available to production" : "Cannot be used until approved"}</span>
+      </button>
+    `;
+  }).join("");
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(
+        "Products",
+        list.length
+          ? `${list.length} ${list.length === 1 ? "product record" : "product records"} for ${state.brandName}. Approved records are available to production; candidates are waiting for review.`
+          : `Product records live here. Tag a source as a product brief on the Brand Brain sources screen, then synthesize a governed record from it.`
+      )}
+      ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
+      ${loading && !list.length ? `<p class="page-description">Loading product records...</p>` : ""}
+      ${list.length ? `<div class="grid mode-grid">${cards}</div>` : loading ? "" : `
+        <div class="card">
+          <div class="card-header"><h2>No product records yet</h2></div>
+          <p>Add a product brief to the Brand Brain sources, then run a product synthesis. The resulting record will appear here for review and approval.</p>
+        </div>
+      `}
+    </section>
+  `);
+}
+
+function renderProductDetail() {
+  const record = state.products.detail;
+  const error = state.products.error;
+  const approving = state.products.approving;
+
+  if (!record && !error) {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader("Loading product record", "Fetching the full record...")}
+      </section>
+    `);
+  }
+
+  if (!record) {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader("Product record could not be loaded", error || "The record was not found.")}
+        <button class="button" type="button" data-action="products">Back to products</button>
+      </section>
+    `);
+  }
+
+  const isApproved = !!record.approved_at;
+  const featureRows = (record.features || []).map((f) => `
+    <div class="rule-card">
+      <div class="rule">
+        <span class="mini-pill ${f.origin === "stated" ? "pill-neutral" : "pill-warning"}">${escapeHtml(f.origin === "stated" ? "From source" : "Inferred")}</span>
+        <span>
+          <strong>${escapeHtml(f.name)}</strong>
+          <span>${escapeHtml(f.benefit)}</span>
+          ${f.approved_claim_language ? `<span class="rule-note"><strong>Approved language:</strong> "${escapeHtml(f.approved_claim_language)}"</span>` : ""}
+          ${f.accuracy_note ? `<span class="rule-note"><strong>Accuracy:</strong> ${escapeHtml(f.accuracy_note)}</span>` : ""}
+        </span>
+      </div>
+    </div>
+  `).join("");
+
+  const reviewQuestions = (record.review_questions || []).map((q) => `
+    <div class="rule-card">
+      <div class="rule">
+        <span class="mini-pill ${q.confidence === "high" ? "pill-warning" : "pill-neutral"}">${escapeHtml(String(q.confidence || "").toUpperCase())}</span>
+        <span>
+          <strong>${escapeHtml(q.title)}</strong>
+          <span>${escapeHtml(q.summary)}</span>
+          ${q.evidence_quote ? `<span class="rule-note">"${escapeHtml(q.evidence_quote)}"</span>` : ""}
+        </span>
+      </div>
+    </div>
+  `).join("");
+
+  const exclusions = (record.exclusions || []).map((ex) => `<li>${escapeHtml(ex)}</li>`).join("");
+  const proofPoints = (record.proof_points || []).map((p) => `<li>${escapeHtml(p)}</li>`).join("");
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(record.product_name, record.one_true_thing || record.category || "Product record")}
+
+      <div class="page-actions">
+        <button class="button" type="button" data-action="products">Back to products</button>
+        ${isApproved
+          ? `<span class="mini-pill pill-success">Approved · ${new Date(record.approved_at).toLocaleDateString()}</span>`
+          : `<button class="button primary" type="button" data-action="approve-product" data-id="${escapeHtml(record.product_id)}" ${approving ? "disabled" : ""}>${approving ? "Approving..." : "Approve product record"}</button>`
+        }
+      </div>
+
+      ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
+
+      <details class="card collapsible-card" open>
+        <summary class="card-header collapsible-header">
+          <h2>Summary</h2>
+          <span class="collapsible-meta"><span class="mini-pill pill-neutral">v${escapeHtml(String(record.version))}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+        </summary>
+        <ul class="contract-list">
+          <li><strong>Category:</strong> ${escapeHtml(record.category)}</li>
+          <li><strong>Audience:</strong> ${escapeHtml(record.audience_note)}</li>
+          <li><strong>Visual direction:</strong> ${escapeHtml(record.visual_direction)}</li>
+          <li><strong>Source summary:</strong> ${escapeHtml(record.source_summary)}</li>
+        </ul>
+      </details>
+
+      ${(record.features || []).length ? `
+      <details class="card collapsible-card" open>
+        <summary class="card-header collapsible-header">
+          <h2>Features</h2>
+          <span class="collapsible-meta"><span class="mini-pill pill-neutral">${record.features.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+        </summary>
+        <div class="brain-source-list">${featureRows}</div>
+      </details>
+      ` : ""}
+
+      ${proofPoints ? `
+      <details class="card collapsible-card">
+        <summary class="card-header collapsible-header">
+          <h2>Proof points</h2>
+          <span class="collapsible-chevron" aria-hidden="true"></span>
+        </summary>
+        <ul class="contract-list">${proofPoints}</ul>
+      </details>
+      ` : ""}
+
+      ${exclusions ? `
+      <details class="card collapsible-card" open>
+        <summary class="card-header collapsible-header">
+          <h2>What production must not do</h2>
+          <span class="collapsible-meta"><span class="mini-pill pill-warning">${record.exclusions.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+        </summary>
+        <ul class="contract-list">${exclusions}</ul>
+      </details>
+      ` : ""}
+
+      ${reviewQuestions ? `
+      <details class="card collapsible-card">
+        <summary class="card-header collapsible-header">
+          <h2>Review questions</h2>
+          <span class="collapsible-meta"><span class="mini-pill pill-neutral">${record.review_questions.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+        </summary>
+        <div class="brain-source-list">${reviewQuestions}</div>
+      </details>
+      ` : ""}
     </section>
   `);
 }
@@ -4598,6 +4787,8 @@ function render() {
   else if (state.screen === "campaigns") root.innerHTML = renderCampaigns();
   else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
   else if (state.screen === "campaign-workspace") root.innerHTML = renderCampaignWorkspace();
+  else if (state.screen === "products") root.innerHTML = renderProducts();
+  else if (state.screen === "product-detail") root.innerHTML = renderProductDetail();
   else if (state.screen === "brief") root.innerHTML = renderBrief();
   else if (state.screen === "preflight") root.innerHTML = renderPreflight();
   else if (state.screen === "result") root.innerHTML = renderResult();
@@ -5506,6 +5697,10 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="sales-feature-input"]')) {
     state.studio.salesFeature = event.target.value;
   }
+  if (event.target.matches('[data-action="sales-product-change"]')) {
+    state.studio.salesProductId = event.target.value;
+    render();
+  }
 });
 
 root.addEventListener("change", async (event) => {
@@ -5663,6 +5858,18 @@ root.addEventListener("click", (event) => {
   if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
   if (action === "campaigns") { navigate("campaigns"); }
+  if (action === "products") {
+    navigate("products");
+    void loadProducts();
+  }
+  if (action === "view-product") {
+    state.screen = "product-detail";
+    render();
+    void loadProductDetail(target.dataset.id);
+  }
+  if (action === "approve-product") {
+    void approveProductRecord(target.dataset.id);
+  }
   if (action === "open-campaign") {
     state.activeCampaignId = target.dataset.id;
     navigate("campaign-workspace");
@@ -6562,6 +6769,84 @@ async function hydrateClients() {
   render();
 }
 
+// Fetch the product index for the active client and store it in state. The
+// list contains summary entries (product_id, product_name, version, status).
+// Full records are loaded on demand via loadProductDetail.
+async function loadProducts(force = false) {
+  if (typeof fetch !== "function") return;
+  if (!force && state.products.loadedForClient === state.activeClientId && state.products.list.length) return;
+  state.products.loading = true;
+  state.products.error = "";
+  render();
+  try {
+    const response = await fetch("/api/products", { headers: { Accept: "application/json" } });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The product list could not be loaded.");
+    state.products.list = Array.isArray(body.products) ? body.products : [];
+    state.products.loadedForClient = state.activeClientId;
+  } catch (error) {
+    state.products.error = error.message || "The product list could not be loaded.";
+  } finally {
+    state.products.loading = false;
+    render();
+  }
+}
+
+// Fetch one full product record and store it in state.products.detail.
+async function loadProductDetail(productId) {
+  if (typeof fetch !== "function") return;
+  state.products.activeId = productId;
+  state.products.detail = null;
+  state.products.error = "";
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "read", productId }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The product record could not be loaded.");
+    state.products.detail = body.record;
+  } catch (error) {
+    state.products.error = error.message || "The product record could not be loaded.";
+  }
+  render();
+}
+
+// Approve a candidate product record. Refreshes the detail view and the list
+// so the new status is visible immediately.
+async function approveProductRecord(productId) {
+  if (typeof fetch !== "function") return;
+  state.products.approving = true;
+  state.products.error = "";
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", productId }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The product record could not be approved.");
+    state.products.detail = body.record;
+    // Refresh the list so the status pill updates.
+    await loadProducts(true);
+  } catch (error) {
+    state.products.error = error.message || "The product record could not be approved.";
+  } finally {
+    state.products.approving = false;
+    render();
+  }
+}
+
+// Filter the loaded product list to only approved records. Used by the sales
+// enablement product picker and any other production surface that consumes
+// governed product knowledge.
+function approvedProducts() {
+  return state.products.list.filter((p) => p.status === "approved");
+}
+
 function switchClient(id) {
   if (!id || id === state.activeClientId) {
     state.clientSwitcherOpen = false;
@@ -6608,5 +6893,6 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
 
 

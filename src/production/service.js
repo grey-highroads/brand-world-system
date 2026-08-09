@@ -143,6 +143,14 @@ async function resolveProduct(productStore, productId) {
     error.status = 400;
     throw error;
   }
+  // Only approved product records may be consumed by production. A candidate
+  // is a synthesized record waiting for human review. This matches the
+  // approval discipline the brain already uses.
+  if (!record.approved_at) {
+    const error = new Error(`The product record "${record.product_name}" is a candidate and has not been approved. Review and approve it before producing work from it.`);
+    error.status = 409;
+    throw error;
+  }
   return record;
 }
 
@@ -267,4 +275,5 @@ export async function generateProductionImage(body, options) {
     throw error;
   }
 }
+
 

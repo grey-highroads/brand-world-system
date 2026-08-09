@@ -269,3 +269,27 @@ export async function readProduct({ store, productId }) {
   }
   return record;
 }
+
+// Approve a candidate product record. Sets approved_at and returns the updated
+// record. Production only consumes approved product records; a candidate can
+// be reviewed and revised but not used in generation. This is the "approve
+// guidance" action from the glossary, distinct from output approval and
+// canonical promotion.
+export async function approveProduct({ store, productId }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  if (record.approved_at) {
+    return record;
+  }
+  const updated = {
+    ...record,
+    approved_at: new Date().toISOString(),
+  };
+  await store.writeProduct(updated);
+  return updated;
+}
+
