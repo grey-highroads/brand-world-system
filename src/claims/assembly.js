@@ -8,8 +8,16 @@
 //
 // The assembly is a union of two reads. Nothing is paraphrased, merged,
 // or reconciled.
+//
+// Fail direction is asymmetric (code review 2026-08-09):
+//   approved  -> fail closed (exclude when axis unresolvable)
+//   prohibited -> fail open  (include when axis unresolvable)
+//   disclosures -> fail closed
 
 import { objectScopeAppliesToJob } from "../scope/resolver.js";
+
+const FAIL_CLOSED = { unmatchedAxis: "exclude" };
+const FAIL_OPEN   = { unmatchedAxis: "include" };
 
 /**
  * @param {object} options
@@ -27,7 +35,7 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
   // Source one: brand-level claims document.
   if (claimsDocument) {
     for (const entry of activeEntries(claimsDocument, "approved")) {
-      if (objectScopeAppliesToJob(entry.scope, jobScope)) {
+      if (objectScopeAppliesToJob(entry.scope, jobScope, FAIL_CLOSED)) {
         approved.push({
           text: entry.text,
           source: entry.source_ref || "Brand claims",
@@ -37,7 +45,7 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
       }
     }
     for (const entry of activeEntries(claimsDocument, "prohibited")) {
-      if (objectScopeAppliesToJob(entry.scope, jobScope)) {
+      if (objectScopeAppliesToJob(entry.scope, jobScope, FAIL_OPEN)) {
         prohibited.push({
           text: entry.text,
           source: entry.source_ref || "Brand claims",
@@ -47,7 +55,7 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
       }
     }
     for (const entry of activeEntries(claimsDocument, "disclosures")) {
-      if (objectScopeAppliesToJob(entry.trigger_scope, jobScope)) {
+      if (objectScopeAppliesToJob(entry.trigger_scope, jobScope, FAIL_CLOSED)) {
         disclosures.push({
           text: entry.text,
           source: entry.source_ref || "Brand claims",
