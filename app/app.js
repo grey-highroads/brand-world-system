@@ -993,6 +993,13 @@ const state = {
     sourceInfluence: "Supporting",
     sourceUsage: "",
     sourceExclusions: "",
+    // Whose property a URL/text source is: "ours" or "emulate" (someone
+    // else's we want to draw from). Empty until chosen.
+    sourceProvenance: "ours",
+    // Whether a source describes how the brand shows up today ("current") or a
+    // direction it is reaching for ("aspiration"). Honored in synthesis as a
+    // follow-up; wired through the contract now.
+    sourceAspiration: "current",
     sourceTemplateRatio: "",
     sourceProductName: "",
     pendingFiles: [],
@@ -1322,6 +1329,8 @@ function sourceContract(materialTypeId = state.brain.sourceMaterialType) {
     influence: sourceUsesInfluence(authority) ? state.brain.sourceInfluence : "Not weighted",
     usage: state.brain.sourceUsage.trim(),
     exclusions: state.brain.sourceExclusions.trim() || "No additional exclusions supplied.",
+    provenance: state.brain.sourceProvenance,
+    aspiration: state.brain.sourceAspiration,
     verification: "Pending content check",
   };
 }
@@ -1346,6 +1355,8 @@ function resetSourceComposer() {
   state.brain.sourceText = "";
   state.brain.sourceUsage = "";
   state.brain.sourceExclusions = "";
+  state.brain.sourceProvenance = "ours";
+  state.brain.sourceAspiration = "current";
   state.brain.sourceMaterialType = "";
   state.brain.sourceTemplateRatio = "";
   state.brain.sourceProductName = "";
@@ -1458,7 +1469,6 @@ function renderBrainOverview() {
             <p>Add the files, links, notes, briefs, prior work, and cultural references that help explain the brand. The system will organize them, show you the few questions that need judgment, and prepare a stored Brand Brain draft for your review.</p>
             <div class="brain-empty-actions">
               <button class="button primary" type="button" data-action="begin-brain-onboarding">Build your Brand Brain</button>
-              <button class="button" type="button" data-action="load-sample-sources">Use SLAKE sample material</button>
             </div>
           </section>
 
@@ -1628,20 +1638,69 @@ function sourceContractFields(material) {
   `;
 }
 
+// For URL and pasted text, the discriminating question is intent, not file
+// taxonomy: whose property this is, whether it reflects the brand today or a
+// direction it is reaching for, how much it should drive the brand, and why
+// it is being shared. The material type is set implicitly from provenance so
+// the existing contract and add handlers keep working.
+function sourceIntentBlock() {
+  const prov = state.brain.sourceProvenance;
+  const asp = state.brain.sourceAspiration;
+  return `
+    <div class="source-intent-block">
+      <div class="source-intent-question">
+        <span class="source-intent-label">Whose is this?</span>
+        <div class="source-choice-row">
+          <button class="source-choice ${prov === "ours" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="ours">
+            <strong>Ours</strong><small>Our own website or brand property.</small>
+          </button>
+          <button class="source-choice ${prov === "emulate" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="emulate">
+            <strong>Someone else's</strong><small>A reference we want to draw from, not our own.</small>
+          </button>
+        </div>
+      </div>
+      <div class="source-intent-question">
+        <span class="source-intent-label">Does this reflect the brand today, or where it is heading?</span>
+        <div class="source-choice-row">
+          <button class="source-choice ${asp === "current" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="current">
+            <strong>How it shows up today</strong><small>An accurate picture of the brand as it is now.</small>
+          </button>
+          <button class="source-choice ${asp === "aspiration" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="aspiration">
+            <strong>A direction we're reaching for</strong><small>Where we want the brand to go. Influences aesthetics without becoming fact.</small>
+          </button>
+        </div>
+      </div>
+      <label>
+        <span>How influential should this be?</span>
+        <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
+        <small>Creative priority, not a blend percentage.</small>
+      </label>
+      <label>
+        <span>How should this inform the brand? <b>Required</b></span>
+        <textarea data-action="brain-source-usage" placeholder="Example: draw on the calm, unhurried pacing and the way they use whitespace. Ignore the specific product category.">${escapeHtml(state.brain.sourceUsage)}</textarea>
+      </label>
+      <label>
+        <span>What should we leave out? <small>Optional</small></span>
+        <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward their color palette or logo treatment.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
+      </label>
+    </div>
+  `;
+}
+
 function evidenceDoor() {
   const mode = state.brain.sourceForm;
   const material = sourceMaterialType();
   const pendingFile = state.brain.pendingFiles[0];
-  const contentReady = mode === "files" ? Boolean(pendingFile) : true;
-  const canAdd = Boolean(material && contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim());
-  // The type step only appears once there is content to classify. For files it
-  // appears after upload with a suggestion; for url/text it appears once the
-  // door is open since there is nothing to read ahead of entry.
-  const showType = mode === "files" ? Boolean(pendingFile) : true;
+  const isEntry = mode === "url" || mode === "text";
+  const contentReady = mode === "files" ? Boolean(pendingFile) : mode === "url" ? Boolean(state.brain.sourceUrl.trim()) : Boolean(state.brain.sourceText.trim());
+  const canAdd = Boolean(contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim() && (isEntry || material));
+  // Files keep the taxonomy step (with a suggestion) because a file's type
+  // genuinely matters. URL and text ask intent instead of taxonomy.
+  const showType = mode === "files" && Boolean(pendingFile);
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
-        <span><span class="section-label">Teach the system about the brand</span><h2>Add one source</h2></span>
+        <span><span class="section-label">Brand usage</span><h2>Add one source</h2></span>
         <button class="button" type="button" data-action="close-intake-door">Back</button>
       </div>
       <div class="source-method-tabs" role="tablist" aria-label="Source type">
@@ -1673,10 +1732,12 @@ function evidenceDoor() {
         </div>
       ` : ""}
 
+      ${isEntry ? sourceIntentBlock() : ""}
+
       ${showType ? `
         <div class="source-type-step">
           <div class="source-type-heading">
-            <span><strong>What kind of material is this?</strong><small>${mode === "files" && material ? "Suggested from the file. Change it if this is not right." : "Sets safe handling before the system reads anything."}</small></span>
+            <span><strong>What kind of material is this?</strong><small>${material ? "Suggested from the file. Change it if this is not right." : "Sets safe handling before the system reads anything."}</small></span>
           </div>
           <div class="source-material-grid">
             ${evidenceMaterialOptions(mode).map((item) => `
@@ -1693,11 +1754,6 @@ function evidenceDoor() {
       ${material && showType ? sourceContractFields(material) : ""}
 
       <button class="button primary source-add-button" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add source"}</button>
-
-      <div class="source-sample-callout">
-        <span><strong>Want to walk through the full prototype?</strong><span>Load the sanitized 50-item SLAKE source batch.</span></span>
-        <button class="button" type="button" data-action="load-sample-sources">Use SLAKE sample material</button>
-      </div>
     </section>
   `;
 }
@@ -1823,7 +1879,7 @@ function sourceGroupRow(source) {
 function sourceLibraryGroups() {
   const sources = state.brain.sources;
   const groups = [
-    { key: "evidence", label: "Brand evidence", rows: [] },
+    { key: "evidence", label: "Brand usage", rows: [] },
     { key: "asset", label: "Exact assets", rows: [] },
     { key: "product", label: "Product briefs", rows: [] },
   ];
@@ -6689,6 +6745,20 @@ root.addEventListener("click", (event) => {
     navigate("brain-sources");
   }
   if (action === "load-sample-sources") loadSampleSources();
+  if (action === "set-source-provenance") {
+    state.brain.sourceProvenance = target.dataset.value;
+    // Map intent to the existing authority model: our own property is
+    // approved guidance; someone else's is a cultural reference.
+    const implied = target.dataset.value === "emulate" ? "cultural-reference" : "approved-guidance";
+    const material = sourceMaterialType(implied);
+    state.brain.sourceMaterialType = implied;
+    state.brain.sourceAuthority = material.authority;
+    render();
+  }
+  if (action === "set-source-aspiration") {
+    state.brain.sourceAspiration = target.dataset.value;
+    render();
+  }
   if (action === "open-intake-door") {
     resetSourceComposer();
     state.brain.intakeDoor = target.dataset.door;
@@ -6774,15 +6844,16 @@ root.addEventListener("click", (event) => {
   }
   if (action === "add-url-source") {
     const url = state.brain.sourceUrl.trim();
+    // URL/text ask intent, not taxonomy. Resolve the implicit material type
+    // from provenance when the user has not set one explicitly.
+    if (!state.brain.sourceMaterialType) {
+      state.brain.sourceMaterialType = state.brain.sourceProvenance === "emulate" ? "cultural-reference" : "approved-guidance";
+    }
     const material = sourceMaterialType();
-    if (!material) {
-      setToast("Choose what kind of material this is first");
-    } else if (!url) {
+    if (!url) {
       setToast("Add a web address first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
-    } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
-      setToast("Enter a product name before adding");
     } else {
       const sourceId = `url-${Date.now()}`;
       const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
@@ -6805,15 +6876,14 @@ root.addEventListener("click", (event) => {
   }
   if (action === "add-text-source") {
     const sourceText = state.brain.sourceText.trim();
+    if (!state.brain.sourceMaterialType) {
+      state.brain.sourceMaterialType = state.brain.sourceProvenance === "emulate" ? "cultural-reference" : "approved-guidance";
+    }
     const material = sourceMaterialType();
-    if (!material) {
-      setToast("Choose what kind of material this is first");
-    } else if (!sourceText) {
+    if (!sourceText) {
       setToast("Paste some material first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
-    } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
-      setToast("Enter a product name before adding");
     } else {
       const title = state.brain.sourceTitle.trim() || material.label;
       const sourceId = `text-${Date.now()}`;

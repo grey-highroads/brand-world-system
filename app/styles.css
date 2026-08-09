@@ -7041,3 +7041,70 @@ button.ws-attention-item:hover {
 .brain-source-copy span {
   font-size: 11px;
 }
+
+/* ── Intake: intent block for URL and pasted text ────────────── */
+
+.source-intent-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.source-intent-question {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.source-intent-label {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.source-choice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.source-choice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  text-align: left;
+  background: var(--surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.source-choice:hover {
+  border-color: var(--border-strong);
+}
+
+.source-choice.active {
+  border-color: var(--celery);
+  background: var(--paper-100);
+}
+
+.source-choice strong {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.source-choice small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+@media (max-width: 600px) {
+  .source-choice-row {
+    grid-template-columns: 1fr;
+  }
+}
