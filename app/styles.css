@@ -6857,3 +6857,9 @@ button.ws-attention-item:hover {
   white-space: normal;
   line-height: 1.35;
 }
+
+.product-delete-button {
+  color: var(--danger);
+  border-color: var(--danger);
+  margin-left: auto;
+}

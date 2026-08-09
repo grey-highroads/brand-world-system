@@ -361,3 +361,17 @@ export async function resolveReviewQuestion({ store, productId, questionIndex, n
   await store.writeProduct(updated);
   return updated;
 }
+// Delete a product record. Production jobs that name the deleted id will be
+// rejected with a marketer-legible message by resolveProduct; past outputs
+// keep their consumption records, and the original brief source remains in
+// the brain for later re-synthesis.
+export async function deleteProductRecord({ store, productId }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  await store.deleteProduct(productId);
+  return { deleted: true, product_id: productId };
+}

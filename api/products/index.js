@@ -6,6 +6,7 @@ import {
   readProduct,
   approveProduct,
   resolveReviewQuestion,
+  deleteProductRecord,
 } from "../../src/products/service.js";
 import {
   readJsonBody,
@@ -61,6 +62,13 @@ export default async function handler(request, response) {
       return;
     }
 
+    if (action === "delete") {
+      const productId = String(body.productId || "").trim();
+      const result = await deleteProductRecord({ store: productStore, productId });
+      sendJson(response, 200, result);
+      return;
+    }
+
     if (action === "resolve_question") {
       const productId = String(body.productId || "").trim();
       const record = await resolveReviewQuestion({
@@ -74,7 +82,7 @@ export default async function handler(request, response) {
     }
 
     sendJson(response, 400, {
-      error: `Unknown action "${action}". Supported: synthesize, read, approve, resolve_question.`,
+      error: `Unknown action "${action}". Supported: synthesize, read, approve, resolve_question, delete.`,
     });
   } catch (error) {
     sendPublicError(response, error);

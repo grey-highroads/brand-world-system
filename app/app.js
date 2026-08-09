@@ -841,6 +841,8 @@ const state = {
     questionDrafts: {},
     questionCustomOpen: {},
     resolvingQuestionIndex: null,
+    resynthesizing: false,
+    deleting: false,
   },
   clientSwitcherOpen: false,
   brandName: "SLAKE",
@@ -3256,7 +3258,10 @@ function renderProductDetail() {
           ? `<span class="mini-pill pill-success">Approved · ${new Date(record.approved_at).toLocaleDateString()}</span>`
           : `<button class="button primary" type="button" data-action="approve-product" data-id="${escapeHtml(record.product_id)}" ${approving ? "disabled" : ""}>${approving ? "Approving..." : "Approve product record"}</button>`
         }
+        <button class="button" type="button" data-action="resynthesize-product" ${state.products.resynthesizing || approving ? "disabled" : ""}>${state.products.resynthesizing ? "Rebuilding..." : "Re-synthesize from brief"}</button>
+        <button class="button product-delete-button" type="button" data-action="delete-product" ${state.products.deleting || approving || state.products.resynthesizing ? "disabled" : ""}>${state.products.deleting ? "Removing..." : "Delete"}</button>
       </div>
+      <p class="page-description">Version ${escapeHtml(String(record.version || "1"))}. Re-synthesizing reads the brief again, builds a new version, and resets approval so the revised claims get reviewed.</p>
 
       ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
 
@@ -6076,6 +6081,12 @@ root.addEventListener("click", (event) => {
     delete state.products.questionCustomOpen[Number(target.dataset.index)];
     render();
   }
+  if (action === "resynthesize-product") {
+    void resynthesizeProduct();
+  }
+  if (action === "delete-product") {
+    void deleteProductRecordFromDetail();
+  }
   if (action === "open-campaign") {
     state.activeCampaignId = target.dataset.id;
     navigate("campaign-workspace");
@@ -7092,6 +7103,79 @@ function outputsAffectedByProductVersion() {
 // screen or hit the API by hand. The resulting record is a candidate; it
 // still requires review and approval on the Products screen before production
 // can consume it.
+// Re-synthesize the open record from its original brief. Builds a new
+// version and resets approval so the revised claims get reviewed. The
+// service anchors on the brief's source id, so the record keeps its
+// product_id and its history.
+async function resynthesizeProduct() {
+  const record = state.products.detail;
+  const sourceId = record?.provenance?.source_ref;
+  if (!record) return;
+  if (!sourceId) {
+    setToast("This record's original brief could not be found");
+    return;
+  }
+  const proceed = window.confirm(`Re-synthesize ${record.product_name}? This reads the brief again, builds version ${Number(record.version || "1") + 1}, and resets approval so the revised claims get reviewed.`);
+  if (!proceed) return;
+  state.products.resynthesizing = true;
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "synthesize", sourceId }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The record could not be rebuilt.");
+    setToast(`${record.product_name} rebuilt as version ${body.record?.version || "?"}. Review and approve it.`);
+    void loadProducts(true);
+    void loadProductDetail(body.product_id);
+  } catch (error) {
+    setToast(error.message || "The record could not be rebuilt");
+  } finally {
+    state.products.resynthesizing = false;
+    render();
+  }
+}
+
+// Delete the open product record. Past outputs keep their consumption
+// records; version-drift cards for this product simply stop appearing. The
+// original brief stays in the brain sources and can be re-synthesized later.
+async function deleteProductRecordFromDetail() {
+  const record = state.products.detail;
+  if (!record) return;
+  const proceed = window.confirm(`Delete ${record.product_name}? Production will no longer be able to use it. The original brief stays in your sources, so you can rebuild it later.`);
+  if (!proceed) return;
+  state.products.deleting = true;
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", productId: record.product_id }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The record could not be deleted.");
+    // Reset the brief's source row so it offers Synthesize again.
+    const source = state.brain.sources.find((s) => s.productMeta?.synthesizedProductId === record.product_id);
+    if (source) {
+      delete source.productMeta.synthesizedProductId;
+      void persistBrainState();
+    }
+    setToast(`${record.product_name} deleted`);
+    state.products.detail = null;
+    state.products.activeId = "";
+    state.screen = "products";
+    void loadProducts(true);
+    render();
+  } catch (error) {
+    setToast(error.message || "The record could not be deleted");
+    render();
+  } finally {
+    state.products.deleting = false;
+  }
+}
+
 // Record a reviewer's answer to a review question on the open product record.
 async function resolveProductQuestion(index, noteOverride) {
   const record = state.products.detail;
