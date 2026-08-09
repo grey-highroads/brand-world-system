@@ -337,6 +337,19 @@ const sourceMaterialTypes = [
     extensions: ["pdf", "docx", "pptx", "txt", "md", "rtf", "png", "jpg", "jpeg", "webp", "gif"],
   },
   {
+    id: "product-brief",
+    label: "Product brief or spec",
+    shortLabel: "Product brief",
+    description: "A product deck, spec sheet, feature page, or data sheet. Excluded from Brand Brain synthesis and routed to per-product synthesis instead.",
+    examples: "PDF, DOCX, PPTX, TXT, MD, RTF",
+    authority: "brand-evidence",
+    handling: "Per-product synthesis",
+    forms: ["files", "url", "text"],
+    accept: ".pdf,.docx,.pptx,.txt,.md,.rtf,.csv,.png,.jpg,.jpeg,.webp,.gif",
+    extensions: ["pdf", "docx", "pptx", "txt", "md", "rtf", "csv", "png", "jpg", "jpeg", "webp", "gif"],
+    isProductBrief: true,
+  },
+  {
     id: "business-document",
     label: "Other business document",
     shortLabel: "Business context",
@@ -919,6 +932,7 @@ const state = {
     sourceUsage: "",
     sourceExclusions: "",
     sourceTemplateRatio: "",
+    sourceProductName: "",
     pendingFiles: [],
     sourceFileReading: false,
     selectedSourceId: "",
@@ -1263,6 +1277,7 @@ function resetSourceComposer() {
   state.brain.sourceExclusions = "";
   state.brain.sourceMaterialType = "";
   state.brain.sourceTemplateRatio = "";
+  state.brain.sourceProductName = "";
   state.brain.pendingFiles = [];
   state.brain.sourceFileReading = false;
 }
@@ -1614,7 +1629,7 @@ function sourceGroupRow(source) {
         <span class="brain-source-copy">
           <strong>${escapeHtml(source.name)}</strong>
           <span>${escapeHtml(source.type)} · ${escapeHtml(source.detail)}</span>
-          <span class="source-row-meta"><i>${escapeHtml(material?.shortLabel || "Past work or research")}</i><i>${escapeHtml(source.role)}</i><i>${escapeHtml(weighted ? source.influence : material?.handling || "Not weighted")}</i>${pending ? "<i>Proposed update</i>" : locked ? `<i>Active v${state.brain.approvedVersion || state.brain.artifactVersion}</i>` : ""}</span>
+          <span class="source-row-meta"><i>${escapeHtml(material?.shortLabel || "Past work or research")}</i><i>${escapeHtml(source.role)}</i><i>${escapeHtml(weighted ? source.influence : material?.handling || "Not weighted")}</i>${source.productMeta ? `<i>${escapeHtml(source.productMeta.productName)}</i>` : ""}${pending ? "<i>Proposed update</i>" : locked ? `<i>Active v${state.brain.approvedVersion || state.brain.artifactVersion}</i>` : ""}</span>
         </span>
         <span class="brain-source-count"><strong>${source.count}</strong><span>${source.count === 1 ? "item" : "items"}</span></span>
         <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Review details"}</button>
@@ -3698,7 +3713,7 @@ function sceneStarters(approved, campaign) {
 function productionLockedAssets() {
   if (state.brain.synthesisKind === "sample") return [];
   return state.brain.sources
-    .filter((source) => (source.authority === "exact-asset" || source.sessionProductAsset) && !source.templateMeta)
+    .filter((source) => (source.authority === "exact-asset" || source.sessionProductAsset) && !source.templateMeta && !source.productMeta)
     .map((source) => {
       const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
       if (!file) return null;
@@ -4846,15 +4861,19 @@ async function startBrainSynthesis() {
     state.brain.approvedVersion = state.brain.artifactVersion;
   }
   const requestSources = incremental
-    ? state.brain.sources.filter((source) => state.brain.pendingSourceIds.includes(source.id) && !source.templateMeta)
-    : state.brain.sources.filter((source) => !source.templateMeta);
+    ? state.brain.sources.filter((source) => state.brain.pendingSourceIds.includes(source.id) && !source.templateMeta && !source.productMeta)
+    : state.brain.sources.filter((source) => !source.templateMeta && !source.productMeta);
   if (!requestSources.length) {
-    // Only templates were added, no evidence to synthesize. Templates are stored
-    // but the brain doesn't need to re-synthesize for them.
+    // Only templates or product briefs were added. These are stored alongside
+    // the brain but excluded from brain synthesis (templates are production
+    // assets; product briefs route to per-product synthesis per ADR 0012).
     if (currentSynthesisResult) {
       void persistBrainState();
     }
-    setToast("Templates saved. They do not change the Brand Brain synthesis.");
+    const hasProductBriefs = state.brain.sources.some((s) => s.productMeta);
+    setToast(hasProductBriefs
+      ? "Product briefs saved. Use the Products endpoint to synthesize product records from them."
+      : "Templates saved. They do not change the Brand Brain synthesis.");
     return;
   }
   if (sourceFileBytes(requestSources.map((source) => source.id)) > MAX_SYNTHESIS_FILE_BYTES) {
@@ -5419,6 +5438,9 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="brain-source-template-ratio"]')) {
     state.brain.sourceTemplateRatio = event.target.value;
     render();
+  }
+  if (event.target.matches('[data-action="brain-source-product-name"]')) {
+    state.brain.sourceProductName = event.target.value;
   }
   if (event.target.matches('[data-action="brain-source-item-usage"]')) {
     const source = state.brain.sources.find((item) => item.id === event.target.dataset.id);
@@ -6051,10 +6073,13 @@ root.addEventListener("click", (event) => {
       setToast("Add a usage instruction before continuing");
     } else if (material.isTemplate && !state.brain.sourceTemplateRatio) {
       setToast("Choose a template format before adding");
+    } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
+      setToast("Enter a product name before adding");
     } else {
       const file = files[0];
       const sourceId = `file-${Date.now()}`;
       const templateMeta = material.isTemplate ? { isTemplate: true, ratio: state.brain.sourceTemplateRatio } : undefined;
+      const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
       state.brain.sources.push({
         id: sourceId,
         name: file.name,
@@ -6064,6 +6089,7 @@ root.addEventListener("click", (event) => {
         status: "Ready",
         files: [{ ...file }],
         templateMeta,
+        productMeta,
         ...sourceContract(material.id),
       });
       markSourceAdded(sourceId);
@@ -6081,8 +6107,11 @@ root.addEventListener("click", (event) => {
       setToast("Add a web address first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
+    } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
+      setToast("Enter a product name before adding");
     } else {
       const sourceId = `url-${Date.now()}`;
+      const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
       state.brain.sources.push({
         id: sourceId,
         name: state.brain.sourceTitle.trim() || url,
@@ -6091,6 +6120,7 @@ root.addEventListener("click", (event) => {
         url,
         count: 1,
         status: "Ready",
+        productMeta,
         ...sourceContract(material.id),
       });
       markSourceAdded(sourceId);
@@ -6108,9 +6138,12 @@ root.addEventListener("click", (event) => {
       setToast("Paste some material first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
+    } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
+      setToast("Enter a product name before adding");
     } else {
       const title = state.brain.sourceTitle.trim() || material.label;
       const sourceId = `text-${Date.now()}`;
+      const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
       state.brain.sources.push({
         id: sourceId,
         name: title,
@@ -6119,6 +6152,7 @@ root.addEventListener("click", (event) => {
         content: sourceText,
         count: 1,
         status: "Ready",
+        productMeta,
         ...sourceContract(material.id),
       });
       markSourceAdded(sourceId);
@@ -6570,3 +6604,4 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
+
