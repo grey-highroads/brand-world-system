@@ -1,5 +1,7 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { createVercelBlobProductStore } from "../../src/products/store.js";
+import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
+import { assembleClaimsSet } from "../../src/claims/assembly.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 export default async function handler(request, response) {
@@ -21,7 +23,7 @@ export default async function handler(request, response) {
     if (!brainState?.approvedResult) throw new Error("No approved Brand Brain is available.");
     const brain = brainState.approvedResult;
 
-    // Resolve product record when provided (ADR 0013 prototype).
+    // Resolve product record when provided.
     let product = null;
     if (body.productId) {
       const productStore = createVercelBlobProductStore({ clientId });
@@ -42,34 +44,27 @@ export default async function handler(request, response) {
     const dossier = brain.artifacts?.dossier || {};
 
     // Assemble the governed claims set (ADR 0013 derived model).
-    // Source one: brain guardrails (brand-level, until the claims document exists).
-    // Source two: product record approved claims and exclusions.
-    const approvedClaims = [];
-    const prohibitedClaims = [];
+    // Uses the claims store and assembly function instead of inline assembly.
+    const claimsStore = createVercelBlobClaimsStore({ clientId });
+    const claimsDocument = await claimsStore.read();
+    const jobScope = {
+      channel: body.channel || null,
+      placement: body.placement || null,
+      product_id: body.productId || null,
+      campaign_id: body.campaignId || null,
+    };
 
-    if (product) {
-      for (const feature of product.features || []) {
-        if (feature.approved_claim_language) {
-          approvedClaims.push({
-            text: feature.approved_claim_language,
-            source: `Product: ${product.product_name}, feature: ${feature.name}`,
-            scope: "product",
-          });
-        }
-      }
-      for (const exclusion of product.exclusions || []) {
-        prohibitedClaims.push({
-          text: exclusion,
-          source: `Product: ${product.product_name}`,
-          scope: "product",
-        });
-      }
-    }
+    const claimsSet = assembleClaimsSet({
+      claimsDocument,
+      product,
+      activeEntries: claimsStore.activeEntries,
+      jobScope,
+    });
 
-    // Brain guardrails as brand-level prohibitions (interim, until the
-    // brand-level claims document exists per ADR 0013 step 2).
+    // Brain guardrails also contribute to the prohibited list (interim,
+    // until guardrails are migrated into the claims document proper).
     for (const guardrail of dossier.guardrails || []) {
-      prohibitedClaims.push({
+      claimsSet.prohibited.push({
         text: `${guardrail.title}: ${guardrail.body}`,
         source: "Brand Brain guardrail",
         scope: "brand",
@@ -93,9 +88,7 @@ export default async function handler(request, response) {
       ...(dossier.guardrails || []).map((g) => `- ${g.title}: ${g.body}`),
     ];
 
-    // Inject product knowledge and claim governance into the generation prompt
-    // so the model is steered before it writes (ADR 0013: prompt-level steering
-    // for generated copy).
+    // Inject product knowledge into the generation prompt.
     if (product) {
       systemPromptParts.push(``);
       systemPromptParts.push(`PRODUCT KNOWLEDGE (${product.product_name}):`);
@@ -108,19 +101,28 @@ export default async function handler(request, response) {
       }
     }
 
-    if (approvedClaims.length > 0) {
+    // Prompt-level steering from the assembled claims set.
+    if (claimsSet.approved.length > 0) {
       systemPromptParts.push(``);
       systemPromptParts.push(`APPROVED CLAIMS (use these when relevant, do not invent new benefit or capability claims):`);
-      for (const claim of approvedClaims) {
+      for (const claim of claimsSet.approved) {
         systemPromptParts.push(`- "${claim.text}" (${claim.source})`);
       }
     }
 
-    if (prohibitedClaims.length > 0) {
+    if (claimsSet.prohibited.length > 0) {
       systemPromptParts.push(``);
       systemPromptParts.push(`PROHIBITED CLAIMS AND EXCLUSIONS (never state or imply these):`);
-      for (const claim of prohibitedClaims) {
+      for (const claim of claimsSet.prohibited) {
         systemPromptParts.push(`- ${claim.text}`);
+      }
+    }
+
+    if (claimsSet.disclosures.length > 0) {
+      systemPromptParts.push(``);
+      systemPromptParts.push(`REQUIRED DISCLOSURES (include these when their trigger conditions apply):`);
+      for (const disclosure of claimsSet.disclosures) {
+        systemPromptParts.push(`- ${disclosure.text}`);
       }
     }
 
@@ -176,20 +178,22 @@ export default async function handler(request, response) {
     const postCopy = chatData.choices?.[0]?.message?.content?.trim();
     if (!postCopy) throw new Error("OpenAI returned an empty response.");
 
-    // ---------------------------------------------------------------------------
-    // ADR 0013 prototype: post-hoc claim audit
-    // ---------------------------------------------------------------------------
-    // Run only when there are governed claims to check against. Without a
-    // product record and without a brand-level claims document, there is nothing
-    // to audit and the endpoint returns the copy alone (backward compatible).
+    // Post-hoc claim audit. Runs when there are governed claims to check
+    // against. Without claims, the endpoint returns the copy alone.
     let claimAudit = null;
-    if (approvedClaims.length > 0 || prohibitedClaims.length > 0) {
+    if (claimsSet.approved.length > 0 || claimsSet.prohibited.length > 0) {
       claimAudit = await auditCopyAgainstClaims({
         copy: postCopy,
-        approvedClaims,
-        prohibitedClaims,
+        approvedClaims: claimsSet.approved,
+        prohibitedClaims: claimsSet.prohibited,
         apiKey,
       });
+    }
+
+    // Check disclosure presence.
+    let disclosureFindings = null;
+    if (claimsSet.disclosures.length > 0) {
+      disclosureFindings = checkDisclosurePresence(postCopy, claimsSet.disclosures);
     }
 
     sendJson(response, 200, {
@@ -200,7 +204,9 @@ export default async function handler(request, response) {
       foundationApplied: !!foundation,
       rulesApplied: !!rules,
       productApplied: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version } : null,
+      claimsSetSize: { approved: claimsSet.approved.length, prohibited: claimsSet.prohibited.length, disclosures: claimsSet.disclosures.length },
       claimAudit,
+      disclosureFindings,
     });
   } catch (error) {
     sendPublicError(response, error);
@@ -208,18 +214,7 @@ export default async function handler(request, response) {
 }
 
 // ---------------------------------------------------------------------------
-// Claim audit (ADR 0013 prototype)
-//
-// The model reads the generated copy, identifies claim-like sentences
-// (assertions of benefit, capability, statistic, comparative, or regulatory
-// property), and classifies each against the approved and prohibited lists.
-//
-// The approved list is a safe harbor, not the only permitted language:
-// - Matches an approved claim: "approved" (passes cleanly)
-// - Matches a prohibited claim: "prohibited" (violation, hard stop)
-// - Matches neither: "unapproved" (advisory, review recommended)
-// Descriptive sentences that are not claims are classified as "description"
-// and produce no finding.
+// Claim audit (ADR 0013)
 // ---------------------------------------------------------------------------
 
 async function auditCopyAgainstClaims({ copy, approvedClaims, prohibitedClaims, apiKey }) {
@@ -282,7 +277,6 @@ async function auditCopyAgainstClaims({ copy, approvedClaims, prohibitedClaims, 
     return { error: "Claim audit returned unparseable output.", raw: auditText, sentences: [] };
   }
 
-  // Derive summary findings
   const findings = [];
   let claimCount = 0;
   let descriptionCount = 0;
@@ -294,20 +288,10 @@ async function auditCopyAgainstClaims({ copy, approvedClaims, prohibitedClaims, 
     }
     claimCount++;
     if (s.classification === "prohibited") {
-      findings.push({
-        severity: "violation",
-        sentence: s.sentence,
-        match: s.match,
-        reason: s.reason,
-      });
+      findings.push({ severity: "violation", sentence: s.sentence, match: s.match, reason: s.reason });
     } else if (s.classification === "unapproved") {
-      findings.push({
-        severity: "review",
-        sentence: s.sentence,
-        reason: s.reason,
-      });
+      findings.push({ severity: "review", sentence: s.sentence, reason: s.reason });
     }
-    // "approved" claims pass cleanly, no finding needed
   }
 
   return {
@@ -320,4 +304,17 @@ async function auditCopyAgainstClaims({ copy, approvedClaims, prohibitedClaims, 
     findings,
     sentences,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Disclosure presence check (ADR 0013)
+// ---------------------------------------------------------------------------
+
+function checkDisclosurePresence(copy, disclosures) {
+  const copyLower = copy.toLowerCase();
+  return disclosures.map((d) => ({
+    text: d.text,
+    trigger_scope: d.trigger_scope,
+    present: copyLower.includes(d.text.toLowerCase()),
+  }));
 }
