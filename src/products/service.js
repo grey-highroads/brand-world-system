@@ -353,8 +353,9 @@ export async function resolveReviewQuestion({ store, productId, questionIndex, n
     error.status = 400;
     throw error;
   }
+  const { deferred_at, ...rest } = questions[index];
   questions[index] = {
-    ...questions[index],
+    ...rest,
     resolution: { note: cleanNote, resolved_at: new Date().toISOString() },
   };
   const updated = { ...record, review_questions: questions };
@@ -374,4 +375,32 @@ export async function deleteProductRecord({ store, productId }) {
   }
   await store.deleteProduct(productId);
   return { deleted: true, product_id: productId };
+}
+
+// Table a review question for later, or resume it. Toggling deferred_at does
+// not block approval; production surfaces a warning while an approved record
+// carries open questions. Recording an answer clears the deferral.
+export async function deferReviewQuestion({ store, productId, questionIndex }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  const index = Number(questionIndex);
+  const questions = Array.isArray(record.review_questions) ? record.review_questions : [];
+  if (!Number.isInteger(index) || index < 0 || index >= questions.length) {
+    const error = new Error("That review question was not found on this record.");
+    error.status = 400;
+    throw error;
+  }
+  if (questions[index].deferred_at) {
+    const { deferred_at, ...rest } = questions[index];
+    questions[index] = rest;
+  } else {
+    questions[index] = { ...questions[index], deferred_at: new Date().toISOString() };
+  }
+  const updated = { ...record, review_questions: questions };
+  await store.writeProduct(updated);
+  return updated;
 }

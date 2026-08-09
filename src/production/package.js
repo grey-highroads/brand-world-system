@@ -310,7 +310,7 @@ function compileProductSection(product) {
     parts.push(`Key features: ${featureLines.join(" ")}`);
   }
   if (product.visual_direction) {
-    parts.push(`Visual direction for this product: ${product.visual_direction}`);
+    parts.push(`Product imagery reference, describing what imagery for this product typically shows. Brand identity and world rules govern style; where they conflict, the brand rules win: ${product.visual_direction}`);
   }
   if (product.proof_points?.length) {
     parts.push(`Proof points: ${product.proof_points.join("; ")}.`);
@@ -493,6 +493,16 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     prompt,
   });
 
+  // An approved product carrying open review questions is usable but worth a
+  // flag: the reviewer chose to proceed without answering everything.
+  const openProductQuestions = product ? (product.review_questions || []).filter((q) => !q.resolution).length : 0;
+  if (openProductQuestions > 0) {
+    constraintAudit.push({
+      rule: `${product.product_name} is approved with ${openProductQuestions} unanswered review ${openProductQuestions === 1 ? "question" : "questions"}. Claims touching those areas deserve a closer look.`,
+      status: "warning",
+    });
+  }
+
   // Job-specific treatments (roadmap items 1-3)
   const treatments = resolveTreatments({ approvedBrain, lockedAsset, brief: { scene, exclusions, placement, format }, references });
   const requirementCheck = checkRequirements("brand-world-image", { approvedBrain, lockedAsset, hasText: false });
@@ -528,7 +538,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     treatments,
     requirementCheck,
     ready,
-    product: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version } : null,
+    product: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version, open_questions: openProductQuestions } : null,
     policy: {
       groundedIn: sourceCount
         ? `Approved Brand Brain v${Number(brainVersion || 1)}, built from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`

@@ -843,6 +843,8 @@ const state = {
     resolvingQuestionIndex: null,
     resynthesizing: false,
     deleting: false,
+    questionEditing: {},
+    detailSections: null,
   },
   clientSwitcherOpen: false,
   brandName: "SLAKE",
@@ -3139,6 +3141,7 @@ function renderProducts() {
         <div class="card-header">
           <h2>${escapeHtml(entry.product_name)}</h2>
           <span class="mini-pill ${isApproved ? "pill-success" : "pill-neutral"}">${isApproved ? "Approved" : "Needs review"}</span>
+          ${isApproved && entry.open_questions ? `<span class="mini-pill pill-warning">${entry.open_questions} open</span>` : ""}
         </div>
         <p>Version ${escapeHtml(String(entry.version || "1"))} · Updated ${new Date(entry.updated_at || Date.now()).toLocaleString()}</p>
         <span class="chooser-contract">${isApproved ? "Available to production" : "Cannot be used until approved"}</span>
@@ -3194,6 +3197,8 @@ function renderProductDetail() {
   }
 
   const isApproved = !!record.approved_at;
+  const sections = state.products.detailSections || { summary: true, features: false, benefits: false, guardrails: false, questions: true };
+  const openQuestionCount = (record.review_questions || []).filter((q) => !q.resolution).length;
   const featureRows = (record.features || []).map((f) => `
     <div class="product-rule">
       <span class="mini-pill ${f.origin === "stated" ? "pill-neutral" : "pill-warning"}">${escapeHtml(f.origin === "stated" ? "From source" : "Inferred")}</span>
@@ -3208,21 +3213,36 @@ function renderProductDetail() {
 
   const reviewQuestions = (record.review_questions || []).map((q, index) => {
     const resolved = !!q.resolution;
+    const tabled = !!q.deferred_at && !resolved;
+    const editing = !!state.products.questionEditing[index];
     const draft = state.products.questionDrafts[index] || "";
     const answering = state.products.resolvingQuestionIndex === index;
+    const showAnswerUi = (!resolved && !tabled) || editing;
+    const pill = resolved && !editing
+      ? `<span class="mini-pill pill-success">Answered</span>`
+      : tabled && !editing
+      ? `<span class="mini-pill pill-neutral">Tabled</span>`
+      : `<span class="mini-pill ${q.confidence === "high" ? "pill-warning" : "pill-neutral"}">${escapeHtml(String(q.confidence || "").toUpperCase())}</span>`;
     return `
     <div class="product-rule">
-      <span class="mini-pill ${resolved ? "pill-success" : q.confidence === "high" ? "pill-warning" : "pill-neutral"}">${resolved ? "Answered" : escapeHtml(String(q.confidence || "").toUpperCase())}</span>
+      ${pill}
       <div class="product-rule-body">
         <strong>${escapeHtml(q.title)}</strong>
         <span>${escapeHtml(q.summary)}</span>
         ${q.evidence_quote ? `<span class="product-rule-note">"${escapeHtml(q.evidence_quote)}"</span>` : ""}
-        ${resolved ? `
+        ${resolved && !editing ? `
           <div class="product-question-answer">
             <span class="product-rule-note"><strong>Answer:</strong> ${escapeHtml(q.resolution.note)}</span>
             <span class="product-answer-meta">Recorded ${new Date(q.resolution.resolved_at).toLocaleString()}</span>
+            <button class="studio-add-link" type="button" data-action="product-question-change" data-index="${index}">Change answer</button>
           </div>
-        ` : `
+        ` : tabled && !editing ? `
+          <div class="product-question-answer">
+            <span class="product-answer-meta">Tabled ${new Date(q.deferred_at).toLocaleDateString()}. This does not block approval, but production will flag the record while questions stay open.</span>
+            <button class="studio-add-link" type="button" data-action="product-question-change" data-index="${index}">Answer now</button>
+          </div>
+        ` : ""}
+        ${showAnswerUi ? `
           <div class="product-question-answer">
             ${(q.suggested_answers || []).length && !state.products.questionCustomOpen[index] ? `
               <div class="product-answer-options">
@@ -3230,16 +3250,22 @@ function renderProductDetail() {
                   <button class="button product-answer-option" type="button" data-action="resolve-product-question-option" data-index="${index}" data-option="${optionIndex}" ${answering ? "disabled" : ""}>${escapeHtml(option)}</button>
                 `).join("")}
               </div>
-              <button class="studio-add-link" type="button" data-action="product-question-custom" data-index="${index}" ${answering ? "disabled" : ""}>None of these fit. Write the answer</button>
+              <div class="product-answer-links">
+                <button class="studio-add-link" type="button" data-action="product-question-custom" data-index="${index}" ${answering ? "disabled" : ""}>None of these fit. Write the answer</button>
+                ${!resolved && !tabled ? `<button class="studio-add-link" type="button" data-action="product-question-defer" data-index="${index}" ${answering ? "disabled" : ""}>Table for now</button>` : ""}
+                ${editing ? `<button class="studio-add-link" type="button" data-action="product-question-keep" data-index="${index}" ${answering ? "disabled" : ""}>${resolved ? "Keep current answer" : "Leave tabled"}</button>` : ""}
+              </div>
             ` : `
               <textarea rows="2" data-action="product-question-input" data-index="${index}" placeholder="Write what you established, so the answer travels with the record." ${answering ? "disabled" : ""}>${escapeHtml(draft)}</textarea>
               <div class="actions">
                 <button class="button" type="button" data-action="resolve-product-question" data-index="${index}" ${answering || !draft.trim() ? "disabled" : ""}>${answering ? "Recording..." : "Record answer"}</button>
                 ${(q.suggested_answers || []).length ? `<button class="button" type="button" data-action="product-question-options" data-index="${index}" ${answering ? "disabled" : ""}>Back to options</button>` : ""}
+                ${!resolved && !tabled ? `<button class="button" type="button" data-action="product-question-defer" data-index="${index}" ${answering ? "disabled" : ""}>Table for now</button>` : ""}
+                ${editing ? `<button class="button" type="button" data-action="product-question-keep" data-index="${index}" ${answering ? "disabled" : ""}>${resolved ? "Keep current answer" : "Leave tabled"}</button>` : ""}
               </div>
             `}
           </div>
-        `}
+        ` : ""}
       </div>
     </div>
   `;
@@ -3255,7 +3281,7 @@ function renderProductDetail() {
       <div class="page-actions">
         <button class="button" type="button" data-action="products">Back to products</button>
         ${isApproved
-          ? `<span class="mini-pill pill-success">Approved · ${new Date(record.approved_at).toLocaleDateString()}</span>`
+          ? `<span class="mini-pill pill-success">Approved · ${new Date(record.approved_at).toLocaleDateString()}</span>${openQuestionCount ? `<span class="mini-pill pill-warning">${openQuestionCount} open ${openQuestionCount === 1 ? "question" : "questions"}</span>` : ""}`
           : `<button class="button primary" type="button" data-action="approve-product" data-id="${escapeHtml(record.product_id)}" ${approving ? "disabled" : ""}>${approving ? "Approving..." : "Approve product record"}</button>`
         }
         <button class="button" type="button" data-action="resynthesize-product" ${state.products.resynthesizing || approving ? "disabled" : ""}>${state.products.resynthesizing ? "Rebuilding..." : "Re-synthesize from brief"}</button>
@@ -3265,12 +3291,12 @@ function renderProductDetail() {
 
       ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
 
-      <details class="card collapsible-card" open>
+      <details class="card collapsible-card" data-psection="summary" ${sections.summary ? "open" : ""}>
         <summary class="card-header collapsible-header">
           <h2>Summary</h2>
           <span class="collapsible-meta"><span class="mini-pill pill-neutral">v${escapeHtml(String(record.version))}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
-        <ul class="contract-list">
+        <ul class="contract-list collapsible-body-list">
           <li><strong>Category:</strong> ${escapeHtml(record.category)}</li>
           <li><strong>Audience:</strong> ${escapeHtml(record.audience_note)}</li>
           <li><strong>Visual direction:</strong> ${escapeHtml(record.visual_direction)}</li>
@@ -3279,7 +3305,7 @@ function renderProductDetail() {
       </details>
 
       ${(record.features || []).length ? `
-      <details class="card collapsible-card" open>
+      <details class="card collapsible-card" data-psection="features" ${sections.features ? "open" : ""}>
         <summary class="card-header collapsible-header">
           <h2>Features</h2>
           <span class="collapsible-meta"><span class="mini-pill pill-neutral">${record.features.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
@@ -3289,9 +3315,9 @@ function renderProductDetail() {
       ` : ""}
 
       ${proofPoints ? `
-      <details class="card collapsible-card">
+      <details class="card collapsible-card" data-psection="benefits" ${sections.benefits ? "open" : ""}>
         <summary class="card-header collapsible-header">
-          <h2>Proof points</h2>
+          <h2>Customer benefits</h2>
           <span class="collapsible-chevron" aria-hidden="true"></span>
         </summary>
         <ul class="contract-list collapsible-body-list">${proofPoints}</ul>
@@ -3299,9 +3325,9 @@ function renderProductDetail() {
       ` : ""}
 
       ${exclusions ? `
-      <details class="card collapsible-card" open>
+      <details class="card collapsible-card" data-psection="guardrails" ${sections.guardrails ? "open" : ""}>
         <summary class="card-header collapsible-header">
-          <h2>What production must not do</h2>
+          <h2>Claim guardrails</h2>
           <span class="collapsible-meta"><span class="mini-pill pill-warning">${record.exclusions.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
         </summary>
         <ul class="contract-list collapsible-body-list">${exclusions}</ul>
@@ -3309,7 +3335,7 @@ function renderProductDetail() {
       ` : ""}
 
       ${reviewQuestions ? `
-      <details class="card collapsible-card">
+      <details class="card collapsible-card" data-psection="questions" ${sections.questions ? "open" : ""}>
         <summary class="card-header collapsible-header">
           <h2>Review questions</h2>
           <span class="collapsible-meta"><span class="mini-pill ${record.review_questions.every((q) => q.resolution) ? "pill-success" : "pill-neutral"}">${record.review_questions.filter((q) => q.resolution).length}/${record.review_questions.length} answered</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
@@ -6010,6 +6036,14 @@ if (typeof document !== "undefined" && typeof document.addEventListener === "fun
   });
 }
 
+// Persist product-detail section open states across re-renders. The toggle
+// event does not bubble, so listen in the capture phase.
+root.addEventListener("toggle", (event) => {
+  const section = event.target?.dataset?.psection;
+  if (!section || !state.products.detailSections) return;
+  state.products.detailSections[section] = event.target.open;
+}, true);
+
 root.addEventListener("click", (event) => {
   const target = event.target.closest("[data-action]");
   if (!target) {
@@ -6080,6 +6114,22 @@ root.addEventListener("click", (event) => {
   if (action === "product-question-options") {
     delete state.products.questionCustomOpen[Number(target.dataset.index)];
     render();
+  }
+  if (action === "product-question-change") {
+    const index = Number(target.dataset.index);
+    const question = (state.products.detail?.review_questions || [])[index];
+    state.products.questionEditing[index] = true;
+    if (question?.resolution?.note) state.products.questionDrafts[index] = question.resolution.note;
+    render();
+  }
+  if (action === "product-question-keep") {
+    const index = Number(target.dataset.index);
+    delete state.products.questionEditing[index];
+    delete state.products.questionCustomOpen[index];
+    render();
+  }
+  if (action === "product-question-defer") {
+    void deferProductQuestion(Number(target.dataset.index));
   }
   if (action === "resynthesize-product") {
     void resynthesizeProduct();
@@ -7030,7 +7080,9 @@ async function loadProductDetail(productId) {
   state.products.error = "";
   state.products.questionDrafts = {};
   state.products.questionCustomOpen = {};
+  state.products.questionEditing = {};
   state.products.resolvingQuestionIndex = null;
+  state.products.detailSections = { summary: true, features: false, benefits: false, guardrails: false, questions: true };
   render();
   try {
     const response = await fetch("/api/products", {
@@ -7176,6 +7228,35 @@ async function deleteProductRecordFromDetail() {
   }
 }
 
+// Table a review question for later, or resume a tabled one. Tabling does
+// not block approval; production flags the record while questions stay open.
+async function deferProductQuestion(index) {
+  const record = state.products.detail;
+  if (!record) return;
+  state.products.resolvingQuestionIndex = index;
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "defer_question", productId: record.product_id, questionIndex: index }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The question could not be tabled.");
+    state.products.detail = body.record;
+    delete state.products.questionEditing[index];
+    delete state.products.questionCustomOpen[index];
+    const nowTabled = !!body.record.review_questions?.[index]?.deferred_at;
+    setToast(nowTabled ? "Question tabled. It will not block approval." : "Question reopened");
+    void loadProducts(true);
+  } catch (error) {
+    setToast(error.message || "The question could not be tabled");
+  } finally {
+    state.products.resolvingQuestionIndex = null;
+    render();
+  }
+}
+
 // Record a reviewer's answer to a review question on the open product record.
 async function resolveProductQuestion(index, noteOverride) {
   const record = state.products.detail;
@@ -7197,6 +7278,8 @@ async function resolveProductQuestion(index, noteOverride) {
     if (!response.ok) throw new Error(body.error || "The answer could not be recorded.");
     state.products.detail = body.record;
     delete state.products.questionDrafts[index];
+    delete state.products.questionEditing[index];
+    delete state.products.questionCustomOpen[index];
     setToast("Answer recorded on the product record");
   } catch (error) {
     setToast(error.message || "The answer could not be recorded");

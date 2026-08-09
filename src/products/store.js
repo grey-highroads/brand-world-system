@@ -106,6 +106,7 @@ export function createVercelBlobProductStore(options = {}) {
         product_name: record.product_name,
         version: record.version,
         status: record.approved_at ? "approved" : "candidate",
+        open_questions: (record.review_questions || []).filter((q) => !q.resolution).length,
         updated_at: new Date().toISOString(),
       };
       if (existing >= 0) {

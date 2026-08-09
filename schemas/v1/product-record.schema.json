@@ -215,6 +215,11 @@
             "$ref": "common.schema.json#/$defs/non_empty_string"
           },
           "description": "Candidate resolutions the reviewer can confirm with one click. Model-drafted phrasings of possible answers; the reviewer choosing one is what makes it the recorded answer. Optional; may be empty when no plausible answer set exists."
+        },
+        "deferred_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Set when a reviewer tables the question for later. A tabled question does not block approval; production surfaces a warning while approved records carry open questions. Cleared when an answer is recorded."
         }
       }
     }
