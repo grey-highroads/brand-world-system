@@ -13,6 +13,9 @@ Authority rules:
 - Follow each source's usage instructions and exclusions.
 - Treat a declared material type as a user claim to verify against the actual file or page. Never grant exact-asset or approved-guidance authority when the contents clearly do not match the declaration.
 - If a declared type and the contents disagree, preserve the safer interpretation and create an "other" review question that explains the mismatch in plain language.
+- Each source carries "provenance": "ours" means the brand's own material; "emulate" means someone else's material supplied as a reference to draw from. Emulate sources work like cultural references: they can shape inspiration and direction but are never evidence of what the brand already is, says, or has approved.
+- Each source carries "aspiration": "current" means the source describes how the brand shows up today; "aspiration" means it describes a direction the brand is reaching for. Aspirational sources shape creative direction, aesthetic targets, tone goals, and world-building, but their contents must never be recorded as fact about the brand today.
+- When an aspirational source differs from current evidence, keep both readings: state today's reality as fact and the aspiration as declared direction, naming the source for each. That difference is intentional, so do not raise a contradiction review question for it on its own.
 
 Writing rules:
 - Write plainly for marketers and people responsible for a brand.
@@ -39,6 +42,8 @@ function sourceMetadata(sources) {
     influence: source.influence,
     usageInstructions: source.usage,
     exclusions: source.exclusions,
+    provenance: source.provenance || "ours",
+    aspiration: source.aspiration || "current",
     url: source.url || undefined,
     material: source.content || undefined,
     files: [...(source.extractedFiles ?? []), ...(source.files ?? []).map((file) => ({ name: file.name, type: file.type, size: file.size }))],
