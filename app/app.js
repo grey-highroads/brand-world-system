@@ -347,6 +347,20 @@ const sourceMaterialTypes = [
     extensions: [...readableDocumentExtensions, ...supportedRasterExtensions],
   },
   {
+    id: "asset-bearing-guide",
+    label: "Brand guide with assets inside",
+    shortLabel: "Guide with assets",
+    description: "A brand book or toolkit that shows logos, colors, and type treatments as pages rather than as separate files. The pages teach the brand; the individual files still need to be registered as protected assets before production can place them.",
+    examples: "PDF, DOCX, PPTX, PNG, JPG, WEBP",
+    formatAdvice: "The whole file is read as guidance. Nothing inside it is treated as a placeable asset.",
+    authority: "approved-guidance",
+    handling: "Follow when relevant",
+    forms: ["files"],
+    accept: ".pdf,.docx,.pptx,.png,.jpg,.jpeg,.webp",
+    extensions: ["pdf", "docx", "pptx", "png", "jpg", "jpeg", "webp"],
+    assetsInside: true,
+  },
+  {
     id: "past-work-research",
     label: "Past brand work or research",
     shortLabel: "Past work or research",
@@ -439,7 +453,7 @@ const sourceRoleOptions = ["Multiple areas", "Brand foundation", "Identity", "Wo
 // Intake doors group material types by what the user is doing, not by the
 // system's internal handling. Evidence feeds synthesis; assets are locked and
 // consumed by production; products are born on the Products screen.
-const evidenceMaterialIds = ["approved-guidance", "past-work-research", "business-document", "cultural-reference", "single-image", "image-grid"];
+const evidenceMaterialIds = ["approved-guidance", "asset-bearing-guide", "past-work-research", "business-document", "cultural-reference", "single-image", "image-grid"];
 const assetMaterialIds = ["protected-asset", "brand-template"];
 
 function evidenceMaterialOptions(form) {
@@ -458,6 +472,10 @@ function guessEvidenceMaterialType(file) {
   const ext = fileExtension(file).toLowerCase();
   const name = (file.name || "").toLowerCase();
   const rasterExts = ["png", "jpg", "jpeg", "webp", "gif"];
+  // A file naming logos, marks, or a toolkit is usually a guide carrying the
+  // assets inside it rather than pure written guidance. Checked first, since
+  // these names almost always also contain "brand" or "identity".
+  if (/(logo|lockup|mark|asset|toolkit|kit)/.test(name)) return "asset-bearing-guide";
   if (/(brand|guide|guideline|identity|style|standards)/.test(name)) return "approved-guidance";
   if (/(case.?study|campaign|research|audit|interview|report)/.test(name)) return "past-work-research";
   if (/(moodboard|mood.?board|grid|collage)/.test(name)) return "image-grid";
@@ -1699,6 +1717,9 @@ function sourceContractFields(material) {
         <span><strong>How should we use this source?</strong><small>Your instructions travel with this one source into synthesis and future updates.</small></span>
         <span class="source-handling-pill">${escapeHtml(material?.handling || "")}</span>
       </div>
+      ${material?.assetsInside ? `
+        <p class="field-note">This file is read as guidance. The logos and treatments shown on its pages stay inside it, so register each one you need to place as a protected asset separately.</p>
+      ` : ""}
       <div class="source-entry-row source-contract-row">
         <label>
           <span>What should it inform?</span>
@@ -1972,6 +1993,16 @@ function sourceGroupRow(source) {
               }
               <label><span>Usage instruction</span><textarea data-action="brain-source-item-usage" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${escapeHtml(source.usage)}</textarea></label>
               <label><span>What should we leave out?</span><textarea data-action="brain-source-item-exclusions" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${escapeHtml(source.exclusions)}</textarea></label>
+              ${material?.assetsInside ? `
+                <div class="rule">
+                  <span class="mini-pill pill-neutral">Guide</span>
+                  <span>
+                    <strong>Assets shown here are not placeable</strong>
+                    <span>This file teaches the brand. Register the logo, packaging, or other files you need to place as protected assets so production can use them exactly.</span>
+                  </span>
+                  <button class="button" type="button" data-action="open-intake-door" data-door="asset">Register a protected asset</button>
+                </div>
+              ` : ""}
               ${source.productMeta ? `
                 <div class="source-product-synthesis">
                   <div class="rule">
