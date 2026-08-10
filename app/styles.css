@@ -6083,6 +6083,33 @@ select {
   white-space: nowrap;
 }
 
+.ws-attention-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-shrink: 0;
+}
+
+.ws-attention-action {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ws-attention-action.is-primary {
+  color: var(--celery-ink);
+}
+
+.ws-attention-action:hover {
+  text-decoration: underline;
+}
+
 @media (max-width: 900px) {
   .ws-guidance-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -6115,6 +6142,10 @@ select {
 
 .ws-attention-item:first-child {
   border-top: none;
+}
+
+div.ws-attention-item {
+  cursor: default;
 }
 
 button.ws-attention-item:hover {

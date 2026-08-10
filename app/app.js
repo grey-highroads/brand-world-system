@@ -989,6 +989,10 @@ const state = {
   previewOutputId: null,
   discardOutputId: null,
   dismissedDrift: { brain: 0, product: 0 },
+  // Per-output dismissal on the Snapshot drift rows. Keyed to the version that
+  // raised the notice, so a later brain approval or product revision brings the
+  // row back rather than silencing that output forever.
+  dismissedOutputDrift: { brain: {}, product: {} },
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
   // the brand language that produced it survives later brain revisions.
@@ -2436,34 +2440,41 @@ function renderWorkspace() {
     .filter((c) => outputsForCampaign(c.id).length === 0)
     .slice(0, 3);
 
+  // Drift rows are advisory, so they carry a dismissal. Unresolved brain
+  // exceptions are outstanding governance work and deliberately do not, since a
+  // dismiss control there teaches people to clear the queue by clearing it.
+  const driftDismissed = (kind, id, version) => String(state.dismissedOutputDrift[kind][id] || "") === String(version);
+  const evaluateAndDismiss = (output, kind, version) => [
+    { action: "open-output-review", id: output.id, label: "Open evaluation", primary: true },
+    { action: "dismiss-output-drift", id: output.id, kind, version, label: "Dismiss" },
+  ];
+
   const needsAttention = [
     ...unresolvedExceptions.map((e) => ({
       label: e.title,
       detail: e.summary || e.typeLabel,
       pill: e.typeLabel || "Needs review",
       pillClass: "pill-warning",
-      action: "navigate-brain",
-      screen: "brain",
-      cta: "Resolve",
+      actions: [{ action: "navigate-brain", screen: "brain", label: "Resolve", primary: true }],
     })),
-    ...affectedOutputs.map((o) => ({
-      label: o.label || "Untitled output",
-      detail: `Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.`,
-      pill: `v${o.brainVersion}`,
-      pillClass: "pill-warning",
-      action: "remake-output",
-      id: o.id,
-      cta: "Remake with current guidance",
-    })),
-    ...productAffectedOutputs.map((o) => ({
-      label: o.label || "Untitled output",
-      detail: `Made with ${o.package.product.product_name} v${o.package.product.version}. That product record has been revised.`,
-      pill: `Product v${o.package.product.version}`,
-      pillClass: "pill-warning",
-      action: "view-product",
-      id: o.package.product.product_id,
-      cta: "Review product record",
-    })),
+    ...affectedOutputs
+      .filter((o) => !driftDismissed("brain", o.id, state.brain.approvedVersion))
+      .map((o) => ({
+        label: o.label || "Untitled output",
+        detail: `Made with Brand Brain v${o.brainVersion}. Current version is v${state.brain.approvedVersion}.`,
+        pill: `v${o.brainVersion}`,
+        pillClass: "pill-warning",
+        actions: evaluateAndDismiss(o, "brain", state.brain.approvedVersion),
+      })),
+    ...productAffectedOutputs
+      .filter((o) => !driftDismissed("product", o.id, o.package.product.version))
+      .map((o) => ({
+        label: o.label || "Untitled output",
+        detail: `Made with ${o.package.product.product_name} v${o.package.product.version}. That product record has been revised.`,
+        pill: `Product v${o.package.product.version}`,
+        pillClass: "pill-warning",
+        actions: evaluateAndDismiss(o, "product", o.package.product.version),
+      })),
   ];
 
   // Brand overview. What the system currently knows, not a description of the
@@ -2506,14 +2517,18 @@ function renderWorkspace() {
       </div>
       <div class="ws-attention-list">
         ${needsAttention.map((item) => `
-          <button class="ws-attention-item" type="button" data-action="${item.action}" ${item.screen ? `data-screen="${item.screen}"` : ""} ${item.id ? `data-id="${escapeHtml(String(item.id))}"` : ""}>
+          <div class="ws-attention-item">
             <span class="mini-pill ${item.pillClass}">${escapeHtml(item.pill)}</span>
             <span class="ws-attention-text">
               <strong>${escapeHtml(item.label)}</strong>
               <span>${escapeHtml(item.detail)}</span>
             </span>
-            <span class="ws-attention-cta">${escapeHtml(item.cta)}</span>
-          </button>
+            <span class="ws-attention-actions">
+              ${item.actions.map((a) => `
+                <button class="ws-attention-action ${a.primary ? "is-primary" : ""}" type="button" data-action="${a.action}"${a.screen ? ` data-screen="${a.screen}"` : ""}${a.id ? ` data-id="${escapeHtml(String(a.id))}"` : ""}${a.kind ? ` data-kind="${a.kind}"` : ""}${a.version !== undefined ? ` data-version="${escapeHtml(String(a.version))}"` : ""}>${escapeHtml(a.label)}</button>
+              `).join("")}
+            </span>
+          </div>
         `).join("")}
       </div>
     </section>
@@ -6942,21 +6957,12 @@ root.addEventListener("click", (event) => {
     state.previewOutputId = null;
     render();
   }
-  if (action === "remake-output") {
-    // Drift rows need a resolution path, not a preview. Restore the brief that
-    // produced the output and drop the user into production against the
-    // current guidance.
-    const source = state.outputs.find((o) => o.id === target.dataset.id);
-    if (source) {
-      state.brief.assetType = source.assetType || "scene";
-      state.brief.scene = source.package?.brief?.scene || source.scene || "";
-      if (source.placement && placementFormats[source.placement]) state.brief.placement = source.placement;
-      if (source.format) state.brief.format = source.format;
-      state.activeCampaignId = source.campaignId || null;
-      state.previewOutputId = null;
-      setToast("Brief restored. Generating now uses the current Brand Brain.");
-    }
-    navigate("brief");
+  if (action === "dismiss-output-drift") {
+    // Keyed to the version that raised the notice, so the row returns when the
+    // brain or the product record moves again.
+    const kind = target.dataset.kind === "product" ? "product" : "brain";
+    if (target.dataset.id) state.dismissedOutputDrift[kind][target.dataset.id] = target.dataset.version || "";
+    render();
     return;
   }
   if (action === "dismiss-drift") {

@@ -20,6 +20,8 @@ Things that hold up in a demo and would not survive real use. These are the entr
 
 Drift notices on the Design Studio chooser can be dismissed, and dismissal is keyed to the version that raised the notice, so a later brain approval or product revision surfaces it again. The dismissal itself lives in memory and resets on reload.
 
+The Snapshot drift rows dismiss the same way, per output rather than per notice, keyed to the version that raised the row.
+
 Fine for a demo. Wrong for production, where a user dismisses something on Monday and expects it to stay dismissed on Tuesday.
 
 Bring it back when: a real client is using the deployed app for daily work. The fix is a field on the client record, so it is server work rather than a UI change.
@@ -70,9 +72,11 @@ Bring it back when: working through the Design Studio screens, where most of the
 
 Work that functions but stops short of where it should land.
 
-### Remaking a drifted output lands in the legacy brief screen
+### Remaking a drifted output has no Design Studio path
 
-The "Remake with current guidance" action on Snapshot restores the brief from an output record and navigates to the legacy production brief, not to the Design Studio setup for that category. Studio setup state is not reconstructible from an output record.
+Snapshot used to offer "Remake with current guidance" on drift rows. It restored the brief from an output record and navigated to the legacy production brief, because studio setup state is not reconstructible from an output record. That route was removed: the drift rows now offer Open evaluation and Dismiss, and retrying belongs to the evaluation screen where the findings are.
+
+There is still no path from a drifted output back into the Design Studio setup that produced it.
 
 Bring it back when: the Design Studio setup screens are worked through, since the fix is to record enough setup state on the output to rebuild it.
 
