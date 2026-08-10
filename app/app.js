@@ -1093,7 +1093,10 @@ const state = {
     salesFeature: "",
     salesProductId: "",
     // Website fields
-    websiteFormat: "hero",
+    // No placement is preselected. Hero is not the common case, and a chosen
+    // placement changes the composition the system writes, so it has to be an
+    // answer the user gave.
+    websiteFormat: "",
     websiteProductId: "",
   },
   brain: {
@@ -3185,8 +3188,14 @@ function updateSalesReadyState() {
 // Enable or disable every control that a non-empty brief unlocks. Called from
 // the input handler rather than from render, so the enabled state tracks what
 // is typed without the textarea losing focus.
+function websiteReadyForPreflight() {
+  return Boolean(approvedBrainForProduction())
+    && (state.studio.brief || "").trim().length > 0
+    && Boolean(websiteOutputFormats[state.studio.websiteFormat]);
+}
+
 function syncBriefGatedControls() {
-  const ready = Boolean(approvedBrainForProduction()) && (state.studio.brief || "").trim().length > 0;
+  const ready = websiteReadyForPreflight();
   document.querySelectorAll("[data-brief-gated]").forEach((control) => {
     control.disabled = !ready;
   });
@@ -3195,9 +3204,8 @@ function syncBriefGatedControls() {
 function renderWebsiteSetup(cat) {
   const approved = approvedBrainForProduction();
   const campaigns = state.campaigns || [];
-  const fmt = websiteOutputFormats[state.studio.websiteFormat] || websiteOutputFormats.hero;
-  const hasBrief = (state.studio.brief || "").trim().length > 0;
-  const canProceed = Boolean(approved) && hasBrief;
+  const fmt = websiteOutputFormats[state.studio.websiteFormat] || null;
+  const canProceed = websiteReadyForPreflight();
 
   return shell(`
     <section class="workspace">
@@ -3221,7 +3229,7 @@ function renderWebsiteSetup(cat) {
                     </button>
                   `).join("")}
                 </div>
-                <p class="field-note field-spaced">${escapeHtml(fmt.note)}</p>
+                ${fmt ? `<p class="field-note field-spaced">${escapeHtml(fmt.note)}</p>` : ""}
               </div>
 
               <div class="field full">
@@ -3272,13 +3280,20 @@ function renderWebsiteSetup(cat) {
         </div>
 
         <aside>
-          <section class="card surface-accent">
-            <div class="card-header">
-              <h2>${escapeHtml(fmt.label)}</h2>
-              <span class="mini-pill">${escapeHtml(fmt.ratio)}</span>
-            </div>
-            <p class="field-note">${escapeHtml(fmt.craft)}</p>
-          </section>
+          ${fmt ? `
+            <section class="card surface-accent">
+              <div class="card-header">
+                <h2>${escapeHtml(fmt.label)}</h2>
+                <span class="mini-pill">${escapeHtml(fmt.ratio)}</span>
+              </div>
+              <p class="field-note">${escapeHtml(fmt.craft)}</p>
+            </section>
+          ` : `
+            <section class="card">
+              <div class="card-header"><h2>Placement</h2></div>
+              <p class="field-note">Pick where the image goes and this shows the composition the system will use for that shape.</p>
+            </section>
+          `}
 
           <section class="card">
             <div class="card-header">
@@ -6770,7 +6785,7 @@ root.addEventListener("click", (event) => {
     state.studio.salesElement = "";
     state.studio.salesFeature = "";
     state.studio.salesProductId = "";
-    state.studio.websiteFormat = "hero";
+    state.studio.websiteFormat = "";
     state.studio.websiteProductId = "";
     navigate("studio-setup");
   }
@@ -6905,7 +6920,11 @@ root.addEventListener("click", (event) => {
       if (el) el.focus();
       return;
     }
-    const fmt = websiteOutputFormats[state.studio.websiteFormat] || websiteOutputFormats.hero;
+    const fmt = websiteOutputFormats[state.studio.websiteFormat];
+    if (!fmt) {
+      setToast("Pick where this image goes before continuing");
+      return;
+    }
     state.selectedDeliverable = deliverables[0];
     state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
     state.activeCampaignId = state.studio.campaignId || null;
