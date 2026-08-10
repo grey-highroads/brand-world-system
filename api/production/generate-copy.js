@@ -4,6 +4,7 @@ import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
 import { assembleClaimsSet } from "../../src/claims/assembly.js";
 import { buildJobScope } from "../../src/scope/resolver.js";
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../../src/claims/copy-audit.js";
+import { produceCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 export default async function handler(request, response) {
@@ -44,6 +45,52 @@ export default async function handler(request, response) {
     // here is stored, and the user edits or discards it freely.
     if (String(body.action || "") === "scene_brief") {
       await handleSceneBrief({ body, brain, product, apiKey, response });
+      return;
+    }
+
+    // Copy-type generation (ADR 0014 step 1). The catalog entry supplies the
+    // prompt shape; generation and audit are shared code. This dispatches
+    // through the existing handler rather than a new serverless function,
+    // because the function count sits at the Vercel Hobby ceiling.
+    if (String(body.action || "") === "copy_type") {
+      const claimsStore = createVercelBlobClaimsStore({ clientId });
+      const claimsDocument = await claimsStore.read();
+      const claimsSet = assembleClaimsSet({
+        claimsDocument,
+        product,
+        activeEntries: claimsStore.activeEntries,
+        jobScope: buildJobScope({
+          placement: body.placement,
+          productId: body.productId,
+          campaignId: body.campaignId,
+        }),
+      });
+      const block = await produceCopy({
+        copyTypeId: body.copyTypeId,
+        brain,
+        product,
+        claimsSet,
+        context: {
+          placement: body.placement || "",
+          copyDirection: body.copyDirection || "",
+          scene: body.scene || "",
+          postType: body.postType || "",
+          postTopic: body.postTopic || "",
+          postClaims: body.postClaims || "",
+          postCta: body.postCta || "",
+          exclusions: body.exclusions || "",
+        },
+        apiKey,
+      });
+      sendJson(response, 200, {
+        copy: block,
+        governingClaims: {
+          approved: claimsSet.approved.map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
+          prohibited: claimsSet.prohibited.map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
+          disclosures: claimsSet.disclosures.map((claim) => ({ text: claim.text, source: claim.source })),
+        },
+        brainVersion: brainState.brain?.artifactVersion || 1,
+      });
       return;
     }
 

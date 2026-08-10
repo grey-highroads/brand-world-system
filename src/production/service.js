@@ -1,6 +1,9 @@
 import { selectApprovedBaseline } from "../brand-brain/service.js";
 import { createVercelBlobProductStore } from "../products/store.js";
 import { OPENAI_IMAGE_MODEL, chooseOpenAIImageEndpoint, renderWithOpenAIImages } from "../renderers/openai-images.js";
+import { assembleClaimsSet } from "../claims/assembly.js";
+import { produceCopy } from "../copy/generate.js";
+import { buildJobScope } from "../scope/resolver.js";
 import { compileBrandWorldImagePackage } from "./package.js";
 
 const rasterTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -201,6 +204,26 @@ export async function prepareProductionPackage(body, options) {
     });
   }
 
+  // Copy outputs (ADR 0014 step 2). The claims set is assembled once and
+  // reused: it steers generation and it is recorded in the package as the
+  // governing set. A job that declares no copy output does no claims work and
+  // compiles exactly as it did before this existed.
+  const copyOutputs = resolveCopyOutputs(body.copyOutputs);
+  let claimsSet = null;
+  if (copyOutputs.length > 0 && options.claimsStore) {
+    const claimsDocument = await options.claimsStore.read();
+    claimsSet = assembleClaimsSet({
+      claimsDocument,
+      product,
+      activeEntries: options.claimsStore.activeEntries,
+      jobScope: buildJobScope({
+        placement: body.brief?.placement,
+        productId: body.productId,
+        campaignId: body.campaign?.id,
+      }),
+    });
+  }
+
   const generationPackage = compileBrandWorldImagePackage({
     approvedBrain,
     brainVersion,
@@ -210,8 +233,21 @@ export async function prepareProductionPackage(body, options) {
     templateAsset,
     campaign: body.campaign || null,
     product,
+    copyOutputs,
+    claimsSet,
   });
-  return { generationPackage, references, lockedAsset, templateAsset, stored };
+  return { generationPackage, references, lockedAsset, templateAsset, stored, approvedBrain, product, claimsSet };
+}
+
+// A copy output is declared by id. Unknown ids are dropped rather than
+// failing the job: an image that generated is worth more than a hard stop on
+// a catalog entry the client no longer has.
+function resolveCopyOutputs(requested) {
+  if (!Array.isArray(requested)) return [];
+  return requested
+    .map((entry) => (typeof entry === "string" ? entry : entry?.copyTypeId))
+    .filter((id) => typeof id === "string" && id.length > 0)
+    .slice(0, 4);
 }
 
 function publicJob(job, imageUrl) {
@@ -238,7 +274,7 @@ export async function generateProductionImage(body, options) {
   const current = await options.productionStore.read();
   if (current?.jobId === jobId && current.status === "complete") return readProductionJob(options);
 
-  const { generationPackage, references, lockedAsset, templateAsset } = await prepareProductionPackage(body, options);
+  const { generationPackage, references, lockedAsset, templateAsset, approvedBrain, product, claimsSet } = await prepareProductionPackage(body, options);
 
   // The template (when present) is the first reference image: the base layer
   // the element is composed onto. The locked asset follows as the identity
@@ -289,6 +325,46 @@ export async function generateProductionImage(body, options) {
     if (!image?.b64_json) throw new Error("OpenAI returned no image data.");
     const bytes = Buffer.from(image.b64_json, "base64");
     const savedImage = await options.productionStore.writeImage(jobId, bytes, "image/png");
+
+    // Governed copy (ADR 0014 step 2). The copy runs after the image so a
+    // copy failure never costs a render that already succeeded. Each block
+    // carries its own audit; a block that could not be produced is recorded
+    // as a failure rather than silently omitted, because a missing caption
+    // and a caption nobody checked look identical otherwise.
+    if (generationPackage.copy) {
+      const produced = [];
+      for (const declared of generationPackage.copy.declared) {
+        try {
+          produced.push(await produceCopy({
+            copyTypeId: declared.copyTypeId,
+            brain: approvedBrain,
+            product,
+            claimsSet: claimsSet || { approved: [], prohibited: [], disclosures: [] },
+            context: {
+              placement: generationPackage.output?.placement || "",
+              copyDirection: body.copyDirection || "",
+              scene: generationPackage.brief?.scene || "",
+              exclusions: generationPackage.brief?.exclusions || "",
+            },
+            apiKey: options.env.OPENAI_API_KEY,
+          }));
+        } catch (error) {
+          produced.push({
+            copyTypeId: declared.copyTypeId,
+            text: "",
+            failed: true,
+            error: error.message || "The copy could not be written.",
+            audit: {
+              status: "errored",
+              message: "The copy was not produced, so nothing was checked against your claims.",
+              findings: [],
+              totals: null,
+            },
+          });
+        }
+      }
+      generationPackage.copy.produced = produced;
+    }
     // Persist the compiled package alongside the image so this output stays
     // reviewable after the current-job slot is reused. A failure here should not
     // lose an image that was generated successfully.

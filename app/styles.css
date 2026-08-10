@@ -7996,3 +7996,92 @@ button.ws-attention-item:hover {
   border-radius: var(--radius-md);
   content: "The image for this output is no longer available. The compiled package and evaluation below are unaffected.";
 }
+
+/* -------------------------------------------------------------------------
+   Governed copy in the result and preflight screens (ADR 0014)
+
+   Every region here is stacked rather than gridded. Caption length ranges
+   from a single TikTok line to a three-hundred-word LinkedIn post, and a
+   grid row stretches to its tallest cell, so a long caption beside a short
+   finding leaves a column of dead space. Stacking keeps each block sized to
+   its own content.
+   ------------------------------------------------------------------------- */
+
+.produced-copy {
+  display: block;
+  margin-top: var(--space-4);
+  padding: var(--space-4);
+  background: var(--ink-950);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+
+.produced-copy-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-3);
+}
+
+.produced-copy-text {
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.produced-copy-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.produced-copy-failed {
+  border-color: var(--border-strong);
+}
+
+/* The flagged sentence, shown verbatim. A finding that does not name the
+   sentence it came from is not actionable. */
+.evaluation-sentence {
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--border-strong);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.evaluation-item.violation .evaluation-sentence {
+  border-left-color: var(--danger);
+}
+
+.evaluation-rule {
+  display: block;
+  margin: var(--space-2) 0 0;
+  overflow-wrap: anywhere;
+}
+
+.evaluation-rule .section-label {
+  display: block;
+  margin-bottom: var(--space-1);
+}
+
+/* A stacked rule row. The default .rule places the pill beside the text,
+   which truncates awkwardly when the text is a full claim sentence. */
+.rule-stacked {
+  flex-wrap: wrap;
+}
+
+.rule-stacked > span:last-child {
+  flex: 1 1 100%;
+  overflow-wrap: anywhere;
+}
+
+.studio-copy-section textarea {
+  min-height: 84px;
+}

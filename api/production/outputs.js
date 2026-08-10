@@ -113,6 +113,10 @@ export default async function handler(request, response) {
         imageUrl: output.imageUrl || null,
         hadImage: Boolean(output.hadImage || output.imageUrl),
         postCopy: output.postCopy || null,
+        // A marker, not the copy itself. The produced text and its audit live
+        // in the per-job package blob, which is what the evaluation screen
+        // reads when past work is reopened.
+        copySummary: output.copySummary || null,
       }));
       await store.writeOutputs({ outputs: trimmed, savedAt: new Date().toISOString() });
       sendJson(response, 200, { saved: true, count: trimmed.length });

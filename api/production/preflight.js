@@ -1,5 +1,6 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { createVercelBlobProductStore } from "../../src/products/store.js";
+import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
 import { prepareProductionPackage } from "../../src/production/service.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
@@ -16,6 +17,7 @@ export default async function handler(request, response) {
     const { generationPackage } = await prepareProductionPackage(body, {
       brainStore: createVercelBlobBrandBrainStore({ clientId }),
       productStore: createVercelBlobProductStore({ clientId }),
+      claimsStore: createVercelBlobClaimsStore({ clientId }),
     });
     sendJson(response, 200, { generationPackage });
   } catch (error) {

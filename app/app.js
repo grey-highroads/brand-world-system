@@ -1079,8 +1079,11 @@ const state = {
     activeFormats: [],
     textOverlay: false,
     campaignId: "",
-    caption: "",
-    captionOpen: false,
+    // A social job writes its caption unless the user turns it off. The
+    // direction field steers what the caption says; leaving it blank draws
+    // the message from the brief and the Brand Brain.
+    captionOn: true,
+    copyDirection: "",
     referenceOpen: false,
     directionOpen: false,
     direction: "",
@@ -2940,18 +2943,23 @@ function renderStudioSetup() {
               ` : ""}
             </div>
 
-            ${state.studio.captionOpen ? `
-              <div class="studio-additive-section">
+            <div class="field full">
+              <button class="studio-toggle-row" type="button" data-action="toggle-studio-caption">
+                <span class="studio-toggle-track ${state.studio.captionOn ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+                <span class="studio-toggle-content">
+                  <strong>Write the caption too</strong>
+                  <span class="field-note">The words that run with the image in the feed. Checked against your approved and prohibited claims before you see them.</span>
+                </span>
+              </button>
+            </div>
+
+            ${state.studio.captionOn ? `
+              <div class="studio-additive-section studio-copy-section">
                 <div class="studio-additive-header">
-                  <span class="section-label">Post caption</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="captionOpen" aria-label="Remove post caption">&times;</button>
+                  <span class="section-label">What should the caption say?</span>
                 </div>
-                <div class="studio-additive-header">
-                  <span class="field-note">Text that accompanies the image in the feed. Not rendered on the image.</span>
-                  <span class="field-note">Governed by brand voice</span>
-                </div>
-                <textarea data-action="studio-caption-input" placeholder="Write your post text, or leave blank to draft from your Brand Brain">${escapeHtml(state.studio.caption)}</textarea>
-                <span class="field-note">Approved claims available. Prohibited claims blocked.</span>
+                <p class="field-note field-spaced">Leave this blank and the caption is written from your brief and your Brand Brain.</p>
+                <textarea data-action="studio-copy-direction-input" placeholder="The point you want the post to land, or the audience it is written for.">${escapeHtml(state.studio.copyDirection)}</textarea>
               </div>
             ` : ""}
 
@@ -2980,7 +2988,6 @@ function renderStudioSetup() {
             ` : ""}
 
             <div class="studio-additive-links">
-              ${!state.studio.captionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="captionOpen">+ Add post caption</button>` : ""}
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
               ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
             </div>
@@ -5155,6 +5162,57 @@ function option(value, selected) {
   return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`;
 }
 
+// What governs the words, in the brand's own language. Approved claims are
+// the wording the copy may use; prohibited claims are the wording it may not.
+// A job with nothing on either list says so plainly, because a client who has
+// not written a claims document yet should see an accurate empty state rather
+// than an implication that the check was skipped.
+function copyPreflightPanel(generationPackage) {
+  const copy = generationPackage.copy;
+  if (!copy) return "";
+  const claims = copy.governingClaims || { approved: [], prohibited: [], disclosures: [] };
+  const total = claims.approved.length + claims.prohibited.length + claims.disclosures.length;
+  const declaredLabels = copy.declared.map((entry) => copyTypeLabel(entry.copyTypeId)).join(", ");
+
+  const group = (label, entries, pillClass, note) => entries.length ? `
+    <div class="rule-card">
+      <span class="section-label">${label}</span>
+      ${entries.map((entry) => `
+        <div class="rule rule-stacked">
+          <span class="mini-pill ${pillClass}">${escapeHtml(note)}</span>
+          <span><strong>${escapeHtml(entry.text)}</strong><span>${escapeHtml(entry.source || "Brand claims")}</span></span>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
+  return `
+    <details class="card collapsible-card" open>
+      <summary class="card-header collapsible-header">
+        <h2>What stays exact in the words</h2>
+        <span class="collapsible-meta"><span class="mini-pill ${total ? "pill-success" : "pill-neutral"}">${total ? `${total} governing ${total === 1 ? "rule" : "rules"}` : "Voice guidance only"}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+      </summary>
+      <p class="page-description">${escapeHtml(declaredLabels)} will be written with this job and checked before you see it.</p>
+      ${total === 0 ? `
+        <div class="rule-card">
+          <div class="rule rule-stacked">
+            <span class="mini-pill pill-neutral">Nothing to enforce</span>
+            <span><strong>No approved or prohibited claims apply to this job yet</strong><span>The caption will follow your brand voice guidance. Once you add claims, every caption gets checked against them.</span></span>
+          </div>
+        </div>
+      ` : ""}
+      ${group("Wording the caption may use", claims.approved, "pill-protected", "Approved")}
+      ${group("Wording the caption may not use", claims.prohibited, "pill-warning", "Prohibited")}
+      ${group("Must appear when triggered", claims.disclosures, "pill-neutral", "Disclosure")}
+    </details>
+  `;
+}
+
+function copyTypeLabel(copyTypeId) {
+  const labels = { social_caption: "A post caption" };
+  return labels[copyTypeId] || "Copy";
+}
+
 function renderPreflight() {
   const generationPackage = state.production.package;
   if (!generationPackage) {
@@ -5217,6 +5275,8 @@ function renderPreflight() {
             ${generationPackage.stateNeutralizations?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the protected asset sealed</strong><span>${escapeHtml(generationPackage.stateNeutralizations.join(", "))} changed to match the supplied asset state.</span></span></div></div>` : ""}
             ${generationPackage.orientationAdjustments?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the screen facing the camera</strong><span>${escapeHtml(generationPackage.orientationAdjustments.join(", "))} changed so the device screen stays visible in the final image.</span></span></div></div>` : ""}
           </details>
+
+          ${copyPreflightPanel(generationPackage)}
 
           ${generationPackage.treatments?.length ? `
           <details class="card collapsible-card">
@@ -5397,6 +5457,133 @@ function buildEvaluationFindings(job) {
   return findings;
 }
 
+// The produced words, shown as part of the finished piece rather than as a
+// side panel. Stacked rather than gridded: caption length varies enormously
+// between a one-line TikTok caption and a three-hundred-word LinkedIn post,
+// and a grid row stretches to its tallest cell.
+function producedCopyPanel(job) {
+  const produced = job?.generationPackage?.copy?.produced || [];
+  if (!produced.length) return "";
+  return produced.map((block, index) => {
+    if (block.failed) {
+      return `
+        <div class="produced-copy produced-copy-failed">
+          <div class="produced-copy-header">
+            <span class="section-label">${escapeHtml(copyTypeLabel(block.copyTypeId))}</span>
+            <span class="mini-pill pill-danger">Not written</span>
+          </div>
+          <p class="page-description">${escapeHtml(block.error || "The copy could not be written.")} The image is still usable. Try the caption again from the actions panel.</p>
+        </div>
+      `;
+    }
+    return `
+      <div class="produced-copy">
+        <div class="produced-copy-header">
+          <span class="section-label">${escapeHtml(block.label || copyTypeLabel(block.copyTypeId))}</span>
+          ${copyAuditPill(block.audit)}
+        </div>
+        <div class="produced-copy-text">${escapeHtml(block.text)}</div>
+        <div class="produced-copy-actions">
+          <button class="button small" type="button" data-action="copy-produced-text" data-index="${index}">Copy text</button>
+          <button class="button small" type="button" data-action="rewrite-caption">Rewrite the caption</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// The audit state, in one pill. An audit that could not run says so; it never
+// borrows the language of a clean pass.
+function copyAuditPill(audit) {
+  const status = audit?.status || "errored";
+  if (status === "errored") return '<span class="mini-pill pill-danger">Not checked</span>';
+  if (status === "no_claims") return '<span class="mini-pill pill-neutral">No claims to check</span>';
+  const violations = (audit.findings || []).filter((f) => f.severity === "violation").length;
+  const reviews = (audit.findings || []).filter((f) => f.severity === "review").length;
+  if (violations) return `<span class="mini-pill pill-danger">${violations} ${violations === 1 ? "violation" : "violations"}</span>`;
+  if (reviews) return `<span class="mini-pill pill-warning">${reviews} to review</span>`;
+  return '<span class="mini-pill pill-success">Claims check passed</span>';
+}
+
+// Copy findings in the same shape as image findings: the specific sentence,
+// what kind of finding it is, and the rule that governs it.
+function buildCopyFindings(job) {
+  const produced = job?.generationPackage?.copy?.produced || [];
+  const findings = [];
+  produced.forEach((block, blockIndex) => {
+    if (block.failed) return;
+    const audit = block.audit || {};
+    const label = block.label || copyTypeLabel(block.copyTypeId);
+
+    if (audit.status === "errored") {
+      findings.push({
+        id: `copy-${blockIndex}-errored`,
+        element: `${label}: not checked`,
+        category: "Claims",
+        status: "unchecked",
+        finding: audit.message || "The claim check could not run, so this copy has not been checked against your claims.",
+        repairAction: "rewrite-caption",
+        repairLabel: "Write it again and re-check",
+      });
+      return;
+    }
+    if (audit.status === "no_claims") {
+      findings.push({
+        id: `copy-${blockIndex}-noclaims`,
+        element: `${label}: nothing to check against`,
+        category: "Claims",
+        status: "verify",
+        finding: audit.message || "No approved or prohibited claims apply to this job yet.",
+      });
+    }
+    (audit.findings || []).forEach((finding, findingIndex) => {
+      findings.push({
+        id: `copy-${blockIndex}-${findingIndex}`,
+        element: finding.kind === "prohibited"
+          ? "This claim is on your prohibited list"
+          : finding.kind === "disclosure"
+            ? "A required disclosure is missing"
+            : "This claim is not on your approved list",
+        category: "Claims",
+        status: finding.severity === "violation" ? "violation" : "review",
+        sentence: finding.sentence,
+        rule: finding.rule,
+        finding: finding.reason,
+        repairAction: "rewrite-caption",
+        repairLabel: "Write the caption again",
+      });
+    });
+  });
+  return findings;
+}
+
+// Coral means a problem: a claim the brand has prohibited, or a check that did
+// not run. Yellow means a human should look. Green means the check ran and
+// found nothing.
+function findingPillClass(status) {
+  if (status === "violation") return "pill-danger";
+  if (status === "unchecked") return "pill-danger";
+  if (status === "enforced") return "pill-success";
+  return "pill-warning";
+}
+
+function findingStatusLabel(status) {
+  if (status === "violation") return "Violation";
+  if (status === "unchecked") return "Not checked";
+  if (status === "enforced") return "Enforced";
+  if (status === "review") return "Review recommended";
+  return "Verify";
+}
+
+function findingCountLabel(findings) {
+  const violations = findings.filter((f) => f.status === "violation").length;
+  const unchecked = findings.filter((f) => f.status === "unchecked").length;
+  if (violations) return `${violations} ${violations === 1 ? "violation" : "violations"}`;
+  if (unchecked) return "Claim check did not run";
+  const toVerify = findings.filter((f) => f.status === "verify" || f.status === "review").length;
+  return `${toVerify} to verify`;
+}
+
 function renderResult() {
   if (state.production.reviewLoading) {
     return shell(`
@@ -5423,7 +5610,7 @@ function renderResult() {
   const complete = job?.status === "complete" && job.imageUrl;
   const isLinkedIn = job?.deliverable === "linkedin-post" || job?.generationPackage?.deliverable === "linkedin-post";
   const generationMethod = isLinkedIn ? "Post copy + image" : job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
-  const findings = complete ? buildEvaluationFindings(job) : [];
+  const findings = complete ? [...buildCopyFindings(job), ...buildEvaluationFindings(job)] : [];
 
   // Add LinkedIn-specific evaluation findings
   if (complete && isLinkedIn && job.postCopy) {
@@ -5487,7 +5674,8 @@ function renderResult() {
                     ${job.postCopy ? `<div class="linkedin-post-copy"><span class="section-label">Generated post</span><div class="linkedin-post-text">${escapeHtml(job.postCopy).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</div><button class="button small" type="button" data-action="copy-post-text">Copy text</button></div>` : ""}
                     ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
-                : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+                : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
+                   ${producedCopyPanel(job)}`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
           </section>
@@ -5496,16 +5684,18 @@ function renderResult() {
           <section class="card">
             <div class="card-header">
               <h2>Evaluation findings</h2>
-              <span class="mini-pill">${findings.filter((f) => f.status === "verify").length} to verify</span>
+              <span class="mini-pill">${findingCountLabel(findings)}</span>
             </div>
             <ul class="evaluation-list">
               ${findings.map((f) => `
                 <li class="evaluation-item ${f.status}">
                   <div class="evaluation-item-header">
-                    <span class="mini-pill ${f.status === "enforced" ? "pill-success" : "pill-warning"}">${f.status === "enforced" ? "Enforced" : "Verify"}</span>
+                    <span class="mini-pill ${findingPillClass(f.status)}">${escapeHtml(findingStatusLabel(f.status))}</span>
                     <strong>${escapeHtml(f.element)}</strong>
                     <span class="evaluation-category">${escapeHtml(f.category)}</span>
                   </div>
+                  ${f.sentence ? `<blockquote class="evaluation-sentence">${escapeHtml(f.sentence)}</blockquote>` : ""}
+                  ${f.rule ? `<p class="evaluation-rule"><span class="section-label">Governing rule</span>${escapeHtml(f.rule)}</p>` : ""}
                   <p>${escapeHtml(f.finding)}</p>
                   ${f.repairAction ? `<button class="button small" type="button" data-action="${f.repairAction}" data-finding="${f.id}">${escapeHtml(f.repairLabel)}</button>` : ""}
                 </li>
@@ -6014,6 +6204,14 @@ function wait(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+// Which copy the job asks for. Only the social flow declares copy today, and
+// only when the user has left the caption switched on. Every other flow sends
+// an empty list, which compiles exactly as it did before copy existed.
+function declaredCopyOutputs() {
+  if (state.studio.category !== "social") return [];
+  return state.studio.captionOn ? ["social_caption"] : [];
+}
+
 function productionRequest(jobId) {
   const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   return {
@@ -6022,6 +6220,8 @@ function productionRequest(jobId) {
     productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
     lockedAssetId: state.lockedAssetId || undefined,
     templateAssetId: state.studio.salesTemplateId || undefined,
+    copyOutputs: declaredCopyOutputs(),
+    copyDirection: state.studio.copyDirection || undefined,
     references: state.references.map((item) => ({
       id: item.id,
       role: item.role,
@@ -6090,6 +6290,22 @@ function outputLabel(pkg, assetType) {
 // Upsert by job id. Generation writes a draft; approval promotes it. Re-entry
 // from a refresh or a recovered job updates the existing record rather than
 // creating a duplicate.
+// A one-line marker for the output log so a list row can say the piece
+// included words and whether they cleared. The words themselves stay in the
+// package blob.
+function summarizeCopy(pkg) {
+  const produced = pkg?.copy?.produced || [];
+  if (!produced.length) return null;
+  const statuses = produced.map((block) => (block.failed ? "errored" : block.audit?.status || "errored"));
+  const violations = produced.reduce((total, block) => total + ((block.audit?.findings || []).filter((f) => f.severity === "violation").length), 0);
+  return {
+    count: produced.length,
+    types: produced.map((block) => block.copyTypeId),
+    status: statuses.includes("errored") ? "errored" : violations ? "violations" : statuses.includes("no_claims") ? "no_claims" : "governed",
+    violations,
+  };
+}
+
 function recordOutput(job, extras = {}) {
   if (!job?.jobId) return null;
   const pkg = job.generationPackage || null;
@@ -6119,6 +6335,7 @@ function recordOutput(job, extras = {}) {
     // fresh presigned URL on read even after the cached one has expired.
     hadImage: Boolean(extras.imageUrl || job.imageUrl || existing?.imageUrl || existing?.hadImage),
     postCopy: extras.postCopy || job.postCopy || existing?.postCopy || null,
+    copySummary: summarizeCopy(pkg) || existing?.copySummary || null,
     model: job.model || existing?.model || null,
     // The durable substrate. Guidance section names decay as the brain is revised;
     // the compiled prompt is the only record of what the brand actually asserted
@@ -6467,6 +6684,57 @@ function downloadPackage() {
   setToast("Generation package downloaded");
 }
 
+// Targeted repair: rewrite the words, keep the picture. A caption the audit
+// flagged is a copy problem, and re-rendering the image to fix it would throw
+// away a result the user already accepted.
+//
+// The guard pattern from the UI contribution guide applies: a concurrent call
+// is refused, and both the success and failure paths clear the flag, so a
+// failed rewrite never leaves the button dead.
+let rewritingCaption = false;
+
+async function rewriteCaption() {
+  if (rewritingCaption) return;
+  const job = state.production.job;
+  const copy = job?.generationPackage?.copy;
+  const declared = copy?.declared?.[0];
+  if (!declared) {
+    setToast("This output has no caption to rewrite");
+    return;
+  }
+  rewritingCaption = true;
+  state.production.copyRewriting = true;
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "copy_type",
+        copyTypeId: declared.copyTypeId,
+        placement: job.generationPackage?.output?.placement || "",
+        copyDirection: state.studio.copyDirection || "",
+        scene: job.generationPackage?.brief?.scene || "",
+        exclusions: job.generationPackage?.brief?.exclusions || "",
+        productId: job.generationPackage?.product?.product_id || undefined,
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The caption could not be rewritten.");
+    copy.produced = [body.copy];
+    if (body.governingClaims) copy.governingClaims = body.governingClaims;
+    recordOutput(job);
+    void persistOutputs();
+    setToast("Caption rewritten and re-checked");
+  } catch (error) {
+    setToast(error.message || "The caption could not be rewritten");
+  } finally {
+    rewritingCaption = false;
+    state.production.copyRewriting = false;
+    render();
+  }
+}
+
 async function downloadGeneratedImage() {
   const imageUrl = state.production.job?.imageUrl;
   if (!imageUrl) return;
@@ -6631,8 +6899,8 @@ root.addEventListener("input", (event) => {
     // the brief therefore has to be synced here instead.
     syncBriefGatedControls();
   }
-  if (event.target.matches('[data-action="studio-caption-input"]')) {
-    state.studio.caption = event.target.value;
+  if (event.target.matches('[data-action="studio-copy-direction-input"]')) {
+    state.studio.copyDirection = event.target.value;
   }
   if (event.target.matches('[data-action="studio-direction-input"]')) {
     state.studio.direction = event.target.value;
@@ -7001,8 +7269,8 @@ root.addEventListener("click", (event) => {
     state.studio.activeFormats = [];
     state.studio.textOverlay = false;
     state.studio.campaignId = "";
-    state.studio.caption = "";
-    state.studio.captionOpen = false;
+    state.studio.copyDirection = "";
+    state.studio.captionOn = true;
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
@@ -7053,6 +7321,10 @@ root.addEventListener("click", (event) => {
     state.studio.textOverlay = !state.studio.textOverlay;
     render();
   }
+  if (action === "toggle-studio-caption") {
+    state.studio.captionOn = !state.studio.captionOn;
+    render();
+  }
   if (action === "studio-toggle-section") {
     const section = target.dataset.section;
     state.studio[section] = !state.studio[section];
@@ -7061,7 +7333,6 @@ root.addEventListener("click", (event) => {
   if (action === "studio-close-section") {
     const section = target.dataset.section;
     state.studio[section] = false;
-    if (section === "captionOpen") state.studio.caption = "";
     if (section === "directionOpen") state.studio.direction = "";
     render();
   }
@@ -7845,6 +8116,15 @@ root.addEventListener("click", (event) => {
       setToast("Post text copied");
     }
   }
+  if (action === "copy-produced-text") {
+    const index = Number(target.dataset.index || 0);
+    const text = state.production.job?.generationPackage?.copy?.produced?.[index]?.text || "";
+    if (text) {
+      try { navigator.clipboard.writeText(text); } catch { /* fallback not needed for prototype */ }
+      setToast("Caption copied");
+    }
+  }
+  if (action === "rewrite-caption") void rewriteCaption();
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
     state.production.approved = true;

@@ -309,7 +309,7 @@ function compileProductSection(product) {
   return parts.join(" ");
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -539,12 +539,43 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     requirementCheck,
     ready,
     product: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version, open_questions: openProductQuestions } : null,
+    ...compileCopyContract({ copyOutputs, claimsSet, placement }),
     policy: {
       groundedIn: sourceCount
         ? `Approved Brand Brain v${Number(brainVersion || 1)}, built from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`
         : `Approved Brand Brain v${Number(brainVersion || 1)}`,
       flexible: ["scene", "composition", "casting", "lighting", "materials"],
       excluded: ["unapproved readable text", ...(lockedAsset ? [] : ["invented logos or packaging"]), ...(exclusions ? [exclusions] : [])],
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Copy contract (ADR 0014 step 2)
+// ---------------------------------------------------------------------------
+
+// A job that declares no copy outputs gets no copy key at all. The compiled
+// package for an image-only job is byte-identical to what it was before this
+// function existed, which is what the placement-shape parity test asserts.
+//
+// The contract compiled here is the pre-generation half: which copy types the
+// job declared and which claims govern them. Produced text and audit findings
+// are written into the same structure after generation, so the saved package
+// carries the whole record of what the brand asserted in words.
+function compileCopyContract({ copyOutputs, claimsSet, placement }) {
+  const declared = Array.isArray(copyOutputs) ? copyOutputs.filter(Boolean) : [];
+  if (declared.length === 0) return {};
+  const set = claimsSet || { approved: [], prohibited: [], disclosures: [] };
+  return {
+    copy: {
+      placement,
+      declared: declared.map((entry) => (typeof entry === "string" ? { copyTypeId: entry } : entry)),
+      governingClaims: {
+        approved: (set.approved || []).map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
+        prohibited: (set.prohibited || []).map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
+        disclosures: (set.disclosures || []).map((claim) => ({ text: claim.text, source: claim.source })),
+      },
+      produced: [],
     },
   };
 }
