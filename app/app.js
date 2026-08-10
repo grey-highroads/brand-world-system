@@ -1106,7 +1106,7 @@ function shell(content) {
 
         <nav class="sidebar-nav" aria-label="Primary navigation">
           ${navItem("Snapshot", state.screen === "workspace", "workspace")}
-          ${navItem("Brand brain", inBrain, "brand-brain")}
+          ${navItem("Brand Brain", inBrain, "brand-brain")}
           ${navItem("Design Studio", state.screen === "chooser" || state.screen === "studio-setup" || state.screen === "brief" || state.screen === "preflight" || state.screen === "result", "chooser")}
           ${navItem("Campaigns", state.screen === "campaigns" || state.screen === "campaign-creation" || state.screen === "campaign-workspace", "campaigns")}
           ${navItem("Products", state.screen === "products" || state.screen === "product-detail", "products")}
@@ -1418,10 +1418,30 @@ function brainSectionNav() {
   `;
 }
 
+function brainStatusBar() {
+  // Readiness is a notification, not overview content, so it sits above the
+  // tabs and follows the user across every Brand Brain screen.
+  if (state.brain.stage === "empty") return "";
+  const ready = state.brain.artifactStatus === "ready";
+  const next = brainOverviewAction();
+  const version = state.brain.artifactStatus === "not-created" ? "" : `v${state.brain.artifactVersion}`;
+  return `
+    <div class="brain-status-bar ${ready ? "ready" : ""}">
+      <span class="brain-status-bar-light" aria-hidden="true"></span>
+      <span class="brain-status-bar-text">
+        <strong>${ready ? "Ready for production" : "In progress"}</strong>
+        ${version ? `<span>${escapeHtml(state.brandName)} Brand Brain ${version}</span>` : ""}
+      </span>
+      <button class="brain-status-bar-action" type="button" data-action="navigate-brain" data-screen="${next.action}">${escapeHtml(next.label)}</button>
+    </div>
+  `;
+}
+
 function brainWorkspace(title, description, content, className = "") {
   return shell(`
     <section class="workspace brain-workspace ${className}">
       ${pageHeader(title, description)}
+      ${brainStatusBar()}
       ${brainSectionNav()}
       ${content}
     </section>
@@ -1504,7 +1524,6 @@ function renderBrainOverview() {
     );
   }
 
-  const next = brainOverviewAction();
   const unresolved = state.brain.processingComplete ? brainExceptions.length - brainResolvedCount() : 0;
   const ready = state.brain.artifactStatus === "ready";
 
@@ -1512,15 +1531,6 @@ function renderBrainOverview() {
     "Brand Brain overview",
     "See what the brain knows, what still needs attention, and what production can use.",
     `
-      <section class="card brain-status-hero ${ready ? "ready" : ""}">
-        <div>
-          <span class="brain-status ${ready ? "success" : "governed"}">${ready ? "Ready for production" : "In progress"}</span>
-          <h2>${escapeHtml(next.label)}</h2>
-          <p>${escapeHtml(next.detail)}</p>
-        </div>
-        <button class="button ${ready ? "secondary" : "primary"}" type="button" data-action="navigate-brain" data-screen="${next.action}">${escapeHtml(next.label)}</button>
-      </section>
-
       <div class="brain-overview-grid">
         <button class="card brain-overview-card" type="button" data-action="navigate-brain" data-screen="brain-sources">
           <span class="section-label">Sources</span>
@@ -2210,7 +2220,7 @@ function renderBrainGuidance() {
       ${candidateUpdate ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion}</span><span><strong>You are reviewing candidate v${state.brain.artifactVersion}</strong><p>The approved version stays available to production. This candidate changes only after you approve it.</p></span></section>` : ""}
       <section class="card brain-artifact-header ${ready ? "ready" : ""}">
         <div>
-          <span class="brain-status ${ready ? "success" : "governed"}">${ready ? "Ready for production" : "Draft for review"}</span>
+          ${ready ? "" : `<span class="brain-status governed">Draft for review</span>`}
           <h2>${escapeHtml(state.brandName)} Brand Brain v${state.brain.artifactVersion}</h2>
           <p>Built from ${brainSourceCount()} source items with ${brainResolvedCount()} review decisions attached.</p>
         </div>
