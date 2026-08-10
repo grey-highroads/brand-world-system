@@ -3937,13 +3937,14 @@ function renderCampaignWorkspace() {
           </div>
           <textarea data-action="campaign-edit-input" data-field="${f.id}" placeholder="${escapeHtml(f.placeholder)}">${escapeHtml(draft[f.id] || "")}</textarea>
         ` : `
-          <button class="cparam-display" type="button" data-action="start-field-edit" data-field="${f.id}">
+          <div class="cparam-display">
             <span class="cparam-icon" aria-hidden="true">${f.icon}</span>
             <span class="cparam-body">
               <span class="cparam-label">${escapeHtml(f.label)}</span>
               <span class="cparam-value">${escapeHtml(value)}</span>
             </span>
-          </button>
+            <button class="cparam-edit-btn" type="button" data-action="start-field-edit" data-field="${f.id}" aria-label="Edit ${escapeHtml(f.label)}">Edit</button>
+          </div>
         `}
       </div>
     `;
@@ -6857,6 +6858,14 @@ root.addEventListener("click", (event) => {
       state.campaignEditDraft = { ...campaign };
     }
     render();
+    // Land the cursor in the editor that just opened rather than making the
+    // user click a second time.
+    const editor = document.querySelector('[data-action="campaign-edit-input"]');
+    if (editor) {
+      editor.focus();
+      editor.setSelectionRange(editor.value.length, editor.value.length);
+    }
+    return;
   }
   if (action === "cancel-field-edit") {
     state.campaignEditField = null;
