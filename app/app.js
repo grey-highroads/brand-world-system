@@ -2072,7 +2072,8 @@ function artifactSectionHeading(artifact, label, title, sectionId) {
 function renderDossierArtifact(artifact) {
   return `
     <section class="artifact-module artifact-read-module">
-      ${artifactSectionHeading(artifact, "The read", artifact.read.join(" · "), "read")}
+      ${artifactSectionHeading(artifact, "The read", "How the brand currently reads", "read")}
+      <ul class="artifact-read-chips">${artifact.read.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
       <p class="artifact-lead-copy">${escapeHtml(artifact.readBody)}</p>
     </section>
     <div class="artifact-split">
@@ -2086,7 +2087,8 @@ function renderDossierArtifact(artifact) {
       </section>
     </div>
     <section class="artifact-module">
-      ${artifactSectionHeading(artifact, "Product truth", artifact.productTruth, "product-truth")}
+      ${artifactSectionHeading(artifact, "Product truth", "What the product actually delivers", "product-truth")}
+      <p class="artifact-lead-copy">${escapeHtml(artifact.productTruth)}</p>
       <ul class="artifact-proof-list">${artifact.proof.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
     </section>
     <div class="artifact-split artifact-visual-split">
