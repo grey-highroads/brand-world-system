@@ -2255,14 +2255,14 @@ function renderBrainGuidance() {
       </section>
 
       <nav class="brain-guidance-view-switch" aria-label="Brand guidance view">
-        <button class="${state.brain.guidanceView === "guidance" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="guidance"><span>Guidance</span><small>Read and edit the Brand Brain by category</small></button>
-        <button class="${state.brain.guidanceView === "artifacts" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="artifacts"><span>Artifacts</span><small>Use composed dossiers, lived worlds, and stories</small></button>
+        <button class="${state.brain.guidanceView === "guidance" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="guidance"><span>Guidance</span></button>
+        <button class="${state.brain.guidanceView === "artifacts" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="artifacts"><span>Artifacts</span></button>
       </nav>
 
       ${state.brain.guidanceView === "artifacts" ? renderBrainArtifactReader() : `
 
       <nav class="brain-guidance-tabs" role="tablist" aria-label="Brand guidance sections">
-        ${guidanceSections.map((item) => `<button class="category-${item.id} ${item.id === section.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === section.id}" data-action="select-guidance-tab" data-id="${item.id}"><span>${escapeHtml(item.name)}</span><small>${item.sourceCount} sources</small></button>`).join("")}
+        ${guidanceSections.map((item) => `<button class="category-${item.id} ${item.id === section.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === section.id}" data-action="select-guidance-tab" data-id="${item.id}"><span>${escapeHtml(item.name)}</span></button>`).join("")}
       </nav>
 
       <div class="brain-guidance-workspace">
@@ -2273,21 +2273,21 @@ function renderBrainGuidance() {
           </header>
 
           <section class="guidance-document-section">
-            <div class="guidance-section-heading"><span><span class="section-label">Synthesized guidance</span><h3>What the Brand Brain understands</h3></span><small>Comment on any passage to shape the next version.</small></div>
+            <div class="guidance-section-heading"><span><h3>What the Brand Brain understands</h3></span><small>Comment on any passage to shape the next version.</small></div>
             <div class="guidance-prose">${section.prose.map((paragraph, index) => guidanceCommentBlock(section, paragraph, index)).join("")}</div>
           </section>
 
           <section class="guidance-document-section">
-            <div class="guidance-section-heading"><span><span class="section-label">Working principles</span><h3>What should stay true</h3></span></div>
+            <div class="guidance-section-heading"><span><h3>What should stay true</h3></span></div>
             <ol class="guidance-principles">${section.principles.map((principle, index) => `<li><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(principle)}</strong></li>`).join("")}</ol>
           </section>
 
-          <section class="guidance-document-section">
-            <div class="guidance-section-heading"><span><span class="section-label">Source trail</span><h3>Why the system reached this view</h3></span><small>${section.sourceCount} connected source items</small></div>
+          <details class="guidance-document-section collapsible-card guidance-evidence-drawer">
+            <summary class="guidance-section-heading collapsible-header"><span><h3>Why the system reached this view</h3></span><span class="collapsible-meta"><span class="mini-pill">${section.sourceCount} sources</span><span class="collapsible-chevron" aria-hidden="true"></span></span></summary>
             <div class="guidance-evidence-list">
               ${section.evidence.map((item) => `<article><span><strong>${escapeHtml(item.source)}</strong><small>${escapeHtml(item.ref)}</small></span><p>${escapeHtml(item.insight)}</p><span class="guidance-evidence-use"><strong>How it was used</strong>${escapeHtml(item.use)}</span></article>`).join("")}
             </div>
-          </section>
+          </details>
 
           <section class="guidance-production-use">
             <span class="section-label">How production uses this section</span>
@@ -2296,23 +2296,6 @@ function renderBrainGuidance() {
         </article>
 
         <aside class="brain-guidance-rail">
-          <section class="card guidance-artifacts-panel">
-            <span class="section-label">Artifacts built from this guidance</span>
-            <h2>What you can work with</h2>
-            <p>These are durable references, not one-line summaries. They stay connected to this version and its source trail.</p>
-            <div class="guidance-artifact-list">${section.artifacts.map((artifact, index) => guidanceArtifactCard(section, artifact, index)).join("")}</div>
-          </section>
-
-          <section class="card guidance-source-summary">
-            <span class="section-label">How this section was shaped</span>
-            <dl>
-              <div><dt>Protected assets</dt><dd>Used as supplied</dd></div>
-              <div><dt>Approved guidance</dt><dd>Followed where relevant</dd></div>
-              <div><dt>Past work and research</dt><dd>Interpreted for patterns, not treated as rules</dd></div>
-              <div><dt>References</dt><dd>Used for inspiration only</dd></div>
-            </dl>
-          </section>
-
           <section class="card brain-artifact-decision">
             <span class="section-label">${ready ? "Current status" : "Review status"}</span>
             <h2>${ready ? "Production can use this version" : commentCount ? `${commentCount} inline ${commentCount === 1 ? "comment" : "comments"} saved` : "Is this Brand Brain ready?"}</h2>
@@ -2336,6 +2319,11 @@ function renderBrainGuidance() {
                 `
                 : ""
             }
+          </section>
+
+          <section class="card guidance-artifacts-panel">
+            <span class="section-label">Artifacts built from this guidance</span>
+            <div class="guidance-artifact-list">${section.artifacts.map((artifact, index) => guidanceArtifactCard(section, artifact, index)).join("")}</div>
           </section>
         </aside>
       </div>

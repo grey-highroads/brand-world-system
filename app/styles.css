@@ -3470,11 +3470,11 @@ select {
   --category-tint: rgb(114 184 215 / 0.1);
   position: relative;
   display: grid;
-  flex: 1 0 150px;
-  gap: 7px;
+  flex: 1 0 auto;
+  gap: 0;
   align-content: center;
-  min-height: 76px;
-  padding: 14px 16px 13px;
+  min-height: var(--control-sm);
+  padding: var(--space-2) var(--space-3);
   overflow: hidden;
   color: var(--text);
   text-align: left;
@@ -3489,7 +3489,7 @@ select {
   top: 0;
   right: 0;
   left: 0;
-  height: 3px;
+  height: 2px;
   background: var(--category-color);
   content: "";
   opacity: 0.62;
@@ -3518,11 +3518,10 @@ select {
   color: var(--text);
   background: var(--category-tint);
   border-color: var(--category-color);
-  box-shadow: 0 7px 18px rgb(8 13 20 / 0.16);
 }
 
 .brain-guidance-tabs button.active::before {
-  height: 4px;
+  height: 3px;
   opacity: 1;
 }
 
@@ -3561,33 +3560,31 @@ select {
 }
 
 .brain-guidance-view-switch {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(220px, 1fr));
-  gap: 5px;
-  max-width: 640px;
-  padding: 5px;
-  margin-bottom: 14px;
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(120px, auto));
+  gap: var(--space-1);
+  padding: var(--space-1);
+  margin-bottom: var(--space-4);
   background: var(--ink-900);
-  border: 1px solid var(--paper-200);
-  border-radius: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
 }
 
 .brain-guidance-view-switch button {
   display: grid;
-  gap: 2px;
-  min-height: 48px;
-  padding: 8px 12px;
+  place-items: center;
+  min-height: var(--control-sm);
+  padding: 0 var(--space-4);
   color: var(--muted);
-  text-align: left;
   background: transparent;
   border: 1px solid transparent;
-  border-radius: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .brain-guidance-view-switch button span {
-  color: var(--text);
-  font-size: 11px;
-  font-weight: 760;
+  color: inherit;
+  font-size: 13px;
+  font-weight: 650;
 }
 
 .brain-guidance-view-switch button small {
@@ -3598,7 +3595,7 @@ select {
 .brain-guidance-view-switch button.active {
   color: var(--celery-ink);
   background: var(--paper-50);
-  border-color: rgb(114 184 215 / 0.28);
+  border-color: var(--celery);
 }
 
 .brain-artifact-tabs {
@@ -7301,4 +7298,23 @@ button.ws-attention-item:hover {
   font-size: 12px;
   vertical-align: baseline;
   text-decoration: underline;
+}
+
+.guidance-evidence-drawer > summary {
+  cursor: pointer;
+  list-style: none;
+}
+
+.guidance-evidence-drawer > summary::-webkit-details-marker {
+  display: none;
+}
+
+.guidance-evidence-drawer .collapsible-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.guidance-evidence-drawer .guidance-evidence-list {
+  margin-top: var(--space-4);
 }
