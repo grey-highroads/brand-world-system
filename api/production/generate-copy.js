@@ -281,24 +281,54 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     if (images.some((i) => i.kind === "isolated")) drewOn.push("Product image on the record");
   }
 
+  // Each studio category asks for a different kind of artifact, so the task
+  // line and the rules change with it. Everything else is shared.
+  const kinds = {
+    scene: {
+      task: "You write short scene briefs for brand image production. A scene brief describes what a single image should show: subject, setting, action, light, and mood. It is direction for a photographer, not marketing copy.",
+      rules: [
+        "Describe only what a camera could see. No slogans, no statistics, no claims about the product's performance.",
+        "Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in.",
+        "The three briefs must differ in setting or moment, not merely in wording.",
+      ],
+    },
+    template_surface: {
+      task: "You write short briefs for reusable branded background surfaces. A surface is a backdrop that other work sits on top of: a gradient, a texture, a lit environment with open space. It is not a finished image and it has no subject of its own.",
+      rules: [
+        "Describe the surface, its color behavior, its light, and where the open space sits for elements and text.",
+        "No people, no products, no focal subject. Anything placed later needs room.",
+        "Use the brand's palette and materials rather than inventing new ones.",
+        "The three surfaces must differ in structure or where the open space falls, not merely in wording.",
+      ],
+    },
+    sales_element: {
+      task: "You write short briefs for a single generated element that will sit on top of a branded template in sales collateral. The element is one object rendered cleanly: a device mockup, a product shot, a demonstration visual.",
+      rules: [
+        "Describe the object, its angle, its finish, and its lighting. One object, not a scene.",
+        "No text on the object beyond what a real screen or package would carry, and no invented interface copy.",
+        "No slogans, no statistics, no claims about the product's performance.",
+        "The three briefs must differ in the object or its treatment, not merely in wording.",
+      ],
+    },
+  };
+  const kind = kinds[String(body.kind || "scene")] || kinds.scene;
+
   const systemPrompt = [
-    "You write short scene briefs for brand image production. A scene brief describes what a single image should show: subject, setting, action, light, and mood. It is direction for a photographer, not marketing copy.",
+    kind.task,
     "",
     context.join("\n"),
     "",
     "RULES:",
-    "- Describe only what a camera could see. No slogans, no statistics, no claims about the product's performance.",
-    "- Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in.",
+    ...kind.rules.map((rule) => `- ${rule}`),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",
     "- Two or three sentences per brief. Concrete nouns over adjectives.",
-    "- The three briefs must differ in setting or moment, not merely in wording.",
     "",
     "OUTPUT FORMAT:",
-    'Return only JSON: {"options":[{"label":"three or four words","brief":"the scene"}]} with exactly three options. No markdown fences, no preamble.',
+    'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
 
   const userPrompt = [
-    body.placementLabel ? `The image is a ${body.placementLabel}${body.placementRatio ? ` at ${body.placementRatio}` : ""}.` : "",
+    body.placementLabel ? `The output is a ${body.placementLabel}${body.placementRatio ? ` at ${body.placementRatio}` : ""}.` : "",
     body.placementCraft ? `Composition for this shape: ${body.placementCraft}` : "",
     body.hint ? `The user has started describing it: ${body.hint}` : "Propose three directions the brand could credibly take.",
   ].filter(Boolean).join("\n");

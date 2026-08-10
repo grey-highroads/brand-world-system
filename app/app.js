@@ -1105,6 +1105,7 @@ const state = {
     sceneSuggesting: false,
     sceneSuggestError: "",
     sceneSourcesOpen: false,
+    sceneField: "brief",
     websiteProductId: "",
   },
   brain: {
@@ -2870,10 +2871,16 @@ function renderStudioSetup() {
             <div class="card-header"><h2>Your brief</h2></div>
 
             <div class="field-grid">
-              <div class="field full">
-                <label for="studio-brief">What are you making?</label>
-                <textarea id="studio-brief" data-action="studio-brief-input" placeholder="Spring collection lifestyle shot with the Yuzu Ginger product on a wooden surface, warm afternoon light">${escapeHtml(state.studio.brief)}</textarea>
-              </div>
+              ${sceneSuggestField({
+                id: "studio-brief",
+                field: "brief",
+                inputAction: "studio-brief-input",
+                kind: "scene",
+                label: "What are you making?",
+                note: "The system already knows your brand, this campaign, and any product you attach. It can propose the shot.",
+                cta: "Show me three directions",
+                placeholder: "Spring collection lifestyle shot with the Yuzu Ginger product on a wooden surface, warm afternoon light",
+              })}
 
               <div class="field full">
                 <label>Platforms</label>
@@ -3051,11 +3058,16 @@ function renderTemplateSetup(cat) {
             <div class="card-header"><h2>Your brief</h2></div>
 
             <div class="field-grid">
-              <div class="field full">
-                <label for="studio-brief">Describe the surface</label>
-                <span class="field-note">What it looks like and where to leave open space for elements and text.</span>
-                <textarea id="studio-brief" data-action="studio-brief-input" placeholder="Dark gradient using our navy and teal, lighter at the top third. Leave the bottom two-thirds open for product placement and text.">${escapeHtml(state.studio.brief)}</textarea>
-              </div>
+              ${sceneSuggestField({
+                id: "studio-brief",
+                field: "brief",
+                inputAction: "studio-brief-input",
+                kind: "template_surface",
+                label: "Describe the surface",
+                note: "What it looks like and where to leave open space for elements and text. The system can propose it from your palette and materials.",
+                cta: "Show me three surfaces",
+                placeholder: "Dark gradient using our navy and teal, lighter at the top third. Leave the bottom two-thirds open for product placement and text.",
+              })}
 
               <div class="field full">
                 <label>Where will this be used?</label>
@@ -3200,7 +3212,32 @@ function updateSalesReadyState() {
 // with different settings, because someone who cannot describe what they want
 // can still recognize it, and choosing arrives faster than editing a guess.
 // Picking one fills the field and leaves it fully editable.
-function sceneSuggestionPanel() {
+// One block covering every studio brief field: the primary suggest button, the
+// three options, and the write-it-myself disclosure. Categories differ in what
+// they ask the model for and which state field the text lands in.
+function sceneSuggestField(config) {
+  const approved = approvedBrainForProduction();
+  const value = state.studio[config.field] || "";
+  const busy = state.studio.sceneSuggesting;
+  return `
+    <div class="field full">
+      <label for="${config.id}">${escapeHtml(config.label)}</label>
+      <span class="field-note">${escapeHtml(config.note)}</span>
+      ${state.studio.sceneSuggestions.length ? "" : `
+        <button class="button primary scene-suggest-cta" type="button" data-action="suggest-scene" data-kind="${config.kind}" data-field="${config.field}" ${busy || !approved ? "disabled" : ""}>
+          ${busy ? "Building three directions" : escapeHtml(config.cta)}
+        </button>
+      `}
+      ${sceneSuggestionPanel(config)}
+      <details class="scene-write-own" ${value.trim() ? "open" : ""}>
+        <summary>Write it myself</summary>
+        <textarea id="${config.id}" data-action="${config.inputAction}" placeholder="${escapeHtml(config.placeholder)}">${escapeHtml(value)}</textarea>
+      </details>
+    </div>
+  `;
+}
+
+function sceneSuggestionPanel(config = {}) {
   const { sceneSuggestions: options, sceneSuggestError: error, sceneSuggestionsDrewOn: drewOn } = state.studio;
   if (error) {
     return `<p class="field-note field-spaced scene-suggest-error">${escapeHtml(error)}</p>`;
@@ -3210,7 +3247,7 @@ function sceneSuggestionPanel() {
     <div class="scene-suggest-panel">
       <div class="scene-suggest-head">
         <span class="section-label">Three directions</span>
-        <button class="studio-add-link" type="button" data-action="suggest-scene">Try again</button>
+        <button class="studio-add-link" type="button" data-action="suggest-scene" data-kind="${escapeHtml(config.kind || "scene")}" data-field="${escapeHtml(config.field || "brief")}">Try again</button>
       </div>
       <div class="scene-suggest-list">
         ${options.map((option, index) => `
@@ -3272,20 +3309,16 @@ function renderWebsiteSetup(cat) {
                 ${fmt ? `<p class="field-note field-spaced">${escapeHtml(fmt.note)}</p>` : ""}
               </div>
 
-              <div class="field full">
-                <label for="website-brief">What should it show</label>
-                <span class="field-note">The system already knows your brand, this campaign, and the product. It can propose the shot.</span>
-                ${state.studio.sceneSuggestions.length ? "" : `
-                  <button class="button primary scene-suggest-cta" type="button" data-action="suggest-scene" ${state.studio.sceneSuggesting || !approved ? "disabled" : ""}>
-                    ${state.studio.sceneSuggesting ? "Building three directions" : "Show me three directions"}
-                  </button>
-                `}
-                ${sceneSuggestionPanel()}
-                <details class="scene-write-own" ${state.studio.brief.trim() ? "open" : ""}>
-                  <summary>Write it myself</summary>
-                  <textarea id="website-brief" data-action="studio-brief-input" placeholder="A care coordinator checking messages between patient rooms, natural light, calm and unhurried">${escapeHtml(state.studio.brief)}</textarea>
-                </details>
-              </div>
+              ${sceneSuggestField({
+                id: "website-brief",
+                field: "brief",
+                inputAction: "studio-brief-input",
+                kind: "scene",
+                label: "What should it show",
+                note: "The system already knows your brand, this campaign, and the product. It can propose the shot.",
+                cta: "Show me three directions",
+                placeholder: "A care coordinator checking messages between patient rooms, natural light, calm and unhurried",
+              })}
 
               <div class="field full">
                 <label for="website-product">Product record</label>
@@ -3428,11 +3461,16 @@ function renderSalesSetup(cat) {
                 `}
               </div>
 
-              <div class="field full">
-                <label for="sales-element">Content element</label>
-                <span class="field-note">What should be generated on top of the template. Describe the visual, not the copy.</span>
-                <textarea id="sales-element" data-action="sales-element-input" placeholder="A premium phone mockup showing a text conversation between the system and a patient confirming an appointment. The phone should look modern and high-end, angled slightly.">${escapeHtml(state.studio.salesElement)}</textarea>
-              </div>
+              ${sceneSuggestField({
+                id: "sales-element",
+                field: "salesElement",
+                inputAction: "sales-element-input",
+                kind: "sales_element",
+                label: "Content element",
+                note: "What gets generated on top of the template. The system can propose it from the product record and your brand guidance.",
+                cta: "Show me three elements",
+                placeholder: "A premium phone mockup showing a text conversation between the system and a patient confirming an appointment. The phone should look modern and high-end, angled slightly.",
+              })}
 
               <div class="field full">
                 <label for="sales-product">Product record</label>
@@ -7035,7 +7073,7 @@ root.addEventListener("click", (event) => {
     void prepareProductionPreflight();
   }
   if (action === "suggest-scene") {
-    void suggestSceneBriefs();
+    void suggestSceneBriefs(target.dataset.kind, target.dataset.field);
     return;
   }
   if (action === "toggle-scene-sources") {
@@ -7046,11 +7084,12 @@ root.addEventListener("click", (event) => {
   if (action === "use-scene-suggestion") {
     const option = state.studio.sceneSuggestions[Number(target.dataset.index)];
     if (option) {
-      state.studio.brief = option.brief || "";
+      state.studio[state.studio.sceneField || "brief"] = option.brief || "";
       state.studio.sceneSuggestions = [];
       state.studio.sceneSourcesOpen = false;
       setToast("Direction applied. Edit it however you like.");
       syncBriefGatedControls();
+      updateSalesReadyState();
     }
     render();
     return;
@@ -7988,19 +8027,34 @@ async function loadProducts(force = false) {
 // Upload the file to Blob first, then record it on the product record. The
 // two-step matches how source files already work: the browser puts the bytes
 // in storage directly and the server only ever handles the reference.
-async function suggestSceneBriefs() {
+async function suggestSceneBriefs(kind = "scene", field = "brief") {
   state.studio.sceneSuggesting = true;
   state.studio.sceneSuggestError = "";
+  state.studio.sceneField = field;
   render();
   try {
-    const fmt = websiteOutputFormats[state.studio.websiteFormat] || null;
+    // Each category describes its own output shape so the suggestions are
+    // composed for it rather than for a generic image.
+    const category = state.studio.category;
+    let fmt = null;
+    if (category === "website") fmt = websiteOutputFormats[state.studio.websiteFormat] || null;
+    if (category === "sales") fmt = salesOutputFormats[state.studio.salesFormat] || null;
+    if (category === "social") {
+      const first = state.studio.activeFormats[0];
+      for (const platform of Object.values(studioPlatformFormats)) {
+        const match = (platform.formats || []).find((f) => f.id === first);
+        if (match) { fmt = { label: `${platform.label} ${match.name}`, ratio: match.ratio }; break; }
+      }
+    }
+    const productId = category === "sales" ? state.studio.salesProductId : state.studio.websiteProductId;
     const campaign = (state.campaigns || []).find((c) => c.id === state.studio.campaignId) || null;
     const response = await fetch("/api/production/generate-copy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         action: "scene_brief",
-        productId: state.studio.websiteProductId || undefined,
+        kind,
+        productId: productId || undefined,
         campaign: campaign ? {
           name: campaign.name,
           campaignIdea: campaign.campaignIdea,
@@ -8011,7 +8065,7 @@ async function suggestSceneBriefs() {
         placementLabel: fmt?.label,
         placementRatio: fmt?.ratio,
         placementCraft: fmt?.craft,
-        hint: (state.studio.brief || "").trim() || undefined,
+        hint: (state.studio[field] || "").trim() || undefined,
       }),
     });
     const payload = await readApiJson(response);
