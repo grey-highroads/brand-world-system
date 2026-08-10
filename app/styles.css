@@ -6978,19 +6978,51 @@ button.ws-attention-item:hover {
   flex-shrink: 0;
 }
 
+/* Campaign fields hold anything from three words to three paragraphs. In a
+   multi-column grid every row stretches to its tallest cell, so a one-line
+   objective inherits the height of the audience paragraph beside it. Stacking
+   full width lets each field take the room it actually needs. The label sits in
+   a left column rather than above the value, so short answers stay one line. */
 .cparam-grid-wide {
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-1);
+}
+
+.cparam-grid-wide .cparam-display {
+  display: grid;
+  grid-template-columns: 16px 180px minmax(0, 1fr);
+  gap: var(--space-4);
+  align-items: start;
+  padding: var(--space-3) var(--space-4);
+}
+
+.cparam-grid-wide .cparam-body {
+  display: contents;
+}
+
+.cparam-grid-wide .cparam-label {
+  padding-top: 2px;
+}
+
+.cparam-grid-wide .cparam-value {
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 78ch;
 }
 
 @media (max-width: 900px) {
-  .cparam-grid-wide {
-    grid-template-columns: repeat(2, 1fr);
+  .cparam-grid-wide .cparam-display {
+    grid-template-columns: 16px minmax(0, 1fr);
+    gap: var(--space-2) var(--space-3);
   }
-}
 
-@media (max-width: 600px) {
-  .cparam-grid-wide {
-    grid-template-columns: 1fr;
+  .cparam-grid-wide .cparam-label {
+    grid-column: 2;
+    padding-top: 0;
+  }
+
+  .cparam-grid-wide .cparam-value {
+    grid-column: 2;
   }
 }
 
