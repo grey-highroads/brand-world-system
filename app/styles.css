@@ -2545,17 +2545,6 @@ select {
   align-items: start;
 }
 
-.source-summary-strip .ws-guidance-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.source-summary-cell {
-  cursor: default;
-}
-
-.source-summary-cell:hover {
-  border-color: var(--border-subtle);
-}
 
 .brain-source-composer,
 .brain-source-batch {
@@ -7128,16 +7117,20 @@ button.ws-attention-item:hover {
   align-items: center;
   padding: var(--space-4);
   text-align: left;
-  background: var(--surface-card);
+  background: var(--ink-900);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .intake-door:hover {
-  border-color: var(--border-strong);
-  background: var(--paper-100);
+  border-color: var(--celery);
+  box-shadow: inset 0 0 0 1px var(--celery);
+}
+
+.intake-door:hover .intake-door-body strong {
+  color: var(--celery-ink);
 }
 
 .intake-door-mark {

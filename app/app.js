@@ -1911,28 +1911,6 @@ function renderBrainSources() {
   const pending = pendingSourceCount();
   const canSynthesize = hasApproved ? pending > 0 : hasSources;
   const groups = sourceLibraryGroups();
-  const summaryStrip = hasSources ? `
-    <section class="ws-brand-context source-summary-strip">
-      <div class="ws-brand-header">
-        <div>
-          <h2 class="ws-brand-name">${escapeHtml(state.brandName)} sources</h2>
-          <p class="ws-brand-meta">${brainSourceCount()} ${brainSourceCount() === 1 ? "item" : "items"} across ${state.brain.sources.length} ${state.brain.sources.length === 1 ? "group" : "groups"}</p>
-        </div>
-        <div class="ws-brain-status">
-          ${hasApproved ? `<span class="mini-pill pill-governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span>` : ""}
-          ${pending ? `<span class="mini-pill pill-warning">${pending} pending</span>` : ""}
-        </div>
-      </div>
-      <div class="ws-guidance-grid source-summary-grid">
-        ${groups.map((g) => `
-          <div class="ws-guidance-cell source-summary-cell">
-            <strong>${escapeHtml(g.label)}</strong>
-            <span>${g.rows.length} ${g.rows.length === 1 ? "item" : "items"}</span>
-          </div>
-        `).join("")}
-      </div>
-    </section>
-  ` : "";
   return brainWorkspace(
     "Sources",
     "Add material the system reads to build brand knowledge, plus the protected assets and product briefs it works from.",
@@ -1942,7 +1920,6 @@ function renderBrainSources() {
           ? `<section class="brain-source-update-callout"><span class="brain-status governed">${pending} pending</span><span><strong>You have a proposed update ready</strong><p>New material creates a proposed update. Only guidance touched by it is reconsidered, and nothing changes for production until you review and approve the next version.</p></span><button class="button primary" type="button" data-action="start-brain-synthesis">Prepare proposed update</button></section>`
           : ""
       }
-      ${summaryStrip}
       <div class="brain-sources-layout ${hasSources ? "has-sources" : ""}">
         ${sourceComposer()}
 
