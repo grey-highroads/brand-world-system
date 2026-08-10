@@ -73,6 +73,15 @@ export function createVercelBlobProductionStore(options = {}) {
   const clientId = options.clientId || DEFAULT_CLIENT_ID;
   const credentials = token ? { token } : {};
 
+  // Images are stored privately. Generate a short-lived presigned URL for the
+  // client to display the image.
+  async function signImageUrl(pathname) {
+    const validUntil = Date.now() + 15 * 60 * 1000;
+    const signedToken = await issueSignedToken({ ...credentials, pathname, operations: ["get"], validUntil });
+    const result = await presignUrl(signedToken, { access: "private", operation: "get", pathname, validUntil });
+    return result.presignedUrl;
+  }
+
   async function readJsonBlobOrNull(pathname) {
     const result = await get(pathname, { access: "private", ...credentials, useCache: false });
     if (!result) return null;
@@ -110,13 +119,13 @@ export function createVercelBlobProductionStore(options = {}) {
       });
       return { pathname, contentType, url: blob.url };
     },
-    async imageUrl(pathname) {
-      // Images are stored privately. Generate a short-lived presigned URL for
-      // the client to display the image.
-      const validUntil = Date.now() + 15 * 60 * 1000;
-      const signedToken = await issueSignedToken({ ...credentials, pathname, operations: ["get"], validUntil });
-      const result = await presignUrl(signedToken, { access: "private", operation: "get", pathname, validUntil });
-      return result.presignedUrl;
+    imageUrl: signImageUrl,
+    // Output images are written at a path derived from the job id, always as
+    // PNG (see renderProduction). Presigned URLs expire after fifteen minutes,
+    // so the output log stores a stale string and callers mint a fresh one at
+    // read time rather than trusting what was persisted.
+    async outputImageUrl(jobId) {
+      return signImageUrl(productionImagePathname(clientId, jobId, "png"));
     },
     async readOutputs() {
       return readJsonBlobOrNull(outputsPathname(clientId));

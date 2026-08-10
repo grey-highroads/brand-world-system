@@ -5599,6 +5599,9 @@ function recordOutput(job, extras = {}) {
     // Presigned URLs expire. Treat this as a cache and fall back to a placeholder
     // in the UI rather than showing a broken image.
     imageUrl: extras.imageUrl || job.imageUrl || existing?.imageUrl || null,
+    // Signals that this output produced an image, so the server knows to mint a
+    // fresh presigned URL on read even after the cached one has expired.
+    hadImage: Boolean(extras.imageUrl || job.imageUrl || existing?.imageUrl || existing?.hadImage),
     postCopy: extras.postCopy || job.postCopy || existing?.postCopy || null,
     model: job.model || existing?.model || null,
     // The durable substrate. Guidance section names decay as the brain is revised;
