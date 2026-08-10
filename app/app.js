@@ -3986,52 +3986,31 @@ function renderBrandBrain() {
       `
     : `
         <section class="brain-detail-section">
-          <span class="section-label">What we found</span>
+          <h3>What we found</h3>
           <div class="brain-evidence-grid">${evidence}</div>
         </section>
 
-        <div class="brain-reasoning-grid">
-          <section><span class="section-label">How we found it</span><p>${escapeHtml(selected.method)}</p></section>
-          <section><span class="section-label">Why this matters</span><p>${escapeHtml(selected.rationale)}</p></section>
-        </div>
+        <section class="brain-detail-section">
+          <h3>Why this needs you</h3>
+          <p class="brain-reasoning-prose">${escapeHtml(selected.method)} ${escapeHtml(selected.rationale)}</p>
+        </section>
 
         <div class="brain-relationships">
-          <span class="section-label">What this could affect</span>
+          <h3>What this could affect</h3>
           <span class="evidence-chips">${relationships}</span>
         </div>
       `;
-  const ruleOutcome = selected.actions.find((action) => action.id === resolution)?.detail;
-  const decisionFollowUp = isBrandRule
+  // Promoting to core guidance stays a separate action from resolving a review
+  // item. It appears once an item has actually become eligible rather than
+  // sitting on every item as a disabled control.
+  const decisionFollowUp = !isBrandRule && canonReady
     ? `
-        <section class="brain-rule-outcome ${resolution ? "decided" : ""}">
-          <span class="section-label">What happens next</span>
-          <p>${escapeHtml(ruleOutcome ?? "Choose an option above. Nothing changes until you make a decision.")}</p>
+        <section class="brain-canon-gate ready">
+          <p>This is now available as helpful guidance. Making it part of ${escapeHtml(state.brandName)}'s core brand guidance is a separate decision.</p>
+          <button class="button secondary" type="button" data-action="review-canon-promotion">Review change to core guidance</button>
         </section>
       `
-    : `
-        <section class="brain-canon-gate ${canonReady ? "ready" : ""}">
-          <span class="brain-canon-heading"><strong>Core brand guidance</strong><span>${canonReady ? "Ready to review" : "Reviewed separately"}</span></span>
-          <p>${
-            selected.id === "four-pm-reset"
-              ? canonReady
-                ? "This pattern is now available as helpful guidance. You can separately decide whether it should become part of SLAKE's core brand guidance."
-                : "First choose ‘Use as helpful guidance.’ Adding it to core brand guidance remains a separate decision."
-              : "This decision resolves only this review item. It does not change SLAKE's core brand guidance."
-          }</p>
-          <button
-            class="button ${canonReady ? "secondary" : ""}"
-            type="button"
-            data-action="review-canon-promotion"
-            ${canonReady ? "" : "disabled"}
-          >Review change to core guidance</button>
-        </section>
-
-        <section class="brain-policy-note">
-          <span class="section-label">What this decision changes</span>
-          <strong>This review item only</strong>
-          <span>Other guidance and source material remain available.</span>
-        </section>
-      `;
+    : "";
   const reviewComplete = state.brain.cleanApproved && brainResolvedCount() === brainExceptions.length;
 
   return brainWorkspace(
@@ -4039,26 +4018,15 @@ function renderBrandBrain() {
     "Review the few items that need a decision. Everything else can move forward quickly without changing the brand's core guidance.",
     `
       ${incrementalReview ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion}</span><span><strong>Reviewing a proposed update</strong><p>${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area has" : "areas have"} candidate changes. The active version stays available to production until the next version is approved.</p></span></section>` : ""}
-      <section class="brain-fast-path">
-        <div class="brain-batch-identity">
-          <span class="section-label">Batch</span>
-          <strong>${escapeHtml(brainBatch.name)}</strong>
-          <span>${brainBatch.assetCount} source items · ${escapeHtml(brainBatch.sources.join(" · "))}</span>
-        </div>
-        <div class="brain-clean-count">
-          <span class="brain-clean-dot" aria-hidden="true"></span>
-          <span><strong>${brainBatch.cleanCount ? `${brainBatch.cleanCount} protected ${brainBatch.cleanCount === 1 ? "asset" : "assets"} ready` : "Source reading complete"}</strong><span>${escapeHtml(brainBatch.rights)}</span></span>
-        </div>
-        <div class="brain-fast-action">
-          <span>${brainBatch.cleanCount ? "Approved protected assets can be used in future work. Your core brand guidance stays the same." : "There are no protected assets waiting for approval in this batch."}</span>
-          <button
-            class="button primary"
-            type="button"
-            data-action="approve-clean-assets"
-            ${state.brain.cleanApproved || !brainBatch.cleanCount ? "disabled" : ""}
-          >${state.brain.cleanApproved ? `${brainBatch.cleanCount} approved for future work` : brainBatch.cleanCount ? `Approve ${brainBatch.cleanCount} for future work` : "No assets to approve"}</button>
-        </div>
-      </section>
+      ${brainBatch.cleanCount && !state.brain.cleanApproved ? `
+        <section class="brain-fast-path">
+          <div class="brain-clean-count">
+            <span class="brain-clean-dot" aria-hidden="true"></span>
+            <span><strong>${brainBatch.cleanCount} protected ${brainBatch.cleanCount === 1 ? "asset is" : "assets are"} ready to approve</strong><span>Approving them makes them available to future work. Your core brand guidance stays the same.</span></span>
+          </div>
+          <button class="button primary" type="button" data-action="approve-clean-assets">Approve ${brainBatch.cleanCount} for future work</button>
+        </section>
+      ` : ""}
 
       <div class="brain-review-grid">
         <aside class="brain-queue card" aria-label="Items requiring review">
@@ -4070,11 +4038,6 @@ function renderBrandBrain() {
             <span class="attention-count">${brainExceptions.length}</span>
           </div>
           <div class="brain-queue-list">${queue}</div>
-          <div class="brain-batch-note">
-            <span class="section-label">Sources in this batch</span>
-            <p>${escapeHtml(brainBatch.sources.join(", "))}.</p>
-            <strong>${escapeHtml(brainBatch.rights)}</strong>
-          </div>
         </aside>
 
         <section class="brain-detail card">
@@ -4082,11 +4045,9 @@ function renderBrandBrain() {
             <span class="brain-status ${brainStatusClass(selected.type)}">${escapeHtml(selected.typeLabel)}</span>
             <h2>${escapeHtml(selected.title)}</h2>
             <p>${escapeHtml(selected.summary)}</p>
-            <div class="brain-epistemics">
-              <span><strong>How we found it</strong>${escapeHtml(selected.origin)}</span>
-              <span><strong>How certain</strong>${escapeHtml(selected.confidence)}</span>
-              <span><strong>Why it was flagged</strong>${escapeHtml(selected.signal)}</span>
-            </div>
+            ${String(selected.confidence).toLowerCase() !== "high"
+              ? `<p class="brain-confidence-note">The system is ${escapeHtml(String(selected.confidence).toLowerCase())} confidence on this one, so read the evidence before deciding.</p>`
+              : ""}
           </header>
 
           ${detailContent}

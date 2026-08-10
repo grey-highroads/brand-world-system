@@ -4638,12 +4638,12 @@ select {
 }
 
 .brain-fast-path {
-  display: grid;
-  grid-template-columns: minmax(230px, 0.9fr) minmax(220px, 0.75fr) minmax(360px, 1.35fr);
-  gap: 18px;
+  display: flex;
+  gap: var(--space-4);
   align-items: center;
-  padding: 14px 16px;
-  margin-bottom: 18px;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  margin-bottom: var(--space-4);
   background: var(--ink-900);
   border: 1px solid var(--paper-200);
   border-radius: var(--radius-md);
@@ -4900,8 +4900,31 @@ select {
 .brain-detail-header > p {
   max-width: 740px;
   margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.brain-confidence-note {
+  margin: 0;
+  color: var(--warning, #e6c765);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.brain-detail-section > h3,
+.brain-relationships > h3 {
+  margin: 0;
   color: var(--muted);
   font-size: 12px;
+  font-weight: 650;
+}
+
+.brain-reasoning-prose {
+  margin: var(--space-2) 0 0;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .brain-epistemics {
@@ -4944,7 +4967,7 @@ select {
 
 .brain-evidence-topline strong,
 .brain-evidence-topline span {
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.035em;
   text-transform: uppercase;
@@ -4962,23 +4985,8 @@ select {
 .brain-evidence-card p {
   margin: 10px 0 0;
   color: #c7cbd1;
-  font-size: 11px;
-  line-height: 1.55;
-}
-
-.brain-reasoning-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 18px;
-  padding-top: 18px;
-  margin-top: 18px;
-  border-top: 1px solid var(--paper-200);
-}
-
-.brain-reasoning-grid p {
-  margin: 5px 0 0;
-  color: var(--text);
-  font-size: 11px;
+  font-size: 12px;
+  line-height: 1.6;
 }
 
 .brain-relationships {
@@ -4990,7 +4998,14 @@ select {
 }
 
 .brain-detail-section {
-  margin-top: 18px;
+  padding-top: var(--space-5);
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.brain-detail-section:first-of-type {
+  padding-top: 0;
+  border-top: none;
 }
 
 .brain-rule-detail {
