@@ -13,6 +13,29 @@ export default async function handler(request, response) {
 
   if (request.method === "GET") {
     try {
+      // A single output is requested when the user opens past work for review.
+      // The compiled package comes back with it so the evaluation screen has
+      // the same material it had at generation time.
+      const requestedId = new URL(request.url, "http://localhost").searchParams.get("outputId");
+      if (requestedId) {
+        const log = await store.readOutputs();
+        const output = (log?.outputs || []).find((entry) => entry.id === requestedId) || null;
+        if (!output) {
+          const error = new Error("That output is no longer saved.");
+          error.status = 404;
+          throw error;
+        }
+        let imageUrl = null;
+        try {
+          if (store.outputImageUrl && (output.hadImage || output.imageUrl)) imageUrl = await store.outputImageUrl(requestedId);
+        } catch {
+          imageUrl = null;
+        }
+        const savedPackage = store.readOutputPackage ? await store.readOutputPackage(requestedId) : null;
+        sendJson(response, 200, { output: { ...output, imageUrl }, package: savedPackage });
+        return;
+      }
+
       const saved = await store.readOutputs();
       const outputs = saved?.outputs || [];
       // Presigned image URLs live for fifteen minutes, so any URL persisted in
@@ -56,9 +79,9 @@ export default async function handler(request, response) {
         // The record is gone either way. A missing or already-deleted image
         // should not fail the request.
         try {
-          if (store.deleteOutputImage) await store.deleteOutputImage(outputId);
+          if (store.deleteOutputArtifacts) await store.deleteOutputArtifacts(outputId);
         } catch {
-          // The blob is orphaned rather than the delete being reported as failed.
+          // The blobs are orphaned rather than the delete being reported as failed.
         }
         sendJson(response, 200, { discarded: true, count: remaining.length });
         return;
@@ -89,6 +112,7 @@ export default async function handler(request, response) {
         // durable fact is whether this output ever produced an image.
         imageUrl: output.imageUrl || null,
         hadImage: Boolean(output.hadImage || output.imageUrl),
+        postCopy: output.postCopy || null,
       }));
       await store.writeOutputs({ outputs: trimmed, savedAt: new Date().toISOString() });
       sendJson(response, 200, { saved: true, count: trimmed.length });

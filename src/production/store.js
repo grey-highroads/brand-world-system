@@ -23,6 +23,10 @@ function productionImagePathname(clientId, jobId, extension) {
   return `${clientRoot(clientId)}/production/jobs/${jobId}/output.${extension}`;
 }
 
+function outputPackagePathname(clientId, jobId) {
+  return `${clientRoot(clientId)}/production/jobs/${jobId}/package.json`;
+}
+
 function outputsPathname(clientId) {
   return `${clientRoot(clientId)}/production/outputs.json`;
 }
@@ -53,10 +57,24 @@ export function createFileProductionStore(rootPath) {
     async readImage(pathname) {
       return fs.readFile(pathname);
     },
-    async deleteOutputImage(jobId) {
-      for (const extension of ["png", "jpg", "webp"]) {
+    async writeOutputPackage(jobId, value) {
+      await fs.mkdir(path.join(rootPath, "packages"), { recursive: true });
+      await fs.writeFile(path.join(rootPath, "packages", `${jobId}.json`), `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+    },
+    async readOutputPackage(jobId) {
+      try {
+        return JSON.parse(await fs.readFile(path.join(rootPath, "packages", `${jobId}.json`), "utf8"));
+      } catch (error) {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      }
+    },
+    async deleteOutputArtifacts(jobId) {
+      const targets = [path.join(rootPath, "packages", `${jobId}.json`)];
+      for (const extension of ["png", "jpg", "webp"]) targets.push(path.join(imageRoot, `${jobId}.${extension}`));
+      for (const target of targets) {
         try {
-          await fs.unlink(path.join(imageRoot, `${jobId}.${extension}`));
+          await fs.unlink(target);
         } catch (error) {
           if (error.code !== "ENOENT") throw error;
         }
@@ -136,10 +154,29 @@ export function createVercelBlobProductionStore(options = {}) {
     async outputImageUrl(jobId) {
       return signImageUrl(productionImagePathname(clientId, jobId, "png"));
     },
-    // Discarding an output is a hard delete. The image blob goes with the log
-    // record so nothing is left to resurface or pay storage for.
-    async deleteOutputImage(jobId) {
-      await del(productionImagePathname(clientId, jobId, "png"), { ...credentials });
+    // The compiled package is the durable record of what the brand asserted when
+    // this output was made. It is written per job so an output stays reviewable
+    // after the single current-job slot moves on.
+    async writeOutputPackage(jobId, value) {
+      await put(outputPackagePathname(clientId, jobId), JSON.stringify(value), {
+        access: "private",
+        ...credentials,
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: "application/json",
+        cacheControlMaxAge: 60,
+      });
+    },
+    async readOutputPackage(jobId) {
+      return readJsonBlobOrNull(outputPackagePathname(clientId, jobId));
+    },
+    // Discarding an output is a hard delete. The image and the package go with
+    // the log record so nothing is left to resurface or pay storage for.
+    async deleteOutputArtifacts(jobId) {
+      await Promise.all([
+        del(productionImagePathname(clientId, jobId, "png"), { ...credentials }).catch(() => {}),
+        del(outputPackagePathname(clientId, jobId), { ...credentials }).catch(() => {}),
+      ]);
     },
     async readOutputs() {
       return readJsonBlobOrNull(outputsPathname(clientId));

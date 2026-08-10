@@ -950,6 +950,9 @@ const state = {
     feedbackScope: "this-output",
     bannerDismissed: false,
     discardConfirm: false,
+    reviewing: false,
+    reviewLoading: false,
+    reviewError: "",
     // Consumption records for change-impact classification (roadmap 11).
     // Display now reads from the unified state.outputs store; this remains the
     // audit trail. Consolidating the two is a deliberate follow-up.
@@ -1214,6 +1217,7 @@ function renderOutputPreview() {
         ${output.scene ? `<p class="preview-scene">${escapeHtml(output.scene)}</p>` : ""}
         <div class="preview-actions">
           <span class="mini-pill ${output.status === "approved" ? "pill-success" : "pill-neutral"}">${output.status === "approved" ? "Approved" : "Draft"}</span>
+          <button class="button secondary compact" type="button" data-action="open-output-review" data-id="${output.id}">Open evaluation</button>
           ${output.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${output.id}">Make another like this</button>` : ""}
           ${state.discardOutputId === output.id
             ? `<span class="result-discard-inline"><span>Remove this permanently?</span><button class="button danger compact" type="button" data-action="confirm-discard-output" data-id="${output.id}">Discard</button><button class="button ghost compact" type="button" data-action="cancel-discard-output">Keep it</button></span>`
@@ -4919,6 +4923,25 @@ function buildEvaluationFindings(job) {
 }
 
 function renderResult() {
+  if (state.production.reviewLoading) {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader("Opening this output", "Loading the compiled package that produced it.")}
+        <section class="card"><div class="generation-state"><div class="production-spinner" aria-hidden="true"></div><h3>Loading</h3></div></section>
+      </section>
+    `);
+  }
+  if (state.production.reviewError) {
+    return shell(`
+      <section class="workspace">
+        ${pageHeader("This output cannot be evaluated", "")}
+        <section class="card">
+          <p class="page-description">${escapeHtml(state.production.reviewError)}</p>
+          <div class="actions"><button class="button" type="button" data-action="workspace">Back to Snapshot</button></div>
+        </section>
+      </section>
+    `);
+  }
   const job = state.production.job;
   const working = state.production.status === "generating" || job?.status === "working";
   const failed = state.production.status === "error" || job?.status === "error";
@@ -4970,7 +4993,9 @@ function renderResult() {
         failed ? "Generation needs attention" : working ? "Generating your image" : complete ? "Evaluate result" : "Generated result",
         failed ? "Your package is still saved and ready to try again."
           : working ? "OpenAI is creating the image from the reviewed package."
-          : complete ? `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. Review the findings below before approving or revising.`
+          : complete ? (state.production.reviewing
+              ? `Saved work, made with ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. The findings below come from the package that produced it.`
+              : `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. Review the findings below before approving or revising.`)
           : ""
       )}
 
@@ -5632,6 +5657,9 @@ function recordOutput(job, extras = {}) {
 
 function applyProductionJob(job, hydrating = false) {
   if (!job) return false;
+  // A live job replaces any past output opened for review.
+  state.production.reviewing = false;
+  state.production.reviewError = "";
   state.production.job = job;
   state.production.package = job.generationPackage || state.production.package;
   state.production.status = job.status === "complete" ? "complete" : job.status === "error" ? "error" : "generating";
@@ -5818,6 +5846,50 @@ async function persistOutputs() {
   }
 }
 
+// Past outputs are reviewable. The compiled package is persisted per job, so a
+// record from any earlier session can be loaded back into the evaluation screen
+// with the same material it had at generation time. The result screen reads
+// from state.production.job, so restoring past work means rebuilding a
+// job-shaped object rather than teaching every action to take an output id.
+async function openOutputForReview(outputId) {
+  const record = state.outputs.find((o) => o.id === outputId) || null;
+  state.previewOutputId = null;
+  state.production.reviewLoading = true;
+  state.production.reviewError = "";
+  navigate("result");
+
+  try {
+    const response = await fetch(`/api/production/outputs?outputId=${encodeURIComponent(outputId)}`, { headers: { Accept: "application/json" } });
+    const payload = await readApiJson(response);
+    if (!response.ok) throw new Error(payload?.error || "That output could not be opened.");
+    const saved = payload.output || record;
+    const generationPackage = payload.package?.generationPackage || record?.package || null;
+    if (!generationPackage) throw new Error("The compiled package for this output was not saved, so it cannot be evaluated.");
+
+    state.production.job = {
+      jobId: outputId,
+      status: "complete",
+      imageUrl: saved?.imageUrl || record?.imageUrl || null,
+      postCopy: saved?.postCopy || record?.postCopy || null,
+      model: payload.package?.model || record?.model || null,
+      endpoint: payload.package?.endpoint || null,
+      generationPackage,
+    };
+    state.production.package = generationPackage;
+    state.production.status = "complete";
+    state.production.error = "";
+    state.production.approved = (saved?.status || record?.status) === "approved";
+    state.production.bannerDismissed = true;
+    state.production.feedbackOpen = false;
+    state.production.reviewing = true;
+  } catch (error) {
+    state.production.reviewError = error.message || "That output could not be opened.";
+  } finally {
+    state.production.reviewLoading = false;
+    render();
+  }
+}
+
 // Hard delete. The record leaves state.outputs, so every surface that reads
 // from it (recent work, campaign lists, drift cards, the preview modal) stops
 // showing it without needing its own filter. The server removes the log entry
@@ -5836,6 +5908,7 @@ async function discardOutput(outputId) {
     state.production.status = "idle";
     state.production.approved = false;
     state.production.bannerDismissed = true;
+    state.production.reviewing = false;
     if (state.screen === "result") state.screen = "chooser";
   }
 
@@ -6687,6 +6760,10 @@ root.addEventListener("click", (event) => {
     navigate("brief");
     return;
   }
+  if (action === "open-output-review") {
+    void openOutputForReview(target.dataset.id);
+    return;
+  }
   if (action === "discard-output") {
     // Two-step. The first click asks; the second one deletes.
     if (target.dataset.id) state.discardOutputId = target.dataset.id;
@@ -7189,8 +7266,12 @@ root.addEventListener("click", (event) => {
         appliedRules: (pkg.treatments || []).filter((t) => t.treatment === "locked" && t.category === "Creative rules").map((t) => t.element),
         label: `${pkg.output?.placement} ${pkg.output?.format}`,
       });
-      // Promote the draft record written at generation time.
-      const record = recordOutput(job);
+      // Promote the draft record written at generation time. When reviewing past
+      // work the record already exists and the current brief describes a
+      // different job, so rebuilding it would overwrite the real history.
+      const record = state.production.reviewing
+        ? state.outputs.find((o) => o.id === job.jobId)
+        : recordOutput(job);
       if (record) {
         record.status = "approved";
         record.approvedAt = new Date().toISOString();
@@ -7263,6 +7344,8 @@ root.addEventListener("click", (event) => {
     state.production.feedbackOpen = false;
     state.production.feedbackDraft = "";
     state.production.feedbackScope = "this-output";
+    state.production.reviewing = false;
+    state.production.reviewError = "";
     state.campaignReferences = [];
     navigate("chooser");
   }

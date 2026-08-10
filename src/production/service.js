@@ -254,6 +254,21 @@ export async function generateProductionImage(body, options) {
     if (!image?.b64_json) throw new Error("OpenAI returned no image data.");
     const bytes = Buffer.from(image.b64_json, "base64");
     const savedImage = await options.productionStore.writeImage(jobId, bytes, "image/png");
+    // Persist the compiled package alongside the image so this output stays
+    // reviewable after the current-job slot is reused. A failure here should not
+    // lose an image that was generated successfully.
+    if (options.productionStore.writeOutputPackage) {
+      try {
+        await options.productionStore.writeOutputPackage(jobId, {
+          generationPackage,
+          model: OPENAI_IMAGE_MODEL,
+          endpoint: working.endpoint,
+          savedAt: new Date().toISOString(),
+        });
+      } catch {
+        // The output is still usable in-session; only later review is affected.
+      }
+    }
     const complete = {
       ...working,
       status: "complete",
