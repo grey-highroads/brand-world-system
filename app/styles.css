@@ -5854,7 +5854,7 @@ select {
 
 .ws-attention-cta {
   flex-shrink: 0;
-  color: var(--coral-dark);
+  color: var(--celery-ink);
   font-size: 12px;
   font-weight: 600;
   white-space: nowrap;
