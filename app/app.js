@@ -2872,6 +2872,18 @@ function renderStudioSetup() {
 
             <div class="field-grid">
               <div class="field full">
+                <label for="social-product">Product record</label>
+                <span class="field-note">Optional. Pulls in approved claims, exclusions, and visual direction for a product.</span>
+                <div class="studio-campaign-row">
+                  <select id="social-product" data-action="website-product-change">
+                    <option value="">No product record</option>
+                    ${approvedProducts().map((p) => `<option value="${escapeHtml(p.product_id)}" ${state.studio.websiteProductId === p.product_id ? "selected" : ""}>${escapeHtml(p.product_name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">${approvedProducts().length ? escapeHtml(productImageryNote(state.studio.websiteProductId)) : "No approved products yet."}</span>
+                </div>
+              </div>
+
+              <div class="field full">
                 <label for="studio-campaign">Campaign</label>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
@@ -3223,7 +3235,11 @@ function sceneSuggestField(config) {
     <div class="field full">
       <label for="${config.id}">${escapeHtml(config.label)}</label>
       <span class="field-note">${escapeHtml(config.note)}</span>
-      ${state.studio.sceneSuggestions.length ? "" : `
+      ${state.studio.sceneSuggestions.length ? "" : value.trim() ? `
+        <button class="studio-add-link scene-suggest-again" type="button" data-action="suggest-scene" data-kind="${config.kind}" data-field="${config.field}" ${busy ? "disabled" : ""}>
+          ${busy ? "Building three directions" : "Show me other options"}
+        </button>
+      ` : `
         <button class="button primary scene-suggest-cta" type="button" data-action="suggest-scene" data-kind="${config.kind}" data-field="${config.field}" ${busy || !approved ? "disabled" : ""}>
           ${busy ? "Building three directions" : escapeHtml(config.cta)}
         </button>
@@ -3262,6 +3278,7 @@ function sceneContextLine() {
   const missing = [];
   if (!campaign) missing.push("a campaign");
   if (!product && category !== "template") missing.push("a product");
+
   const used = `Uses ${has.join(", ")}.`;
   return missing.length ? `${used} Add ${missing.join(" or ")} above for sharper directions.` : used;
 }
@@ -6973,7 +6990,7 @@ root.addEventListener("click", (event) => {
     // the picker has options ready. Loaders belong in action handlers, not in
     // render functions. See docs/ui-contribution-guide.md.
     // Website and sales both offer the product picker, so both need the list.
-    if (target.dataset.id === "sales" || target.dataset.id === "website") void loadProducts();
+    if (["sales", "website", "social"].includes(target.dataset.id)) void loadProducts();
     state.studio.brief = "";
     state.studio.sceneSuggestions = [];
     state.studio.sceneSuggestionsDrewOn = [];
