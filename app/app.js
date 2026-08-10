@@ -2990,7 +2990,7 @@ function renderStudioSetup() {
           ${state.studio.campaignId ? (() => {
             const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
             return campaign ? `
-            <section class="card surface-accent surface-accent-governed">
+            <section class="card surface-accent surface-accent-governed studio-campaign-card">
               <div class="card-header">
                 <h2>Campaign direction</h2>
                 <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
@@ -3163,7 +3163,7 @@ function renderTemplateSetup(cat) {
           ${state.studio.campaignId ? (() => {
             const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
             return campaign ? `
-            <section class="card surface-accent surface-accent-governed">
+            <section class="card surface-accent surface-accent-governed studio-campaign-card">
               <div class="card-header">
                 <h2>Campaign direction</h2>
                 <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
@@ -3568,7 +3568,7 @@ function renderSalesSetup(cat) {
           ${state.studio.campaignId ? (() => {
             const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
             return campaign ? `
-            <section class="card surface-accent surface-accent-governed">
+            <section class="card surface-accent surface-accent-governed studio-campaign-card">
               <div class="card-header">
                 <h2>Campaign direction</h2>
                 <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
@@ -4896,7 +4896,7 @@ function renderBrief() {
           </section>
           ` : ""}
           ${campaign ? `
-          <section class="card surface-accent surface-accent-governed">
+          <section class="card surface-accent surface-accent-governed studio-campaign-card">
             <div class="card-header">
               <h2>Campaign direction</h2>
               <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>

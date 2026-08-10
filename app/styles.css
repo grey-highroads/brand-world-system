@@ -7938,3 +7938,14 @@ button.ws-attention-item:hover {
 .scene-write-own textarea {
   margin-top: var(--space-2);
 }
+
+/* Campaign direction in a setup sidebar. Campaign fields are free text and a
+   filled-in real campaign runs several times longer than a fixture one, which
+   pushed the continue button below the fold. The card holds a fixed height and
+   scrolls its own content instead of growing the page. */
+.studio-campaign-card .exact-list {
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: var(--space-2);
+  overscroll-behavior: contain;
+}
