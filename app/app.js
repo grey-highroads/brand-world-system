@@ -362,9 +362,9 @@ const sourceMaterialTypes = [
   },
   {
     id: "past-work-research",
-    label: "Past brand work or research",
-    shortLabel: "Past work or research",
-    description: "A campaign, case study, audit, interview, or research source that shows how the brand has behaved without becoming a rule by itself.",
+    label: "Work and research",
+    shortLabel: "Work and research",
+    description: "Campaigns, case studies, audits, interviews, decks, memos, or transcripts. Shows how the brand has behaved without governing anything.",
     examples: "Documents or supported images",
     authority: "brand-evidence",
     handling: "Interpret with context",
@@ -374,9 +374,9 @@ const sourceMaterialTypes = [
   },
   {
     id: "single-image",
-    label: "Single creative image",
-    shortLabel: "Single image",
-    description: "One reference photo, mockup, key visual, or approved piece of brand work used for visual learning.",
+    label: "Images",
+    shortLabel: "Images",
+    description: "Photos, mockups, key visuals, or a moodboard. Read for what they look like.",
     examples: "PNG, JPG, WEBP, GIF",
     authority: "creative-reference",
     handling: "Use for inspiration",
@@ -454,7 +454,19 @@ const sourceRoleOptions = ["Multiple areas", "Brand foundation", "Identity", "Wo
 // system's internal handling. Evidence feeds synthesis; assets are locked and
 // consumed by production; products are born on the Products screen.
 const evidenceMaterialIds = ["approved-guidance", "asset-bearing-guide", "past-work-research", "business-document", "cultural-reference", "single-image", "image-grid"];
+// What the file tab actually offers. Three choices, because the seven-way
+// taxonomy asked people to separate things the system then treated the same:
+// past work and business documents carry identical authority, as do single
+// images and image grids. Cultural reference is gone as a file choice; saying
+// a file is someone else's already makes it a reference. The guide-with-assets
+// case became a checkbox under approved guidance instead of a rival option
+// whose description opened with the same words.
+const evidenceFileMaterialIds = ["approved-guidance", "past-work-research", "single-image"];
 const assetMaterialIds = ["protected-asset", "brand-template"];
+
+function evidenceFileMaterialOptions() {
+  return evidenceFileMaterialIds.map((id) => sourceMaterialTypes.find((item) => item.id === id)).filter(Boolean);
+}
 
 function evidenceMaterialOptions(form) {
   return sourceMaterialTypes.filter((item) => evidenceMaterialIds.includes(item.id) && item.forms.includes(form));
@@ -1431,7 +1443,12 @@ function sourceUsesInfluence(authority = state.brain.sourceAuthority) {
 
 function sourceContract(materialTypeId = state.brain.sourceMaterialType) {
   const material = sourceMaterialType(materialTypeId);
-  const authority = material?.authority || "brand-evidence";
+  const declared = material?.authority || "brand-evidence";
+  // Saying a source is someone else's makes it a reference regardless of what
+  // kind of material it is. Borrowed work can inspire and can never stand as
+  // evidence of what this brand is, so it never carries guidance authority.
+  const borrowed = state.brain.sourceProvenance === "emulate" && declared !== "exact-asset";
+  const authority = borrowed ? "creative-reference" : declared;
   return {
     materialType: material?.id || "business-document",
     declaredType: material?.label || "Other business document",
@@ -1798,10 +1815,40 @@ function sourceProvenanceQuestions(ownWording) {
   `;
 }
 
-function sourceIntentBlock() {
+// The file tab asks the same questions as URL and written material, plus one
+// files genuinely need: whether the material governs, records, or is imagery.
+// URL and text can infer that from provenance alone. A file cannot.
+function sourceFileKindField() {
+  const chosen = state.brain.sourceMaterialType;
+  const isGuide = chosen === "approved-guidance" || chosen === "asset-bearing-guide";
+  return `
+    <label>
+      <span>What kind of material is this? <b>Required</b></span>
+      <select data-action="brain-source-material-type">
+        <option value="" ${!chosen ? "selected" : ""}>Choose one</option>
+        ${evidenceFileMaterialOptions().map((item) => `
+          <option value="${item.id}" ${item.id === chosen || (item.id === "approved-guidance" && chosen === "asset-bearing-guide") ? "selected" : ""}>${escapeHtml(item.label)}</option>
+        `).join("")}
+      </select>
+      <small>${escapeHtml(sourceMaterialType(chosen)?.description || "Approved guidance governs its area. Work and research shows how the brand has behaved. Images are read for what they look like.")}</small>
+    </label>
+    ${isGuide ? `
+      <label class="source-guide-check">
+        <input type="checkbox" data-action="toggle-guide-assets" ${chosen === "asset-bearing-guide" ? "checked" : ""}>
+        <span>
+          <strong>This file shows logos or other assets on its pages</strong>
+          <small>The pages teach the brand. Register anything you need to place as a protected asset separately.</small>
+        </span>
+      </label>
+    ` : ""}
+  `;
+}
+
+function sourceIntentBlock(includeFileKind) {
   return `
     <div class="source-intent-block">
-      ${sourceProvenanceQuestions()}
+      ${includeFileKind ? sourceFileKindField() : ""}
+      ${sourceProvenanceQuestions(includeFileKind ? "A file we made or commissioned for this brand." : undefined)}
       <label>
         <span>How influential should this be?</span>
         <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
@@ -1827,12 +1874,7 @@ function evidenceDoor() {
   const contentReady = mode === "files" ? Boolean(pendingFile) : mode === "url" ? Boolean(state.brain.sourceUrl.trim()) : Boolean(state.brain.sourceText.trim());
   const intentAnswered = Boolean(state.brain.sourceProvenance && state.brain.sourceAspiration);
   const canAdd = Boolean(contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim() && intentAnswered && (isEntry || material));
-  // Files keep the taxonomy step (with a suggestion) because a file's type
-  // matters. URL and text ask intent instead of taxonomy. The step shows
-  // before a file is chosen so the file path reads like the other two, where
-  // every question is visible from the start rather than appearing after an
-  // upload. Choosing a file suggests a type only when none is picked yet.
-  const showType = mode === "files";
+
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
@@ -1868,32 +1910,7 @@ function evidenceDoor() {
         </div>
       ` : ""}
 
-      ${isEntry ? sourceIntentBlock() : ""}
-
-      ${showType ? `
-        <div class="source-type-step">
-          <div class="source-type-heading">
-            <span><strong>What kind of material is this?</strong><small>${material && pendingFile ? "Suggested from the file. Change it if this is not right." : "Sets safe handling before the system reads anything."}</small></span>
-          </div>
-          <div class="source-material-grid">
-            ${evidenceMaterialOptions(mode).map((item) => `
-              <button class="source-material-option ${material?.id === item.id ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
-                <span class="source-material-mark" aria-hidden="true">${escapeHtml(item.label.slice(0, 1))}</span>
-                <span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
-                <i aria-hidden="true">${material?.id === item.id ? "✓" : ""}</i>
-              </button>
-            `).join("")}
-          </div>
-        </div>
-      ` : ""}
-
-      ${material && showType ? `
-        <div class="source-intent-block">
-          ${sourceProvenanceQuestions("A file we made or commissioned for this brand.")}
-        </div>
-      ` : ""}
-
-      ${material && showType ? sourceContractFields(material) : ""}
+      ${sourceIntentBlock(mode === "files")}
 
       <button class="button primary source-add-button" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add source"}</button>
     </section>
@@ -1941,7 +1958,8 @@ function assetDoor() {
 
 function evidenceAcceptString() {
   const exts = new Set();
-  evidenceMaterialOptions("files").forEach((m) => (m.extensions || []).forEach((e) => exts.add(e)));
+  evidenceFileMaterialOptions().forEach((m) => (m.extensions || []).forEach((e) => exts.add(e)));
+  sourceMaterialType("asset-bearing-guide").extensions.forEach((e) => exts.add(e));
   return [...exts].map((e) => `.${e}`).join(",");
 }
 
@@ -6521,6 +6539,30 @@ root.addEventListener("change", async (event) => {
     state.brain.sourceAuthority = event.target.value;
     if (!sourceUsesInfluence()) state.brain.sourceInfluence = "Supporting";
     render();
+  }
+  if (action === "brain-source-material-type") {
+    const material = sourceMaterialType(event.target.value);
+    state.brain.sourceMaterialType = material ? material.id : "";
+    state.brain.sourceAuthority = material ? material.authority : "";
+    if (material && !sourceUsesInfluence(material.authority)) state.brain.sourceInfluence = "Supporting";
+    const pendingFile = state.brain.pendingFiles[0];
+    if (material && pendingFile) {
+      const validationError = validateSourceFile(pendingFile, material);
+      if (validationError) {
+        state.brain.pendingFiles = [];
+        setToast(`${pendingFile.name} was cleared because it does not match ${material.label}.`);
+      }
+    }
+    render();
+    return;
+  }
+  if (action === "toggle-guide-assets") {
+    // The checkbox swaps between the two guidance types rather than living as
+    // its own field, so nothing downstream has to learn a new flag.
+    state.brain.sourceMaterialType = event.target.checked ? "asset-bearing-guide" : "approved-guidance";
+    state.brain.sourceAuthority = "approved-guidance";
+    render();
+    return;
   }
   if (action === "brain-source-role") state.brain.sourceRole = event.target.value;
   if (action === "brain-source-influence") state.brain.sourceInfluence = event.target.value;
