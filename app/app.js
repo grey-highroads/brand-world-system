@@ -7193,13 +7193,11 @@ root.addEventListener("click", (event) => {
   }
   if (action === "load-sample-sources") loadSampleSources();
   if (action === "set-source-provenance") {
+    // Answering this question does not choose a material type. Our own file can
+    // be guidance, past work, or an image. URL and written material still get
+    // an implied type, but it is resolved when the source is added and only
+    // when nothing was picked, so it can never overwrite an explicit choice.
     state.brain.sourceProvenance = target.dataset.value;
-    // Map intent to the existing authority model: our own property is
-    // approved guidance; someone else's is a cultural reference.
-    const implied = target.dataset.value === "emulate" ? "cultural-reference" : "approved-guidance";
-    const material = sourceMaterialType(implied);
-    state.brain.sourceMaterialType = implied;
-    state.brain.sourceAuthority = material.authority;
     render();
   }
   if (action === "set-source-aspiration") {
