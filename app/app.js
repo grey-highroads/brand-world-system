@@ -2218,22 +2218,11 @@ function renderBrainGuidance() {
     "Read what the Brand Brain understands, see why it reached each conclusion, and give feedback where it belongs.",
     `
       ${candidateUpdate ? `<section class="brain-source-update-callout"><span class="brain-status governed">Active v${state.brain.approvedVersion}</span><span><strong>You are reviewing candidate v${state.brain.artifactVersion}</strong><p>The approved version stays available to production. This candidate changes only after you approve it.</p></span></section>` : ""}
-      <section class="card brain-artifact-header ${ready ? "ready" : ""}">
-        <div>
-          ${ready ? "" : `<span class="brain-status governed">Draft for review</span>`}
-          <h2>${escapeHtml(state.brandName)} Brand Brain v${state.brain.artifactVersion}</h2>
-          <p>Built from ${brainSourceCount()} source items with ${brainResolvedCount()} review decisions attached.</p>
-        </div>
-        <div class="brain-artifact-meta">
-          <span><strong>Created</strong>${escapeHtml(brainCreatedLabel())}</span>
-          <span><strong>Sources</strong>${brainSourceCount()} items</span>
-          <span><strong>Version</strong>${state.brain.artifactVersion}</span>
-        </div>
-      </section>
+      ${ready ? "" : `<section class="card brain-artifact-header"><div><span class="brain-status governed">Draft for review</span><h2>${escapeHtml(state.brandName)} Brand Brain v${state.brain.artifactVersion}</h2><p>Built from ${brainSourceCount()} source items with ${brainResolvedCount()} review decisions attached.</p></div></section>`}
 
       <nav class="brain-guidance-view-switch" aria-label="Brand guidance view">
-        <button class="${state.brain.guidanceView === "guidance" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="guidance"><span>Guidance</span></button>
-        <button class="${state.brain.guidanceView === "artifacts" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="artifacts"><span>Artifacts</span></button>
+        <button class="${state.brain.guidanceView === "guidance" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="guidance"><span>Guidance</span><small>What the brand believes, by category</small></button>
+        <button class="${state.brain.guidanceView === "artifacts" ? "active" : ""}" type="button" data-action="set-guidance-view" data-view="artifacts"><span>Artifacts</span><small>Dossiers, lived worlds, and story structure</small></button>
       </nav>
 
       ${state.brain.guidanceView === "artifacts" ? renderBrainArtifactReader() : `
@@ -2259,7 +2248,7 @@ function renderBrainGuidance() {
             <ol class="guidance-principles">${section.principles.map((principle, index) => `<li><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(principle)}</strong></li>`).join("")}</ol>
           </section>
 
-          <details class="guidance-document-section collapsible-card guidance-evidence-drawer">
+          <details class="guidance-document-section collapsible-card guidance-evidence-drawer" open>
             <summary class="guidance-section-heading collapsible-header"><span><h3>Why the system reached this view</h3></span><span class="collapsible-meta"><span class="mini-pill">${section.sourceCount} sources</span><span class="collapsible-chevron" aria-hidden="true"></span></span></summary>
             <div class="guidance-evidence-list">
               ${section.evidence.map((item) => `<article><span><strong>${escapeHtml(item.source)}</strong><small>${escapeHtml(item.ref)}</small></span><p>${escapeHtml(item.insight)}</p><span class="guidance-evidence-use"><strong>How it was used</strong>${escapeHtml(item.use)}</span></article>`).join("")}
@@ -2275,8 +2264,8 @@ function renderBrainGuidance() {
         <aside class="brain-guidance-rail">
           <section class="card brain-artifact-decision">
             <span class="section-label">${ready ? "Current status" : "Review status"}</span>
-            <h2>${ready ? "Production can use this version" : commentCount ? `${commentCount} inline ${commentCount === 1 ? "comment" : "comments"} saved` : "Is this Brand Brain ready?"}</h2>
-            <p>${ready ? "Future production packages can pin this exact version. Later edits will create a new version." : "Approve this stored version, comment directly on a passage, or leave overall feedback."}</p>
+            <h2>${ready ? "Design Studio can use this version" : commentCount ? `${commentCount} inline ${commentCount === 1 ? "comment" : "comments"} saved` : "Is this Brand Brain ready?"}</h2>
+            <p>${ready ? "New work in the Design Studio uses this exact version. Later edits create a new one." : "Approve this stored version, comment directly on a passage, or leave overall feedback."}</p>
             ${
               ready
                 ? `<button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Go to Design Studio</button>`

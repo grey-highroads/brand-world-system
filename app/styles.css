@@ -3446,8 +3446,8 @@ select {
 .brain-guidance-tabs {
   display: flex;
   gap: 6px;
-  padding: 6px;
-  margin-bottom: 18px;
+  padding: var(--space-2);
+  margin-bottom: var(--space-4);
   overflow-x: auto;
   background: var(--ink-900);
   border: 1px solid var(--paper-200);
@@ -3549,31 +3549,39 @@ select {
 }
 
 .brain-guidance-view-switch {
-  display: inline-grid;
-  grid-template-columns: repeat(2, minmax(120px, auto));
-  gap: var(--space-1);
-  padding: var(--space-1);
-  margin-bottom: var(--space-4);
-  background: var(--ink-900);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+  max-width: 720px;
+  margin-bottom: 0;
 }
 
 .brain-guidance-view-switch button {
   display: grid;
-  place-items: center;
-  min-height: var(--control-sm);
-  padding: 0 var(--space-4);
+  gap: var(--space-1);
+  align-content: center;
+  min-height: 62px;
+  padding: var(--space-3) var(--space-4);
   color: var(--muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
+  text-align: left;
+  background: var(--ink-900);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
 }
 
 .brain-guidance-view-switch button span {
-  color: inherit;
-  font-size: 13px;
+  color: var(--text);
+  font-size: 15px;
   font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.brain-guidance-view-switch button small {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.4;
 }
 
 .brain-guidance-view-switch button small {
@@ -3582,9 +3590,19 @@ select {
 }
 
 .brain-guidance-view-switch button.active {
-  color: var(--celery-ink);
   background: var(--paper-50);
   border-color: var(--celery);
+  border-bottom-color: var(--paper-50);
+  box-shadow: inset 0 2px 0 var(--celery);
+}
+
+.brain-guidance-view-switch button.active span {
+  color: var(--celery-ink);
+}
+
+/* The tab row and the panel it governs share an edge so the connection reads. */
+.brain-guidance-tabs {
+  margin-top: -1px;
 }
 
 .brain-artifact-tabs {
