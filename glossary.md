@@ -80,6 +80,8 @@ Each dimension is independent. An entity's position in one dimension implies not
 
 **Locked element.** An element a job must reproduce or place without change. Locked elements use deterministic methods whenever possible.
 
+**Protected asset.** The interface term for a registered locked element: an approved file the system places rather than regenerates. Protected names what the system does for the asset; exact names the promise it keeps, which is why preflight says a protected asset stays exact. Contracts and specialist documentation continue to use locked element.
+
 **Flexible element.** An element a job may invent or vary within policy limits.
 
 **Deterministic composition.** Placing, transforming, or compositing an approved asset directly rather than asking a model to regenerate it. Principle: never regenerate a locked asset when it can be composed deterministically.

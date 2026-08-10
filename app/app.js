@@ -446,18 +446,18 @@ let guidanceSections = [
     name: "Identity",
     summary: "The recognizable assets and expressions that must stay consistent wherever SLAKE appears.",
     prose: [
-      "SLAKE's identity is anchored by the supplied wordmark, packaging, typefaces, and approved claim artwork. These are approved originals, not visual suggestions. When the exact asset is needed, production should place the supplied file rather than asking a render engine to recreate it.",
+      "SLAKE's identity is anchored by the supplied wordmark, packaging, typefaces, and approved claim artwork. These are approved originals, not visual suggestions. When a protected asset is needed, production should place the supplied file rather than asking a render engine to recreate it.",
       "The wider identity feels restrained and tactile. Warm neutrals create the base, while small moments of brighter product color carry recognition. Typography should feel editorial and clear, with enough breathing room to preserve the unhurried character of the brand.",
       "New expressions can extend the system, but they should remain visibly related to the approved core. Novelty should come from context, composition, material, or story rather than altering the logo, package, or claim language.",
     ],
     principles: ["Use approved originals exactly", "Let product color carry recognition", "Create novelty around the identity, not by changing it"],
     evidence: [
       { source: "Approved brand assets", ref: "Asset register, 6 files", insight: "Contains the logo, package, type, and claim artwork that must remain exact.", use: "Creates the locked asset set for production." },
-      { source: "Campaign archive", ref: "Approved campaigns 01 to 07", insight: "Shows a consistent warm-neutral base with restrained color and generous spacing.", use: "Supports the flexible expression around exact assets." },
+      { source: "Campaign archive", ref: "Approved campaigns 01 to 07", insight: "Shows a consistent warm-neutral base with restrained color and generous spacing.", use: "Supports the flexible expression around protected assets." },
     ],
     artifacts: [
       { name: "Identity system dossier", type: "Core reference", description: "A richer explanation of how the approved identity behaves across contexts." },
-      { name: "Approved asset register", type: "Exact asset set", description: "The original approved files, ownership notes, current status, and handling instructions for each asset." },
+      { name: "Approved asset register", type: "Protected asset set", description: "The original approved files, ownership notes, current status, and handling instructions for each asset." },
       { name: "Claims and terminology library", type: "Language asset", description: "Approved claims, product names, spellings, and the contexts in which each may be used." },
     ],
     productionUse: "Use this section to determine what must be placed exactly and what can flex around those assets.",
@@ -548,7 +548,7 @@ let guidanceSections = [
     ],
     artifacts: [
       { name: "Production guardrails", type: "Rule set", description: "Scoped rules, exclusions, rationale, and examples for consistent downstream work." },
-      { name: "Exact asset handling map", type: "Production reference", description: "Which assets stay exact, where they apply, and how they should enter a generation package." },
+      { name: "Protected asset handling map", type: "Production reference", description: "Which assets stay exact, where they apply, and how they should enter a generation package." },
       { name: "Channel expression guide", type: "Application guide", description: "What remains consistent and what can adapt across social, retail, editorial, and experiential work." },
     ],
     productionUse: "Use this section to compile clear production boundaries without turning the whole brand into a rigid template.",
@@ -1592,8 +1592,8 @@ function intakeChooser() {
         <button class="intake-door" type="button" data-action="open-intake-door" data-door="asset">
           <span class="intake-door-mark" aria-hidden="true">A</span>
           <span class="intake-door-body">
-            <strong>Add an exact asset</strong>
-            <small>Logos, packaging, type, or background templates that production must use unchanged. Never altered, never synthesized.</small>
+            <strong>Add a protected asset</strong>
+            <small>Logos, packaging, type, or background templates that production must place unchanged. These stay exact in every job.</small>
           </span>
           <i aria-hidden="true">&rsaquo;</i>
         </button>
@@ -1779,7 +1779,7 @@ function assetDoor() {
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
-        <span><span class="section-label">Add an exact asset</span><h2>Register a locked file</h2></span>
+        <span><span class="section-label">Add a protected asset</span><h2>Register a protected file</h2></span>
         <button class="button" type="button" data-action="close-intake-door">Back</button>
       </div>
       <p class="page-description">These files are used exactly as supplied. They are never altered and never fed into brand synthesis.</p>
@@ -1893,7 +1893,7 @@ function sourceLibraryGroups() {
   const sources = state.brain.sources;
   const groups = [
     { key: "evidence", label: "Brand usage", rows: [] },
-    { key: "asset", label: "Exact assets", rows: [] },
+    { key: "asset", label: "Protected assets", rows: [] },
     { key: "product", label: "Product briefs", rows: [] },
   ];
   for (const source of sources) {
@@ -1911,15 +1911,38 @@ function renderBrainSources() {
   const pending = pendingSourceCount();
   const canSynthesize = hasApproved ? pending > 0 : hasSources;
   const groups = sourceLibraryGroups();
+  const summaryStrip = hasSources ? `
+    <section class="ws-brand-context source-summary-strip">
+      <div class="ws-brand-header">
+        <div>
+          <h2 class="ws-brand-name">${escapeHtml(state.brandName)} sources</h2>
+          <p class="ws-brand-meta">${brainSourceCount()} ${brainSourceCount() === 1 ? "item" : "items"} across ${state.brain.sources.length} ${state.brain.sources.length === 1 ? "group" : "groups"}</p>
+        </div>
+        <div class="ws-brain-status">
+          ${hasApproved ? `<span class="mini-pill pill-governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span>` : ""}
+          ${pending ? `<span class="mini-pill pill-warning">${pending} pending</span>` : ""}
+        </div>
+      </div>
+      <div class="ws-guidance-grid source-summary-grid">
+        ${groups.map((g) => `
+          <div class="ws-guidance-cell source-summary-cell">
+            <strong>${escapeHtml(g.label)}</strong>
+            <span>${g.rows.length} ${g.rows.length === 1 ? "item" : "items"}</span>
+          </div>
+        `).join("")}
+      </div>
+    </section>
+  ` : "";
   return brainWorkspace(
     "Sources",
-    "Add material the system reads to build brand knowledge, plus the exact assets and product briefs it works from.",
+    "Add material the system reads to build brand knowledge, plus the protected assets and product briefs it works from.",
     `
       ${
         hasApproved && pending > 0
           ? `<section class="brain-source-update-callout"><span class="brain-status governed">${pending} pending</span><span><strong>You have a proposed update ready</strong><p>New material creates a proposed update. Only guidance touched by it is reconsidered, and nothing changes for production until you review and approve the next version.</p></span><button class="button primary" type="button" data-action="start-brain-synthesis">Prepare proposed update</button></section>`
           : ""
       }
+      ${summaryStrip}
       <div class="brain-sources-layout ${hasSources ? "has-sources" : ""}">
         ${sourceComposer()}
 
@@ -2283,7 +2306,7 @@ function renderBrainGuidance() {
           <section class="card guidance-source-summary">
             <span class="section-label">How this section was shaped</span>
             <dl>
-              <div><dt>Exact assets</dt><dd>Used as supplied</dd></div>
+              <div><dt>Protected assets</dt><dd>Used as supplied</dd></div>
               <div><dt>Approved guidance</dt><dd>Followed where relevant</dd></div>
               <div><dt>Past work and research</dt><dd>Interpreted for patterns, not treated as rules</dd></div>
               <div><dt>References</dt><dd>Used for inspiration only</dd></div>
@@ -3940,7 +3963,7 @@ function renderBrandBrain() {
           <span class="brain-status success">No questions found</span>
           <h2>The synthesized Brand Brain is ready to read</h2>
           <p>The source trail, guidance, and working artifacts are prepared. Nothing was silently promoted into core brand guidance.</p>
-          ${brainBatch.cleanCount > 0 && !ready ? `<button class="button primary" type="button" data-action="approve-clean-assets">Approve ${brainBatch.cleanCount} exact ${brainBatch.cleanCount === 1 ? "asset" : "assets"}</button>` : `<button class="button secondary" type="button" data-action="finish-brain-review">Review Brand Brain draft</button>`}
+          ${brainBatch.cleanCount > 0 && !ready ? `<button class="button primary" type="button" data-action="approve-clean-assets">Approve ${brainBatch.cleanCount} protected ${brainBatch.cleanCount === 1 ? "asset" : "assets"}</button>` : `<button class="button secondary" type="button" data-action="finish-brain-review">Review Brand Brain draft</button>`}
         </section>
       `,
     );
@@ -4059,10 +4082,10 @@ function renderBrandBrain() {
         </div>
         <div class="brain-clean-count">
           <span class="brain-clean-dot" aria-hidden="true"></span>
-          <span><strong>${brainBatch.cleanCount ? `${brainBatch.cleanCount} exact ${brainBatch.cleanCount === 1 ? "asset" : "assets"} ready` : "Source reading complete"}</strong><span>${escapeHtml(brainBatch.rights)}</span></span>
+          <span><strong>${brainBatch.cleanCount ? `${brainBatch.cleanCount} protected ${brainBatch.cleanCount === 1 ? "asset" : "assets"} ready` : "Source reading complete"}</strong><span>${escapeHtml(brainBatch.rights)}</span></span>
         </div>
         <div class="brain-fast-action">
-          <span>${brainBatch.cleanCount ? "Approved exact assets can be used in future work. Your core brand guidance stays the same." : "There are no exact assets waiting for approval in this batch."}</span>
+          <span>${brainBatch.cleanCount ? "Approved protected assets can be used in future work. Your core brand guidance stays the same." : "There are no protected assets waiting for approval in this batch."}</span>
           <button
             class="button primary"
             type="button"

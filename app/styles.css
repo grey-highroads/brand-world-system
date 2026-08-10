@@ -2100,6 +2100,65 @@ select {
   max-width: 1480px;
 }
 
+.brain-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-inset);
+}
+
+.brain-status-bar-light {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--muted);
+}
+
+.brain-status-bar.ready .brain-status-bar-light {
+  background: var(--success);
+  box-shadow: 0 0 0 3px rgb(104 198 155 / 0.18);
+}
+
+.brain-status-bar-text {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  min-width: 0;
+  flex: 1;
+}
+
+.brain-status-bar-text strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.brain-status-bar-text span {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.brain-status-bar-action {
+  flex-shrink: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--celery-ink);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.brain-status-bar-action:hover {
+  text-decoration: underline;
+}
+
 .brain-section-nav {
   display: flex;
   gap: 4px;
@@ -2481,9 +2540,21 @@ select {
 
 .brain-sources-layout {
   display: grid;
-  grid-template-columns: minmax(390px, 0.95fr) minmax(0, 1.15fr);
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--section-gap);
   align-items: start;
+}
+
+.source-summary-strip .ws-guidance-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.source-summary-cell {
+  cursor: default;
+}
+
+.source-summary-cell:hover {
+  border-color: var(--border-subtle);
 }
 
 .brain-source-composer,
@@ -7042,7 +7113,15 @@ button.ws-attention-item:hover {
 
 .intake-door-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-3);
+  align-items: stretch;
+}
+
+@media (max-width: 900px) {
+  .intake-door-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 
 .intake-door {
