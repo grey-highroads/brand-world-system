@@ -6133,6 +6133,16 @@ async function startProductionGeneration() {
   state.production.error = "";
   state.production.recovered = false;
   state.production.bannerDismissed = false;
+  // A new render is a new output. Approval, review mode, and any open feedback
+  // belong to the job that just ended, so they reset here. Without this, a
+  // second render after approving the first one opened already approved while
+  // its record was still a draft, and approving again would have flipped the
+  // earlier output instead of this one.
+  state.production.approved = false;
+  state.production.reviewing = false;
+  state.production.feedbackOpen = false;
+  state.production.feedbackDraft = "";
+  state.production.feedbackScope = "this-output";
   state.production.job = {
     jobId,
     status: "working",
