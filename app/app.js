@@ -1739,16 +1739,20 @@ function sourceContractFields(material) {
 // direction it is reaching for, how much it should drive the brand, and why
 // it is being shared. The material type is set implicitly from provenance so
 // the existing contract and add handlers keep working.
-function sourceIntentBlock() {
+// The two questions that carry the most weight downstream. Provenance and
+// aspiration decide whether synthesis may treat material as evidence of what
+// the brand is, so every path that creates a source has to ask them. Files ask
+// them alongside the material type; URL and text ask them instead of taxonomy.
+function sourceProvenanceQuestions(ownWording) {
   const prov = state.brain.sourceProvenance;
   const asp = state.brain.sourceAspiration;
+  const ourLabel = ownWording || "Our own website or brand property.";
   return `
-    <div class="source-intent-block">
       <div class="source-intent-question">
         <span class="source-intent-label">Whose is this?</span>
         <div class="source-choice-row">
           <button class="source-choice ${prov === "ours" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="ours">
-            <strong>Ours</strong><small>Our own website or brand property.</small>
+            <strong>Ours</strong><small>${escapeHtml(ourLabel)}</small>
           </button>
           <button class="source-choice ${prov === "emulate" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="emulate">
             <strong>Someone else's</strong><small>A reference we want to draw from, not our own.</small>
@@ -1766,6 +1770,13 @@ function sourceIntentBlock() {
           </button>
         </div>
       </div>
+  `;
+}
+
+function sourceIntentBlock() {
+  return `
+    <div class="source-intent-block">
+      ${sourceProvenanceQuestions()}
       <label>
         <span>How influential should this be?</span>
         <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
@@ -1844,6 +1855,12 @@ function evidenceDoor() {
               </button>
             `).join("")}
           </div>
+        </div>
+      ` : ""}
+
+      ${material && showType ? `
+        <div class="source-intent-block">
+          ${sourceProvenanceQuestions("A file we made or commissioned for this brand.")}
         </div>
       ` : ""}
 
