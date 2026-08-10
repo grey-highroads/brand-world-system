@@ -88,6 +88,28 @@ Bring it back when: one of those flows needs product-specific claims.
 
 ---
 
+## Renderer constraints
+
+### Resizing is not implemented, so catalog sizes are chosen to avoid it
+
+gpt-image-2 accepts arbitrary resolutions when both sides are divisible by 16, the aspect ratio is within 3:1, and the pixel count falls between 655,360 and 8,294,400. Several familiar web sizes fail those rules: 800x600 and 800x800 are below the pixel floor, and 630 is not divisible by 16.
+
+Rather than add an image-resizing dependency, the website catalog uses the nearest natively valid size at the same aspect ratio. Every format renders at exactly the dimensions the interface promises, with no post-processing.
+
+This holds for website images. It will not hold everywhere. Print collateral at 300dpi, retina email images designed at 2x and displayed at 1x, and any format whose exact pixel dimensions are fixed by a third party will eventually need a real resize step.
+
+Bring it back when: a required format cannot be expressed as a natively valid size, or feedback shows the delivered dimensions are causing work downstream. The tool would be sharp, which is a native binary and the first non-JavaScript dependency in the project, so it needs a throwaway deploy to verify before it enters the render path.
+
+### Transparent backgrounds are unavailable on the current model
+
+gpt-image-2 does not support transparent backgrounds, and requests specifying one are rejected.
+
+Presentation elements, product floating shots, and sales collateral elements all assume transparent PNG, and the "better building blocks" position rests on producing elements that layout tools compose. Two unbuilt studio categories depend on this.
+
+Bring it back when: those categories are built. The options are a background-removal step after generation, generating on a solid color and keying it out, or a render path that supports transparency natively. This is a real architectural decision rather than a small fix.
+
+---
+
 ## Content and prompt debt
 
 ### Review questions written under earlier synthesis instructions

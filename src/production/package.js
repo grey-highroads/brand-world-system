@@ -216,6 +216,15 @@ const formatSizes = {
   "1920x1080": "1536x864",
   "1440x1080": "1536x1152",
   "1700x2200": "1024x1312",
+  // Website image formats. gpt-image-2 accepts arbitrary resolutions when both
+  // sides are divisible by 16, the ratio is within 3:1, and the pixel count is
+  // between 655,360 and 8,294,400. These sizes satisfy all four rules, so each
+  // one renders at its delivered dimensions with no resizing step.
+  "1920x800": "1920x800",
+  "1200x800": "1200x800",
+  "1024x768": "1024x768",
+  "1024x1024": "1024x1024",
+  "1280x672": "1280x672",
   "1920x800": "1536x640",
   "1200x800": "1536x1024",
 };
