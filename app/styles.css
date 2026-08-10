@@ -7496,26 +7496,30 @@ button.ws-attention-item:hover {
   gap: var(--space-2);
 }
 
+/* Matches the placement cards in Design Studio: a recessed dark field that
+   takes a full colored stroke and an inset ring when chosen. The earlier
+   treatment sat on the card surface, so an unselected option and the panel
+   behind it read as the same thing. */
 .source-choice {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
   text-align: left;
-  background: var(--surface-card);
+  background: var(--ink-900);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
 }
 
 .source-choice:hover {
-  border-color: var(--border-strong);
+  border-color: var(--celery);
 }
 
 .source-choice.active {
   border-color: var(--celery);
-  background: var(--paper-100);
+  box-shadow: inset 0 0 0 1px var(--celery);
 }
 
 .source-choice strong {
@@ -7527,6 +7531,16 @@ button.ws-attention-item:hover {
   color: var(--muted);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.source-choice-row-three {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+@media (max-width: 900px) {
+  .source-choice-row-three {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 600px) {

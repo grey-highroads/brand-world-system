@@ -340,6 +340,7 @@ const sourceMaterialTypes = [
     description: "A signed-off brand book, guideline, strategy, messaging decision, or other direction that should govern its area.",
     examples: "PDF, DOCX, PPTX, text files, PNG, JPG, WEBP, and more",
     formatAdvice: "For a multi-page brand book, PDF works best. PNG, JPG, and WebP work for a single page or image-only guide. Convert older DOC or PPT files, SVG, HEIC, TIFF, Keynote, and native design files first.",
+    pickerNote: "Signed off, and it governs its area. Brand books, guidelines, messaging decisions.",
     authority: "approved-guidance",
     handling: "Follow when relevant",
     forms: ["files", "url", "text"],
@@ -366,6 +367,7 @@ const sourceMaterialTypes = [
     shortLabel: "Work and research",
     description: "Campaigns, case studies, audits, interviews, decks, memos, or transcripts. Shows how the brand has behaved without governing anything.",
     examples: "Documents or supported images",
+    pickerNote: "Shows how the brand has behaved, without governing anything. Campaigns, case studies, decks, transcripts.",
     authority: "brand-evidence",
     handling: "Interpret with context",
     forms: ["files", "url", "text"],
@@ -378,6 +380,7 @@ const sourceMaterialTypes = [
     shortLabel: "Images",
     description: "Photos, mockups, key visuals, or a moodboard. Read for what they look like.",
     examples: "PNG, JPG, WEBP, GIF",
+    pickerNote: "Read for what they look like. Photos, mockups, key visuals, a moodboard.",
     authority: "creative-reference",
     handling: "Use for inspiration",
     forms: ["files"],
@@ -1822,16 +1825,16 @@ function sourceFileKindField() {
   const chosen = state.brain.sourceMaterialType;
   const isGuide = chosen === "approved-guidance" || chosen === "asset-bearing-guide";
   return `
-    <label>
-      <span>What kind of material is this? <b>Required</b></span>
-      <select data-action="brain-source-material-type">
-        <option value="" ${!chosen ? "selected" : ""}>Choose one</option>
+    <div class="source-intent-question">
+      <span class="source-intent-label">What kind of material is this?</span>
+      <div class="source-choice-row source-choice-row-three">
         ${evidenceFileMaterialOptions().map((item) => `
-          <option value="${item.id}" ${item.id === chosen || (item.id === "approved-guidance" && chosen === "asset-bearing-guide") ? "selected" : ""}>${escapeHtml(item.label)}</option>
+          <button class="source-choice ${item.id === chosen || (item.id === "approved-guidance" && chosen === "asset-bearing-guide") ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
+            <strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.pickerNote || item.description)}</small>
+          </button>
         `).join("")}
-      </select>
-      <small>${escapeHtml(sourceMaterialType(chosen)?.description || "Approved guidance governs its area. Work and research shows how the brand has behaved. Images are read for what they look like.")}</small>
-    </label>
+      </div>
+    </div>
     ${isGuide ? `
       <label class="source-guide-check">
         <input type="checkbox" data-action="toggle-guide-assets" ${chosen === "asset-bearing-guide" ? "checked" : ""}>
