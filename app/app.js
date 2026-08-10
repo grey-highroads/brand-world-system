@@ -1081,13 +1081,14 @@ const state = {
     sourceInfluence: "Supporting",
     sourceUsage: "",
     sourceExclusions: "",
-    // Whose property a URL/text source is: "ours" or "emulate" (someone
-    // else's we want to draw from). Empty until chosen.
-    sourceProvenance: "ours",
+    // Whose property a source is: "ours" or "emulate" (someone else's we want
+    // to draw from). Starts empty on purpose. A pre-selected answer here would
+    // let borrowed material enter as first-party evidence without anyone
+    // choosing that, which is the failure the whole intake exists to prevent.
+    sourceProvenance: "",
     // Whether a source describes how the brand shows up today ("current") or a
-    // direction it is reaching for ("aspiration"). Honored in synthesis as a
-    // follow-up; wired through the contract now.
-    sourceAspiration: "current",
+    // direction it is reaching for ("aspiration"). Also starts empty.
+    sourceAspiration: "",
     sourceTemplateRatio: "",
     sourceProductName: "",
     pendingFiles: [],
@@ -1422,8 +1423,11 @@ function sourceContract(materialTypeId = state.brain.sourceMaterialType) {
     influence: sourceUsesInfluence(authority) ? state.brain.sourceInfluence : "Not weighted",
     usage: state.brain.sourceUsage.trim(),
     exclusions: state.brain.sourceExclusions.trim() || "No additional exclusions supplied.",
-    provenance: state.brain.sourceProvenance,
-    aspiration: state.brain.sourceAspiration,
+    // The protected asset door does not ask. A registered protected file is
+    // the brand's own material by definition and is used exactly as supplied,
+    // so both answers follow from the door rather than from the user.
+    provenance: authority === "exact-asset" ? "ours" : state.brain.sourceProvenance,
+    aspiration: authority === "exact-asset" ? "current" : state.brain.sourceAspiration,
     verification: "Pending content check",
   };
 }
@@ -1448,8 +1452,8 @@ function resetSourceComposer() {
   state.brain.sourceText = "";
   state.brain.sourceUsage = "";
   state.brain.sourceExclusions = "";
-  state.brain.sourceProvenance = "ours";
-  state.brain.sourceAspiration = "current";
+  state.brain.sourceProvenance = "";
+  state.brain.sourceAspiration = "";
   state.brain.sourceMaterialType = "";
   state.brain.sourceTemplateRatio = "";
   state.brain.sourceProductName = "";
@@ -1800,7 +1804,8 @@ function evidenceDoor() {
   const pendingFile = state.brain.pendingFiles[0];
   const isEntry = mode === "url" || mode === "text";
   const contentReady = mode === "files" ? Boolean(pendingFile) : mode === "url" ? Boolean(state.brain.sourceUrl.trim()) : Boolean(state.brain.sourceText.trim());
-  const canAdd = Boolean(contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim() && (isEntry || material));
+  const intentAnswered = Boolean(state.brain.sourceProvenance && state.brain.sourceAspiration);
+  const canAdd = Boolean(contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim() && intentAnswered && (isEntry || material));
   // Files keep the taxonomy step (with a suggestion) because a file's type
   // genuinely matters. URL and text ask intent instead of taxonomy.
   const showType = mode === "files" && Boolean(pendingFile);
@@ -7178,6 +7183,8 @@ root.addEventListener("click", (event) => {
       setToast("Choose one file first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
+    } else if (material.authority !== "exact-asset" && (!state.brain.sourceProvenance || !state.brain.sourceAspiration)) {
+      setToast("Say whose this is and whether it reflects the brand today");
     } else if (material.isTemplate && !state.brain.sourceTemplateRatio) {
       setToast("Choose a template format before adding");
     } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
@@ -7217,6 +7224,8 @@ root.addEventListener("click", (event) => {
       setToast("Add a web address first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
+    } else if (!state.brain.sourceProvenance || !state.brain.sourceAspiration) {
+      setToast("Say whose this is and whether it reflects the brand today");
     } else {
       const sourceId = `url-${Date.now()}`;
       const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
@@ -7247,6 +7256,8 @@ root.addEventListener("click", (event) => {
       setToast("Paste some material first");
     } else if (!state.brain.sourceUsage.trim()) {
       setToast("Add a usage instruction before continuing");
+    } else if (!state.brain.sourceProvenance || !state.brain.sourceAspiration) {
+      setToast("Say whose this is and whether it reflects the brand today");
     } else {
       const title = state.brain.sourceTitle.trim() || material.label;
       const sourceId = `text-${Date.now()}`;
