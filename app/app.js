@@ -65,12 +65,73 @@ const placementFormats = {
 
 const studioCategories = [
   { id: "social", name: "Social image", description: "Feed posts, stories, and carousels for any platform.", icon: "image" },
-  { id: "ad", name: "Ad image", description: "Paid social and display ads with copy governance.", icon: "ad" },
   { id: "website", name: "Website image", description: "Heroes, features, cards, and share images.", icon: "web" },
   { id: "showcase", name: "Product showcase", description: "Product photography, device mockups, and lifestyle scenes.", icon: "product" },
   { id: "sales", name: "Sales enablement", description: "Elements and backgrounds for slides, one-pagers, and pitch materials.", icon: "sales" },
   { id: "template", name: "Brand template", description: "Reusable surfaces, environments, and composition foundations.", icon: "template" },
+  { id: "ad", name: "Ad image", description: "Paid social and display ads with copy governance.", icon: "ad" },
 ];
+
+// Website formats from the output type catalog. Each entry carries the
+// composition knowledge for its shape, which is what lets a thin brief produce
+// a professional result: the user describes the subject, the preset supplies
+// the art direction.
+const websiteOutputFormats = {
+  hero: {
+    label: "Hero",
+    dim: "1920 x 800",
+    ratio: "2.4:1",
+    file: "JPG",
+    treatment: "Environmental",
+    note: "Full-width banner across the top of a page.",
+    craft: "Wide cinematic banner. Compose with the subject off-center and a broad area of calm negative space for headline text. Keep important detail out of the outer eighth on each side, since wide viewports crop there. Depth of field and atmosphere carry this shape better than density.",
+  },
+  feature: {
+    label: "Feature",
+    dim: "1200 x 800",
+    ratio: "3:2",
+    file: "JPG",
+    treatment: "Environmental",
+    note: "Sits beside body copy in a product or feature section.",
+    craft: "Balanced editorial framing. One clear subject, near-to-mid distance, with enough context to explain what it is. This sits next to text, so it should read at a glance rather than reward inspection.",
+  },
+  card: {
+    label: "Card",
+    dim: "800 x 600",
+    ratio: "4:3",
+    file: "JPG",
+    treatment: "Fill",
+    note: "Blog cards, resource cards, and team grids.",
+    craft: "Small final display size, so compose simply. A single subject, strong separation from the background, and no fine detail that disappears at thumbnail scale. Center-weight the subject because cards crop unpredictably.",
+  },
+  "card-square": {
+    label: "Card square",
+    dim: "800 x 800",
+    ratio: "1:1",
+    file: "JPG",
+    treatment: "Fill",
+    note: "Square grid layouts.",
+    craft: "Square and small. Center the subject, keep the composition symmetrical enough to survive tight cropping, and hold detail to what reads at thumbnail scale.",
+  },
+  og: {
+    label: "Share image",
+    dim: "1200 x 630",
+    ratio: "1.91:1",
+    file: "JPG",
+    treatment: "Fill",
+    note: "Open Graph image shown when a page is shared.",
+    craft: "This appears small in a feed next to a title and description, often on a light background. Favor high contrast and one legible subject. Avoid fine texture and avoid composing anything meaningful near the edges, which social platforms crop.",
+  },
+  blog: {
+    label: "Blog header",
+    dim: "1200 x 630",
+    ratio: "1.91:1",
+    file: "JPG",
+    treatment: "Environmental",
+    note: "Article header. Doubles as the share image.",
+    craft: "Sets the tone for an article and is reused as the share image, so it has to work both large and small. Atmospheric rather than literal, with one anchoring subject and space that can sit under a title.",
+  },
+};
 
 const studioPlatformFormats = {
   instagram: {
@@ -980,6 +1041,9 @@ const state = {
     salesElement: "",
     salesFeature: "",
     salesProductId: "",
+    // Website fields
+    websiteFormat: "hero",
+    websiteProductId: "",
   },
   brain: {
     stage: "empty",
@@ -2549,7 +2613,6 @@ function renderChooser() {
           ? `${state.brandName} Brand Brain v${state.brain.approvedVersion} is ready. Each type carries its own format options, composition rules, and production knowledge.`
           : `Build and approve the ${state.brandName} Brand Brain first, then start creating.`,
       )}
-      ${state.production.job?.status === "complete" && !state.production.approved && !state.production.bannerDismissed ? `<section class="production-resume"><span><strong>Your latest output is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated output")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
       ${affectedOutputs.length && state.dismissedDrift.brain !== state.brain.approvedVersion ? `
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
@@ -2626,6 +2689,11 @@ function renderStudioSetup() {
   // Sales enablement has its own setup flow
   if (cat.id === "sales") {
     return renderSalesSetup(cat);
+  }
+
+  // Website image has its own setup flow
+  if (cat.id === "website") {
+    return renderWebsiteSetup(cat);
   }
 
   // Social image is the first implemented category
@@ -3006,6 +3074,116 @@ function updateSalesReadyState() {
   if (!canProceed) {
     msg.textContent = approved ? "Describe the content element to continue." : "Approve the Brand Brain before producing.";
   }
+}
+
+function renderWebsiteSetup(cat) {
+  const approved = approvedBrainForProduction();
+  const campaigns = state.campaigns || [];
+  const fmt = websiteOutputFormats[state.studio.websiteFormat] || websiteOutputFormats.hero;
+  const hasBrief = (state.studio.brief || "").trim().length > 0;
+  const canProceed = Boolean(approved) && hasBrief;
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader(cat.name, "Pick where the image goes, describe what it should show, and the system composes it for that shape.")}
+
+      <div class="content-grid">
+        <div>
+          <section class="card">
+            <div class="card-header"><h2>Setup</h2></div>
+
+            <div class="field-grid">
+              <div class="field full">
+                <label>Where this goes</label>
+                <span class="field-note">Each placement sets its own dimensions and composition rules.</span>
+                <div class="website-format-grid">
+                  ${Object.entries(websiteOutputFormats).map(([id, f]) => `
+                    <button class="website-format-card ${state.studio.websiteFormat === id ? "selected" : ""}" type="button" data-action="website-set-format" data-id="${id}">
+                      <span class="website-format-shape" style="aspect-ratio: ${escapeHtml(f.ratio.replace(":", " / "))}"></span>
+                      <span class="website-format-name">${escapeHtml(f.label)}</span>
+                      <span class="website-format-dim">${escapeHtml(f.dim)}</span>
+                    </button>
+                  `).join("")}
+                </div>
+                <p class="field-note field-spaced">${escapeHtml(fmt.note)}</p>
+              </div>
+
+              <div class="field full">
+                <label for="website-brief">What should it show</label>
+                <span class="field-note">A sentence or two. The system supplies the composition, lighting, and framing for this shape.</span>
+                <textarea id="website-brief" data-action="studio-brief-input" placeholder="A care coordinator checking messages between patient rooms, natural light, calm and unhurried">${escapeHtml(state.studio.brief)}</textarea>
+              </div>
+
+              <div class="field full">
+                <label for="website-product">Product record</label>
+                <span class="field-note">Optional. Pulls in approved claims, exclusions, and visual direction for a product.</span>
+                <div class="studio-campaign-row">
+                  <select id="website-product" data-action="website-product-change">
+                    <option value="">No product record</option>
+                    ${approvedProducts().map((p) => `<option value="${escapeHtml(p.product_id)}" ${state.studio.websiteProductId === p.product_id ? "selected" : ""}>${escapeHtml(p.product_name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">${approvedProducts().length ? "" : "No approved products yet."}</span>
+                </div>
+              </div>
+
+              <div class="field full">
+                <label for="website-campaign">Campaign</label>
+                <div class="studio-campaign-row">
+                  <select id="website-campaign" data-action="studio-campaign-change">
+                    <option value="">No campaign</option>
+                    ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">Optional. Links to a campaign direction.</span>
+                </div>
+              </div>
+            </div>
+
+            ${state.studio.directionOpen ? `
+              <div class="studio-additive-section">
+                <div class="studio-additive-header">
+                  <span class="section-label">Creative direction</span>
+                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
+                </div>
+                <p class="field-note field-spaced">Mood, lighting, or composition notes. This job only.</p>
+                <textarea data-action="studio-direction-input" placeholder="Warmer than our usual palette. Shallow depth of field.">${escapeHtml(state.studio.direction)}</textarea>
+              </div>
+            ` : ""}
+
+            <div class="studio-additive-links">
+              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+            </div>
+          </section>
+        </div>
+
+        <aside>
+          <section class="card surface-accent">
+            <div class="card-header">
+              <h2>${escapeHtml(fmt.label)}</h2>
+              <span class="mini-pill">${escapeHtml(fmt.dim)}</span>
+            </div>
+            <p class="field-note">${escapeHtml(fmt.craft)}</p>
+          </section>
+
+          <section class="card">
+            <div class="card-header">
+              <h2>Guidance applied</h2>
+              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
+            </div>
+            <ul class="exact-list">
+              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not active")}</span></li>
+              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
+              <li><strong>Brand world</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "world")?.summary || "Not active")}</span></li>
+            </ul>
+          </section>
+        </aside>
+      </div>
+
+      <div class="actions">
+        <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
+        <button class="button primary" type="button" data-action="website-continue-preflight" ${canProceed ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
+      </div>
+    </section>
+  `);
 }
 
 function renderSalesSetup(cat) {
@@ -5495,7 +5673,7 @@ function productionRequest(jobId) {
   return {
     jobId,
     brief: { ...state.brief },
-    productId: state.studio.salesProductId || undefined,
+    productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
     lockedAssetId: state.lockedAssetId || undefined,
     templateAssetId: state.studio.salesTemplateId || undefined,
     references: state.references.map((item) => ({
@@ -6110,6 +6288,10 @@ root.addEventListener("input", (event) => {
     state.studio.salesProductId = event.target.value;
     render();
   }
+  if (event.target.matches('[data-action="website-product-change"]')) {
+    state.studio.websiteProductId = event.target.value;
+    render();
+  }
   if (event.target.matches('[data-action="product-add-name-input"]')) {
     state.products.addName = event.target.value;
   }
@@ -6430,6 +6612,8 @@ root.addEventListener("click", (event) => {
     state.studio.salesElement = "";
     state.studio.salesFeature = "";
     state.studio.salesProductId = "";
+    state.studio.websiteFormat = "hero";
+    state.studio.websiteProductId = "";
     navigate("studio-setup");
   }
   if (action === "back-to-studio") {
@@ -6545,6 +6729,35 @@ root.addEventListener("click", (event) => {
       }
     }
     void prepareProductionPreflight();
+  }
+  if (action === "website-set-format") {
+    state.studio.websiteFormat = target.dataset.id;
+    render();
+    return;
+  }
+  if (action === "website-continue-preflight") {
+    const approvedBrain = approvedBrainForProduction();
+    if (!approvedBrain) {
+      setToast("Approve the Brand Brain before producing");
+      return;
+    }
+    if (!(state.studio.brief || "").trim()) {
+      setToast("Describe what the image should show before continuing");
+      const el = document.getElementById("website-brief");
+      if (el) el.focus();
+      return;
+    }
+    const fmt = websiteOutputFormats[state.studio.websiteFormat] || websiteOutputFormats.hero;
+    state.selectedDeliverable = deliverables[0];
+    state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
+    state.activeCampaignId = state.studio.campaignId || null;
+    // The preset carries the art direction so a thin brief still produces a
+    // composition built for this shape.
+    state.brief.scene = `${state.studio.brief.trim()} ${fmt.craft}`;
+    state.brief.placement = "Website feature";
+    state.brief.format = `${fmt.dim.replace(" x ", "x")} (${fmt.ratio})`;
+    void prepareProductionPreflight();
+    return;
   }
   if (action === "sales-set-format") {
     state.studio.salesFormat = target.dataset.id;
