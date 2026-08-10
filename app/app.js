@@ -2871,9 +2871,9 @@ function renderStudioSetup() {
             <div class="card-header"><h2>Your brief</h2></div>
 
             <div class="field-grid">
-              <div class="field full">
-                <label for="social-product">Product record</label>
-                <span class="field-note">Optional. Pulls in approved claims, exclusions, and visual direction for a product.</span>
+              <div class="field full studio-setup-field">
+                <label for="social-product">Attach a product</label>
+                <span class="field-note">Optional. Brings in approved claims, exclusions, and product imagery.</span>
                 <div class="studio-campaign-row">
                   <select id="social-product" data-action="website-product-change">
                     <option value="">No product record</option>
@@ -2883,14 +2883,14 @@ function renderStudioSetup() {
                 </div>
               </div>
 
-              <div class="field full">
-                <label for="studio-campaign">Campaign</label>
+              <div class="field full studio-setup-field">
+                <label for="studio-campaign">Associate a campaign</label>
+                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
                     ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
                   </select>
-                  <span class="field-note">Optional. Links to a campaign direction.</span>
                 </div>
               </div>
 
@@ -2899,7 +2899,7 @@ function renderStudioSetup() {
                 field: "brief",
                 inputAction: "studio-brief-input",
                 kind: "scene",
-                label: "What are you making?",
+                label: "Describe the image you want",
                 note: "The system composes this from everything above plus your Brand Brain.",
                 cta: "Show me three directions",
                 placeholder: "Spring collection lifestyle shot with the Yuzu Ginger product on a wooden surface, warm afternoon light",
@@ -3105,14 +3105,14 @@ function renderTemplateSetup(cat) {
                 </div>
               ` : ""}
 
-              <div class="field full">
-                <label for="studio-campaign">Campaign</label>
+              <div class="field full studio-setup-field">
+                <label for="studio-campaign">Associate a campaign</label>
+                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
                     ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
                   </select>
-                  <span class="field-note">Optional. Links to a campaign direction.</span>
                 </div>
               </div>
             </div>
@@ -3232,7 +3232,7 @@ function sceneSuggestField(config) {
   const value = state.studio[config.field] || "";
   const busy = state.studio.sceneSuggesting;
   return `
-    <div class="field full">
+    <div class="field full studio-setup-field">
       <label for="${config.id}">${escapeHtml(config.label)}</label>
       <span class="field-note">${escapeHtml(config.note)}</span>
       ${state.studio.sceneSuggestions.length ? "" : value.trim() ? `
@@ -3355,9 +3355,9 @@ function renderWebsiteSetup(cat) {
                 ${fmt ? `<p class="field-note field-spaced">${escapeHtml(fmt.note)}</p>` : ""}
               </div>
 
-              <div class="field full">
-                <label for="website-product">Product record</label>
-                <span class="field-note">Optional. Pulls in approved claims, exclusions, and visual direction for a product.</span>
+              <div class="field full studio-setup-field">
+                <label for="website-product">Attach a product</label>
+                <span class="field-note">Optional. Brings in approved claims, exclusions, and product imagery.</span>
                 <div class="studio-campaign-row">
                   <select id="website-product" data-action="website-product-change">
                     <option value="">No product record</option>
@@ -3367,14 +3367,14 @@ function renderWebsiteSetup(cat) {
                 </div>
               </div>
 
-              <div class="field full">
-                <label for="website-campaign">Campaign</label>
+              <div class="field full studio-setup-field">
+                <label for="website-campaign">Associate a campaign</label>
+                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
                 <div class="studio-campaign-row">
                   <select id="website-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
                     ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
                   </select>
-                  <span class="field-note">Optional. Links to a campaign direction.</span>
                 </div>
               </div>
 
@@ -3383,7 +3383,7 @@ function renderWebsiteSetup(cat) {
                 field: "brief",
                 inputAction: "studio-brief-input",
                 kind: "scene",
-                label: "What should it show",
+                label: "Describe the image you want",
                 note: "The system composes this from everything above plus your Brand Brain.",
                 cta: "Show me three directions",
                 placeholder: "A care coordinator checking messages between patient rooms, natural light, calm and unhurried",
@@ -3507,9 +3507,9 @@ function renderSalesSetup(cat) {
                 `}
               </div>
 
-              <div class="field full">
-                <label for="sales-product">Product record</label>
-                <span class="field-note">Pick an approved product to pull in its governed claims, exclusions, and visual direction. Add a product on the Products screen.</span>
+              <div class="field full studio-setup-field">
+                <label for="sales-product">Attach a product</label>
+                <span class="field-note">Optional. Brings in approved claims, exclusions, and product imagery.</span>
                 <div class="studio-campaign-row">
                   <select id="sales-product" data-action="sales-product-change">
                     <option value="">No product record</option>
@@ -3525,14 +3525,14 @@ function renderSalesSetup(cat) {
                 <input id="sales-feature" type="text" data-action="sales-feature-input" placeholder="RCS messaging, appointment reminders, two-way texting..." value="${escapeHtml(state.studio.salesFeature)}">
               </div>
 
-              <div class="field full">
-                <label for="sales-campaign">Campaign</label>
+              <div class="field full studio-setup-field">
+                <label for="sales-campaign">Associate a campaign</label>
+                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
                 <div class="studio-campaign-row">
                   <select id="sales-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
                     ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
                   </select>
-                  <span class="field-note">Optional. Links to a campaign direction.</span>
                 </div>
               </div>
               ${sceneSuggestField({

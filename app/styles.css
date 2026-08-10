@@ -7910,9 +7910,9 @@ button.ws-attention-item:hover {
    button rather than a link beside the label. Writing one by hand stays
    available and collapses out of the way until it is wanted. */
 .scene-suggest-cta {
-  width: 100%;
-  justify-content: center;
   margin-top: var(--space-2);
+  height: var(--control-sm);
+  padding: 0 var(--space-4);
 }
 
 .scene-write-own {
@@ -7957,5 +7957,28 @@ button.ws-attention-item:hover {
 
 .scene-suggest-again {
   display: inline-block;
+  margin-top: var(--space-2);
+}
+
+/* Studio setup fields. Attach a product, associate a campaign, and describe
+   the image are the three decisions on the screen, so their labels carry more
+   weight than a form label and read as headings for their section. The helper
+   line sits under the label rather than beside the control. */
+.studio-setup-field > label {
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.studio-setup-field > .field-note {
+  display: block;
+  margin-top: 2px;
+  margin-bottom: var(--space-2);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.studio-setup-field + .studio-setup-field {
   margin-top: var(--space-2);
 }
