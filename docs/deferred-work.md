@@ -30,11 +30,13 @@ Feedback broader than "fix this one" queues as a candidate rule in `state.produc
 
 Bring it back when: candidate rules get a cross-job governance surface, since a queue nobody can review across jobs has no value even when persisted.
 
-### Campaigns are seeded into state
+### Campaigns are seeded into state and shared across clients
 
 Campaigns compile correctly into a production job and do not persist. Outputs and brains reach Blob storage; campaigns do not.
 
-Bring it back when: a client runs a second campaign, or a campaign needs to outlive the session that created it.
+They are also not client-scoped. The seed list is a constant, so every client sees the same campaigns, which contradicts the namespace boundary ADR 0011 enforces everywhere else. The seed currently holds one Dialog Health campaign, which means a different client would see a healthcare RCS campaign in their own workspace.
+
+Bring it back when: a second client needs its own campaigns, or a campaign needs to outlive the session that created it. Client scoping and persistence are the same piece of work and should land together, since a persisted campaign with no client id would have to be migrated afterward.
 
 ---
 
