@@ -61,6 +61,10 @@ const placementFormats = {
   "Instagram story": ["9:16 portrait"],
   "LinkedIn feed": ["1:1 square", "1.91:1 landscape"],
   "Website feature": ["16:9 landscape", "4:3 landscape"],
+  "Website hero": ["2.4:1"],
+  "Website card": ["4:3", "1:1"],
+  "Website share image": ["1.91:1"],
+  "Blog header": ["1.91:1"],
 };
 
 const studioCategories = [
@@ -79,6 +83,7 @@ const studioCategories = [
 const websiteOutputFormats = {
   hero: {
     label: "Hero",
+    placement: "Website hero",
     dim: "1920 x 800",
     ratio: "2.4:1",
     file: "JPG",
@@ -88,6 +93,7 @@ const websiteOutputFormats = {
   },
   feature: {
     label: "Feature",
+    placement: "Website feature",
     dim: "1200 x 800",
     ratio: "3:2",
     file: "JPG",
@@ -97,33 +103,37 @@ const websiteOutputFormats = {
   },
   card: {
     label: "Card",
+    placement: "Website card",
     dim: "1024 x 768",
     ratio: "4:3",
     file: "JPG",
     treatment: "Fill",
-    note: "Blog cards, resource cards, and team grids. Displays smaller; the extra resolution keeps it sharp on retina screens.",
+    note: "Blog cards, resource cards, and team grids.",
     craft: "Small final display size, so compose simply. A single subject, strong separation from the background, and no fine detail that disappears at thumbnail scale. Center-weight the subject because cards crop unpredictably.",
   },
   "card-square": {
     label: "Card square",
+    placement: "Website card",
     dim: "1024 x 1024",
     ratio: "1:1",
     file: "JPG",
     treatment: "Fill",
-    note: "Square grid layouts. Displays smaller; the extra resolution keeps it sharp on retina screens.",
+    note: "Square grid layouts.",
     craft: "Square and small. Center the subject, keep the composition symmetrical enough to survive tight cropping, and hold detail to what reads at thumbnail scale.",
   },
   og: {
     label: "Share image",
+    placement: "Website share image",
     dim: "1280 x 672",
     ratio: "1.91:1",
     file: "JPG",
     treatment: "Fill",
-    note: "Open Graph image shown when a page is shared. Matches the 1.91:1 ratio social platforms expect, above their recommended minimum.",
+    note: "Open Graph image shown when a page is shared. Sized to the 1.91:1 ratio social platforms expect.",
     craft: "This appears small in a feed next to a title and description, often on a light background. Favor high contrast and one legible subject. Avoid fine texture and avoid composing anything meaningful near the edges, which social platforms crop.",
   },
   blog: {
     label: "Blog header",
+    placement: "Blog header",
     dim: "1280 x 672",
     ratio: "1.91:1",
     file: "JPG",
@@ -3101,7 +3111,7 @@ function renderWebsiteSetup(cat) {
                     <button class="website-format-card ${state.studio.websiteFormat === id ? "selected" : ""}" type="button" data-action="website-set-format" data-id="${id}">
                       <span class="website-format-shape" style="aspect-ratio: ${escapeHtml(f.ratio.replace(":", " / "))}"></span>
                       <span class="website-format-name">${escapeHtml(f.label)}</span>
-                      <span class="website-format-dim">${escapeHtml(f.dim)}</span>
+                      <span class="website-format-dim">${escapeHtml(f.ratio)}</span>
                     </button>
                   `).join("")}
                 </div>
@@ -3159,7 +3169,7 @@ function renderWebsiteSetup(cat) {
           <section class="card surface-accent">
             <div class="card-header">
               <h2>${escapeHtml(fmt.label)}</h2>
-              <span class="mini-pill">${escapeHtml(fmt.dim)}</span>
+              <span class="mini-pill">${escapeHtml(fmt.ratio)}</span>
             </div>
             <p class="field-note">${escapeHtml(fmt.craft)}</p>
           </section>
@@ -6754,7 +6764,7 @@ root.addEventListener("click", (event) => {
     // The preset carries the art direction so a thin brief still produces a
     // composition built for this shape.
     state.brief.scene = `${state.studio.brief.trim()} ${fmt.craft}`;
-    state.brief.placement = "Website feature";
+    state.brief.placement = fmt.placement;
     state.brief.format = fmt.dim.replace(" x ", "x");
     void prepareProductionPreflight();
     return;
