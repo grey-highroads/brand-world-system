@@ -3273,13 +3273,18 @@ function renderWebsiteSetup(cat) {
               </div>
 
               <div class="field full">
-                <div class="studio-label-row">
-                  <label for="website-brief">What should it show</label>
-                  <button class="studio-add-link" type="button" data-action="suggest-scene" ${state.studio.sceneSuggesting || !approved ? "disabled" : ""}>${state.studio.sceneSuggesting ? "Thinking" : "Suggest for me"}</button>
-                </div>
-                <span class="field-note">A sentence or two. The system supplies the composition, lighting, and framing for this shape.</span>
-                <textarea id="website-brief" data-action="studio-brief-input" placeholder="A care coordinator checking messages between patient rooms, natural light, calm and unhurried">${escapeHtml(state.studio.brief)}</textarea>
+                <label for="website-brief">What should it show</label>
+                <span class="field-note">The system already knows your brand, this campaign, and the product. It can propose the shot.</span>
+                ${state.studio.sceneSuggestions.length ? "" : `
+                  <button class="button primary scene-suggest-cta" type="button" data-action="suggest-scene" ${state.studio.sceneSuggesting || !approved ? "disabled" : ""}>
+                    ${state.studio.sceneSuggesting ? "Building three directions" : "Show me three directions"}
+                  </button>
+                `}
                 ${sceneSuggestionPanel()}
+                <details class="scene-write-own" ${state.studio.brief.trim() ? "open" : ""}>
+                  <summary>Write it myself</summary>
+                  <textarea id="website-brief" data-action="studio-brief-input" placeholder="A care coordinator checking messages between patient rooms, natural light, calm and unhurried">${escapeHtml(state.studio.brief)}</textarea>
+                </details>
               </div>
 
               <div class="field full">
@@ -7045,6 +7050,7 @@ root.addEventListener("click", (event) => {
       state.studio.sceneSuggestions = [];
       state.studio.sceneSourcesOpen = false;
       setToast("Direction applied. Edit it however you like.");
+      syncBriefGatedControls();
     }
     render();
     return;

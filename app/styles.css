@@ -7905,3 +7905,36 @@ button.ws-attention-item:hover {
 .scene-suggest-error {
   color: var(--warning);
 }
+
+/* The suggestion path is the primary way into a brief, so it gets a real
+   button rather than a link beside the label. Writing one by hand stays
+   available and collapses out of the way until it is wanted. */
+.scene-suggest-cta {
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--space-2);
+}
+
+.scene-write-own {
+  margin-top: var(--space-3);
+}
+
+.scene-write-own > summary {
+  list-style: none;
+  cursor: pointer;
+  color: var(--celery-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.scene-write-own > summary::-webkit-details-marker {
+  display: none;
+}
+
+.scene-write-own > summary:hover {
+  text-decoration: underline;
+}
+
+.scene-write-own textarea {
+  margin-top: var(--space-2);
+}
