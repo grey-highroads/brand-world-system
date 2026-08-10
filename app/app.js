@@ -2871,13 +2871,24 @@ function renderStudioSetup() {
             <div class="card-header"><h2>Your brief</h2></div>
 
             <div class="field-grid">
+              <div class="field full">
+                <label for="studio-campaign">Campaign</label>
+                <div class="studio-campaign-row">
+                  <select id="studio-campaign" data-action="studio-campaign-change">
+                    <option value="">No campaign</option>
+                    ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
+                  </select>
+                  <span class="field-note">Optional. Links to a campaign direction.</span>
+                </div>
+              </div>
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
                 inputAction: "studio-brief-input",
                 kind: "scene",
                 label: "What are you making?",
-                note: "The system already knows your brand, this campaign, and any product you attach. It can propose the shot.",
+                note: "The system composes this from everything above plus your Brand Brain.",
                 cta: "Show me three directions",
                 placeholder: "Spring collection lifestyle shot with the Yuzu Ginger product on a wooden surface, warm afternoon light",
               })}
@@ -2915,17 +2926,6 @@ function renderStudioSetup() {
                   </button>
                 </div>
               ` : ""}
-
-              <div class="field full">
-                <label for="studio-campaign">Campaign</label>
-                <div class="studio-campaign-row">
-                  <select id="studio-campaign" data-action="studio-campaign-change">
-                    <option value="">No campaign</option>
-                    ${campaigns.map((c) => `<option value="${escapeHtml(c.id)}" ${state.studio.campaignId === c.id ? "selected" : ""}>${escapeHtml(c.name)}</option>`).join("")}
-                  </select>
-                  <span class="field-note">Optional. Links to a campaign direction.</span>
-                </div>
-              </div>
             </div>
 
             ${state.studio.captionOpen ? `
@@ -3227,6 +3227,7 @@ function sceneSuggestField(config) {
         <button class="button primary scene-suggest-cta" type="button" data-action="suggest-scene" data-kind="${config.kind}" data-field="${config.field}" ${busy || !approved ? "disabled" : ""}>
           ${busy ? "Building three directions" : escapeHtml(config.cta)}
         </button>
+        <span class="field-note scene-suggest-context">${escapeHtml(sceneContextLine())}</span>
       `}
       ${sceneSuggestionPanel(config)}
       <details class="scene-write-own" ${value.trim() ? "open" : ""}>
@@ -3235,6 +3236,34 @@ function sceneSuggestField(config) {
       </details>
     </div>
   `;
+}
+
+// The suggestion is only as good as what is selected when it runs, and the
+// context selectors sit above the brief for that reason. This line names what
+// will be used so a thin suggestion is never a surprise.
+// Suggestions are composed from the selected context, so changing that context
+// makes the ones on screen stale. Clearing them is more honest than leaving
+// options that no longer reflect what the job would use.
+function clearSceneSuggestions() {
+  state.studio.sceneSuggestions = [];
+  state.studio.sceneSuggestionsDrewOn = [];
+  state.studio.sceneSuggestError = "";
+  state.studio.sceneSourcesOpen = false;
+}
+
+function sceneContextLine() {
+  const category = state.studio.category;
+  const productId = category === "sales" ? state.studio.salesProductId : state.studio.websiteProductId;
+  const product = state.products.list.find((p) => p.product_id === productId);
+  const campaign = (state.campaigns || []).find((c) => c.id === state.studio.campaignId);
+  const has = ["your Brand Brain"];
+  if (campaign) has.push(campaign.name);
+  if (product) has.push(product.product_name);
+  const missing = [];
+  if (!campaign) missing.push("a campaign");
+  if (!product && category !== "template") missing.push("a product");
+  const used = `Uses ${has.join(", ")}.`;
+  return missing.length ? `${used} Add ${missing.join(" or ")} above for sharper directions.` : used;
 }
 
 function sceneSuggestionPanel(config = {}) {
@@ -3309,17 +3338,6 @@ function renderWebsiteSetup(cat) {
                 ${fmt ? `<p class="field-note field-spaced">${escapeHtml(fmt.note)}</p>` : ""}
               </div>
 
-              ${sceneSuggestField({
-                id: "website-brief",
-                field: "brief",
-                inputAction: "studio-brief-input",
-                kind: "scene",
-                label: "What should it show",
-                note: "The system already knows your brand, this campaign, and the product. It can propose the shot.",
-                cta: "Show me three directions",
-                placeholder: "A care coordinator checking messages between patient rooms, natural light, calm and unhurried",
-              })}
-
               <div class="field full">
                 <label for="website-product">Product record</label>
                 <span class="field-note">Optional. Pulls in approved claims, exclusions, and visual direction for a product.</span>
@@ -3342,6 +3360,17 @@ function renderWebsiteSetup(cat) {
                   <span class="field-note">Optional. Links to a campaign direction.</span>
                 </div>
               </div>
+
+              ${sceneSuggestField({
+                id: "website-brief",
+                field: "brief",
+                inputAction: "studio-brief-input",
+                kind: "scene",
+                label: "What should it show",
+                note: "The system composes this from everything above plus your Brand Brain.",
+                cta: "Show me three directions",
+                placeholder: "A care coordinator checking messages between patient rooms, natural light, calm and unhurried",
+              })}
             </div>
 
             ${state.studio.directionOpen ? `
@@ -3461,17 +3490,6 @@ function renderSalesSetup(cat) {
                 `}
               </div>
 
-              ${sceneSuggestField({
-                id: "sales-element",
-                field: "salesElement",
-                inputAction: "sales-element-input",
-                kind: "sales_element",
-                label: "Content element",
-                note: "What gets generated on top of the template. The system can propose it from the product record and your brand guidance.",
-                cta: "Show me three elements",
-                placeholder: "A premium phone mockup showing a text conversation between the system and a patient confirming an appointment. The phone should look modern and high-end, angled slightly.",
-              })}
-
               <div class="field full">
                 <label for="sales-product">Product record</label>
                 <span class="field-note">Pick an approved product to pull in its governed claims, exclusions, and visual direction. Add a product on the Products screen.</span>
@@ -3500,6 +3518,16 @@ function renderSalesSetup(cat) {
                   <span class="field-note">Optional. Links to a campaign direction.</span>
                 </div>
               </div>
+              ${sceneSuggestField({
+                id: "sales-element",
+                field: "salesElement",
+                inputAction: "sales-element-input",
+                kind: "sales_element",
+                label: "Content element",
+                note: "The system composes this from everything above plus your Brand Brain.",
+                cta: "Show me three elements",
+                placeholder: "A premium phone mockup showing a text conversation between the system and a patient confirming an appointment. The phone should look modern and high-end, angled slightly.",
+              })}
             </div>
 
             ${state.studio.referenceOpen ? `
@@ -6599,10 +6627,12 @@ root.addEventListener("input", (event) => {
     state.studio.salesFeature = event.target.value;
   }
   if (event.target.matches('[data-action="sales-product-change"]')) {
+    clearSceneSuggestions();
     state.studio.salesProductId = event.target.value;
     render();
   }
   if (event.target.matches('[data-action="website-product-change"]')) {
+    clearSceneSuggestions();
     state.studio.websiteProductId = event.target.value;
     render();
   }
@@ -6632,6 +6662,7 @@ root.addEventListener("input", (event) => {
 root.addEventListener("change", async (event) => {
   const action = event.target.dataset.action;
   if (action === "studio-campaign-change") {
+    clearSceneSuggestions();
     state.studio.campaignId = event.target.value;
     render();
   }
