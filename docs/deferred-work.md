@@ -1,0 +1,117 @@
+# Deferred work register
+
+Things deliberately left undone, with the reason and the condition that should bring them back. This is not a backlog of ideas. Every entry here was a real decision made during a working session, recorded so the reasoning survives and so nobody re-litigates it from scratch or ships it by accident.
+
+Three rules govern this file:
+
+- An entry is added at the moment the decision is made, not later from memory.
+- Every entry names what would have to be true for the work to become worth doing.
+- An entry that ships is deleted, not marked done. Git history holds the record.
+
+Entries are grouped by what kind of debt they are, since the kinds have different consequences. Prototype-only behavior is the sharpest category: it works for a demo and would be wrong in front of a paying client.
+
+---
+
+## Prototype-only behavior
+
+Things that hold up in a demo and would not survive real use. These are the entries most likely to cause harm if forgotten, because nothing about the interface signals that they are temporary.
+
+### Dismissal state does not persist
+
+Drift notices on the Design Studio chooser can be dismissed, and dismissal is keyed to the version that raised the notice, so a later brain approval or product revision surfaces it again. The dismissal itself lives in memory and resets on reload.
+
+Fine for a demo. Wrong for production, where a user dismisses something on Monday and expects it to stay dismissed on Tuesday.
+
+Bring it back when: a real client is using the deployed app for daily work. The fix is a field on the client record, so it is server work rather than a UI change.
+
+### Candidate rules do not survive a reload
+
+Feedback broader than "fix this one" queues as a candidate rule in `state.production.candidateRules`. The queue is session-scoped. Carried over from the sprint close and still open.
+
+Bring it back when: candidate rules get a cross-job governance surface, since a queue nobody can review across jobs has no value even when persisted.
+
+### Campaigns are seeded into state
+
+Campaigns compile correctly into a production job and do not persist. Outputs and brains reach Blob storage; campaigns do not.
+
+Bring it back when: a client runs a second campaign, or a campaign needs to outlive the session that created it.
+
+---
+
+## Stylesheet debt
+
+### The card adjacency rule
+
+`.card + .card { margin-top: 18px }` is correct when cards stack in a column and wrong inside a grid, where it applies to every card except the first. The result is a row whose first item sits higher and taller than its neighbours, which reads as a display bug.
+
+The current fix cancels the margin inside nineteen named grid containers. That list is the debt: a new grid holding `.card` children inherits the bug until somebody adds it to the list.
+
+The durable fix is to delete the adjacency rule and give every stacking container an explicit `gap`, which is how the rest of the design system already works. That is a stylesheet-wide pass with real regression surface, so it was not folded into a UI session.
+
+Bring it back when: the next deliberate design-system pass, or the second time somebody hits the bug in a new grid.
+
+### Orphaned selectors from cut components
+
+`.guidance-source-summary` and its child rules remain in `styles.css` after the "How this section was shaped" card was cut from Brand guidance. Left in place in case the content returns somewhere.
+
+Bring it back when: the same stylesheet pass as the entry above. Cutting dead CSS piecemeal costs more review attention than it saves.
+
+### Hover treatments are inconsistent across selectable cards
+
+The intake doors on Sources use a colored stroke on the dark surface, which reads as selectable rather than merely hovered. Studio category cards, source material options, and the guidance cells on Snapshot each do something different.
+
+Bring it back when: working through the Design Studio screens, where most of the remaining selectable cards live.
+
+---
+
+## Incomplete paths
+
+Work that functions but stops short of where it should land.
+
+### Remaking a drifted output lands in the legacy brief screen
+
+The "Remake with current guidance" action on Snapshot restores the brief from an output record and navigates to the legacy production brief, not to the Design Studio setup for that category. Studio setup state is not reconstructible from an output record.
+
+Bring it back when: the Design Studio setup screens are worked through, since the fix is to record enough setup state on the output to rebuild it.
+
+### Outputs made before package persistence cannot be evaluated
+
+The compiled package is now written per job at generation time, which is what makes past work reviewable. Outputs generated before that change have no saved package and show a plain message instead of an evaluation screen.
+
+No backfill is possible. The package was never stored. Recorded so nobody spends time looking for a migration.
+
+### Product picker exists only on sales enablement
+
+Social image, ad image, and website image flows do not expose the product picker. Wiring it follows the established pattern.
+
+Bring it back when: one of those flows needs product-specific claims.
+
+---
+
+## Content and prompt debt
+
+### Review questions written under earlier synthesis instructions
+
+The synthesis instructions gained explicit plain-language rules for review question `summary`, `method`, and `rationale`, including a banned-word list. Questions generated before that change keep their original wording, since they are stored in the brain.
+
+Re-synthesizing rewrites them and bumps the version. Whether that trade is worth making is a per-client judgment, not a default.
+
+### Interface renames must reach the prompts
+
+When the interface renamed exact asset to protected asset, the synthesis instructions kept the old term and the model wrote "exact asset" into copy users read. Fixed, and recorded here as a standing check rather than a task: **a user-facing vocabulary change is not complete until the prompts use the new word.**
+
+### Slots holding model output need to survive long text
+
+The artifact reader clipped its own content because two heading slots were fed model-generated strings. The SLAKE fixture has short values in both fields, so the fault only appeared once a real brand's synthesis filled them properly.
+
+Standing check rather than a task: **any slot that renders model output should be tested against text several times longer than the fixture provides.**
+
+---
+
+## Known deficiencies with owners elsewhere
+
+Recorded for completeness. These are not this workstream's to fix.
+
+- **`resolveClientId` is a security placeholder.** Every API route resolves the client from a cookie with no session validation. ADR 0011 names the shared-password gate as a known deficiency with a planned replacement. Jim's authentication slice.
+- **Deterministic composition is specified and not implemented.** The glossary states that a locked asset should never be regenerated when it can be composed deterministically. The live path sends protected assets through the OpenAI edits endpoint, which is model-based placement. This one matters commercially, because "your logo is placed, never redrawn" is the natural thing to say and the implementation does not currently guarantee it.
+- **The 12-function Vercel Hobby ceiling.** Held so far by dispatching new operations through existing handlers. A new serverless function requires freeing a slot or moving to Pro.
