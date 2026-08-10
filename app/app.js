@@ -913,6 +913,7 @@ const state = {
   campaignEditDraft: null,
   previewOutputId: null,
   discardOutputId: null,
+  dismissedDrift: { brain: 0, product: 0 },
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
   // the brand language that produced it survives later brain revisions.
@@ -2549,11 +2550,11 @@ function renderChooser() {
           : `Build and approve the ${state.brandName} Brand Brain first, then start creating.`,
       )}
       ${state.production.job?.status === "complete" && !state.production.approved && !state.production.bannerDismissed ? `<section class="production-resume"><span><strong>Your latest output is saved</strong><small>${escapeHtml(state.production.job.generationPackage?.output?.format || "Generated output")} · ${escapeHtml(state.production.job.model || "OpenAI")}</small></span><button class="button" type="button" data-action="view-latest-result">View result</button></section>` : ""}
-      ${affectedOutputs.length ? `
+      ${affectedOutputs.length && state.dismissedDrift.brain !== state.brain.approvedVersion ? `
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
             <h2>Outputs using an earlier Brand Brain version</h2>
-            <span class="collapsible-meta"><span class="mini-pill pill-warning">${affectedOutputs.length} ${affectedOutputs.length === 1 ? "output" : "outputs"} on v${affectedOutputs[0].brainVersion}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            <span class="collapsible-meta"><span class="mini-pill pill-warning">${affectedOutputs.length} ${affectedOutputs.length === 1 ? "output" : "outputs"} on v${affectedOutputs[0].brainVersion}</span><span class="collapsible-chevron" aria-hidden="true"></span><button class="drift-dismiss" type="button" data-action="dismiss-drift" data-kind="brain" aria-label="Dismiss">Dismiss</button></span>
           </summary>
           <div class="affected-outputs-list">
             ${affectedOutputs.map((o) => `
@@ -2565,11 +2566,11 @@ function renderChooser() {
           </div>
         </details>
       ` : ""}
-      ${productAffectedOutputs.length ? `
+      ${productAffectedOutputs.length && !state.dismissedDrift.product ? `
         <details class="card collapsible-card affected-outputs-card">
           <summary class="card-header collapsible-header">
             <h2>Outputs using an earlier product record version</h2>
-            <span class="collapsible-meta"><span class="mini-pill pill-warning">${productAffectedOutputs.length} ${productAffectedOutputs.length === 1 ? "output" : "outputs"} on older product version</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+            <span class="collapsible-meta"><span class="mini-pill pill-warning">${productAffectedOutputs.length} ${productAffectedOutputs.length === 1 ? "output" : "outputs"} on older product version</span><span class="collapsible-chevron" aria-hidden="true"></span><button class="drift-dismiss" type="button" data-action="dismiss-drift" data-kind="product" aria-label="Dismiss">Dismiss</button></span>
           </summary>
           <div class="affected-outputs-list">
             ${productAffectedOutputs.map((o) => `
@@ -6708,6 +6709,14 @@ root.addEventListener("click", (event) => {
       setToast("Brief restored. Generating now uses the current Brand Brain.");
     }
     navigate("brief");
+    return;
+  }
+  if (action === "dismiss-drift") {
+    // Dismissal is tied to the version that raised the notice, so a later
+    // change surfaces it again rather than silencing drift permanently.
+    if (target.dataset.kind === "brain") state.dismissedDrift.brain = state.brain.approvedVersion;
+    else state.dismissedDrift.product = Date.now();
+    render();
     return;
   }
   if (action === "open-output-review") {

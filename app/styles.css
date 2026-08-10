@@ -506,6 +506,33 @@ select:focus-visible {
   margin-top: 18px;
 }
 
+/* Cards stack with an adjacency margin, which is correct in a column and wrong
+   inside a grid: it pushes every card except the first one down, so the first
+   item in each row sits higher and taller than its neighbours. Grid containers
+   own their own spacing through gap, so the adjacency margin is cancelled here.
+   Any new grid holding .card children belongs in this list. */
+.studio-grid > .card + .card,
+.brain-overview-grid > .card + .card,
+.brain-review-grid > .card + .card,
+.ws-quick-starts > .card + .card,
+.ws-guidance-grid > .card + .card,
+.ws-output-grid > .card + .card,
+.canon-grid > .card + .card,
+.canon-impact-grid > .card + .card,
+.result-grid > .card + .card,
+.preflight-grid > .card + .card,
+.content-grid > .card + .card,
+.intake-door-grid > .card + .card,
+.source-material-grid > .card + .card,
+.sales-template-grid > .card + .card,
+.campaign-output-grid > .card + .card,
+.studio-platform-grid > .card + .card,
+.mode-grid > .card + .card,
+.field-grid > .card + .card,
+.brain-evidence-grid > .card + .card {
+  margin-top: 0;
+}
+
 .card-header {
   display: flex;
   gap: 16px;
@@ -7383,4 +7410,19 @@ button.ws-attention-item:hover {
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 600;
+}
+
+.drift-dismiss {
+  padding: 0 var(--space-2);
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.drift-dismiss:hover {
+  color: var(--text);
 }
