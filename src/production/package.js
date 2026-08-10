@@ -539,7 +539,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     requirementCheck,
     ready,
     product: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version, open_questions: openProductQuestions } : null,
-    ...compileCopyContract({ copyOutputs, claimsSet, placement }),
+    ...compileCopyContract({ copyOutputs, claimsSet, placement, segment: brief?.segment }),
     policy: {
       groundedIn: sourceCount
         ? `Approved Brand Brain v${Number(brainVersion || 1)}, built from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`
@@ -562,13 +562,14 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 // job declared and which claims govern them. Produced text and audit findings
 // are written into the same structure after generation, so the saved package
 // carries the whole record of what the brand asserted in words.
-function compileCopyContract({ copyOutputs, claimsSet, placement }) {
+function compileCopyContract({ copyOutputs, claimsSet, placement, segment }) {
   const declared = Array.isArray(copyOutputs) ? copyOutputs.filter(Boolean) : [];
   if (declared.length === 0) return {};
   const set = claimsSet || { approved: [], prohibited: [], disclosures: [] };
   return {
     copy: {
       placement,
+      segment: segment || null,
       declared: declared.map((entry) => (typeof entry === "string" ? { copyTypeId: entry } : entry)),
       governingClaims: {
         approved: (set.approved || []).map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
@@ -576,6 +577,9 @@ function compileCopyContract({ copyOutputs, claimsSet, placement }) {
         disclosures: (set.disclosures || []).map((claim) => ({ text: claim.text, source: claim.source })),
         directives: (set.directives || []).map((claim) => ({ text: claim.text, source: claim.source })),
       },
+      // Claims a missing segment held back. Surfaced so the exclusion is
+      // visible rather than silent.
+      withheldForSegment: (set.withheldForSegment || []).map((claim) => ({ text: claim.text, segment: claim.segment })),
       produced: [],
     },
   };

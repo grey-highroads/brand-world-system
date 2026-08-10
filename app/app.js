@@ -1072,6 +1072,7 @@ const state = {
     // audit trail. Consolidating the two is a deliberate follow-up.
     completedOutputs: [],
   },
+  segments: { list: [], loading: false, loadedForClient: null, error: "" },
   studio: {
     category: null,
     brief: "",
@@ -1079,6 +1080,7 @@ const state = {
     activeFormats: [],
     textOverlay: false,
     campaignId: "",
+    segment: "",
     // A social job writes its caption unless the user turns it off. The
     // direction field steers what the caption says; leaving it blank draws
     // the message from the brief and the Brand Brain.
@@ -2897,6 +2899,8 @@ function renderStudioSetup() {
                 </div>
               </div>
 
+              ${segmentField("studio")}
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
@@ -3542,6 +3546,8 @@ function renderSalesSetup(cat) {
                   </select>
                 </div>
               </div>
+              ${segmentField("sales")}
+
               ${sceneSuggestField({
                 id: "sales-element",
                 field: "salesElement",
@@ -5193,7 +5199,7 @@ function copyPreflightPanel(generationPackage) {
         <h2>What stays exact in the words</h2>
         <span class="collapsible-meta"><span class="mini-pill ${total ? "pill-success" : "pill-neutral"}">${total ? `${total} governing ${total === 1 ? "rule" : "rules"}` : "Voice guidance only"}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
       </summary>
-      <p class="page-description">${escapeHtml(declaredLabels)} will be written with this job and checked before you see it.</p>
+      <p class="page-description">${escapeHtml(declaredLabels)} will be written with this job and checked before you see it.${copy.segment ? ` Written for ${escapeHtml(copy.segment)}.` : ""}</p>
       ${total === 0 ? `
         <div class="rule-card">
           <div class="rule rule-stacked">
@@ -5206,6 +5212,18 @@ function copyPreflightPanel(generationPackage) {
       ${group("Wording the caption may not use", claims.prohibited, "pill-warning", "Prohibited")}
       ${group("Must appear when triggered", claims.disclosures, "pill-neutral", "Disclosure")}
       ${group("Instructions the caption follows", directives, "pill-neutral", "Directive")}
+      ${(copy.withheldForSegment || []).length ? `
+        <div class="rule-card">
+          <span class="section-label">Held back because no segment is set</span>
+          <p class="field-note field-spaced">These are approved for a specific segment. Pick that segment in setup and they become available to this job.</p>
+          ${copy.withheldForSegment.map((entry) => `
+            <div class="rule rule-stacked">
+              <span class="mini-pill pill-neutral">${escapeHtml(entry.segment || "Segment")}</span>
+              <span><strong>${escapeHtml(entry.text)}</strong><span>Not used here</span></span>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
     </details>
   `;
 }
@@ -6216,14 +6234,40 @@ function declaredCopyOutputs() {
   return state.studio.captionOn ? ["social_caption"] : [];
 }
 
+// Segment picker. A segment is a subset of audience: surgery centers within
+// healthcare providers, not "healthcare providers" itself. Optional
+// everywhere, because broadcast work legitimately addresses no one segment
+// and a required field just gets answered with whatever is first in the list.
+//
+// The list comes from the segments already named on the client's claims, so
+// it needs no separate registry and no admin screen. A client with no
+// segmented claims sees no picker at all rather than an empty control.
+function segmentField(idPrefix) {
+  const segments = state.segments.list || [];
+  if (!segments.length) return "";
+  return `
+    <div class="field full studio-setup-field">
+      <label for="${idPrefix}-segment">Who is this for?</label>
+      <span class="field-note">Optional. Narrows the approved wording to what is true for that segment.</span>
+      <div class="studio-campaign-row">
+        <select id="${idPrefix}-segment" data-action="studio-segment-change">
+          <option value="">No specific segment</option>
+          ${segments.map((segment) => `<option value="${escapeHtml(segment.id)}" ${state.studio.segment === segment.id ? "selected" : ""}>${escapeHtml(segment.label)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  `;
+}
+
 function productionRequest(jobId) {
   const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   return {
     jobId,
-    brief: { ...state.brief },
+    brief: { ...state.brief, segment: state.studio.segment || undefined },
     productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
     lockedAssetId: state.lockedAssetId || undefined,
     templateAssetId: state.studio.salesTemplateId || undefined,
+    segment: state.studio.segment || undefined,
     copyOutputs: declaredCopyOutputs(),
     copyDirection: state.studio.copyDirection || undefined,
     references: state.references.map((item) => ({
@@ -6956,6 +7000,10 @@ root.addEventListener("change", async (event) => {
     state.studio.campaignId = event.target.value;
     render();
   }
+  if (action === "studio-segment-change") {
+    state.studio.segment = event.target.value;
+    render();
+  }
   if (action === "product-add-file") {
     const file = Array.from(event.target.files ?? [])[0];
     if (file) {
@@ -7263,7 +7311,7 @@ root.addEventListener("click", (event) => {
     // the picker has options ready. Loaders belong in action handlers, not in
     // render functions. See docs/ui-contribution-guide.md.
     // Website and sales both offer the product picker, so both need the list.
-    if (["sales", "website", "social"].includes(target.dataset.id)) void loadProducts();
+    if (["sales", "website", "social"].includes(target.dataset.id)) { void loadProducts(); void loadSegments(); }
     state.studio.brief = "";
     state.studio.sceneSuggestions = [];
     state.studio.sceneSuggestionsDrewOn = [];
@@ -8337,6 +8385,37 @@ async function hydrateClients() {
 // Fetch the product index for the active client and store it in state. The
 // list contains summary entries (product_id, product_name, version, status).
 // Full records are loaded on demand via loadProductDetail.
+// The segments this client uses, derived from their claims entries. Same
+// guard shape as loadProducts: a concurrent call is refused, and the attempt
+// is recorded on both success and failure so repeated render passes cannot
+// retry forever.
+async function loadSegments(force = false) {
+  if (typeof fetch !== "function") return;
+  if (state.segments.loading) return;
+  if (!force && state.segments.loadedForClient === state.activeClientId) return;
+  const attemptingClientId = state.activeClientId;
+  state.segments.loading = true;
+  state.segments.error = "";
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "segments" }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The segment list could not be loaded.");
+    state.segments.list = Array.isArray(body.segments) ? body.segments : [];
+  } catch (error) {
+    state.segments.error = error.message || "The segment list could not be loaded.";
+    state.segments.list = [];
+  } finally {
+    state.segments.loadedForClient = attemptingClientId;
+    state.segments.loading = false;
+    render();
+  }
+}
+
 async function loadProducts(force = false) {
   if (typeof fetch !== "function") return;
   // Guard against concurrent loads. Without this, renderWorkspace/renderChooser

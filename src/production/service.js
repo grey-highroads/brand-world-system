@@ -220,6 +220,7 @@ export async function prepareProductionPackage(body, options) {
         placement: body.brief?.placement,
         productId: body.productId,
         campaignId: body.campaign?.id,
+        segment: body.segment,
       }),
     });
   }

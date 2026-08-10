@@ -28,6 +28,39 @@ const directiveOpenings = [
   /^\s*(does not|should not|cannot) (depict|imply|state|claim|suggest|show)\b/i,
 ];
 
+// Would this entry have applied if the job had named a segment? True only
+// when the segment axis is the sole reason it was dropped, so the preflight
+// panel reports a missing segment rather than every scope mismatch.
+function withheldOnlyForSegment(scope, jobScope) {
+  if (!scope?.segment) return false;
+  if (jobScope?.segment) return false;
+  const withoutSegment = { ...scope };
+  delete withoutSegment.segment;
+  return objectScopeAppliesToJob(withoutSegment, jobScope, FAIL_CLOSED);
+}
+
+/**
+ * The segments a client actually uses, derived from the segments declared on
+ * their claims entries. Deriving the list from use rather than maintaining a
+ * separate registry keeps segments configuration in the same sense as catalog
+ * entries, and avoids a management screen for a list that already exists
+ * implicitly.
+ */
+export function listSegments(claimsDocument, activeEntries) {
+  const seen = new Map();
+  for (const section of ["approved", "prohibited", "disclosures"]) {
+    for (const entry of activeEntries(claimsDocument, section)) {
+      const scope = section === "disclosures" ? entry.trigger_scope : entry.scope;
+      const segment = scope?.segment;
+      if (!segment) continue;
+      const key = String(segment).toLowerCase().trim();
+      if (!seen.has(key)) seen.set(key, { id: key, label: String(segment).trim(), count: 0 });
+      seen.get(key).count += 1;
+    }
+  }
+  return [...seen.values()].sort((a, b) => a.label.localeCompare(b.label));
+}
+
 export function isDirective(text) {
   const value = String(text || "").trim();
   if (!value) return false;
@@ -51,6 +84,11 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
   const prohibited = [];
   const disclosures = [];
   const directives = [];
+  // Claims held back because the job names no segment. Fail-closed matching
+  // drops these silently, which is correct behavior and confusing to a
+  // marketer who wrote the claim and cannot see it. Reporting them lets the
+  // preflight panel say what a missing segment left out.
+  const withheldForSegment = [];
 
   // Source one: brand-level claims document.
   if (claimsDocument) {
@@ -60,6 +98,13 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
           text: entry.text,
           source: entry.source_ref || "Brand claims",
           scope: "brand",
+          entry_id: entry.id,
+        });
+      } else if (withheldOnlyForSegment(entry.scope, jobScope)) {
+        withheldForSegment.push({
+          text: entry.text,
+          source: entry.source_ref || "Brand claims",
+          segment: entry.scope.segment,
           entry_id: entry.id,
         });
       }
@@ -115,5 +160,5 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
     }
   }
 
-  return { approved, prohibited, disclosures, directives };
+  return { approved, prohibited, disclosures, directives, withheldForSegment };
 }

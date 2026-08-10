@@ -1,7 +1,7 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { createVercelBlobProductStore } from "../../src/products/store.js";
 import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
-import { assembleClaimsSet } from "../../src/claims/assembly.js";
+import { assembleClaimsSet, listSegments } from "../../src/claims/assembly.js";
 import { buildJobScope } from "../../src/scope/resolver.js";
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../../src/claims/copy-audit.js";
 import { produceCopy } from "../../src/copy/generate.js";
@@ -52,6 +52,16 @@ export default async function handler(request, response) {
     // prompt shape; generation and audit are shared code. This dispatches
     // through the existing handler rather than a new serverless function,
     // because the function count sits at the Vercel Hobby ceiling.
+    // The segments this client uses, derived from their claims entries. A
+    // read, dispatched through this handler because the function count sits
+    // at the Vercel Hobby ceiling.
+    if (String(body.action || "") === "segments") {
+      const store = createVercelBlobClaimsStore({ clientId });
+      const document = await store.read();
+      sendJson(response, 200, { segments: listSegments(document, store.activeEntries) });
+      return;
+    }
+
     if (String(body.action || "") === "copy_type") {
       const claimsStore = createVercelBlobClaimsStore({ clientId });
       const claimsDocument = await claimsStore.read();
@@ -63,6 +73,7 @@ export default async function handler(request, response) {
           placement: body.placement,
           productId: body.productId,
           campaignId: body.campaignId,
+          segment: body.segment,
         }),
       });
       const block = await produceCopy({
@@ -109,6 +120,7 @@ export default async function handler(request, response) {
       placement: body.placement,
       productId: body.productId,
       campaignId: body.campaignId,
+      segment: body.segment,
     });
 
     const claimsSet = assembleClaimsSet({

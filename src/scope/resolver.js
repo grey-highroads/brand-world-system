@@ -71,9 +71,13 @@ const placementScopes = {
  * @param {string} [options.placement] - The job's placement string (e.g. "Instagram feed").
  * @param {string} [options.productId] - The job's product id.
  * @param {string} [options.campaignId] - The job's campaign id.
- * @returns {{ channel: string|null, platform: string|null, placement: string|null, product_id: string|null, campaign_id: string|null, unknownPlacement: boolean }}
+ * @param {string} [options.segment] - The job's segment, a subset of audience
+ *   (e.g. "surgery centers" within healthcare providers). Optional on every
+ *   flow. A broadcast job legitimately has no segment, and the unmatched-axis
+ *   posture handles that case rather than the field being required.
+ * @returns {{ channel: string|null, platform: string|null, placement: string|null, product_id: string|null, campaign_id: string|null, segment: string|null, unknownPlacement: boolean }}
  */
-export function buildJobScope({ placement, productId, campaignId } = {}) {
+export function buildJobScope({ placement, productId, campaignId, segment } = {}) {
   const mapped = placementScopes[placement] || null;
   // When a placement string is provided but not found in the map, flag it.
   // Under fail-closed mode this means scoped approved claims are excluded
@@ -88,6 +92,7 @@ export function buildJobScope({ placement, productId, campaignId } = {}) {
     placement: placement || null,
     product_id: productId || null,
     campaign_id: campaignId || null,
+    segment: segment || null,
     unknownPlacement,
   };
 }
@@ -117,7 +122,7 @@ function resolveNull(mode) {
 
 /**
  * @param {object} claimScope - Object with optional keys: brand_wide, channel,
- *   placement, product_id, campaign_id.
+ *   placement, product_id, campaign_id, segment.
  * @param {object} jobScope - Normalized job scope from buildJobScope.
  * @param {object} [options]
  * @param {"include"|"exclude"} [options.unmatchedAxis="include"] - How to treat
@@ -160,6 +165,18 @@ export function objectScopeAppliesToJob(claimScope, jobScope, options = {}) {
   // Campaign axis
   if (claimScope.campaign_id) {
     const result = axisResult(claimScope.campaign_id, jobScope.campaign_id);
+    if (result === false) return false;
+    if (result === null && !resolveNull(mode)) return false;
+  }
+
+  // Segment axis. Behaves exactly like the others, which means a segment-
+  // scoped approved claim is excluded from a job with no segment set. That is
+  // the intended behavior on broadcast work: a claim true for surgery centers
+  // should not appear in a post addressed to nobody in particular. Because the
+  // exclusion is silent by nature, the preflight panel reports what a missing
+  // segment left out.
+  if (claimScope.segment) {
+    const result = axisResult(claimScope.segment, jobScope.segment);
     if (result === false) return false;
     if (result === null && !resolveNull(mode)) return false;
   }
@@ -211,6 +228,12 @@ export function arrayScopeAppliesToJob(ruleScope, jobScope, options = {}) {
       if (value === "all campaigns") continue;
       if (!jobScope.campaign_id) { if (!resolveNull(mode)) return false; continue; }
       if (!value.includes(normalize(jobScope.campaign_id))) return false;
+    }
+
+    if (label === "segment" || label === "segments" || label === "audience") {
+      if (value.startsWith("all")) continue;
+      if (!jobScope.segment) { if (!resolveNull(mode)) return false; continue; }
+      if (!value.includes(normalize(jobScope.segment))) return false;
     }
   }
 
