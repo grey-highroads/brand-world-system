@@ -3182,6 +3182,16 @@ function updateSalesReadyState() {
   }
 }
 
+// Enable or disable every control that a non-empty brief unlocks. Called from
+// the input handler rather than from render, so the enabled state tracks what
+// is typed without the textarea losing focus.
+function syncBriefGatedControls() {
+  const ready = Boolean(approvedBrainForProduction()) && (state.studio.brief || "").trim().length > 0;
+  document.querySelectorAll("[data-brief-gated]").forEach((control) => {
+    control.disabled = !ready;
+  });
+}
+
 function renderWebsiteSetup(cat) {
   const approved = approvedBrainForProduction();
   const campaigns = state.campaigns || [];
@@ -3286,7 +3296,7 @@ function renderWebsiteSetup(cat) {
 
       <div class="actions">
         <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
-        <button class="button primary" type="button" data-action="website-continue-preflight" ${canProceed ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
+        <button class="button primary" type="button" data-action="website-continue-preflight" data-brief-gated="1" ${canProceed ? "" : "disabled"}>Continue to preflight &rsaquo;</button>
       </div>
     </section>
   `);
@@ -6389,6 +6399,10 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="studio-brief-input"]')) {
     state.studio.brief = event.target.value;
+    // Typing does not re-render, because a re-render would take focus out of
+    // the textarea mid-sentence. Any control whose enabled state depends on
+    // the brief therefore has to be synced here instead.
+    syncBriefGatedControls();
   }
   if (event.target.matches('[data-action="studio-caption-input"]')) {
     state.studio.caption = event.target.value;
@@ -6737,7 +6751,8 @@ root.addEventListener("click", (event) => {
     // Preload the product list when entering the sales enablement setup so
     // the picker has options ready. Loaders belong in action handlers, not in
     // render functions. See docs/ui-contribution-guide.md.
-    if (target.dataset.id === "sales") void loadProducts();
+    // Website and sales both offer the product picker, so both need the list.
+    if (target.dataset.id === "sales" || target.dataset.id === "website") void loadProducts();
     state.studio.brief = "";
     state.studio.platforms = [];
     state.studio.activeFormats = [];
