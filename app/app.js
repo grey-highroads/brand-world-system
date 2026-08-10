@@ -912,6 +912,7 @@ const state = {
   campaignEditField: null,
   campaignEditDraft: null,
   previewOutputId: null,
+  discardOutputId: null,
   // Single store for every generated output, draft or approved. Views filter it;
   // nothing is filed into folders. Every record carries the compiled package so
   // the brand language that produced it survives later brain revisions.
@@ -948,6 +949,7 @@ const state = {
     feedbackDraft: "",
     feedbackScope: "this-output",
     bannerDismissed: false,
+    discardConfirm: false,
     // Consumption records for change-impact classification (roadmap 11).
     // Display now reads from the unified state.outputs store; this remains the
     // audit trail. Consolidating the two is a deliberate follow-up.
@@ -1213,6 +1215,10 @@ function renderOutputPreview() {
         <div class="preview-actions">
           <span class="mini-pill ${output.status === "approved" ? "pill-success" : "pill-neutral"}">${output.status === "approved" ? "Approved" : "Draft"}</span>
           ${output.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${output.id}">Make another like this</button>` : ""}
+          ${state.discardOutputId === output.id
+            ? `<span class="result-discard-inline"><span>Remove this permanently?</span><button class="button danger compact" type="button" data-action="confirm-discard-output" data-id="${output.id}">Discard</button><button class="button ghost compact" type="button" data-action="cancel-discard-output">Keep it</button></span>`
+            : `<button class="button ghost compact result-discard-trigger" type="button" data-action="discard-output" data-id="${output.id}">Discard</button>`
+          }
         </div>
       </div>
     </div>
@@ -5023,6 +5029,16 @@ function renderResult() {
               <button class="button" type="button" data-action="back-to-preflight">View package</button>
               <button class="button" type="button" data-action="download-result">Download image</button>
             </div>
+            <div class="result-discard">
+              ${state.production.discardConfirm
+                ? `<p class="result-discard-note">Discarding removes this image and its record. Recent work, campaigns, and the output log will not show it again.</p>
+                   <div class="actions">
+                     <button class="button danger" type="button" data-action="confirm-discard-output">Discard permanently</button>
+                     <button class="button ghost compact" type="button" data-action="cancel-discard-output">Keep it</button>
+                   </div>`
+                : `<button class="button ghost compact result-discard-trigger" type="button" data-action="discard-output">Discard this output</button>`
+              }
+            </div>
           </section>
 
           ${feedbackOpen ? `
@@ -5799,6 +5815,43 @@ async function persistOutputs() {
     });
   } catch {
     // The output log is still usable in-session if persistence fails.
+  }
+}
+
+// Hard delete. The record leaves state.outputs, so every surface that reads
+// from it (recent work, campaign lists, drift cards, the preview modal) stops
+// showing it without needing its own filter. The server removes the log entry
+// and the image blob.
+async function discardOutput(outputId) {
+  const index = state.outputs.findIndex((o) => o.id === outputId);
+  const removed = index >= 0 ? state.outputs.splice(index, 1)[0] : null;
+  state.previewOutputId = null;
+
+  // The result screen and the generation banner read from the current job, not
+  // from the output record. Clearing it keeps a discarded output from coming
+  // back as a banner or a "view result" link.
+  if (state.production.job?.jobId === outputId) {
+    state.production.job = null;
+    state.production.package = null;
+    state.production.status = "idle";
+    state.production.approved = false;
+    state.production.bannerDismissed = true;
+    if (state.screen === "result") state.screen = "chooser";
+  }
+
+  setToast(removed ? `Discarded ${removed.label || "that output"}.` : "Output discarded.");
+  render();
+
+  if (typeof fetch !== "function") return;
+  try {
+    await fetch("/api/production/outputs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "discard", outputId }),
+    });
+  } catch {
+    // The output is already gone from this session. A failed server delete
+    // means it returns on the next reload rather than silently persisting.
   }
 }
 
@@ -6632,6 +6685,27 @@ root.addEventListener("click", (event) => {
       setToast("Brief restored. Generating now uses the current Brand Brain.");
     }
     navigate("brief");
+    return;
+  }
+  if (action === "discard-output") {
+    // Two-step. The first click asks; the second one deletes.
+    if (target.dataset.id) state.discardOutputId = target.dataset.id;
+    else state.production.discardConfirm = true;
+    render();
+    return;
+  }
+  if (action === "cancel-discard-output") {
+    state.discardOutputId = null;
+    state.production.discardConfirm = false;
+    render();
+    return;
+  }
+  if (action === "confirm-discard-output") {
+    const outputId = target.dataset.id || state.production.job?.jobId;
+    state.discardOutputId = null;
+    state.production.discardConfirm = false;
+    if (outputId) void discardOutput(outputId);
+    else render();
     return;
   }
   if (action === "reuse-output") {

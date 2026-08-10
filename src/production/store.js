@@ -1,6 +1,6 @@
 import fs from "node:fs/promises";
 import path from "node:path";
-import { get, issueSignedToken, presignUrl, put } from "@vercel/blob";
+import { del, get, issueSignedToken, presignUrl, put } from "@vercel/blob";
 
 // Client-namespaced production state and images. Client id is server-resolved
 // and threaded in through the store factory. See ADR 0011.
@@ -52,6 +52,15 @@ export function createFileProductionStore(rootPath) {
     },
     async readImage(pathname) {
       return fs.readFile(pathname);
+    },
+    async deleteOutputImage(jobId) {
+      for (const extension of ["png", "jpg", "webp"]) {
+        try {
+          await fs.unlink(path.join(imageRoot, `${jobId}.${extension}`));
+        } catch (error) {
+          if (error.code !== "ENOENT") throw error;
+        }
+      }
     },
     async readOutputs() {
       try {
@@ -126,6 +135,11 @@ export function createVercelBlobProductionStore(options = {}) {
     // read time rather than trusting what was persisted.
     async outputImageUrl(jobId) {
       return signImageUrl(productionImagePathname(clientId, jobId, "png"));
+    },
+    // Discarding an output is a hard delete. The image blob goes with the log
+    // record so nothing is left to resurface or pay storage for.
+    async deleteOutputImage(jobId) {
+      await del(productionImagePathname(clientId, jobId, "png"), { ...credentials });
     },
     async readOutputs() {
       return readJsonBlobOrNull(outputsPathname(clientId));

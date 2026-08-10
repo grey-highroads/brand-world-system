@@ -40,6 +40,30 @@ export default async function handler(request, response) {
   if (request.method === "POST") {
     try {
       const body = await readJsonBody(request);
+
+      // Discarding an output is a hard delete. The image blob and the log
+      // record both go, so no surface has to remember to filter it out.
+      if (body.action === "discard") {
+        const outputId = String(body.outputId || "");
+        if (!outputId) {
+          const error = new Error("The output to discard is missing.");
+          error.status = 400;
+          throw error;
+        }
+        const saved = await store.readOutputs();
+        const remaining = (saved?.outputs || []).filter((output) => output.id !== outputId);
+        await store.writeOutputs({ outputs: remaining, savedAt: new Date().toISOString() });
+        // The record is gone either way. A missing or already-deleted image
+        // should not fail the request.
+        try {
+          if (store.deleteOutputImage) await store.deleteOutputImage(outputId);
+        } catch {
+          // The blob is orphaned rather than the delete being reported as failed.
+        }
+        sendJson(response, 200, { discarded: true, count: remaining.length });
+        return;
+      }
+
       if (!Array.isArray(body.outputs)) {
         const error = new Error("The outputs list is missing.");
         error.status = 400;
