@@ -5215,6 +5215,7 @@ function renderPreflight() {
               <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
             </ul>
             ${generationPackage.stateNeutralizations?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the protected asset sealed</strong><span>${escapeHtml(generationPackage.stateNeutralizations.join(", "))} changed to match the supplied asset state.</span></span></div></div>` : ""}
+            ${generationPackage.orientationAdjustments?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the screen facing the camera</strong><span>${escapeHtml(generationPackage.orientationAdjustments.join(", "))} changed so the device screen stays visible in the final image.</span></span></div></div>` : ""}
           </details>
 
           ${generationPackage.treatments?.length ? `

@@ -60,6 +60,27 @@ export function inferPackageFormat(lockedAsset) {
   return "package";
 }
 
+/**
+ * Detect whether a locked asset is screen-bearing: a device whose value is
+ * its display (phone, tablet, laptop, app mockup, kiosk, TV). Screen-bearing
+ * assets carry an orientation contradiction risk: briefs that describe a
+ * person using the device imply the screen faces the user, while asset
+ * fidelity requires the screen to face the camera.
+ */
+export function inferScreenBearing(lockedAsset) {
+  if (!lockedAsset) return false;
+  const hay = [
+    lockedAsset.name,
+    lockedAsset.assetType,
+    lockedAsset.declaredType,
+    lockedAsset.fileName,
+  ]
+    .map(clean)
+    .join(" ")
+    .toLowerCase();
+  return /\b(phone|smartphone|iphone|android|mobile|tablet|ipad|laptop|macbook|computer|monitor|screen|display|device|kiosk|tv|television|watch face|smartwatch|app|ui|interface|mockup|screenshot)\b/.test(hay);
+}
+
 // ---------------------------------------------------------------------------
 // Integration sentence
 // ---------------------------------------------------------------------------
@@ -97,7 +118,13 @@ const TEXT_SAFETY = "Any environmental surface that would carry writing (signs, 
  * In all cases the block is compact (three to five sentences) so the world
  * carries the majority of the prompt budget.
  */
-export function protectionBlock({ lockedAsset, format, peopleExcluded = false }) {
+const SCREEN_ORIENTATION_LINES = [
+  "The device's screen faces the camera directly and remains fully visible and readable in the final frame.",
+  "If a person appears with the device, position them so that orientation is physically natural: beside or behind it presenting the screen outward, or viewed over the shoulder so the camera sees the screen as they do.",
+  "Never render the device held in a viewing grip with the screen rotated toward the camera, and never show the back of the device to the camera.",
+];
+
+export function protectionBlock({ lockedAsset, format, peopleExcluded = false, screenBearing = false }) {
   // Case 1: world-only, no locked asset
   if (!lockedAsset) {
     const lines = [
@@ -121,6 +148,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false })
       "Integrate it only through non-destructive environmental light, contact shadow, reflected color, atmosphere, occlusion, and depth effects that do not alter protected identity.",
       TEXT_SAFETY,
     ];
+    if (screenBearing) lines.splice(2, 0, ...SCREEN_ORIENTATION_LINES);
     if (peopleExcluded) lines.push("No additional people or hands appear in the frame.");
     return lines.join(" ");
   }
@@ -135,6 +163,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false })
       `The ${noun} is closed and sealed exactly as supplied: lid on, cap on, wrapper intact, contents not exposed. Do not render the ${noun} as opened, tipped, or with contents visible.`,
     );
   }
+  if (screenBearing) lines.push(...SCREEN_ORIENTATION_LINES);
   lines.push(integrationSentence(format));
   lines.push(TEXT_SAFETY);
   if (peopleExcluded) lines.push("No people or hands appear in the frame.");
@@ -238,6 +267,48 @@ export function neutralizeStateLanguage(text) {
   let out = clean(text);
   const changed = [];
   for (const [pattern, replacement] of STATE_LOCK_PATTERNS) {
+    const found = out.match(pattern);
+    if (found) {
+      changed.push(...found);
+      out = out.replace(pattern, replacement);
+    }
+  }
+  return { text: out, changed };
+}
+
+// ---------------------------------------------------------------------------
+// Screen orientation neutralization
+// ---------------------------------------------------------------------------
+
+const DEVICE_REF = "(?:the\\s+|a\\s+|her\\s+|his\\s+|their\\s+)?(?:phone|smartphone|iphone|device|tablet|ipad|laptop|screen)";
+const SCREEN_ORIENTATION_PATTERNS = [
+  // Participle forms keep participle replacements; finite forms keep finite ones,
+  // so the rewritten sentence stays grammatical either way.
+  [new RegExp("\\b(?:scrolling|swiping)\\s+(?:through|on)\\s+" + DEVICE_REF, "gi"), "presenting the screen toward the camera"],
+  [new RegExp("\\b(?:scrolls?|swipes?)\\s+(?:through|on)\\s+" + DEVICE_REF, "gi"), "presents the screen toward the camera"],
+  [new RegExp("\\b(?:typing|texting|tapping)\\s+on\\s+" + DEVICE_REF, "gi"), "presenting the screen toward the camera"],
+  [new RegExp("\\b(?:types?|texts?|taps?)\\s+on\\s+" + DEVICE_REF, "gi"), "presents the screen toward the camera"],
+  [new RegExp("\\b(?:looking|glancing|gazing|staring)\\s+(?:down\\s+)?at\\s+" + DEVICE_REF, "gi"), "holding the screen toward the camera"],
+  [new RegExp("\\b(?:looks?|glances?|gazes?|stares?)\\s+(?:down\\s+)?at\\s+" + DEVICE_REF, "gi"), "holds the screen toward the camera"],
+  [new RegExp("\\b(?:reading|checking)\\s+" + DEVICE_REF, "gi"), "holding the screen toward the camera"],
+  [new RegExp("\\b(?:reads?|checks?)\\s+" + DEVICE_REF, "gi"), "holds the screen toward the camera"],
+  [new RegExp("\\busing\\s+" + DEVICE_REF, "gi"), "presenting the screen toward the camera"],
+  [new RegExp("\\buses?\\s+" + DEVICE_REF, "gi"), "presents the screen toward the camera"],
+];
+
+/**
+ * Rewrite brief prose that implies a person is mid-use with a screen-bearing
+ * asset. Using-it poses force the screen away from the camera, which
+ * contradicts asset fidelity, and the renderer resolves the contradiction
+ * by drawing the device backward. Rewrites steer toward presentation poses
+ * where a visible screen and a person are simultaneously honest.
+ * Returns the cleaned text and an array of phrases that were changed.
+ * Only call when the locked asset is screen-bearing.
+ */
+export function neutralizeScreenOrientation(text) {
+  let out = clean(text);
+  const changed = [];
+  for (const [pattern, replacement] of SCREEN_ORIENTATION_PATTERNS) {
     const found = out.match(pattern);
     if (found) {
       changed.push(...found);

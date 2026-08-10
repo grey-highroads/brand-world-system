@@ -4,6 +4,8 @@ import {
   selectAestheticMode,
   openingLine,
   neutralizeStateLanguage,
+  inferScreenBearing,
+  neutralizeScreenOrientation,
   auditConstraints,
 } from "./prompt-craft.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
@@ -338,11 +340,18 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 
   // Package format inference and state-lock neutralization
   const packageFormat = lockedAsset ? inferPackageFormat(lockedAsset) : null;
+  const screenBearing = inferScreenBearing(lockedAsset);
   let stateNeutralizations = [];
+  let orientationAdjustments = [];
   if (lockedAsset) {
     const result = neutralizeStateLanguage(scene);
     scene = result.text;
     stateNeutralizations = result.changed;
+  }
+  if (screenBearing) {
+    const oriented = neutralizeScreenOrientation(scene);
+    scene = oriented.text;
+    orientationAdjustments = oriented.changed;
   }
 
   // Protection block
@@ -350,6 +359,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     lockedAsset,
     format: packageFormat,
     peopleExcluded: false,
+    screenBearing,
   });
 
   const sourceCount = approvedBrain.sourceCount || null;
@@ -511,6 +521,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     lockedAsset: lockedAsset ? { name: lockedAsset.name, format: packageFormat } : null,
     templateAsset: templateAsset ? { name: templateAsset.name, ratio: templateAsset.ratio } : null,
     stateNeutralizations,
+    orientationAdjustments,
     prompt,
     sections,
     compiledComponents: guidance.map((section) => `${section.name} / ${section.summary}`),
