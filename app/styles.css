@@ -5817,19 +5817,43 @@ select {
 }
 
 .campaign-inherit-list {
-  gap: 2px;
+  gap: 0;
 }
 
+/* The padding shorthand here used to overwrite the 18px left padding that
+   .exact-list uses to clear its bullet, which left the markers sitting under
+   the text. Keep the left inset when adding the vertical rhythm. */
 .campaign-inherit-list li {
-  padding: 8px 0;
+  padding: var(--space-3) 0 var(--space-3) 18px;
+}
+
+.campaign-inherit-list li:first-child {
+  padding-top: 0;
+}
+
+.campaign-inherit-list li:last-child {
+  padding-bottom: 0;
+}
+
+.campaign-inherit-list li::before {
+  top: 17px;
+  background: var(--celery);
+}
+
+.campaign-inherit-list li:first-child::before {
+  top: 5px;
 }
 
 .campaign-inherit-list li + li {
   border-top: 1px solid var(--border-subtle);
 }
 
-.campaign-inherit-list li strong {
-  min-width: 100px;
+.campaign-inherit-list strong {
+  margin-bottom: 3px;
+}
+
+.campaign-inherit-list span {
+  line-height: 1.5;
 }
 
 @media (prefers-reduced-motion: reduce) {
