@@ -1828,8 +1828,11 @@ function evidenceDoor() {
   const intentAnswered = Boolean(state.brain.sourceProvenance && state.brain.sourceAspiration);
   const canAdd = Boolean(contentReady && !state.brain.sourceFileReading && state.brain.sourceUsage.trim() && intentAnswered && (isEntry || material));
   // Files keep the taxonomy step (with a suggestion) because a file's type
-  // genuinely matters. URL and text ask intent instead of taxonomy.
-  const showType = mode === "files" && Boolean(pendingFile);
+  // matters. URL and text ask intent instead of taxonomy. The step shows
+  // before a file is chosen so the file path reads like the other two, where
+  // every question is visible from the start rather than appearing after an
+  // upload. Choosing a file suggests a type only when none is picked yet.
+  const showType = mode === "files";
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
@@ -1870,7 +1873,7 @@ function evidenceDoor() {
       ${showType ? `
         <div class="source-type-step">
           <div class="source-type-heading">
-            <span><strong>What kind of material is this?</strong><small>${material ? "Suggested from the file. Change it if this is not right." : "Sets safe handling before the system reads anything."}</small></span>
+            <span><strong>What kind of material is this?</strong><small>${material && pendingFile ? "Suggested from the file. Change it if this is not right." : "Sets safe handling before the system reads anything."}</small></span>
           </div>
           <div class="source-material-grid">
             ${evidenceMaterialOptions(mode).map((item) => `
