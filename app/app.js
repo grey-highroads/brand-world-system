@@ -5485,9 +5485,9 @@ function renderResult() {
               ? isLinkedIn
                 ? `<div class="linkedin-result">
                     ${job.postCopy ? `<div class="linkedin-post-copy"><span class="section-label">Generated post</span><div class="linkedin-post-text">${escapeHtml(job.postCopy).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</div><button class="button small" type="button" data-action="copy-post-text">Copy text</button></div>` : ""}
-                    ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
+                    ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
-                : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+                : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
           </section>
@@ -6354,7 +6354,7 @@ async function openOutputForReview(outputId) {
     state.production.job = {
       jobId: outputId,
       status: "complete",
-      imageUrl: saved?.imageUrl || record?.imageUrl || null,
+      imageUrl: saved?.imageUrl || null,
       postCopy: saved?.postCopy || record?.postCopy || null,
       model: payload.package?.model || record?.model || null,
       endpoint: payload.package?.endpoint || null,

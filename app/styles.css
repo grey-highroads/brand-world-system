@@ -7982,3 +7982,17 @@ button.ws-attention-item:hover {
 .studio-setup-field + .studio-setup-field {
   margin-top: var(--space-2);
 }
+
+/* Result screen: an expired or missing image explains itself instead of
+   showing the browser broken-image icon. */
+.generated-output-missing::before {
+  display: block;
+  padding: var(--space-8) var(--space-6);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: center;
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  content: "The image for this output is no longer available. The compiled package and evaluation below are unaffected.";
+}
