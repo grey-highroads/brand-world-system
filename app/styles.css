@@ -6116,6 +6116,22 @@ select {
   }
 }
 
+/* Snapshot splits into what needs doing on the left and what already exists on
+   the right. Even columns, since both sides carry full rows rather than a main
+   surface and a rail. */
+.ws-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-6);
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .ws-split {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .ws-attention-card {
   border-left: 3px solid var(--warning, #e6c765);
 }

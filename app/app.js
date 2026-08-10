@@ -2601,14 +2601,14 @@ function renderWorkspace() {
     <section class="workspace">
       ${pageHeader("Snapshot", "")}
       ${brandContext}
-      <div class="content-grid">
+      <div class="ws-split">
         <div>
           ${attentionSection}
+          ${campaignSection}
+        </div>
+        <div>
           ${workSection}
         </div>
-        <aside>
-          ${campaignSection}
-        </aside>
       </div>
     </section>
   `);
