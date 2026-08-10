@@ -2603,11 +2603,11 @@ function renderWorkspace() {
       ${brandContext}
       <div class="ws-split">
         <div>
-          ${attentionSection}
-          ${campaignSection}
+          ${workSection}
         </div>
         <div>
-          ${workSection}
+          ${attentionSection}
+          ${campaignSection}
         </div>
       </div>
     </section>

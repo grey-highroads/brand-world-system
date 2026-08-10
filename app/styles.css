@@ -6116,7 +6116,7 @@ select {
   }
 }
 
-/* Snapshot splits into what needs doing on the left and what already exists on
+/* Snapshot splits into what already exists on the left and what needs doing on
    the right. Even columns, since both sides carry full rows rather than a main
    surface and a rail. */
 .ws-split {
