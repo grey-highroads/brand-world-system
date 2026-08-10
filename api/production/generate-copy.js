@@ -38,6 +38,15 @@ export default async function handler(request, response) {
       }
     }
 
+    // Scene brief suggestions. Same loaded context as copy generation, so this
+    // branch sits here rather than in a new serverless function. The output is
+    // job direction for a single image, never brand knowledge: nothing written
+    // here is stored, and the user edits or discards it freely.
+    if (String(body.action || "") === "scene_brief") {
+      await handleSceneBrief({ body, brain, product, apiKey, response });
+      return;
+    }
+
     // Extract guidance sections
     const voice = brain.guidanceSections?.find((s) => s.id === "voice");
     const foundation = brain.guidanceSections?.find((s) => s.id === "foundation");
@@ -212,3 +221,115 @@ export default async function handler(request, response) {
 }
 
 // Claim audit and disclosure presence check imported from src/claims/copy-audit.js.
+
+
+// Three short scene briefs assembled from the approved brain, the campaign
+// context, and the product record. Three rather than one, because a marketer
+// who cannot yet describe what they want can still recognize it, and choosing
+// between options is a faster way to arrive than editing a single guess.
+async function handleSceneBrief({ body, brain, product, apiKey, response }) {
+  const dossier = brain.artifacts?.dossier || {};
+  const lived = brain.artifacts?.livedWorld || brain.artifacts?.lived_world || {};
+  const section = (id) => brain.guidanceSections?.find((s) => s.id === id);
+  const world = section("world");
+  const identity = section("identity");
+  const creative = section("creative");
+  const rules = section("rules");
+  const campaign = body.campaign || null;
+
+  const drewOn = [];
+  const context = [];
+
+  context.push(`BRAND: ${brain.brandName}. ${brain.brandDescription || ""}`);
+  if (world) {
+    context.push(`WORLD: ${world.summary}. ${(world.principles || []).join(". ")}`);
+    drewOn.push("Brand world guidance");
+  }
+  if (identity) {
+    context.push(`IDENTITY: ${identity.summary}`);
+    drewOn.push("Identity guidance");
+  }
+  if (creative) {
+    context.push(`CREATIVE DIRECTION: ${creative.summary}. ${(creative.principles || []).join(". ")}`);
+    drewOn.push("Creative direction");
+  }
+  const environments = Array.isArray(lived.environments) ? lived.environments : [];
+  if (environments.length) {
+    context.push(`EARNED ENVIRONMENTS: ${environments.map((e) => `${e.name || e.title || ""}${e.earned ? ` (why the brand belongs: ${e.earned})` : ""}`).filter(Boolean).join("; ")}`);
+    drewOn.push("Lived World environments");
+  }
+  if (lived.person) {
+    context.push(`PERSON AT THE CENTER: ${typeof lived.person === "string" ? lived.person : JSON.stringify(lived.person).slice(0, 600)}`);
+    drewOn.push("Lived World person");
+  }
+  if (dossier.desiredFeeling) context.push(`DESIRED FEELING: ${dossier.desiredFeeling}`);
+  if (dossier.materials?.length) context.push(`MATERIALS AND LIGHT: ${dossier.materials.join(", ")}`);
+  if (dossier.palette?.length) context.push(`PALETTE: ${dossier.palette.map((c) => `${c.name} (${c.role})`).join(", ")}`);
+  if (rules) {
+    context.push(`RULES AND GUARDRAILS: ${rules.summary}. ${(dossier.guardrails || []).map((g) => `${g.title}: ${g.body}`).join(" ")}`);
+    drewOn.push("Creative rules and guardrails");
+  }
+  if (campaign) {
+    context.push(`CAMPAIGN: ${campaign.name}. Idea: ${campaign.campaignIdea || ""}. Message territory: ${campaign.messageTerritory || ""}. Audience: ${campaign.audience || ""}. Objective: ${campaign.objective || ""}`);
+    drewOn.push(`Campaign: ${campaign.name}`);
+  }
+  if (product) {
+    context.push(`PRODUCT: ${product.product_name}. ${product.one_true_thing || ""} Visual direction: ${product.visual_direction || ""}`);
+    if (product.exclusions?.length) context.push(`PRODUCT EXCLUSIONS: ${product.exclusions.join("; ")}`);
+    drewOn.push(`Product record: ${product.product_name}`);
+    const images = Array.isArray(product.images) ? product.images : [];
+    if (images.some((i) => i.kind === "isolated")) drewOn.push("Product image on the record");
+  }
+
+  const systemPrompt = [
+    "You write short scene briefs for brand image production. A scene brief describes what a single image should show: subject, setting, action, light, and mood. It is direction for a photographer, not marketing copy.",
+    "",
+    context.join("\n"),
+    "",
+    "RULES:",
+    "- Describe only what a camera could see. No slogans, no statistics, no claims about the product's performance.",
+    "- Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in.",
+    "- No em dashes. No fragment stacks. Plain declarative sentences.",
+    "- Two or three sentences per brief. Concrete nouns over adjectives.",
+    "- The three briefs must differ in setting or moment, not merely in wording.",
+    "",
+    "OUTPUT FORMAT:",
+    'Return only JSON: {"options":[{"label":"three or four words","brief":"the scene"}]} with exactly three options. No markdown fences, no preamble.',
+  ].join("\n");
+
+  const userPrompt = [
+    body.placementLabel ? `The image is a ${body.placementLabel}${body.placementRatio ? ` at ${body.placementRatio}` : ""}.` : "",
+    body.placementCraft ? `Composition for this shape: ${body.placementCraft}` : "",
+    body.hint ? `The user has started describing it: ${body.hint}` : "Propose three directions the brand could credibly take.",
+  ].filter(Boolean).join("\n");
+
+  const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      max_tokens: 800,
+      temperature: 0.9,
+    }),
+  });
+  if (!chatResponse.ok) {
+    const errorBody = await chatResponse.text();
+    throw new Error(`OpenAI returned status ${chatResponse.status}: ${errorBody.slice(0, 200)}`);
+  }
+  const chatData = await chatResponse.json();
+  const raw = chatData.choices?.[0]?.message?.content?.trim() || "";
+  let options = [];
+  try {
+    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
+  } catch {
+    throw new Error("The suggestions came back in an unexpected shape. Try again.");
+  }
+  if (!options.length) throw new Error("No suggestions came back. Try again.");
+
+  sendJson(response, 200, { options, drewOn, model: "gpt-4o" });
+}

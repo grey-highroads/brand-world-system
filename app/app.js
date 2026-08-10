@@ -1098,6 +1098,13 @@ const state = {
     // placement changes the composition the system writes, so it has to be an
     // answer the user gave.
     websiteFormat: "",
+    // Scene brief suggestions. Model output offered as job direction, never
+    // stored and never brand knowledge.
+    sceneSuggestions: [],
+    sceneSuggestionsDrewOn: [],
+    sceneSuggesting: false,
+    sceneSuggestError: "",
+    sceneSourcesOpen: false,
     websiteProductId: "",
   },
   brain: {
@@ -3189,6 +3196,38 @@ function updateSalesReadyState() {
 // Enable or disable every control that a non-empty brief unlocks. Called from
 // the input handler rather than from render, so the enabled state tracks what
 // is typed without the textarea losing focus.
+// Suggestions land here rather than straight into the textarea. Three options
+// with different settings, because someone who cannot describe what they want
+// can still recognize it, and choosing arrives faster than editing a guess.
+// Picking one fills the field and leaves it fully editable.
+function sceneSuggestionPanel() {
+  const { sceneSuggestions: options, sceneSuggestError: error, sceneSuggestionsDrewOn: drewOn } = state.studio;
+  if (error) {
+    return `<p class="field-note field-spaced scene-suggest-error">${escapeHtml(error)}</p>`;
+  }
+  if (!options.length) return "";
+  return `
+    <div class="scene-suggest-panel">
+      <div class="scene-suggest-head">
+        <span class="section-label">Three directions</span>
+        <button class="studio-add-link" type="button" data-action="suggest-scene">Try again</button>
+      </div>
+      <div class="scene-suggest-list">
+        ${options.map((option, index) => `
+          <button class="scene-suggest-card" type="button" data-action="use-scene-suggestion" data-index="${index}">
+            <strong>${escapeHtml(option.label || "Option")}</strong>
+            <span>${escapeHtml(option.brief || "")}</span>
+          </button>
+        `).join("")}
+      </div>
+      ${drewOn.length ? `
+        <button class="studio-add-link" type="button" data-action="toggle-scene-sources">${state.studio.sceneSourcesOpen ? "Hide what this used" : "Show what this used"}</button>
+        ${state.studio.sceneSourcesOpen ? `<ul class="scene-suggest-sources">${drewOn.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+      ` : ""}
+    </div>
+  `;
+}
+
 function websiteReadyForPreflight() {
   return Boolean(approvedBrainForProduction())
     && (state.studio.brief || "").trim().length > 0
@@ -3234,9 +3273,13 @@ function renderWebsiteSetup(cat) {
               </div>
 
               <div class="field full">
-                <label for="website-brief">What should it show</label>
+                <div class="studio-label-row">
+                  <label for="website-brief">What should it show</label>
+                  <button class="studio-add-link" type="button" data-action="suggest-scene" ${state.studio.sceneSuggesting || !approved ? "disabled" : ""}>${state.studio.sceneSuggesting ? "Thinking" : "Suggest for me"}</button>
+                </div>
                 <span class="field-note">A sentence or two. The system supplies the composition, lighting, and framing for this shape.</span>
                 <textarea id="website-brief" data-action="studio-brief-input" placeholder="A care coordinator checking messages between patient rooms, natural light, calm and unhurried">${escapeHtml(state.studio.brief)}</textarea>
+                ${sceneSuggestionPanel()}
               </div>
 
               <div class="field full">
@@ -6848,6 +6891,10 @@ root.addEventListener("click", (event) => {
     // Website and sales both offer the product picker, so both need the list.
     if (target.dataset.id === "sales" || target.dataset.id === "website") void loadProducts();
     state.studio.brief = "";
+    state.studio.sceneSuggestions = [];
+    state.studio.sceneSuggestionsDrewOn = [];
+    state.studio.sceneSuggestError = "";
+    state.studio.sceneSourcesOpen = false;
     state.studio.platforms = [];
     state.studio.activeFormats = [];
     state.studio.textOverlay = false;
@@ -6981,6 +7028,26 @@ root.addEventListener("click", (event) => {
       }
     }
     void prepareProductionPreflight();
+  }
+  if (action === "suggest-scene") {
+    void suggestSceneBriefs();
+    return;
+  }
+  if (action === "toggle-scene-sources") {
+    state.studio.sceneSourcesOpen = !state.studio.sceneSourcesOpen;
+    render();
+    return;
+  }
+  if (action === "use-scene-suggestion") {
+    const option = state.studio.sceneSuggestions[Number(target.dataset.index)];
+    if (option) {
+      state.studio.brief = option.brief || "";
+      state.studio.sceneSuggestions = [];
+      state.studio.sceneSourcesOpen = false;
+      setToast("Direction applied. Edit it however you like.");
+    }
+    render();
+    return;
   }
   if (action === "website-set-format") {
     state.studio.websiteFormat = target.dataset.id;
@@ -7915,6 +7982,46 @@ async function loadProducts(force = false) {
 // Upload the file to Blob first, then record it on the product record. The
 // two-step matches how source files already work: the browser puts the bytes
 // in storage directly and the server only ever handles the reference.
+async function suggestSceneBriefs() {
+  state.studio.sceneSuggesting = true;
+  state.studio.sceneSuggestError = "";
+  render();
+  try {
+    const fmt = websiteOutputFormats[state.studio.websiteFormat] || null;
+    const campaign = (state.campaigns || []).find((c) => c.id === state.studio.campaignId) || null;
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "scene_brief",
+        productId: state.studio.websiteProductId || undefined,
+        campaign: campaign ? {
+          name: campaign.name,
+          campaignIdea: campaign.campaignIdea,
+          messageTerritory: campaign.messageTerritory,
+          audience: campaign.audience,
+          objective: campaign.objective,
+        } : null,
+        placementLabel: fmt?.label,
+        placementRatio: fmt?.ratio,
+        placementCraft: fmt?.craft,
+        hint: (state.studio.brief || "").trim() || undefined,
+      }),
+    });
+    const payload = await readApiJson(response);
+    if (!response.ok) throw new Error(payload?.error || "The suggestions could not be built.");
+    state.studio.sceneSuggestions = payload.options || [];
+    state.studio.sceneSuggestionsDrewOn = payload.drewOn || [];
+    state.studio.sceneSourcesOpen = false;
+  } catch (error) {
+    state.studio.sceneSuggestions = [];
+    state.studio.sceneSuggestError = error.message || "The suggestions could not be built.";
+  } finally {
+    state.studio.sceneSuggesting = false;
+    render();
+  }
+}
+
 async function attachProductImage(file, kind) {
   const productId = state.products.detail?.product_id;
   if (!productId) return;
