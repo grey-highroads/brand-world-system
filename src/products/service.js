@@ -311,6 +311,56 @@ export async function readProduct({ store, productId }) {
 // be reviewed and revised but not used in generation. This is the "approve
 // guidance" action from the glossary, distinct from output approval and
 // canonical promotion.
+// Attach an image to a product record. The file is already in Blob storage;
+// this records where it is and how production should treat it.
+//
+// Adding or removing an image does not bump the version and does not reset
+// approval. The version and the approval gate exist to protect claim language,
+// and a picture is not a claim. Re-synthesis, which does rewrite claims, keeps
+// its existing behavior of bumping and clearing approval.
+export async function addProductImage({ store, productId, image }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  const kind = image?.kind === "in_context" ? "in_context" : "isolated";
+  const blobPathname = String(image?.blob_pathname || "").trim();
+  const fileName = String(image?.file_name || "").trim();
+  if (!blobPathname || !fileName) {
+    const error = new Error("An image needs a stored file before it can be attached.");
+    error.status = 400;
+    throw error;
+  }
+  const images = Array.isArray(record.images) ? record.images.slice() : [];
+  images.push({
+    image_id: `img-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`,
+    kind,
+    file_name: fileName,
+    blob_pathname: blobPathname,
+    content_type: String(image?.content_type || "image/png"),
+    caption: String(image?.caption || "").slice(0, 400),
+    added_at: new Date().toISOString(),
+  });
+  const updated = { ...record, images };
+  await store.writeProduct(updated);
+  return updated;
+}
+
+export async function removeProductImage({ store, productId, imageId }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  const images = (Array.isArray(record.images) ? record.images : []).filter((item) => item.image_id !== imageId);
+  const updated = { ...record, images };
+  await store.writeProduct(updated);
+  return updated;
+}
+
 export async function approveProduct({ store, productId }) {
   const record = await store.readProduct(productId);
   if (!record) {

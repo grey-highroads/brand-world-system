@@ -8,6 +8,8 @@ import {
   resolveReviewQuestion,
   deferReviewQuestion,
   deleteProductRecord,
+  addProductImage,
+  removeProductImage,
 } from "../../src/products/service.js";
 import {
   readJsonBody,
@@ -70,6 +72,26 @@ export default async function handler(request, response) {
       return;
     }
 
+    if (action === "add_image") {
+      const record = await addProductImage({
+        store: productStore,
+        productId: String(body.productId || "").trim(),
+        image: body.image || {},
+      });
+      sendJson(response, 200, { record });
+      return;
+    }
+
+    if (action === "remove_image") {
+      const record = await removeProductImage({
+        store: productStore,
+        productId: String(body.productId || "").trim(),
+        imageId: String(body.imageId || "").trim(),
+      });
+      sendJson(response, 200, { record });
+      return;
+    }
+
     if (action === "defer_question") {
       const productId = String(body.productId || "").trim();
       const record = await deferReviewQuestion({
@@ -94,7 +116,7 @@ export default async function handler(request, response) {
     }
 
     sendJson(response, 400, {
-      error: `Unknown action "${action}". Supported: synthesize, read, approve, resolve_question, defer_question, delete.`,
+      error: `Unknown action "${action}". Supported: synthesize, read, approve, add_image, remove_image, resolve_question, defer_question, delete.`,
     });
   } catch (error) {
     sendPublicError(response, error);

@@ -158,13 +158,48 @@ export async function prepareProductionPackage(body, options) {
   const stored = await options.brainStore.read();
   const { approvedBrain, brainVersion } = approvedContext(stored);
   const references = resolveReferences(stored, body.references || []);
-  const lockedAsset = resolveLockedAsset(stored, body.lockedAssetId);
+  let lockedAsset = resolveLockedAsset(stored, body.lockedAssetId);
   const templateAsset = resolveTemplateAsset(stored, body.templateAssetId);
   // Resolve the product record when the request names one (ADR 0012 step 4).
   // The product store is passed in by the endpoint or constructed here from
   // the client id when available.
   const productStore = options.productStore || null;
   const product = productStore ? await resolveProduct(productStore, body.productId || null) : null;
+
+  // Product imagery. An isolated image is the product itself and becomes the
+  // protected subject when the job has not already locked something else. An
+  // in-context image shows the product in use and joins the creative
+  // references, where it informs the scene without being reproduced.
+  const productImages = Array.isArray(product?.images) ? product.images : [];
+  if (!lockedAsset) {
+    const isolated = productImages.find((image) => image.kind === "isolated" && image.blob_pathname);
+    if (isolated) {
+      lockedAsset = {
+        source: { id: `product:${product.product_id}`, name: `${product.product_name} product image` },
+        file: {
+          name: isolated.file_name,
+          type: isolated.content_type,
+          blobPathname: isolated.blob_pathname,
+        },
+        name: `${product.product_name} product image`,
+        assetType: "product",
+        fileName: isolated.file_name,
+      };
+    }
+  }
+  for (const image of productImages) {
+    if (image.kind !== "in_context" || !image.blob_pathname) continue;
+    if (references.length >= 8) break;
+    references.push({
+      source: { id: `product:${product.product_id}:${image.image_id}`, name: `${product.product_name} in use` },
+      file: { name: image.file_name, type: image.content_type, blobPathname: image.blob_pathname },
+      role: "Style calibration",
+      influence: "Supporting",
+      usageInstruction: image.caption
+        ? `Shows how ${product.product_name} appears in real use: ${image.caption}. Match the placement, scale, and handling, not the specific scene.`
+        : `Shows how ${product.product_name} appears in real use. Match the placement, scale, and handling, not the specific scene.`,
+    });
+  }
 
   const generationPackage = compileBrandWorldImagePackage({
     approvedBrain,

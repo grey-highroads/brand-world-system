@@ -7750,3 +7750,87 @@ button.ws-attention-item:hover {
   font-size: 12px;
   font-weight: 600;
 }
+
+/* Product imagery. Two buckets on the product record, since the kinds are
+   handled differently in production rather than just filed differently. */
+.product-image-buckets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.product-image-bucket-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: var(--space-3);
+}
+
+.product-image-bucket-head strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.product-image-bucket-head small {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.product-image-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.product-image-tile,
+.product-image-add {
+  width: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  background: var(--ink-900);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.product-image-tile img,
+.product-image-tile-empty {
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  background: var(--surface-inset);
+  border-radius: var(--radius-sm);
+}
+
+.product-image-name {
+  font-size: 11px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-image-add {
+  align-items: center;
+  justify-content: center;
+  min-height: 122px;
+  border-style: dashed;
+  color: var(--celery-ink);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.product-image-add:hover {
+  border-color: var(--celery);
+}
+
+.product-image-add.busy {
+  color: var(--muted);
+}
+
+.product-image-add input {
+  display: none;
+}

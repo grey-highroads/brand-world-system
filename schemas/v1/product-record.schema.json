@@ -62,6 +62,13 @@
     "visual_direction": {
       "$ref": "common.schema.json#/$defs/non_empty_string"
     },
+    "images": {
+      "type": "array",
+      "description": "Optional. Product imagery attached to this record. Absent on records created before imagery was supported, so consumers must treat it as optional.",
+      "items": {
+        "$ref": "#/$defs/product_image"
+      }
+    },
     "exclusions": {
       "type": "array",
       "minItems": 0,
@@ -220,6 +227,49 @@
           "type": "string",
           "format": "date-time",
           "description": "Set when a reviewer tables the question for later. A tabled question does not block approval; production surfaces a warning while approved records carry open questions. Cleared when an answer is recorded."
+        }
+      }
+    },
+    "product_image": {
+      "type": "object",
+      "description": "An image of the product. Kind decides how production treats it: isolated images are placed as the protected subject, in-context images inform the scene without being reproduced.",
+      "additionalProperties": false,
+      "required": [
+        "image_id",
+        "kind",
+        "file_name",
+        "blob_pathname",
+        "content_type",
+        "added_at"
+      ],
+      "properties": {
+        "image_id": {
+          "$ref": "common.schema.json#/$defs/identifier"
+        },
+        "kind": {
+          "enum": [
+            "isolated",
+            "in_context"
+          ]
+        },
+        "file_name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "blob_pathname": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "caption": {
+          "type": "string"
+        },
+        "added_at": {
+          "type": "string",
+          "format": "date-time"
         }
       }
     }

@@ -980,6 +980,7 @@ const state = {
     resynthesizing: false,
     deleting: false,
     questionEditing: {},
+    imageUploadingKind: "",
     detailSections: null,
   },
   clientSwitcherOpen: false,
@@ -3246,7 +3247,7 @@ function renderWebsiteSetup(cat) {
                     <option value="">No product record</option>
                     ${approvedProducts().map((p) => `<option value="${escapeHtml(p.product_id)}" ${state.studio.websiteProductId === p.product_id ? "selected" : ""}>${escapeHtml(p.product_name)}</option>`).join("")}
                   </select>
-                  <span class="field-note">${approvedProducts().length ? "" : "No approved products yet."}</span>
+                  <span class="field-note">${approvedProducts().length ? escapeHtml(productImageryNote(state.studio.websiteProductId)) : "No approved products yet."}</span>
                 </div>
               </div>
 
@@ -3393,7 +3394,7 @@ function renderSalesSetup(cat) {
                     <option value="">No product record</option>
                     ${approvedProducts().map((p) => `<option value="${escapeHtml(p.product_id)}" ${state.studio.salesProductId === p.product_id ? "selected" : ""}>${escapeHtml(p.product_name)}</option>`).join("")}
                   </select>
-                  <span class="field-note">${approvedProducts().length ? "" : "No approved products yet."}</span>
+                  <span class="field-note">${approvedProducts().length ? escapeHtml(productImageryNote(state.studio.salesProductId)) : "No approved products yet."}</span>
                 </div>
               </div>
 
@@ -3658,6 +3659,73 @@ function renderProducts() {
   `);
 }
 
+// Product imagery. Two buckets, because the two kinds are treated differently
+// in production rather than merely filed differently: an isolated image is
+// placed as the protected subject, an in-context image informs the scene.
+// Says what the attached imagery will actually do in this job, so picking a
+// product does not silently change what the system places.
+function productImageryNote(productId) {
+  if (!productId) return "";
+  const record = state.products.detail?.product_id === productId ? state.products.detail : null;
+  const entry = state.products.list.find((p) => p.product_id === productId);
+  const images = Array.isArray(record?.images) ? record.images : null;
+  if (!images) return `Uses ${entry?.product_name || "this product"}'s governed claims and any imagery on its record.`;
+  const isolated = images.filter((i) => i.kind === "isolated").length;
+  const context = images.filter((i) => i.kind === "in_context").length;
+  if (!isolated && !context) return "No imagery on this record yet. Add it from the Products screen.";
+  const parts = [];
+  if (isolated) parts.push("The product image is placed as the subject");
+  if (context) parts.push(`${context} in-use ${context === 1 ? "image informs" : "images inform"} placement and handling`);
+  return `${parts.join(", and ")}.`;
+}
+
+function productImagesSection(record) {
+  const images = Array.isArray(record.images) ? record.images : [];
+  const pending = state.products.imageUploadingKind;
+  const unresolved = images.map((i) => i.blob_pathname).filter((path) => path && !state.thumbnailUrls[path]);
+  if (unresolved.length) void ensureThumbnailUrls(unresolved);
+
+  const bucket = (kind, title, note) => {
+    const rows = images.filter((image) => image.kind === kind);
+    return `
+      <div class="product-image-bucket">
+        <div class="product-image-bucket-head">
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(note)}</small>
+        </div>
+        <div class="product-image-row">
+          ${rows.map((image) => `
+            <div class="product-image-tile">
+              ${state.thumbnailUrls[image.blob_pathname]
+                ? `<img src="${escapeHtml(state.thumbnailUrls[image.blob_pathname])}" alt="">`
+                : `<span class="product-image-tile-empty"></span>`}
+              <span class="product-image-name">${escapeHtml(image.file_name)}</span>
+              <button class="text-button" type="button" data-action="remove-product-image" data-id="${escapeHtml(image.image_id)}">Remove</button>
+            </div>
+          `).join("")}
+          <label class="product-image-add ${pending === kind ? "busy" : ""}">
+            <input type="file" accept=".png,.jpg,.jpeg,.webp" data-action="product-image-input" data-kind="${kind}">
+            <span>${pending === kind ? "Uploading" : "+ Add image"}</span>
+          </label>
+        </div>
+      </div>
+    `;
+  };
+
+  return `
+    <details class="card collapsible-card" data-psection="images" ${images.length ? "open" : ""}>
+      <summary class="card-header collapsible-header">
+        <h2>Product imagery</h2>
+        <span class="collapsible-meta"><span class="mini-pill pill-neutral">${images.length}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+      </summary>
+      <div class="product-image-buckets collapsible-body-list">
+        ${bucket("isolated", "How it looks", "The product on its own. A packshot, a product photo, an interface screenshot. Production places this as the subject.")}
+        ${bucket("in_context", "How it is used", "The product in the world. Someone holding it, a screen in a workplace. Production reads these for placement and handling without reproducing them.")}
+      </div>
+    </details>
+  `;
+}
+
 function renderProductDetail() {
   const record = state.products.detail;
   const error = state.products.error;
@@ -3793,6 +3861,8 @@ function renderProductDetail() {
           <li><strong>Source summary:</strong> ${escapeHtml(record.source_summary)}</li>
         </ul>
       </details>
+
+      ${productImagesSection(record)}
 
       ${(record.features || []).length ? `
       <details class="card collapsible-card" data-psection="features" ${sections.features ? "open" : ""}>
@@ -6485,6 +6555,11 @@ root.addEventListener("change", async (event) => {
       }
     }
   }
+  if (action === "product-image-input") {
+    const file = Array.from(event.target.files ?? [])[0];
+    if (file) void attachProductImage(file, event.target.dataset.kind);
+    return;
+  }
   if (action === "campaign-toggle-channel") {
     if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
     const ch = event.target.dataset.channel;
@@ -6753,6 +6828,10 @@ root.addEventListener("click", (event) => {
   }
   if (action === "resynthesize-product") {
     void resynthesizeProduct();
+  }
+  if (action === "remove-product-image") {
+    void detachProductImage(target.dataset.id);
+    return;
   }
   if (action === "delete-product") {
     void deleteProductRecordFromDetail();
@@ -7833,6 +7912,63 @@ async function loadProducts(force = false) {
 }
 
 // Fetch one full product record and store it in state.products.detail.
+// Upload the file to Blob first, then record it on the product record. The
+// two-step matches how source files already work: the browser puts the bytes
+// in storage directly and the server only ever handles the reference.
+async function attachProductImage(file, kind) {
+  const productId = state.products.detail?.product_id;
+  if (!productId) return;
+  state.products.imageUploadingKind = kind;
+  state.products.error = "";
+  render();
+  try {
+    const stored = await uploadSourceToBlob(file);
+    if (!stored?.blobPathname) throw new Error("The image was not stored. Try again.");
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "add_image",
+        productId,
+        image: {
+          kind,
+          file_name: stored.name || file.name,
+          blob_pathname: stored.blobPathname,
+          content_type: file.type || "image/png",
+        },
+      }),
+    });
+    const payload = await readApiJson(response);
+    if (!response.ok) throw new Error(payload?.error || "The image could not be attached.");
+    state.products.detail = payload.record;
+    setToast(kind === "isolated" ? "Product image added" : "In-use image added");
+  } catch (error) {
+    state.products.error = error.message || "The image could not be attached.";
+  } finally {
+    state.products.imageUploadingKind = "";
+    render();
+  }
+}
+
+async function detachProductImage(imageId) {
+  const productId = state.products.detail?.product_id;
+  if (!productId || !imageId) return;
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "remove_image", productId, imageId }),
+    });
+    const payload = await readApiJson(response);
+    if (!response.ok) throw new Error(payload?.error || "The image could not be removed.");
+    state.products.detail = payload.record;
+  } catch (error) {
+    state.products.error = error.message || "The image could not be removed.";
+  } finally {
+    render();
+  }
+}
+
 async function loadProductDetail(productId) {
   if (typeof fetch !== "function") return;
   state.products.activeId = productId;
