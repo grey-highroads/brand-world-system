@@ -3450,7 +3450,7 @@ function renderProductAddPanel() {
       <p class="page-description">Give the product a name and its brief. The system reads the brief and builds a governed record: features, approved claim language, and rules production must follow. Every claim traces back to the brief, and nothing is usable until you review and approve it.</p>
       <div class="field">
         <label for="product-add-name">Product name</label>
-        <input id="product-add-name" type="text" data-action="product-add-name-input" value="${escapeHtml(p.addName)}" placeholder="e.g. RCS Messaging" ${creating ? "disabled" : ""} />
+        <input class="input-like" id="product-add-name" type="text" data-action="product-add-name-input" value="${escapeHtml(p.addName)}" placeholder="e.g. RCS Messaging" ${creating ? "disabled" : ""} />
       </div>
       <div class="source-method-tabs" role="tablist" aria-label="Brief source">
         <button class="${tab === "file" ? "active" : ""}" type="button" data-action="product-add-tab" data-tab="file" ${creating ? "disabled" : ""}>Upload a brief</button>
@@ -3484,6 +3484,12 @@ function renderProductAddPanel() {
   `;
 }
 
+function formatShortDate(value) {
+  const date = new Date(value || Date.now());
+  if (Number.isNaN(date.getTime())) return "unknown";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
 function renderProducts() {
   const list = state.products.list;
   const loading = state.products.loading;
@@ -3492,14 +3498,20 @@ function renderProducts() {
   const cards = list.map((entry) => {
     const isApproved = entry.status === "approved";
     return `
-      <button class="card chooser-card" type="button" data-action="view-product" data-id="${escapeHtml(entry.product_id)}">
-        <div class="card-header">
-          <h2>${escapeHtml(entry.product_name)}</h2>
-          <span class="mini-pill ${isApproved ? "pill-success" : "pill-neutral"}">${isApproved ? "Approved" : "Needs review"}</span>
-          ${isApproved && entry.open_questions ? `<span class="mini-pill pill-warning">${entry.open_questions} open</span>` : ""}
-        </div>
-        <p>Version ${escapeHtml(String(entry.version || "1"))} · Updated ${new Date(entry.updated_at || Date.now()).toLocaleString()}</p>
-        <span class="chooser-contract">${isApproved ? "Available to production" : "Cannot be used until approved"}</span>
+      <button class="card product-card" type="button" data-action="view-product" data-id="${escapeHtml(entry.product_id)}">
+        <span class="product-card-name">${escapeHtml(entry.product_name)}</span>
+        <span class="product-card-meta">Version ${escapeHtml(String(entry.version || "1"))} · Updated ${formatShortDate(entry.updated_at)}</span>
+        <span class="product-card-stats">
+          <span class="product-stat">
+            <span class="product-stat-label">Status</span>
+            <span class="mini-pill ${isApproved ? "pill-success" : "pill-warning"}">${isApproved ? "Approved" : "Needs review"}</span>
+          </span>
+          <span class="product-stat">
+            <span class="product-stat-label">Open questions</span>
+            <span class="mini-pill ${entry.open_questions ? "pill-warning" : "pill-neutral"}">${entry.open_questions || "None"}</span>
+          </span>
+        </span>
+        <span class="product-card-footer">${isApproved ? "Available in Design Studio" : "Cannot be used until approved"}</span>
       </button>
     `;
   }).join("");
@@ -3509,7 +3521,7 @@ function renderProducts() {
       ${pageHeader(
         "Products",
         list.length
-          ? `${list.length} ${list.length === 1 ? "product record" : "product records"} for ${state.brandName}. Approved records are available to production; candidates are waiting for review.`
+          ? `${list.length} ${list.length === 1 ? "product record" : "product records"} for ${state.brandName}. Approved records are available in the Design Studio; candidates are waiting for review.`
           : `The system builds a governed record for each product: what it does, its approved claim language, and the rules production must follow.`
       )}
       ${!state.products.addOpen ? `
@@ -3519,7 +3531,7 @@ function renderProducts() {
       ` : renderProductAddPanel()}
       ${error ? `<div class="rule-card"><div class="rule"><span class="mini-pill pill-warning">Error</span><span><strong>${escapeHtml(error)}</strong></span></div></div>` : ""}
       ${loading && !list.length ? `<p class="page-description">Loading product records...</p>` : ""}
-      ${list.length ? `<div class="grid mode-grid">${cards}</div>` : loading || state.products.addOpen ? "" : `
+      ${list.length ? `<div class="product-card-grid">${cards}</div>` : loading || state.products.addOpen ? "" : `
         <div class="card">
           <div class="card-header"><h2>No products yet</h2></div>
           <p>Add your first product above. You will review everything the system builds before it can be used in production.</p>

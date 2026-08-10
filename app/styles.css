@@ -598,6 +598,18 @@ select:focus-visible {
 
 textarea,
 select,
+.field input[type="text"]:not(.input-like),
+.field input[type="url"]:not(.input-like),
+.field input[type="email"]:not(.input-like) {
+  width: 100%;
+  height: 42px;
+  padding: 0 13px;
+  color: var(--text);
+  background: #26313e;
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-sm);
+}
+
 .input-like {
   width: 100%;
   color: var(--text);
@@ -7573,4 +7585,74 @@ button.ws-attention-item:hover {
 .website-format-dim {
   font-size: 11px;
   color: var(--muted);
+}
+
+/* ── Product records ───────────────────────────────────────── */
+
+.product-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+}
+
+.product-card-grid > .card + .card {
+  margin-top: 0;
+}
+
+/* Fixed regions rather than a flowing header. A long product name wraps within
+   its own block instead of reshaping the rest of the card, so cards in a row
+   stay comparable. */
+.product-card {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+  gap: var(--space-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.product-card:hover {
+  border-color: var(--celery);
+}
+
+.product-card-name {
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: break-word;
+}
+
+.product-card-meta {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.product-card-stats {
+  display: flex;
+  gap: var(--space-6);
+  align-items: flex-end;
+  padding: var(--space-3) 0;
+}
+
+.product-stat {
+  display: grid;
+  gap: var(--space-1);
+  justify-items: start;
+}
+
+.product-stat-label {
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+}
+
+.product-card-footer {
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+  color: var(--celery-ink);
+  font-size: 12px;
+  font-weight: 600;
 }
