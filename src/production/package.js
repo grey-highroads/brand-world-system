@@ -340,7 +340,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 
   // Package format inference and state-lock neutralization
   const packageFormat = lockedAsset ? inferPackageFormat(lockedAsset) : null;
-  const screenBearing = inferScreenBearing(lockedAsset);
+  const screenBearing = !isSalesEnablement && !isTemplate && !templateAsset && inferScreenBearing(lockedAsset);
   let stateNeutralizations = [];
   let orientationAdjustments = [];
   if (lockedAsset) {
