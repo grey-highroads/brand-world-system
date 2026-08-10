@@ -8,6 +8,14 @@
 //   2. Every paraphrase violation is flagged as "prohibited".
 //   3. No non-violating adjacent sample is flagged as "prohibited".
 //   4. The audit-failed path is exercised and distinguishable from clean.
+//
+// Added by the ADR 0013 amendment of 2026-08-10:
+//   5. Copy that states compliance with a restriction is not flagged as
+//      violating it. "No extra apps needed" does not violate a rule against
+//      depicting an app as required.
+//   6. Unfalsifiable marketing language classifies as "description" and
+//      produces no advisory finding. The ceiling is one puffery sample
+//      misclassified out of five; the beta run misclassified all of them.
 
 import { readFileSync } from "fs";
 import { auditCopyAgainstClaims } from "../src/claims/copy-audit.js";
@@ -104,7 +112,34 @@ async function main() {
   console.log(`  error: ${results.errorPath.errorMessage}`);
   console.log(`  sentences empty: ${results.errorPath.sentencesEmpty}`);
 
-  const allPass = verbatimPass && paraphrasePass && adjacentPass && errorPass;
+  // Criterion 5: compliance statements are not violations.
+  console.log("\nGroup 5: Compliance statements (expect none flagged as prohibited)");
+  const compliance = await runGroup("compliance", fixture.copy_samples.compliance_statements || []);
+  const compliancePass = compliance.every((r) => r.prohibitedCount === 0);
+  console.log(`\nCriterion 5 (compliance statements not flagged): ${compliancePass ? "PASS" : "FAIL"}`);
+  for (const r of compliance) {
+    console.log(`  ${r.prohibitedCount === 0 ? "OK" : "FALSE POS"}: "${r.sample.slice(0, 60)}..." -> ${r.prohibitedCount} prohibited`);
+  }
+  results.compliance = compliance;
+
+  // Criterion 6: puffery is description, not an advisory claim.
+  console.log("\nGroup 6: Puffery (expect classification 'description', no findings)");
+  const puffery = [];
+  for (const sample of fixture.copy_samples.puffery_non_claims || []) {
+    const audit = await auditCopyAgainstClaims({ copy: sample, approvedClaims, prohibitedClaims, apiKey });
+    const flagged = (audit.sentences || []).filter((s) => s.classification !== "description");
+    puffery.push({ sample, flaggedCount: flagged.length, classifications: (audit.sentences || []).map((s) => s.classification) });
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  const pufferyMisses = puffery.filter((r) => r.flaggedCount > 0).length;
+  const pufferyPass = pufferyMisses <= 1;
+  console.log(`\nCriterion 6 (puffery classified as description): ${pufferyPass ? "PASS" : "FAIL"} (${pufferyMisses} of ${puffery.length} misclassified, ceiling is 1)`);
+  for (const r of puffery) {
+    console.log(`  ${r.flaggedCount === 0 ? "OK" : "NOISE"}: "${r.sample.slice(0, 60)}..." -> ${r.classifications.join(", ")}`);
+  }
+  results.puffery = puffery;
+
+  const allPass = verbatimPass && paraphrasePass && adjacentPass && errorPass && compliancePass && pufferyPass;
   console.log(`\n===== OVERALL: ${allPass ? "PASS" : "FAIL"} =====`);
 
   // Output full results as JSON for the evaluation memo

@@ -7,19 +7,25 @@
     {
       "id": "app-001",
       "text": "Helix Relay reduces average internal response time by 40%.",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic approved claim (quantified benefit)"
     },
     {
       "id": "app-002",
       "text": "SOC 2 Type II certified.",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic approved claim (regulatory property)"
     },
     {
       "id": "app-003",
       "text": "Used by over 200 enterprise customers.",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic approved claim (quantified adoption)"
     }
   ],
@@ -27,31 +33,41 @@
     {
       "id": "pro-001",
       "text": "HIPAA compliant",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic prohibition (regulatory property, unverified)"
     },
     {
       "id": "pro-002",
       "text": "the fastest internal messaging platform",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic prohibition (superlative comparative)"
     },
     {
       "id": "pro-003",
       "text": "eliminates email entirely",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic prohibition (capability assertion, false)"
     },
     {
       "id": "pro-004",
       "text": "guaranteed 99.99% uptime",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic prohibition (quantified guarantee, not contractual)"
     },
     {
       "id": "pro-005",
       "text": "reduces employee turnover",
-      "scope": { "brand_wide": true },
+      "scope": {
+        "brand_wide": true
+      },
       "source_ref": "Fixture: synthetic prohibition (unsubstantiated causal claim)"
     }
   ],
@@ -59,13 +75,17 @@
     {
       "id": "dis-001",
       "text": "Results may vary based on team size and usage patterns.",
-      "trigger_scope": { "channel": "paid_social" },
+      "trigger_scope": {
+        "channel": "paid_social"
+      },
       "source_ref": "Fixture: synthetic disclosure (performance caveat on paid)"
     },
     {
       "id": "dis-002",
       "text": "Helix Relay is not a medical device and is not intended for clinical use.",
-      "trigger_scope": { "channel": "email" },
+      "trigger_scope": {
+        "channel": "email"
+      },
       "source_ref": "Fixture: synthetic disclosure (regulatory boundary on email)"
     }
   ],
@@ -90,6 +110,32 @@
       "Helix Relay is designed with healthcare teams in mind, though specific compliance certifications vary by deployment.",
       "Our platform is fast, with most messages delivered in under 200 milliseconds.",
       "Teams that communicate well tend to retain employees longer. Helix Relay helps teams communicate well."
+    ],
+    "compliance_statements": [
+      "Messages arrive in the phone's native inbox, so no extra apps are needed.",
+      "Patients do not download anything to receive a message."
+    ],
+    "puffery_non_claims": [
+      "This level of trust and clarity helps you make informed decisions without second-guessing.",
+      "This is communication designed for action, helping patients and providers move forward with confidence.",
+      "Experience the ease and efficiency of RCS messaging.",
+      "Healthcare communication is often cluttered and confusing, and we make it simple.",
+      "And for healthcare teams, this means less workload and more visibility into patient engagement."
     ]
-  }
+  },
+  "notes_amendment_2026_08_10": "Extended after the first beta-client caption. Two gaps the original fixture did not cover: every prohibition here was a claim string, so directive-shaped exclusions were never exercised, and there were no puffery samples, so the false-positive rate on unfalsifiable marketing language was never measured.",
+  "directive_exclusions": [
+    {
+      "text": "Do not depict an app download as necessary",
+      "source_ref": "Fixture: directive-shaped exclusion"
+    },
+    {
+      "text": "Never imply FDA clearance",
+      "source_ref": "Fixture: directive-shaped exclusion"
+    },
+    {
+      "text": "Avoid showing clinical settings",
+      "source_ref": "Fixture: directive-shaped exclusion"
+    }
+  ]
 }

@@ -5170,8 +5170,9 @@ function option(value, selected) {
 function copyPreflightPanel(generationPackage) {
   const copy = generationPackage.copy;
   if (!copy) return "";
-  const claims = copy.governingClaims || { approved: [], prohibited: [], disclosures: [] };
-  const total = claims.approved.length + claims.prohibited.length + claims.disclosures.length;
+  const claims = copy.governingClaims || { approved: [], prohibited: [], disclosures: [], directives: [] };
+  const directives = claims.directives || [];
+  const total = claims.approved.length + claims.prohibited.length + claims.disclosures.length + directives.length;
   const declaredLabels = copy.declared.map((entry) => copyTypeLabel(entry.copyTypeId)).join(", ");
 
   const group = (label, entries, pillClass, note) => entries.length ? `
@@ -5204,6 +5205,7 @@ function copyPreflightPanel(generationPackage) {
       ${group("Wording the caption may use", claims.approved, "pill-protected", "Approved")}
       ${group("Wording the caption may not use", claims.prohibited, "pill-warning", "Prohibited")}
       ${group("Must appear when triggered", claims.disclosures, "pill-neutral", "Disclosure")}
+      ${group("Instructions the caption follows", directives, "pill-neutral", "Directive")}
     </details>
   `;
 }
@@ -5543,8 +5545,10 @@ function buildCopyFindings(job) {
           ? "This claim is on your prohibited list"
           : finding.kind === "disclosure"
             ? "A required disclosure is missing"
-            : "This claim is not on your approved list",
-        category: "Claims",
+            : finding.kind === "prose"
+              ? "This breaks one of your writing rules"
+              : "This claim is not on your approved list",
+        category: finding.kind === "prose" ? "Writing" : "Claims",
         status: finding.severity === "violation" ? "violation" : "review",
         sentence: finding.sentence,
         rule: finding.rule,

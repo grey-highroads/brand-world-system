@@ -16,6 +16,25 @@
 
 import { objectScopeAppliesToJob } from "../scope/resolver.js";
 
+// Imperative-shaped exclusions are instructions, not claims.
+//
+// The fail direction is deliberate and matches the asymmetry above. Treating
+// a real prohibited claim as a directive would drop a hard stop, so the test
+// is narrow: only a clearly imperative opening counts. Anything ambiguous
+// stays on the prohibited list and gets audited, which costs noise rather
+// than safety.
+const directiveOpenings = [
+  /^\s*(do not|don't|dont|never|avoid|no\b|refrain from|must not|do never)\b/i,
+  /^\s*(does not|should not|cannot) (depict|imply|state|claim|suggest|show)\b/i,
+];
+
+export function isDirective(text) {
+  const value = String(text || "").trim();
+  if (!value) return false;
+  return directiveOpenings.some((pattern) => pattern.test(value));
+}
+
+
 const FAIL_CLOSED = { unmatchedAxis: "exclude" };
 const FAIL_OPEN   = { unmatchedAxis: "include" };
 
@@ -31,6 +50,7 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
   const approved = [];
   const prohibited = [];
   const disclosures = [];
+  const directives = [];
 
   // Source one: brand-level claims document.
   if (claimsDocument) {
@@ -78,13 +98,22 @@ export function assembleClaimsSet({ claimsDocument, product, activeEntries, jobS
       }
     }
     for (const exclusion of product.exclusions || []) {
-      prohibited.push({
+      const entry = {
         text: exclusion,
         source: `Product: ${product.product_name}`,
         scope: "product",
-      });
+      };
+      // A product exclusion can be either of two things, and they are not
+      // interchangeable. "HIPAA compliant" is a claim string: stating it is
+      // the violation, and the auditor can check for it. "Do not depict an
+      // app download as necessary" is a directive to the generator: it has
+      // no claim to match, and handing it to a claim auditor produces a
+      // topic match rather than a finding. See the ADR 0013 amendment of
+      // 2026-08-10.
+      if (isDirective(exclusion)) directives.push(entry);
+      else prohibited.push(entry);
     }
   }
 
-  return { approved, prohibited, disclosures };
+  return { approved, prohibited, disclosures, directives };
 }

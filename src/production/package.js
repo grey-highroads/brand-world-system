@@ -574,6 +574,7 @@ function compileCopyContract({ copyOutputs, claimsSet, placement }) {
         approved: (set.approved || []).map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
         prohibited: (set.prohibited || []).map((claim) => ({ text: claim.text, source: claim.source, scope: claim.scope })),
         disclosures: (set.disclosures || []).map((claim) => ({ text: claim.text, source: claim.source })),
+        directives: (set.directives || []).map((claim) => ({ text: claim.text, source: claim.source })),
       },
       produced: [],
     },

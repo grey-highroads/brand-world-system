@@ -1,6 +1,6 @@
 # ADR 0013: Govern copy through derived claims and a copy audit
 
-- Status: Accepted (mechanism test passed 2026-08-09)
+- Status: Accepted (mechanism test passed 2026-08-09; amended 2026-08-10 after first beta-client output, see Revision: 2026-08-10)
 - Date: 2026-08-09
 - Owner: Higher Roads
 - Supersedes: Nothing
@@ -74,6 +74,41 @@ The same argument as ADR 0012. A variable-length claims list in the brain docume
 **Change:** Step 1 is replaced by a fixture-based mechanism test covering the prohibited-match hard stop and audit-failure semantics. These are platform invariants that hold regardless of client. The original criteria (c) and (d) are deferred, not dropped: they run when real client production volume provides a distribution to calibrate against. Until then, the safe-harbor design contains the over-flagging risk at the product level (unapproved findings are advisory, never blocking).
 
 **Scope-matching fail direction.** The same review identified that scope matching on approved claims failed open: a claim scoped to product X passed into every job with no product, leaking product-specific safe-harbor language into unscoped jobs. Fixed by making the fail direction asymmetric: approved claims and disclosures fail closed (excluded when the job lacks the scoped axis), prohibited claims fail open (included, because over-blocking is the safe error). See `src/scope/resolver.js`.
+
+## Revision: 2026-08-10
+
+The first governed caption produced for the beta client through the ADR 0014 flow surfaced three faults. All three are recorded here rather than designed around, because two of them contradict the pass criteria this ADR was accepted on.
+
+**Finding one: the prohibited list holds two different kinds of thing.** The audit returned a violation against the sentence "no extra apps needed", citing the rule "Do not depict an app download as necessary." The copy complies with that rule. It was flagged because it discusses the same subject.
+
+The cause is a category error in assembly, not a detection failure. Product record `exclusions` were pushed wholesale onto the prohibited-claims list, but an exclusion can be either a claim string or a directive. "HIPAA compliant" is a claim string: stating it is the violation, and an auditor can match against it. "Do not depict an app download as necessary" is an instruction to the generator, with no claim to match. Handed a directive and told never to state or imply it, the model can only match on topic.
+
+This reasoning was already recorded in the codebase and was not carried across. A comment in `generate-copy.js` explains that brain guardrails steer generation but are deliberately excluded from the audited prohibited list, because prose rules like "Never clinical" are not claims and auditing them adds noise. Product exclusions needed the same treatment and did not get it.
+
+**Change.** `assembleClaimsSet` now returns a fourth list, `directives`. Imperative-shaped exclusions route there, steer generation through their own prompt section, and are never handed to the claim auditor. Claim-shaped exclusions continue to the prohibited list unchanged. The classification test is deliberately narrow: only a clearly imperative opening counts, so an ambiguous entry stays on the prohibited list and gets audited. That fail direction is consistent with the asymmetry established on 2026-08-09, where over-blocking is the safe error.
+
+**Known limit.** A directive-shaped exclusion now governs generation but is not audited, so the copy is steered away from the prohibited territory without a post-hoc check. Converting directives into claim strings that can be audited is client-side curation work on the claims document, not a platform change. This is a real reduction in audit coverage and is accepted knowingly rather than hidden.
+
+**Finding two: the claim definition made nearly all marketing copy a claim.** The audit returned five advisory findings on a nine-sentence caption, flagging "trust and clarity", "designed for action", and "ease and efficiency". The original definition counted any sentence asserting a benefit, a capability, or a comparative advantage. Marketing copy asserts general benefit almost continuously, so under that definition most sentences qualify.
+
+This is the failure this ADR named as make-or-break: the risks section states that if the audit over-flags descriptive copy, reviewers learn to dismiss findings, and a dismissed-by-habit audit is worse than no audit. It arrived on the first real output.
+
+**Change.** The claim test becomes falsifiability. A claim is a sentence specific enough that a reader could check it and find it false. General benefit language asserting ease, trust, clarity, confidence, simplicity, or efficiency is description, because there is no fact of the matter to verify. The auditor is instructed to apply the test to the specific assertion rather than the topic, and to choose description when torn.
+
+**Structural caveat, not fixed here.** The advisory bucket asks whether a claim appears on the approved list. That question only carries information when the approved list is comprehensive enough that absence is a signal. The beta client's list is thin, so absence means little and the bucket generates volume rather than evidence. Tightening the claim definition reduces the volume; it does not repair the underlying logic. Whether advisory findings should be suppressed entirely below some approved-list size is a real question and is deferred until there is client volume to answer it with, consistent with the 2026-08-09 revision.
+
+**Finding three: the structural prose rules are unenforced.** The generated caption contained an em dash and the word "straightforward". Both are forbidden in the generation prompt as non-negotiable. Nothing checked the output, so both shipped.
+
+**Change.** A deterministic prose check runs on every produced copy block, in `src/copy/prose-check.js`. It uses string matching rather than a model, so it carries no false-positive risk, and it runs in every audit state including the one where the claim check failed. Only unambiguous patterns are included: a candidate pattern for "we help you do X" was rejected during implementation because it fires on ordinary writing, and a rule that produces false positives would cost this check the property that makes it worth having.
+
+The value here exceeds the rules themselves. While the claim side is being recalibrated, this is the section of the findings list that is always correct, which is a direct counterweight to the dismissed-by-habit risk above.
+
+**Amended mechanism test.** The original fixture carried only claim-shaped prohibitions and no puffery samples, so neither failure mode could have been caught by it. Two criteria are added:
+
+5. Copy stating compliance with a restriction is not flagged as violating it.
+6. Unfalsifiable marketing language classifies as description. The ceiling is one misclassified sample out of five; the beta run misclassified all five.
+
+Criteria 1 through 4 continue to apply unchanged. Narrowing what reaches the auditor could in principle let a real prohibited claim through, and the verbatim and paraphrase groups exist to catch exactly that. **The amended test has not yet been run: it requires an API key that was not available in the implementing session.** The changes are verified by offline unit tests covering the directive split and the prose check; the falsifiability change is verified only by construction until the mechanism test runs.
 
 ## Options considered
 

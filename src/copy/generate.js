@@ -18,6 +18,7 @@
 // only thing the interface reads to make that distinction.
 
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../claims/copy-audit.js";
+import { checkProseRules, collapseProseFindings } from "./prose-check.js";
 import { getCopyType } from "./types.js";
 
 const CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
@@ -87,6 +88,14 @@ export function buildCopySystemPrompt({ copyType, brain, product, claimsSet, con
     parts.push(``, `REQUIRED DISCLOSURES (include these when their trigger conditions apply):`);
     for (const disclosure of claimsSet.disclosures) parts.push(`- ${disclosure.text}`);
   }
+  // Directives are instructions, not claim strings. They steer generation and
+  // are deliberately not handed to the claim auditor, which has no claim to
+  // match them against and returns a topic match instead. See the ADR 0013
+  // amendment of 2026-08-10.
+  if ((claimsSet.directives || []).length > 0) {
+    parts.push(``, `PRODUCTION DIRECTIVES (follow these instructions):`);
+    for (const directive of claimsSet.directives) parts.push(`- ${directive.text}`);
+  }
 
   parts.push(
     ``,
@@ -133,6 +142,9 @@ function resolveGoverningRule(match, claimsSet) {
  */
 export async function auditProducedCopy({ text, claimsSet, apiKey }) {
   const hasClaims = claimsSet.approved.length > 0 || claimsSet.prohibited.length > 0;
+  // Deterministic and independent of the claim audit, so these findings are
+  // present in every state, including the one where the claim check failed.
+  const proseFindings = collapseProseFindings(checkProseRules(text));
   const disclosureFindings = claimsSet.disclosures.length > 0
     ? checkDisclosurePresence(text, claimsSet.disclosures)
     : [];
@@ -151,7 +163,7 @@ export async function auditProducedCopy({ text, claimsSet, apiKey }) {
     return {
       status: "no_claims",
       message: "No approved or prohibited claims apply to this job yet, so there was nothing to check the wording against. The copy still follows your brand voice guidance.",
-      findings: missingDisclosures,
+      findings: [...missingDisclosures, ...proseFindings],
       totals: null,
       disclosures: disclosureFindings,
     };
@@ -169,7 +181,7 @@ export async function auditProducedCopy({ text, claimsSet, apiKey }) {
     return {
       status: "errored",
       message: `The claim check could not run: ${error.message || "the request failed"}. This copy has not been checked against your claims.`,
-      findings: missingDisclosures,
+      findings: [...missingDisclosures, ...proseFindings],
       totals: null,
       disclosures: disclosureFindings,
     };
@@ -179,7 +191,7 @@ export async function auditProducedCopy({ text, claimsSet, apiKey }) {
     return {
       status: "errored",
       message: `The claim check could not run: ${raw.error} This copy has not been checked against your claims.`,
-      findings: missingDisclosures,
+      findings: [...missingDisclosures, ...proseFindings],
       totals: null,
       disclosures: disclosureFindings,
     };
@@ -196,9 +208,9 @@ export async function auditProducedCopy({ text, claimsSet, apiKey }) {
   return {
     status: "governed",
     message: findings.length === 0
-      ? "Every claim in this copy matched your approved list."
+      ? "No claim in this copy fell outside your approved list."
       : "",
-    findings: [...findings, ...missingDisclosures],
+    findings: [...findings, ...missingDisclosures, ...proseFindings],
     totals: {
       sentences: raw.totalSentences || 0,
       claims: raw.claims || 0,
