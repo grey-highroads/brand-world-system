@@ -8132,3 +8132,30 @@ button.ws-attention-item:hover {
 .produced-copy-check {
   border-color: var(--border-strong);
 }
+
+/* Draft copy fields in setup. Stacked, and each line gets its own labelled
+   input so an edit is obviously an edit rather than a free-text box. */
+
+.draft-copy-field {
+  display: block;
+  margin-top: var(--space-3);
+}
+
+.draft-copy-field label {
+  display: block;
+  margin-bottom: var(--space-1);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.draft-copy-input {
+  width: 100%;
+  min-height: 44px;
+  resize: vertical;
+}
+
+.field-error {
+  color: var(--danger);
+}

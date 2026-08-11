@@ -4,7 +4,7 @@ import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
 import { assembleClaimsSet, listSegments } from "../../src/claims/assembly.js";
 import { buildJobScope } from "../../src/scope/resolver.js";
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../../src/claims/copy-audit.js";
-import { produceCopy } from "../../src/copy/generate.js";
+import { produceCopy, auditProducedCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 export default async function handler(request, response) {
@@ -59,6 +59,40 @@ export default async function handler(request, response) {
       const store = createVercelBlobClaimsStore({ clientId });
       const document = await store.read();
       sendJson(response, 200, { segments: listSegments(document, store.activeEntries) });
+      return;
+    }
+
+    // Re-audit copy the user has edited. ADR 0014 part two requires that
+    // in-image copy come from a produced-and-audited source; an edited string
+    // is only that if it is checked again. This is an audit without a
+    // generation call, so an edit costs a claims check and nothing more.
+    if (String(body.action || "") === "audit_copy") {
+      const claimsStore = createVercelBlobClaimsStore({ clientId });
+      const claimsDocument = await claimsStore.read();
+      const claimsSet = assembleClaimsSet({
+        claimsDocument,
+        product,
+        activeEntries: claimsStore.activeEntries,
+        jobScope: buildJobScope({
+          placement: body.placement,
+          productId: body.productId,
+          campaignId: body.campaignId,
+          segment: body.segment,
+        }),
+      });
+      const fields = Array.isArray(body.fields) ? body.fields : [];
+      const text = fields.map((field) => field.text).filter(Boolean).join("\n");
+      if (!text.trim()) {
+        sendJson(response, 400, { error: "There is no copy here to check." });
+        return;
+      }
+      const audit = await auditProducedCopy({ text, claimsSet, apiKey });
+      for (const finding of audit.findings || []) {
+        if (!finding.sentence) continue;
+        const owner = fields.find((field) => field.text && (finding.sentence.includes(field.text) || field.text.includes(finding.sentence)));
+        if (owner) finding.field = owner.label;
+      }
+      sendJson(response, 200, { audit });
       return;
     }
 

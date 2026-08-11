@@ -242,20 +242,46 @@ export async function prepareProductionPackage(body, options) {
     const zoneId = body.displayZone || "lower_third";
     const format = body.brief?.format || "";
     try {
-      displayCopyBlock = await produceCopy({
-        copyTypeId: "headline_set",
-        brain: approvedBrain,
-        product,
-        claimsSet: claimsSet || { approved: [], prohibited: [], disclosures: [] },
-        context: {
-          placement: body.brief?.placement || "",
-          copyDirection: body.copyDirection || "",
-          scene: body.brief?.scene || "",
-          exclusions: body.brief?.exclusions || "",
-          displayBudgets: displayBudgets({ format, zoneId, fieldIds: body.displayFields || ["headline"] }),
-        },
-        apiKey: options.env.OPENAI_API_KEY,
-      });
+      // Copy drafted and possibly edited in setup arrives with the job. It is
+      // used as sent rather than regenerated, or the image would carry
+      // different words than the ones the user approved on screen.
+      //
+      // Its audit travels with it and was produced by the audit_copy action
+      // after the last edit. The interface blocks generation while an edit is
+      // unchecked, so a block arriving here has been audited in its current
+      // wording, not in some earlier wording.
+      if (body.draftedCopy?.fields?.length) {
+        displayCopyBlock = {
+          copyTypeId: "headline_set",
+          label: "Headline set",
+          text: body.draftedCopy.fields.map((field) => field.text).filter(Boolean).join("\n"),
+          fields: body.draftedCopy.fields,
+          model: body.draftedCopy.model || null,
+          edited: !!body.draftedCopy.edited,
+          generatedAt: body.draftedCopy.generatedAt || new Date().toISOString(),
+          audit: body.draftedCopy.audit || {
+            status: "errored",
+            message: "This copy arrived without a claim check, so it has not been checked against your claims.",
+            findings: [],
+            totals: null,
+          },
+        };
+      } else {
+        displayCopyBlock = await produceCopy({
+          copyTypeId: "headline_set",
+          brain: approvedBrain,
+          product,
+          claimsSet: claimsSet || { approved: [], prohibited: [], disclosures: [] },
+          context: {
+            placement: body.brief?.placement || "",
+            copyDirection: body.copyDirection || "",
+            scene: body.brief?.scene || "",
+            exclusions: body.brief?.exclusions || "",
+            displayBudgets: displayBudgets({ format, zoneId, fieldIds: body.displayFields || ["headline"] }),
+          },
+          apiKey: options.env.OPENAI_API_KEY,
+        });
+      }
       const wanted = new Set(body.displayFields || ["headline"]);
       displayCopy = {
         zoneId,

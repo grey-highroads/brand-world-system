@@ -1089,6 +1089,13 @@ const state = {
     renderCopyIntoImage: false,
     displayZone: "lower_third",
     displayFields: ["headline"],
+    // Copy drafted in setup, before any render. `stale` means the user has
+    // edited since the last claim check, so the audit on screen no longer
+    // describes the text on screen.
+    draftCopy: null,
+    draftCopyLoading: false,
+    draftCopyError: "",
+    draftCopyStale: false,
     copyDirection: "",
     referenceOpen: false,
     directionOpen: false,
@@ -6334,6 +6341,97 @@ function headlineSetField() {
 // 0014 and is not built, so nothing checks that the rendered characters match
 // the intended ones. Until that exists the person is the verification step,
 // and the interface has to say so rather than imply the string is guaranteed.
+// Draft the headline set in setup, before any render.
+//
+// The point is cost: a render pass takes time and money, and a wrong call to
+// action is obvious in two seconds of reading and invisible until the image
+// comes back. Seeing the words first turns a wasted render into an edit.
+//
+// Editing has a governance consequence. ADR 0014 part two allows in-image
+// copy only from a produced-and-audited source, so an edit makes the audit
+// stale and the copy is re-checked before it can render. The interface says
+// so rather than showing a stale green pill.
+// Editing a draft field must not trigger a full render: re-rendering the
+// textarea while someone is typing in it destroys focus and caret position.
+// The two things that change on edit are updated directly instead.
+function updateDraftStaleNotice() {
+  const pill = document.querySelector("[data-draft-pill]");
+  if (pill) pill.innerHTML = '<span class="mini-pill pill-warning">Edited, not re-checked</span>';
+  const notice = document.querySelector("[data-draft-stale-notice]");
+  if (notice) notice.hidden = false;
+}
+
+function draftCopyPanel() {
+  if (!state.studio.renderCopyIntoImage) return "";
+  const draft = state.studio.draftCopy;
+  const busy = state.studio.draftCopyLoading;
+  const stale = state.studio.draftCopyStale;
+
+  if (!draft) {
+    return `
+      <div class="field full studio-setup-field">
+        <span class="section-label">See the words first</span>
+        <span class="field-note">Draft the copy before rendering so you can fix it here instead of after an image comes back.</span>
+        <button class="button primary scene-suggest-cta" type="button" data-action="draft-display-copy" ${busy ? "disabled" : ""}>
+          ${busy ? "Writing the lines" : "Draft the copy"}
+        </button>
+        ${state.studio.draftCopyError ? `<span class="field-note field-error">${escapeHtml(state.studio.draftCopyError)}</span>` : ""}
+      </div>
+    `;
+  }
+
+  const findings = stale ? [] : (draft.audit?.findings || []);
+  return `
+    <div class="field full studio-setup-field">
+      <div class="studio-additive-header">
+        <span class="section-label">The words that will go on the image</span>
+        <span data-draft-pill>${stale
+          ? `<span class="mini-pill pill-warning">Edited, not re-checked</span>`
+          : draftAuditPill(draft.audit)}</span>
+      </div>
+      <span class="field-note">Edit any line. The copy is checked against your claims again before it renders.</span>
+      ${draft.fields.map((field, index) => `
+        <div class="draft-copy-field">
+          <label for="draft-field-${field.id}">${escapeHtml(field.label)}${state.studio.displayFields.includes(field.id) ? "" : ` <span class="field-note">(stays beside the image)</span>`}</label>
+          <textarea id="draft-field-${field.id}" class="draft-copy-input" data-action="draft-copy-input" data-index="${index}" rows="2">${escapeHtml(field.text)}</textarea>
+        </div>
+      `).join("")}
+      ${findings.length ? `
+        <div class="rule-card">
+          <span class="section-label">Worth a look before you render</span>
+          ${findings.map((finding) => `
+            <div class="rule rule-stacked">
+              <span class="mini-pill ${finding.severity === "violation" ? "pill-danger" : "pill-warning"}">${finding.severity === "violation" ? "Violation" : "Review"}</span>
+              <span><strong>${escapeHtml(finding.field ? `${finding.field}: ${finding.reason}` : finding.reason)}</strong><span>${escapeHtml(finding.rule || "")}</span></span>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      <div class="produced-copy-actions">
+        <button class="button small" type="button" data-action="recheck-display-copy" ${busy ? "disabled" : ""}>
+          ${busy ? "Checking" : stale ? "Check it again" : "Check it again"}
+        </button>
+        <button class="button small" type="button" data-action="draft-display-copy" ${busy ? "disabled" : ""}>
+          ${busy ? "Writing" : "Write new lines"}
+        </button>
+      </div>
+      ${state.studio.draftCopyError ? `<span class="field-note field-error">${escapeHtml(state.studio.draftCopyError)}</span>` : ""}
+      <span class="field-note" data-draft-stale-notice ${stale ? "" : "hidden"}>These edits have not been checked yet. Rendering now would draft fresh copy instead of using yours.</span>
+    </div>
+  `;
+}
+
+function draftAuditPill(audit) {
+  const status = audit?.status || "errored";
+  if (status === "errored") return '<span class="mini-pill pill-danger">Not checked</span>';
+  if (status === "no_claims") return '<span class="mini-pill pill-neutral">No claims to check</span>';
+  const violations = (audit.findings || []).filter((f) => f.severity === "violation").length;
+  if (violations) return `<span class="mini-pill pill-danger">${violations} ${violations === 1 ? "violation" : "violations"}</span>`;
+  const reviews = (audit.findings || []).length;
+  if (reviews) return `<span class="mini-pill pill-warning">${reviews} to review</span>`;
+  return '<span class="mini-pill pill-success">Claims check passed</span>';
+}
+
 function renderCopyField() {
   if (!state.studio.headlineSetOn) return "";
   const zones = [
@@ -6375,6 +6473,7 @@ function renderCopyField() {
           </select>
         </div>
       </div>
+      ${draftCopyPanel()}
     ` : ""}
   `;
 }
@@ -6406,6 +6505,9 @@ function productionRequest(jobId) {
     templateAssetId: state.studio.salesTemplateId || undefined,
     segment: state.studio.segment || undefined,
     copyOutputs: declaredCopyOutputs(),
+    draftedCopy: state.studio.renderCopyIntoImage && state.studio.draftCopy && !state.studio.draftCopyStale
+      ? state.studio.draftCopy
+      : undefined,
     renderCopyIntoImage: state.studio.headlineSetOn && state.studio.renderCopyIntoImage ? true : undefined,
     displayZone: state.studio.renderCopyIntoImage ? state.studio.displayZone : undefined,
     displayFields: state.studio.renderCopyIntoImage ? state.studio.displayFields : undefined,
@@ -7091,6 +7193,18 @@ root.addEventListener("input", (event) => {
     // the brief therefore has to be synced here instead.
     syncBriefGatedControls();
   }
+  if (event.target.matches('[data-action="draft-copy-input"]')) {
+    const index = Number(event.target.dataset.index || 0);
+    const draft = state.studio.draftCopy;
+    if (draft?.fields?.[index]) {
+      draft.fields[index].text = event.target.value;
+      // The audit on screen described the previous wording. Say so rather
+      // than leaving a pill that now refers to text that no longer exists.
+      state.studio.draftCopyStale = true;
+      updateDraftStaleNotice();
+    }
+    return;
+  }
   if (event.target.matches('[data-action="studio-copy-direction-input"]')) {
     state.studio.copyDirection = event.target.value;
   }
@@ -7474,6 +7588,9 @@ root.addEventListener("click", (event) => {
     state.studio.headlineSetOn = false;
     state.studio.renderCopyIntoImage = false;
     state.studio.displayFields = ["headline"];
+    state.studio.draftCopy = null;
+    state.studio.draftCopyStale = false;
+    state.studio.draftCopyError = "";
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
@@ -7533,6 +7650,8 @@ root.addEventListener("click", (event) => {
     if (!state.studio.headlineSetOn) state.studio.renderCopyIntoImage = false;
     render();
   }
+  if (action === "draft-display-copy") void draftDisplayCopy();
+  if (action === "recheck-display-copy") void recheckDisplayCopy();
   if (action === "toggle-display-field") {
     const id = target.dataset.id;
     const current = state.studio.displayFields;
@@ -8558,6 +8677,75 @@ async function hydrateClients() {
 // guard shape as loadProducts: a concurrent call is refused, and the attempt
 // is recorded on both success and failure so repeated render passes cannot
 // retry forever.
+// Draft or re-check the display copy from setup. Both follow the guarded
+// loader pattern: a concurrent call is refused, and both the success and
+// failure paths clear the flag so a failed attempt never leaves the button
+// dead. Neither is called from a render function.
+async function draftDisplayCopy() {
+  if (state.studio.draftCopyLoading) return;
+  state.studio.draftCopyLoading = true;
+  state.studio.draftCopyError = "";
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "copy_type",
+        copyTypeId: "headline_set",
+        placement: state.brief.placement || "",
+        copyDirection: state.studio.copyDirection || "",
+        scene: state.studio.brief || "",
+        segment: state.studio.segment || undefined,
+        productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
+        campaignId: state.studio.campaignId || undefined,
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The copy could not be drafted.");
+    state.studio.draftCopy = body.copy;
+    state.studio.draftCopyStale = false;
+  } catch (error) {
+    state.studio.draftCopyError = error.message || "The copy could not be drafted.";
+  } finally {
+    state.studio.draftCopyLoading = false;
+    render();
+  }
+}
+
+async function recheckDisplayCopy() {
+  if (state.studio.draftCopyLoading) return;
+  const draft = state.studio.draftCopy;
+  if (!draft) return;
+  state.studio.draftCopyLoading = true;
+  state.studio.draftCopyError = "";
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "audit_copy",
+        fields: draft.fields.map((field) => ({ id: field.id, label: field.label, text: field.text })),
+        placement: state.brief.placement || "",
+        segment: state.studio.segment || undefined,
+        productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
+        campaignId: state.studio.campaignId || undefined,
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The copy could not be checked.");
+    draft.audit = body.audit;
+    draft.edited = true;
+    state.studio.draftCopyStale = false;
+  } catch (error) {
+    state.studio.draftCopyError = error.message || "The copy could not be checked.";
+  } finally {
+    state.studio.draftCopyLoading = false;
+    render();
+  }
+}
+
 async function loadSegments(force = false) {
   if (typeof fetch !== "function") return;
   if (state.segments.loading) return;

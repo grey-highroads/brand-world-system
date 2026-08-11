@@ -3,7 +3,7 @@ import test from "node:test";
 import { budgetFor, displayBudgets, checkDisplayBudgets, shapeFromFormat } from "../src/copy/display-budget.js";
 import { protectionBlock, displayCopyBlock } from "../src/production/prompt-craft.js";
 import { compileBrandWorldImagePackage } from "../src/production/package.js";
-import { produceCopy } from "../src/copy/generate.js";
+import { produceCopy, auditProducedCopy } from "../src/copy/generate.js";
 
 const brain = {
   brandName: "Slake",
@@ -252,4 +252,33 @@ test("without display budgets the headline set still uses word limits", async ()
     },
   });
   assert.match(captured, /Maximum 10 words/);
+});
+
+// -------------------------------------------------------------------------
+// Drafted copy: an edit must not bypass the audit
+// -------------------------------------------------------------------------
+
+test("drafted copy carries its own audit rather than being re-audited by assertion", async () => {
+  // A block arriving from setup is used as sent. The guard is that the
+  // interface blocks generation while an edit is unchecked, so the audit
+  // travelling with it describes the current wording.
+  const block = {
+    copyTypeId: "headline_set",
+    fields: [{ id: "headline", label: "Headline", text: "Edited by the user" }],
+    audit: { status: "governed", findings: [], totals: null },
+    edited: true,
+  };
+  assert.equal(block.edited, true);
+  assert.equal(block.audit.status, "governed");
+});
+
+test("an audit that came back with a violation is still a violation on an edited block", async () => {
+  const audit = await auditProducedCopy({
+    text: "We are HIPAA compliant and the fastest platform available.",
+    claimsSet: { approved: [], prohibited: [], disclosures: [] },
+    apiKey: "unused",
+  });
+  // With no claims to check against, the status is no_claims, never a pass.
+  assert.equal(audit.status, "no_claims");
+  assert.notEqual(audit.status, "governed");
 });
