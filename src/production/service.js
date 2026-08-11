@@ -354,10 +354,51 @@ export async function readProductionJob(options) {
   return publicJob(job, imageUrl);
 }
 
+// A render outruns the platform's gateway timeout, and the gateway retries the
+// invocation. On 2026-08-11 that produced two renders of one job sixty seconds
+// apart, both writing to the same blob path, so the second silently replaced
+// an image the user had already approved.
+//
+// Two windows govern the response. A duplicate that arrives while the original
+// is still rendering waits for it and returns its result, so a retry becomes a
+// reader rather than a second renderer. A record still marked working long
+// after any render could plausibly still be running is treated as abandoned,
+// so a crashed job does not lock its own id forever.
+const IN_FLIGHT_POLL_INTERVAL_MS = 2000;
+const IN_FLIGHT_WAIT_LIMIT_MS = 200000;
+const ABANDONED_AFTER_MS = 300000;
+
+function startedMillisecondsAgo(record) {
+  const started = Date.parse(record?.createdAt || "");
+  if (Number.isNaN(started)) return Infinity;
+  return Date.now() - started;
+}
+
 export async function generateProductionImage(body, options) {
   const jobId = safeId(body.jobId, "The production job ID");
   const current = await options.productionStore.read();
   if (current?.jobId === jobId && current.status === "complete") return readProductionJob(options);
+
+  // A duplicate invocation of a job that is still rendering waits for the
+  // original rather than starting a second render.
+  if (current?.jobId === jobId && current.status === "working" && startedMillisecondsAgo(current) < ABANDONED_AFTER_MS) {
+    const deadline = Date.now() + IN_FLIGHT_WAIT_LIMIT_MS;
+    while (Date.now() < deadline) {
+      await new Promise((resolve) => setTimeout(resolve, IN_FLIGHT_POLL_INTERVAL_MS));
+      const latest = await options.productionStore.read();
+      if (latest?.jobId !== jobId) break;
+      if (latest.status === "complete" || latest.status === "error") return readProductionJob(options);
+    }
+    // Still running at the limit. Report the job as working rather than
+    // starting a competing render; the client recovers it from the current
+    // job endpoint.
+    return readProductionJob(options);
+  }
+
+  // Identifies this invocation. If a competing attempt takes ownership of the
+  // record while this one is rendering, this attempt discards its result
+  // rather than overwriting the blob the other attempt wrote.
+  const attemptId = `${jobId}-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
   const { generationPackage, references, lockedAsset, templateAsset, approvedBrain, product, claimsSet } = await prepareProductionPackage(body, options);
 
@@ -377,6 +418,7 @@ export async function generateProductionImage(body, options) {
 
   const working = {
     jobId,
+    attemptId,
     status: "working",
     createdAt: new Date().toISOString(),
     model: OPENAI_IMAGE_MODEL,
@@ -409,6 +451,15 @@ export async function generateProductionImage(body, options) {
     const image = result?.data?.[0];
     if (!image?.b64_json) throw new Error("OpenAI returned no image data.");
     const bytes = Buffer.from(image.b64_json, "base64");
+
+    // Last check before anything durable is written. If another attempt has
+    // taken over this job, its image is the one the user will see, and
+    // writing here would replace it. Abandon instead.
+    const ownerBeforeWrite = await options.productionStore.read();
+    if (ownerBeforeWrite?.jobId === jobId && ownerBeforeWrite.attemptId && ownerBeforeWrite.attemptId !== attemptId) {
+      return readProductionJob(options);
+    }
+
     const savedImage = await options.productionStore.writeImage(jobId, bytes, "image/png");
 
     // Governed copy (ADR 0014 step 2). The copy runs after the image so a
@@ -483,12 +534,20 @@ export async function generateProductionImage(body, options) {
     await options.productionStore.write(complete);
     return readProductionJob(options);
   } catch (error) {
-    await options.productionStore.write({
-      ...working,
-      status: "error",
-      failedAt: new Date().toISOString(),
-      error: error.message || "The image could not be generated.",
-    });
+    // Only the attempt that owns the record may mark it failed. Without this,
+    // a retried invocation that errors would overwrite the completed record
+    // written by the attempt that succeeded, and a finished image would be
+    // reported as a failure.
+    const ownerOnFailure = await options.productionStore.read();
+    const ownsRecord = !ownerOnFailure?.attemptId || ownerOnFailure.attemptId === attemptId;
+    if (ownsRecord) {
+      await options.productionStore.write({
+        ...working,
+        status: "error",
+        failedAt: new Date().toISOString(),
+        error: error.message || "The image could not be generated.",
+      });
+    }
     throw error;
   }
 }
