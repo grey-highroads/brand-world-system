@@ -109,6 +109,60 @@ test("the display copy block states the exact string and forbids alteration", ()
   assert.match(block, /Leave clean, uncluttered space/);
 });
 
+test("the block gives proportional fill instruction, not absolute sizes", () => {
+  const block = displayCopyBlock({
+    lines: [{ id: "headline", label: "Headline", text: "Fewer empty chairs", fillShare: 0.7, relativeSize: 1 }],
+    zone: { id: "lower_third", label: "Lower third", description: "across the lower third", charsPerLine: 34 },
+    format: "1:1 square",
+  });
+  assert.match(block, /70 percent/);
+  assert.match(block, /fill the space it is given/);
+  // Nothing may be stated in pixels or points: the renderer follows
+  // relationships, not arithmetic.
+  assert.equal(/\d+\s?(px|pt|pixels|points)/i.test(block), false);
+});
+
+test("multiple lines get a stated hierarchy relative to the headline", () => {
+  const block = displayCopyBlock({
+    lines: [
+      { id: "headline", label: "Headline", text: "Fewer empty chairs", fillShare: 0.7, relativeSize: 1 },
+      { id: "subhead", label: "Supporting line", text: "Reminders that reach people.", relativeSize: 0.45, note: "clearly secondary to the headline" },
+      { id: "cta", label: "Call to action", text: "See how", relativeSize: 0.35, note: "the smallest element" },
+    ],
+    zone: { id: "lower_third", label: "Lower third", description: "across the lower third", charsPerLine: 34 },
+    format: "1:1 square",
+  });
+  assert.match(block, /45 percent of the headline/);
+  assert.match(block, /35 percent of the headline/);
+  assert.match(block, /single typographic group/);
+});
+
+test("a single line gets no hierarchy instruction", () => {
+  const block = displayCopyBlock({
+    lines: [{ id: "headline", label: "Headline", text: "One line", fillShare: 0.7 }],
+    zone: { id: "center", label: "Center", description: "centered", charsPerLine: 30 },
+  });
+  assert.equal(/Hold a clear hierarchy/.test(block), false);
+});
+
+test("the block instructs breaking at phrase boundaries", () => {
+  const block = displayCopyBlock({
+    lines: [{ id: "headline", label: "Headline", text: "Your Appointment, Confirmed", fillShare: 0.7 }],
+    zone: { id: "left_panel", label: "Left panel", description: "in the left third", charsPerLine: 22 },
+  });
+  assert.match(block, /phrase boundaries/);
+  assert.match(block, /stranded on its own line/);
+});
+
+test("design ratios ride along with the budgets", () => {
+  const budgets = displayBudgets({ format: "1:1 square", zoneId: "lower_third" });
+  const headline = budgets.find((b) => b.fieldId === "headline");
+  const subhead = budgets.find((b) => b.fieldId === "subhead");
+  assert.equal(headline.fillShare, 0.7);
+  assert.equal(headline.relativeSize, 1);
+  assert.equal(subhead.relativeSize < headline.relativeSize, true);
+});
+
 test("no lines with text produces no block", () => {
   assert.equal(displayCopyBlock({ lines: [], zone: { description: "x" } }), "");
   assert.equal(displayCopyBlock({ lines: [{ text: "" }], zone: { description: "x" } }), "");

@@ -1088,6 +1088,7 @@ const state = {
     headlineSetOn: false,
     renderCopyIntoImage: false,
     displayZone: "lower_third",
+    displayFields: ["headline"],
     copyDirection: "",
     referenceOpen: false,
     directionOpen: false,
@@ -6353,6 +6354,19 @@ function renderCopyField() {
     </div>
     ${state.studio.renderCopyIntoImage ? `
       <div class="field full studio-setup-field">
+        <span class="section-label">Which lines go on the image?</span>
+        <span class="field-note">The rest are still written, they just stay beside the image for use elsewhere. More lines in one area means smaller type for each.</span>
+        <div class="studio-platform-grid">
+          ${[
+            { id: "headline", label: "Headline" },
+            { id: "subhead", label: "Supporting line" },
+            { id: "cta", label: "Call to action" },
+          ].map((field) => `
+            <button class="studio-platform-chip ${state.studio.displayFields.includes(field.id) ? "selected" : ""}" type="button" data-action="toggle-display-field" data-id="${field.id}">${field.label}</button>
+          `).join("")}
+        </div>
+      </div>
+      <div class="field full studio-setup-field">
         <label for="studio-display-zone">Where should it sit?</label>
         <span class="field-note">The scene is composed to leave this area clear.</span>
         <div class="studio-campaign-row">
@@ -6394,7 +6408,7 @@ function productionRequest(jobId) {
     copyOutputs: declaredCopyOutputs(),
     renderCopyIntoImage: state.studio.headlineSetOn && state.studio.renderCopyIntoImage ? true : undefined,
     displayZone: state.studio.renderCopyIntoImage ? state.studio.displayZone : undefined,
-    displayFields: state.studio.renderCopyIntoImage ? ["headline"] : undefined,
+    displayFields: state.studio.renderCopyIntoImage ? state.studio.displayFields : undefined,
     copyDirection: state.studio.copyDirection || undefined,
     references: state.references.map((item) => ({
       id: item.id,
@@ -7459,6 +7473,7 @@ root.addEventListener("click", (event) => {
     state.studio.captionOn = true;
     state.studio.headlineSetOn = false;
     state.studio.renderCopyIntoImage = false;
+    state.studio.displayFields = ["headline"];
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
@@ -7516,6 +7531,15 @@ root.addEventListener("click", (event) => {
   if (action === "toggle-studio-headline-set") {
     state.studio.headlineSetOn = !state.studio.headlineSetOn;
     if (!state.studio.headlineSetOn) state.studio.renderCopyIntoImage = false;
+    render();
+  }
+  if (action === "toggle-display-field") {
+    const id = target.dataset.id;
+    const current = state.studio.displayFields;
+    // Turning off the last line would leave the render nothing to place, so
+    // the final selection cannot be cleared.
+    const next = current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+    state.studio.displayFields = next.length ? next : current;
     render();
   }
   if (action === "toggle-render-copy-into-image") {

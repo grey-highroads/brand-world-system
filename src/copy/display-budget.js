@@ -6,9 +6,21 @@
 // because "internationalization" and "we do it" are both one and three words
 // but occupy wildly different widths.
 //
-// The budget is therefore in characters, derived from two things: how many
-// characters fit on a line at a size that stays legible when the image is
-// viewed at feed scale, and how many lines the allocated zone can hold.
+// The budget is therefore in characters. What the number means changed on
+// 2026-08-11, after the first real render.
+//
+// It was written as a fit ceiling: stay under N characters or the copy will
+// not fit. The first run showed the renderer choosing display-size type on
+// its own and breaking to three lines, which means type size is chosen to
+// fill the zone rather than fixed in advance. A longer string therefore does
+// not overflow, it gets smaller.
+//
+// So the budget is a legibility floor, not a fit ceiling: the most characters
+// that can fill the zone while the type stays large enough to read at feed
+// scale. The renderer is given proportional design instruction (fill this
+// share of the zone, set the supporting line at this fraction of the
+// headline) because a model follows compositional relationships more
+// reliably than absolute character arithmetic.
 //
 // REASONED, not verified. The characters-per-line figures below come from
 // standard typographic practice (a display line stays readable to roughly
@@ -95,6 +107,23 @@ export function budgetFor({ format, zoneId, share = 1 }) {
 // headline gets the room; the supporting line and CTA are secondary.
 const FIELD_SHARE = { headline: 0.5, subhead: 0.35, cta: 0.15 };
 
+// The share of the zone's height each field's type should occupy, and its
+// size relative to the headline. These are the instructions that actually
+// steer the render; the character budget only guards the floor.
+//
+// REASONED, not measured. The ratios follow ordinary editorial hierarchy (a
+// supporting line around half the headline, a CTA smaller still) rather than
+// measurement against rendered output.
+const FIELD_DESIGN = {
+  headline: { fillShare: 0.7, relativeSize: 1, weight: "bold", note: "the dominant element in the zone" },
+  subhead: { fillShare: 0.3, relativeSize: 0.45, weight: "regular", note: "clearly secondary to the headline" },
+  cta: { fillShare: 0.15, relativeSize: 0.35, weight: "medium", note: "the smallest element, set apart from the lines above it" },
+};
+
+export function designFor(fieldId) {
+  return FIELD_DESIGN[fieldId] || FIELD_DESIGN.subhead;
+}
+
 /**
  * Budgets for every field of a headline set, given the format and zone.
  * Fields the caller is not rendering are still budgeted, so the copy is
@@ -103,7 +132,7 @@ const FIELD_SHARE = { headline: 0.5, subhead: 0.35, cta: 0.15 };
 export function displayBudgets({ format, zoneId, fieldIds = ["headline", "subhead", "cta"] }) {
   return fieldIds.map((id) => {
     const budget = budgetFor({ format, zoneId, share: FIELD_SHARE[id] ?? 0.3 });
-    return { fieldId: id, ...budget };
+    return { fieldId: id, ...budget, ...designFor(id) };
   });
 }
 
@@ -127,9 +156,9 @@ export function checkDisplayBudgets(fields, budgets) {
         severity: "review",
         kind: "display_budget",
         field: field.label,
-        rule: `${field.label} has room for about ${budget.maxChars} characters in the ${getZone(budget.zone).label.toLowerCase()} at this format.`,
+        rule: `${field.label} stays readable up to about ${budget.maxChars} characters in the ${getZone(budget.zone).label.toLowerCase()} at this format.`,
         sentence: field.text,
-        reason: `This line is ${length} characters. Rendered into the image it will either shrink below comfortable reading size or overflow the space.`,
+        reason: `This line is ${length} characters. The type is sized to fill the space, so a longer line does not overflow, it gets smaller. At this length it will set below comfortable reading size at feed scale.`,
       };
     })
     .filter(Boolean);

@@ -3,7 +3,7 @@ import { createVercelBlobProductStore } from "../products/store.js";
 import { OPENAI_IMAGE_MODEL, chooseOpenAIImageEndpoint, renderWithOpenAIImages } from "../renderers/openai-images.js";
 import { assembleClaimsSet } from "../claims/assembly.js";
 import { produceCopy } from "../copy/generate.js";
-import { displayBudgets } from "../copy/display-budget.js";
+import { displayBudgets, designFor } from "../copy/display-budget.js";
 import { buildJobScope } from "../scope/resolver.js";
 import { compileBrandWorldImagePackage } from "./package.js";
 
@@ -262,7 +262,12 @@ export async function prepareProductionPackage(body, options) {
         format,
         lines: (displayCopyBlock.fields || [])
           .filter((field) => wanted.has(field.id) && field.text)
-          .map((field) => ({ id: field.id, label: field.label, text: field.text })),
+          .map((field) => {
+            // The design ratios travel with the line so the prompt can state
+            // the hierarchy proportionally rather than in absolute sizes.
+            const design = designFor(field.id);
+            return { id: field.id, label: field.label, text: field.text, ...design };
+          }),
       };
       if (!displayCopy.lines.length) displayCopy = null;
     } catch (error) {

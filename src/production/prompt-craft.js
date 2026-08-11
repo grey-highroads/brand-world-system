@@ -244,13 +244,33 @@ export function displayCopyBlock({ lines, zone, format }) {
     parts.push(`${line.label}, set exactly as written with no changes to wording, spelling, capitalization, or punctuation: "${line.text}"`);
   }
 
+  // Proportional instruction rather than absolute measurements. The first
+  // real render showed the model choosing display-size type and composing
+  // for the zone when told to, so it follows relationships. It does not
+  // follow arithmetic, which is why nothing here is stated in pixels.
+  const primary = rendered[0];
+  parts.push(`Size the type to fill the space it is given rather than sitting small inside it. The ${lowerLabel(primary)} occupies roughly ${Math.round((primary.fillShare ?? 0.7) * 100)} percent of the copy area's height and is the dominant element in the frame's typography.`);
+
+  if (rendered.length > 1) {
+    const hierarchy = rendered.slice(1).map((line) =>
+      `the ${lowerLabel(line)} sets at about ${Math.round((line.relativeSize ?? 0.45) * 100)} percent of the ${lowerLabel(primary)}'s size, ${line.note || "clearly secondary to it"}`,
+    );
+    parts.push(`Hold a clear hierarchy: ${hierarchy.join("; ")}. The sizes are relative to each other, so the relationship holds whatever the absolute scale.`);
+    parts.push(`Stack the lines as a single typographic group with consistent alignment and even spacing between them, not scattered across the frame.`);
+  }
+
   parts.push(
-    `Set this copy in a clean, contemporary sans-serif with high contrast against what sits behind it, at a size that stays comfortably readable when the image is viewed small.`,
+    `Break lines at phrase boundaries so each line reads as a unit. Never break in the middle of a phrase, and never leave a single word stranded on its own line unless the copy is one word.`,
+    `Set the copy in a clean, contemporary sans-serif, aligned consistently, with enough contrast against what sits behind it to stay legible. Keep an even optical margin around the copy so it does not crowd the frame edge or the subject.`,
     `Reproduce every character exactly. Do not paraphrase, translate, abbreviate, re-order, correct, or add to the copy above, and do not repeat it anywhere else in the frame.`,
   );
   if (format) parts.push(`The composition is ${format}; keep the copy clear of the outer edges.`);
 
   return parts.join(" ");
+}
+
+function lowerLabel(line) {
+  return String(line?.label || "copy").toLowerCase();
 }
 
 /**
