@@ -5571,12 +5571,28 @@ function producedCopyPanel(job) {
 // borrows the language of a clean pass.
 function copyAuditPill(audit) {
   const status = audit?.status || "errored";
-  if (status === "errored") return '<span class="mini-pill pill-danger">Not checked</span>';
-  if (status === "no_claims") return '<span class="mini-pill pill-neutral">No claims to check</span>';
-  const violations = (audit.findings || []).filter((f) => f.severity === "violation").length;
-  const reviews = (audit.findings || []).filter((f) => f.severity === "review").length;
+  const findings = audit?.findings || [];
+  const violations = findings.filter((f) => f.severity === "violation").length;
+  const reviews = findings.filter((f) => f.severity === "review").length;
+
+  // Findings are counted before the status is reported, because the claim
+  // audit is not the only check that runs. The prose and display budget
+  // checks are deterministic and run in every state, including the ones where
+  // the claim audit found nothing to check or could not run at all.
+  //
+  // The earlier version returned on status first, so a caption containing an
+  // em dash sat under a neutral "No claims to check" pill while the finding
+  // was recorded below. A pill that reports a check the copy failed as though
+  // nothing were wrong is the same fault as an errored audit rendering as a
+  // clean pass.
   if (violations) return `<span class="mini-pill pill-danger">${violations} ${violations === 1 ? "violation" : "violations"}</span>`;
+  if (status === "errored") {
+    return reviews
+      ? `<span class="mini-pill pill-danger">Not checked, ${reviews} to review</span>`
+      : '<span class="mini-pill pill-danger">Not checked</span>';
+  }
   if (reviews) return `<span class="mini-pill pill-warning">${reviews} to review</span>`;
+  if (status === "no_claims") return '<span class="mini-pill pill-neutral">No claims to check</span>';
   return '<span class="mini-pill pill-success">Claims check passed</span>';
 }
 
@@ -5670,7 +5686,7 @@ function findingCountLabel(findings) {
   const violations = findings.filter((f) => f.status === "violation").length;
   const unchecked = findings.filter((f) => f.status === "unchecked").length;
   if (violations) return `${violations} ${violations === 1 ? "violation" : "violations"}`;
-  if (unchecked) return "Claim check did not run";
+  if (unchecked) return "A check did not run";
   const toVerify = findings.filter((f) => f.status === "verify" || f.status === "review").length;
   return `${toVerify} to verify`;
 }
@@ -6422,14 +6438,7 @@ function draftCopyPanel() {
 }
 
 function draftAuditPill(audit) {
-  const status = audit?.status || "errored";
-  if (status === "errored") return '<span class="mini-pill pill-danger">Not checked</span>';
-  if (status === "no_claims") return '<span class="mini-pill pill-neutral">No claims to check</span>';
-  const violations = (audit.findings || []).filter((f) => f.severity === "violation").length;
-  if (violations) return `<span class="mini-pill pill-danger">${violations} ${violations === 1 ? "violation" : "violations"}</span>`;
-  const reviews = (audit.findings || []).length;
-  if (reviews) return `<span class="mini-pill pill-warning">${reviews} to review</span>`;
-  return '<span class="mini-pill pill-success">Claims check passed</span>';
+  return copyAuditPill(audit);
 }
 
 function renderCopyField() {

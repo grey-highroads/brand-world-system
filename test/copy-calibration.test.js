@@ -146,3 +146,33 @@ test("prose findings appear even when the claim check fails", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+// -------------------------------------------------------------------------
+// A caption with no claims to check can still fail a check
+// -------------------------------------------------------------------------
+
+test("a prose violation is reported even when there are no claims to audit", async () => {
+  // The caption produced for Columbia on 2026-08-11 contained an em dash and
+  // sat under a neutral "No claims to check" pill, because the pill returned
+  // on status before counting findings. The audit itself was correct; the
+  // summary was not.
+  const audit = await auditProducedCopy({
+    text: "This moment captures the essence of adventure\u2014where preparation meets awe.",
+    claimsSet: { approved: [], prohibited: [], disclosures: [] },
+    apiKey: "unused",
+  });
+  assert.equal(audit.status, "no_claims");
+  assert.equal(audit.findings.length, 1);
+  assert.equal(audit.findings[0].kind, "prose");
+  assert.match(audit.findings[0].rule, /em dash/i);
+});
+
+test("a clean caption with no claims produces no findings at all", async () => {
+  const audit = await auditProducedCopy({
+    text: "Standing on the summit, every step taken feels worth it.",
+    claimsSet: { approved: [], prohibited: [], disclosures: [] },
+    apiKey: "unused",
+  });
+  assert.equal(audit.status, "no_claims");
+  assert.deepEqual(audit.findings, []);
+});
