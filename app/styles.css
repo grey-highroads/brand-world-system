@@ -8085,3 +8085,43 @@ button.ws-attention-item:hover {
 .studio-copy-section textarea {
   min-height: 84px;
 }
+
+/* Structured display copy: a headline set is several short lines with
+   different jobs, so each is labelled rather than run together as prose.
+   Stacked for the same reason the prose panel is. */
+
+.produced-copy-fields {
+  display: block;
+  margin: 0;
+}
+
+.produced-copy-field {
+  display: block;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.produced-copy-field:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.produced-copy-field:first-child {
+  padding-top: 0;
+}
+
+.produced-copy-field dt {
+  margin-bottom: var(--space-1);
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.produced-copy-field dd {
+  margin: 0;
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}

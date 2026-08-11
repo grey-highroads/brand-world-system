@@ -71,6 +71,44 @@ export const copyTypes = {
     topicFallbackOrder: ["copyDirection", "postTopic", "scene"],
     auditPosture: "claims",
   },
+
+  // Display lines, as opposed to prose. Short enough to sit on a slide, an
+  // ad, or above the fold. Useful with no renderer at all: a governed
+  // headline is what a person pastes into a layout tool.
+  //
+  // This is the first structured type. The fields are the reason the entry
+  // shape carries `fields` rather than a single string: display copy is
+  // several short strings with different jobs, and a finding needs to name
+  // which one it landed on.
+  headline_set: {
+    id: "headline_set",
+    label: "Headline set",
+    description: "A headline, a supporting line, and a call to action. Short display copy for slides, ads, and layouts.",
+    structured: true,
+    fields: [
+      { id: "headline", label: "Headline", maxWords: 10, note: "The line that carries the idea on its own." },
+      { id: "subhead", label: "Supporting line", maxWords: 20, note: "One sentence that earns the headline." },
+      { id: "cta", label: "Call to action", maxWords: 6, note: "What the reader does next." },
+    ],
+    roleLine: (context) =>
+      `You are writing display copy for ${context.brandName}${context.brandDescription ? ` (${context.brandDescription})` : ""}.`,
+    lengthGuidance: () =>
+      "Every line is display copy, read at a glance. Stay inside the word limit given for each field. A line that needs a second reading is too long.",
+    structuralRules: [
+      ...sharedProseRules,
+      "The headline must stand on its own. A reader who sees only the headline should get the idea.",
+      "The supporting line earns the headline. It does not restate it in different words.",
+      "The call to action names a specific action. Not 'Learn more' unless nothing more specific is true.",
+      "Do not write the same idea three times at three lengths.",
+    ],
+    outputFormat: [
+      'Return ONLY a JSON object with exactly these keys: "headline", "subhead", "cta".',
+      "Every value is a plain string. No markdown, no backticks, no preamble, no explanation.",
+      'Example shape: {"headline": "...", "subhead": "...", "cta": "..."}',
+    ],
+    topicFallbackOrder: ["copyDirection", "postTopic", "scene"],
+    auditPosture: "claims",
+  },
 };
 
 export function getCopyType(id) {
@@ -93,4 +131,11 @@ export function defaultCopyOutputsForPlacement(placement) {
   const socialChannels = ["LinkedIn", "Instagram", "Facebook", "X", "TikTok", "Pinterest"];
   if (socialChannels.includes(channel)) return ["social_caption"];
   return [];
+}
+
+// Which copy types a placement may produce, whether or not they are on by
+// default. A headline set is offered anywhere, because display copy is useful
+// in a layout tool regardless of where the image ends up.
+export function availableCopyOutputsForPlacement() {
+  return ["social_caption", "headline_set"];
 }

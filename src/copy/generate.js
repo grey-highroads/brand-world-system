@@ -97,6 +97,13 @@ export function buildCopySystemPrompt({ copyType, brain, product, claimsSet, con
     for (const directive of claimsSet.directives) parts.push(`- ${directive.text}`);
   }
 
+  if (copyType.structured) {
+    parts.push(``, `FIELDS TO PRODUCE:`);
+    for (const field of copyType.fields) {
+      parts.push(`- ${field.id} (${field.label}): ${field.note} Maximum ${field.maxWords} words.`);
+    }
+  }
+
   parts.push(
     ``,
     `STRUCTURAL RULES (non-negotiable):`,
@@ -255,17 +262,65 @@ export async function produceCopy({ copyTypeId, brain, product, claimsSet, conte
     throw new Error(`OpenAI returned status ${chatResponse.status}: ${errorBody.slice(0, 200)}`);
   }
   const chatData = await chatResponse.json();
-  const text = chatData.choices?.[0]?.message?.content?.trim();
-  if (!text) throw new Error("OpenAI returned empty copy.");
+  const raw = chatData.choices?.[0]?.message?.content?.trim();
+  if (!raw) throw new Error("OpenAI returned empty copy.");
+
+  // A structured type returns fields; an unstructured one returns a string.
+  // The audit runs on the joined text either way, so claims spanning two
+  // lines are still caught, and findings carry the field they landed on.
+  const fields = copyType.structured ? parseStructuredCopy(raw, copyType) : null;
+  const text = fields ? fields.map((field) => field.text).join("\n") : raw;
 
   const audit = await auditProducedCopy({ text, claimsSet, apiKey });
+  if (fields) attributeFindingsToFields(audit, fields);
 
   return {
     copyTypeId: copyType.id,
     label: copyType.label,
     text,
+    fields,
     model: COPY_MODEL,
     generatedAt: new Date().toISOString(),
     audit,
   };
+}
+
+// Parse a structured response. The model is told to return bare JSON and
+// usually does; the fence strip handles the case where it wraps it anyway.
+// A field the model omitted comes back empty rather than missing, so the
+// interface renders a visible gap instead of silently showing two lines
+// where three were asked for.
+function parseStructuredCopy(raw, copyType) {
+  const cleaned = raw.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    throw new Error("The display copy came back in a shape this system could not read.");
+  }
+  if (!parsed || typeof parsed !== "object") {
+    throw new Error("The display copy came back in a shape this system could not read.");
+  }
+  return copyType.fields.map((field) => ({
+    id: field.id,
+    label: field.label,
+    maxWords: field.maxWords,
+    text: typeof parsed[field.id] === "string" ? parsed[field.id].trim() : "",
+    overLength: countWords(parsed[field.id]) > field.maxWords,
+  }));
+}
+
+function countWords(value) {
+  return String(value || "").trim().split(/\s+/).filter(Boolean).length;
+}
+
+// Name the field a finding landed on, so "this claim is not on your approved
+// list" points at the headline rather than at the set.
+function attributeFindingsToFields(audit, fields) {
+  for (const finding of audit.findings || []) {
+    if (!finding.sentence) continue;
+    const match = fields.find((field) => field.text && finding.sentence.includes(field.text));
+    const containing = match || fields.find((field) => field.text && field.text.includes(finding.sentence));
+    if (containing) finding.field = containing.label;
+  }
 }

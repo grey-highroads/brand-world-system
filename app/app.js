@@ -1085,6 +1085,7 @@ const state = {
     // direction field steers what the caption says; leaving it blank draws
     // the message from the brief and the Brand Brain.
     captionOn: true,
+    headlineSetOn: false,
     copyDirection: "",
     referenceOpen: false,
     directionOpen: false,
@@ -2901,6 +2902,8 @@ function renderStudioSetup() {
 
               ${segmentField("studio")}
 
+              ${headlineSetField()}
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
@@ -3547,6 +3550,8 @@ function renderSalesSetup(cat) {
                 </div>
               </div>
               ${segmentField("sales")}
+
+              ${headlineSetField()}
 
               ${sceneSuggestField({
                 id: "sales-element",
@@ -5229,7 +5234,7 @@ function copyPreflightPanel(generationPackage) {
 }
 
 function copyTypeLabel(copyTypeId) {
-  const labels = { social_caption: "A post caption" };
+  const labels = { social_caption: "A post caption", headline_set: "A headline set" };
   return labels[copyTypeId] || "Copy";
 }
 
@@ -5502,10 +5507,17 @@ function producedCopyPanel(job) {
           <span class="section-label">${escapeHtml(block.label || copyTypeLabel(block.copyTypeId))}</span>
           ${copyAuditPill(block.audit)}
         </div>
-        <div class="produced-copy-text">${escapeHtml(block.text)}</div>
+        ${block.fields
+          ? `<dl class="produced-copy-fields">${block.fields.map((field) => `
+              <div class="produced-copy-field">
+                <dt>${escapeHtml(field.label)}${field.overLength ? ` <span class="mini-pill pill-warning">Runs long</span>` : ""}</dt>
+                <dd>${field.text ? escapeHtml(field.text) : `<span class="field-note">Nothing came back for this line. Write it again.</span>`}</dd>
+              </div>
+            `).join("")}</dl>`
+          : `<div class="produced-copy-text">${escapeHtml(block.text)}</div>`}
         <div class="produced-copy-actions">
           <button class="button small" type="button" data-action="copy-produced-text" data-index="${index}">Copy text</button>
-          <button class="button small" type="button" data-action="rewrite-caption">Rewrite the caption</button>
+          <button class="button small" type="button" data-action="rewrite-caption" data-index="${index}">Write it again</button>
         </div>
       </div>
     `;
@@ -5543,6 +5555,7 @@ function buildCopyFindings(job) {
         status: "unchecked",
         finding: audit.message || "The claim check could not run, so this copy has not been checked against your claims.",
         repairAction: "rewrite-caption",
+        repairIndex: blockIndex,
         repairLabel: "Write it again and re-check",
       });
       return;
@@ -5559,20 +5572,21 @@ function buildCopyFindings(job) {
     (audit.findings || []).forEach((finding, findingIndex) => {
       findings.push({
         id: `copy-${blockIndex}-${findingIndex}`,
-        element: finding.kind === "prohibited"
+        element: (finding.field ? `${finding.field}: ` : "") + (finding.kind === "prohibited"
           ? "This claim is on your prohibited list"
           : finding.kind === "disclosure"
             ? "A required disclosure is missing"
             : finding.kind === "prose"
               ? "This breaks one of your writing rules"
-              : "This claim is not on your approved list",
+              : "This claim is not on your approved list"),
         category: finding.kind === "prose" ? "Writing" : "Claims",
         status: finding.severity === "violation" ? "violation" : "review",
         sentence: finding.sentence,
         rule: finding.rule,
         finding: finding.reason,
         repairAction: "rewrite-caption",
-        repairLabel: "Write the caption again",
+        repairIndex: blockIndex,
+        repairLabel: "Write it again",
       });
     });
   });
@@ -5719,7 +5733,7 @@ function renderResult() {
                   ${f.sentence ? `<blockquote class="evaluation-sentence">${escapeHtml(f.sentence)}</blockquote>` : ""}
                   ${f.rule ? `<p class="evaluation-rule"><span class="section-label">Governing rule</span>${escapeHtml(f.rule)}</p>` : ""}
                   <p>${escapeHtml(f.finding)}</p>
-                  ${f.repairAction ? `<button class="button small" type="button" data-action="${f.repairAction}" data-finding="${f.id}">${escapeHtml(f.repairLabel)}</button>` : ""}
+                  ${f.repairAction ? `<button class="button small" type="button" data-action="${f.repairAction}" data-finding="${f.id}" ${Number.isInteger(f.repairIndex) ? `data-index="${f.repairIndex}"` : ""}>${escapeHtml(f.repairLabel)}</button>` : ""}
                 </li>
               `).join("")}
             </ul>
@@ -6230,8 +6244,14 @@ function wait(milliseconds) {
 // only when the user has left the caption switched on. Every other flow sends
 // an empty list, which compiles exactly as it did before copy existed.
 function declaredCopyOutputs() {
-  if (state.studio.category !== "social") return [];
-  return state.studio.captionOn ? ["social_caption"] : [];
+  const declared = [];
+  // The caption is prose for a feed, so it is offered on social only and is
+  // on by default. A headline set is display copy, useful wherever the image
+  // ends up, so it is offered broadly and is off by default: most jobs do not
+  // need one, and an unrequested model call is a cost with no reader.
+  if (state.studio.category === "social" && state.studio.captionOn) declared.push("social_caption");
+  if (state.studio.headlineSetOn) declared.push("headline_set");
+  return declared;
 }
 
 // Segment picker. A segment is a subset of audience: surgery centers within
@@ -6242,6 +6262,22 @@ function declaredCopyOutputs() {
 // The list comes from the segments already named on the client's claims, so
 // it needs no separate registry and no admin screen. A client with no
 // segmented claims sees no picker at all rather than an empty control.
+// Headline set toggle. Offered on any flow that produces an image, because
+// display copy is useful in a layout tool regardless of where the image goes.
+function headlineSetField() {
+  return `
+    <div class="field full">
+      <button class="studio-toggle-row" type="button" data-action="toggle-studio-headline-set">
+        <span class="studio-toggle-track ${state.studio.headlineSetOn ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+        <span class="studio-toggle-content">
+          <strong>Write a headline set</strong>
+          <span class="field-note">A headline, a supporting line, and a call to action. Short enough for a slide or an ad, checked against your claims like any other copy.</span>
+        </span>
+      </button>
+    </div>
+  `;
+}
+
 function segmentField(idPrefix) {
   const segments = state.segments.list || [];
   if (!segments.length) return "";
@@ -6741,13 +6777,17 @@ function downloadPackage() {
 // failed rewrite never leaves the button dead.
 let rewritingCaption = false;
 
-async function rewriteCaption() {
+async function rewriteCaption(blockIndex) {
   if (rewritingCaption) return;
   const job = state.production.job;
   const copy = job?.generationPackage?.copy;
-  const declared = copy?.declared?.[0];
+  // Regenerate one block, not the set. With a caption and a headline set on
+  // the same job, replacing the whole produced array would discard the block
+  // the user did not ask to change.
+  const index = Number.isInteger(blockIndex) ? blockIndex : 0;
+  const declared = copy?.declared?.[index];
   if (!declared) {
-    setToast("This output has no caption to rewrite");
+    setToast("There is no copy here to write again");
     return;
   }
   rewritingCaption = true;
@@ -6769,7 +6809,7 @@ async function rewriteCaption() {
     });
     const body = await readApiJson(response);
     if (!response.ok) throw new Error(body.error || "The caption could not be rewritten.");
-    copy.produced = [body.copy];
+    copy.produced = copy.produced.map((block, position) => (position === index ? body.copy : block));
     if (body.governingClaims) copy.governingClaims = body.governingClaims;
     recordOutput(job);
     void persistOutputs();
@@ -7323,6 +7363,7 @@ root.addEventListener("click", (event) => {
     state.studio.campaignId = "";
     state.studio.copyDirection = "";
     state.studio.captionOn = true;
+    state.studio.headlineSetOn = false;
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
@@ -7375,6 +7416,10 @@ root.addEventListener("click", (event) => {
   }
   if (action === "toggle-studio-caption") {
     state.studio.captionOn = !state.studio.captionOn;
+    render();
+  }
+  if (action === "toggle-studio-headline-set") {
+    state.studio.headlineSetOn = !state.studio.headlineSetOn;
     render();
   }
   if (action === "studio-toggle-section") {
@@ -8176,7 +8221,7 @@ root.addEventListener("click", (event) => {
       setToast("Caption copied");
     }
   }
-  if (action === "rewrite-caption") void rewriteCaption();
+  if (action === "rewrite-caption") void rewriteCaption(Number(target.dataset.index || 0));
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
     state.production.approved = true;

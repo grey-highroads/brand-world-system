@@ -92,7 +92,10 @@ test("a declared copy output with no claims still compiles a contract, empty", (
 
 test("the copy catalog is data, and social placements default to a caption", () => {
   assert.equal(getCopyType("social_caption").id, "social_caption");
-  assert.equal(getCopyType("headline_set"), null);
+  // headline_set was added to the catalog on 2026-08-10. An id the catalog
+  // does not carry still returns null.
+  assert.equal(getCopyType("one_sheet_prose"), null);
+  assert.equal(getCopyType("not_a_type"), null);
   assert.equal(listCopyTypes().length >= 1, true);
   assert.deepEqual(defaultCopyOutputsForPlacement("Instagram feed"), ["social_caption"]);
   assert.deepEqual(defaultCopyOutputsForPlacement("LinkedIn feed"), ["social_caption"]);
