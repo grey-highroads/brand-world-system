@@ -1,6 +1,6 @@
 # ADR 0014: Produce governed copy alongside imagery, and split the typography position
 
-- Status: Proposed
+- Status: Part one accepted and shipped 2026-08-10 (steps 1 through 3). Part two resolved by the revision of 2026-08-10: generated in-image copy is rejected, deterministic compositing is the path.
 - Date: 2026-08-10
 - Owner: Higher Roads
 - Supersedes: The blanket generative-typography exclusion recorded in the Design Studio primer and enforced as universal text safety in the compiled prompt, in part (see "The position being revised")
@@ -76,11 +76,31 @@ Until the gate passes, part two is design intent, not roadmap. Part one does not
 2. **Combined compile.** Jobs declare copy outputs; the package carries the copy contract; the social flow produces image plus caption as one job.
 3. **Surface the audit.** Preflight shows the governing claims for copy; evaluation shows findings with the standard shape; audit-errored is a distinct state. This closes ADR 0013 step 6.
 4. **Headline set and one-sheet prose types.** Extend the catalog once the combined flow is proven on captions.
-5. **Renderer fidelity gate for display copy.** Fixture test, evaluation memo, then a go or re-scope decision on part two. No part-two implementation before the memo exists.
+5. ~~**Renderer fidelity gate for display copy.**~~ Retired unrun by the revision of 2026-08-10. Replaced by: **Scope deterministic compositing**, once the build-or-integrate question has its own ADR.
+
+## Revision: 2026-08-10, part two resolved without the fidelity gate
+
+**The gate is retired unrun.** Step 5 required a renderer fidelity test before part two could be scoped. That test is not being run, because its result would not decide the question it was created to decide.
+
+**Finding: the gate measured the wrong variable.** The test as specified measures whether the renderer holds an exact short string. The reason to reject generated in-image copy is not string fidelity in isolation. It is that text and layout together must be correct predictably and repeatably, across every placement and fidelity requirement the product has to serve. A passing exact-match rate on isolated strings would say nothing about layout correctness at fidelity across formats, so a pass would not have licensed part two and a fail would only have confirmed a decision already reached on other grounds. Running it would produce a number that governs nothing.
+
+**Finding: a probabilistic guarantee is a different category, not a weaker one.** This system's stated differentiator is that provenance and separation discipline are enforced in schema and compiled artifacts rather than left to model judgment. Exact claim language drawn by a model is model judgment regardless of the hit rate. "Correct most of the time" on a regulated claim is not a lower grade of governed; it is ungoverned with good odds. The original rejection of ungated rendering already recognized this by naming exact claim language the highest-stakes string in the system. The revision extends that reasoning to its conclusion: no fidelity number clears it, because the failure is categorical.
+
+**Finding: layout is not this product's competence and should not become it.** The product is built to excel at world building. Layout and compositing are well served by tools built for them. This was already the accepted position in the rejected option "produce finished laid-out documents," which held that layout tools remain better at layout. Part two as originally drafted quietly reversed that by making the renderer responsible for typography.
+
+**Change.** Part two is resolved rather than gated. Generated in-image copy is rejected permanently, not deferred. Deterministic compositing becomes the path: the image is produced without text, and approved copy is typeset onto it in code. The string is exact by construction because it is never redrawn, which satisfies the exact-fidelity mechanic part two required without depending on renderer behavior. The universal text safety rule in `src/production/prompt-craft.js` therefore stays in force unchanged and is no longer "in part" superseded.
+
+Step 5 of the sequencing is replaced: **Scope deterministic compositing.** No fidelity test, no evaluation memo.
+
+**Open question, deliberately unresolved here.** Whether the compositor is built inside this system or whether the system hands off to a tool that already does layout is not decided. Simple compositing, meaning approved text typeset at a known position in a known type style, is bounded and sits inside this product's lane. Layout across arbitrary formats is a different product and probably an integration. The distinction matters because building the second inside this system reintroduces exactly the competence problem this revision was written to avoid. A separate ADR should decide it before a compositor is built.
+
+**Marketing consequence.** The "placed directly, never regenerated" claim on the homepage is currently unsupported by the live implementation, which uses model-based asset placement. Deterministic compositing would make that claim true for copy specifically. It does not make it true for asset placement, and the two should not be conflated in any material written before the compositor exists.
 
 ## Options considered
 
 - Keep copy as a per-channel side path and add channels one at a time (rejected: repeats the hardcoded-catalog contradiction ADR 0011 named; each channel becomes bespoke code).
 - Produce finished laid-out documents with copy typeset by the system (rejected: reverses the better-building-blocks position wholesale without evidence; paragraph typesetting remains a losing battle and layout tools remain better at it).
 - Render display copy into images immediately, without a fidelity gate (rejected: exact claim language is the highest-stakes string in the system; committing before measuring renderer fidelity risks shipping approximate lettering on regulated copy).
-- Copy as a first-class output through the existing claims path, with display-copy rendering gated on a fidelity test (accepted).
+- Copy as a first-class output through the existing claims path, with display-copy rendering gated on a fidelity test (accepted for part one; the gate on part two was retired unrun on 2026-08-10, see the revision above).
+- Render display copy generatively once a fidelity test passes (rejected 2026-08-10: no hit rate makes a model-drawn claim exact by construction, and the test would not have measured layout correctness at fidelity across formats).
+- Typeset approved copy onto a text-free render in code (accepted 2026-08-10 as the path for part two; whether the compositor is built here or handed off to a layout tool is left to a separate ADR).
