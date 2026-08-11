@@ -27,6 +27,32 @@ test("format maps to a shape", () => {
   assert.equal(shapeFromFormat(""), "square");
 });
 
+test("pixel dimensions resolve to a shape, not just named ratios", () => {
+  // Website and sales presets pass dimensions like "1920x800". Before these
+  // were parsed, a hero fell through to square and was budgeted as though it
+  // had a square photo's vertical room.
+  assert.equal(shapeFromFormat("1920x800"), "landscape");
+  assert.equal(shapeFromFormat("1080x1080"), "square");
+  assert.equal(shapeFromFormat("1080x1350"), "portrait");
+  assert.equal(shapeFromFormat("1080x1920"), "tall");
+  assert.equal(shapeFromFormat("1200x628"), "landscape");
+  assert.equal(shapeFromFormat("2.4:1"), "landscape");
+});
+
+test("an ultra wide banner gets a longer line and fewer of them", () => {
+  const hero = budgetFor({ format: "1920x800", zoneId: "lower_third" });
+  const standard = budgetFor({ format: "1200x628", zoneId: "lower_third" });
+  assert.equal(hero.charsPerLine > standard.charsPerLine, true);
+  assert.equal(hero.lines <= standard.lines, true);
+});
+
+test("an unrecognized format still yields a usable budget", () => {
+  const budget = budgetFor({ format: "", zoneId: "lower_third" });
+  assert.equal(budget.charsPerLine > 0, true);
+  assert.equal(budget.lines > 0, true);
+  assert.equal(budget.maxChars > 0, true);
+});
+
 test("a wider frame gets more characters per line than a taller one", () => {
   const wide = budgetFor({ format: "16:9 landscape", zoneId: "lower_third" });
   const tall = budgetFor({ format: "9:16 story", zoneId: "lower_third" });

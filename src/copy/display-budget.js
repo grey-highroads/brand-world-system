@@ -73,12 +73,42 @@ const linesByShape = {
 // relative type size.
 const widthFactorByShape = { square: 1, portrait: 0.9, tall: 0.75, landscape: 1.3 };
 
+// Formats arrive in several shapes: named ratios ("4:5 portrait"), bare
+// ratios ("2.4:1"), and pixel dimensions ("1920x800", from the website and
+// sales format presets). Dimensions are parsed first, because a website hero
+// at 1920x800 matches none of the named ratios and would otherwise fall
+// through to square, which is the wrong budget by a wide margin.
+function ratioFromFormat(format) {
+  const value = String(format || "").toLowerCase().replace(/\s+/g, "");
+  const pair = value.match(/(\d+(?:\.\d+)?)\s*[x:×]\s*(\d+(?:\.\d+)?)/);
+  if (!pair) return null;
+  const width = Number(pair[1]);
+  const height = Number(pair[2]);
+  if (!width || !height) return null;
+  return width / height;
+}
+
 export function shapeFromFormat(format) {
+  const ratio = ratioFromFormat(format);
+  if (ratio) {
+    if (ratio <= 0.7) return "tall";
+    if (ratio < 0.95) return "portrait";
+    if (ratio <= 1.2) return "square";
+    return "landscape";
+  }
   const value = String(format || "").toLowerCase();
-  if (value.includes("9:16") || value.includes("story") || value.includes("vertical")) return "tall";
-  if (value.includes("4:5") || value.includes("portrait")) return "portrait";
-  if (value.includes("16:9") || value.includes("landscape") || value.includes("banner")) return "landscape";
+  if (value.includes("story") || value.includes("vertical")) return "tall";
+  if (value.includes("portrait")) return "portrait";
+  if (value.includes("landscape") || value.includes("banner") || value.includes("wide")) return "landscape";
   return "square";
+}
+
+// A very wide banner has almost no vertical room, so lines available in a
+// zone shrink even though characters per line grow. Without this a website
+// hero would be budgeted as though it had a landscape photo's height.
+export function isUltraWide(format) {
+  const ratio = ratioFromFormat(format);
+  return ratio !== null && ratio >= 2;
 }
 
 export function getZone(zoneId) {
@@ -98,8 +128,10 @@ export function listZones() {
 export function budgetFor({ format, zoneId, share = 1 }) {
   const shape = shapeFromFormat(format);
   const zone = getZone(zoneId);
-  const charsPerLine = Math.round(zone.charsPerLine * widthFactorByShape[shape]);
-  const lines = Math.max(1, Math.round((linesByShape[shape]?.[zone.id] ?? 2) * share));
+  const ultraWide = isUltraWide(format);
+  const charsPerLine = Math.round(zone.charsPerLine * widthFactorByShape[shape] * (ultraWide ? 1.4 : 1));
+  const available = (linesByShape[shape]?.[zone.id] ?? 2) * (ultraWide ? 0.5 : 1);
+  const lines = Math.max(1, Math.round(available * share));
   return { charsPerLine, lines, maxChars: charsPerLine * lines, shape, zone: zone.id };
 }
 

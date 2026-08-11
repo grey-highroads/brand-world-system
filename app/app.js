@@ -3404,6 +3404,12 @@ function renderWebsiteSetup(cat) {
                 </div>
               </div>
 
+              ${segmentField("website")}
+
+              ${headlineSetField()}
+
+              ${renderCopyField()}
+
               ${sceneSuggestField({
                 id: "website-brief",
                 field: "brief",
@@ -8690,6 +8696,30 @@ async function hydrateClients() {
 // loader pattern: a concurrent call is refused, and both the success and
 // failure paths clear the flag so a failed attempt never leaves the button
 // dead. Neither is called from a render function.
+// The setup screens hold their brief and placement in different places, and
+// `state.brief` is not populated until the user leaves setup for preflight.
+// Drafting copy happens before that, so these resolve from studio state
+// directly.
+//
+// Placement matters beyond wording: it is a scope axis, so a stale value
+// would assemble the claims of some previous job. Resolving it per category
+// keeps the draft governed by the same claims the render will use.
+function studioPlacementForDraft() {
+  if (state.studio.category === "sales") return "Sales enablement";
+  if (state.studio.category === "website") {
+    const format = websiteOutputFormats[state.studio.websiteFormat];
+    return format?.placement || "Website";
+  }
+  if (state.studio.category === "template") return "Brand template";
+  const platformId = (state.studio.platforms || [])[0];
+  return studioPlatformFormats[platformId]?.placement || state.brief.placement || "";
+}
+
+function studioBriefForDraft() {
+  if (state.studio.category === "sales") return state.studio.salesElement || "";
+  return state.studio.brief || "";
+}
+
 async function draftDisplayCopy() {
   if (state.studio.draftCopyLoading) return;
   state.studio.draftCopyLoading = true;
@@ -8702,9 +8732,9 @@ async function draftDisplayCopy() {
       body: JSON.stringify({
         action: "copy_type",
         copyTypeId: "headline_set",
-        placement: state.brief.placement || "",
+        placement: studioPlacementForDraft(),
         copyDirection: state.studio.copyDirection || "",
-        scene: state.studio.brief || "",
+        scene: studioBriefForDraft(),
         segment: state.studio.segment || undefined,
         productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
         campaignId: state.studio.campaignId || undefined,
@@ -8736,7 +8766,7 @@ async function recheckDisplayCopy() {
       body: JSON.stringify({
         action: "audit_copy",
         fields: draft.fields.map((field) => ({ id: field.id, label: field.label, text: field.text })),
-        placement: state.brief.placement || "",
+        placement: studioPlacementForDraft(),
         segment: state.studio.segment || undefined,
         productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
         campaignId: state.studio.campaignId || undefined,
