@@ -5319,6 +5319,7 @@ function renderPreflight() {
             </ul>
             ${generationPackage.stateNeutralizations?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the protected asset sealed</strong><span>${escapeHtml(generationPackage.stateNeutralizations.join(", "))} changed to match the supplied asset state.</span></span></div></div>` : ""}
             ${generationPackage.orientationAdjustments?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the screen facing the camera</strong><span>${escapeHtml(generationPackage.orientationAdjustments.join(", "))} changed so the device screen stays visible in the final image.</span></span></div></div>` : ""}
+            ${generationPackage.screenContentAbstracted ? `<div class="rule-card"><span class="section-label">Screens in this scene</span><div class="rule"><span class="mini-pill">Protected</span><span><strong>Screens will show abstract content, not readable text</strong><span>To show your real product content on a screen, add it as a protected asset and it will be preserved exactly.</span></span></div></div>` : ""}
           </details>
 
           ${copyPreflightPanel(generationPackage)}

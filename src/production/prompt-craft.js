@@ -114,6 +114,23 @@ const TEXT_SAFETY = "Any environmental surface that would carry writing (signs, 
 // the original position was that no text is rendered at any time.
 const TEXT_SAFETY_WITH_DISPLAY_COPY = "Apart from the authored display copy specified below, any environmental surface that would carry writing (signs, screens, menus, posters, or displays) is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text or letter-like marks anywhere. Invent no other words, labels, captions, watermarks, or letter-like marks.";
 
+// Screens are a governed surface, not a set-dressing surface. The blanket
+// text safety rules above were written for environmental surfaces and lose
+// to the brief when a device is the subject of the scene: the renderer
+// fills subject screens with invented interfaces, messages, and named
+// organizations, none of which pass through any governance. Recorded in
+// the display-copy first-renders evaluation (finding four) and as a
+// revision to ADR 0014. The rule: prompt-only screens show abstract
+// content; readable screen content enters only as a protected asset.
+const SCREEN_CONTENT_RULE =
+  "Every device screen in the scene, including a device that is the subject of the shot, shows abstract non-textual content: soft color fields, simple geometry, or an interface defocused beyond reading. No screen carries readable words, numbers, interface labels, charts, messages, notifications, or the name of any organization.";
+const SCREEN_CONTENT_RULE_WITH_ASSET =
+  "The protected asset's own supplied display is shown exactly as provided. Every other device screen in the scene shows abstract non-textual content: soft color fields, simple geometry, or an interface defocused beyond reading. No other screen carries readable words, numbers, interface labels, charts, messages, notifications, or the name of any organization.";
+
+function screenContentRule(lockedAsset) {
+  return inferScreenBearing(lockedAsset) ? SCREEN_CONTENT_RULE_WITH_ASSET : SCREEN_CONTENT_RULE;
+}
+
 /**
  * Build the protection block for a production prompt.
  *
@@ -138,6 +155,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
     const lines = [
       "Render only the authored environment and its explicitly approved unbranded environmental objects; introduce no additional focal object or readable identity mark.",
       textSafety,
+      SCREEN_CONTENT_RULE,
     ];
     if (peopleExcluded) lines.push("No people or hands appear in the frame.");
     return lines.join(" ");
@@ -155,6 +173,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
       "Do not redraw, replace, or reinterpret the protected identity.",
       "Integrate it only through non-destructive environmental light, contact shadow, reflected color, atmosphere, occlusion, and depth effects that do not alter protected identity.",
       textSafety,
+      screenContentRule(lockedAsset),
     ];
     if (screenBearing) lines.splice(2, 0, ...SCREEN_ORIENTATION_LINES);
     if (peopleExcluded) lines.push("No additional people or hands appear in the frame.");
@@ -174,6 +193,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
   if (screenBearing) lines.push(...SCREEN_ORIENTATION_LINES);
   lines.push(integrationSentence(format));
   lines.push(textSafety);
+  lines.push(screenContentRule(lockedAsset));
   if (peopleExcluded) lines.push("No people or hands appear in the frame.");
   return lines.join(" ");
 }

@@ -343,6 +343,8 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // Package format inference and state-lock neutralization
   const packageFormat = lockedAsset ? inferPackageFormat(lockedAsset) : null;
   const screenBearing = !isSalesEnablement && !isTemplate && !templateAsset && inferScreenBearing(lockedAsset);
+  const sceneMentionsScreens = /\b(phone|smartphone|iphone|tablet|ipad|laptop|computer|monitor|screen|dashboard|device|kiosk|tv|television)\b/i.test(scene || "");
+  const screenContentAbstracted = sceneMentionsScreens && !inferScreenBearing(lockedAsset);
   let stateNeutralizations = [];
   let orientationAdjustments = [];
   if (lockedAsset) {
@@ -531,6 +533,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     templateAsset: templateAsset ? { name: templateAsset.name, ratio: templateAsset.ratio } : null,
     stateNeutralizations,
     orientationAdjustments,
+    screenContentAbstracted,
     prompt,
     sections,
     compiledComponents: guidance.map((section) => `${section.name} / ${section.summary}`),

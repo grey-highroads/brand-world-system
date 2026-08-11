@@ -128,3 +128,13 @@ First real renders are recorded in [`evaluations/2026-08-11-display-copy-first-r
 - Copy as a first-class output through the existing claims path, with display-copy rendering gated on a fidelity test (accepted for part one; the gate on part two was retired unrun on 2026-08-10, see the revision above).
 - Render display copy generatively once a fidelity test passes (rejected 2026-08-10: no hit rate makes a model-drawn claim exact by construction, and the test would not have measured layout correctness at fidelity across formats).
 - Typeset approved copy onto a text-free render in code (accepted 2026-08-10 as the path for part two; whether the compositor is built here or handed off to a layout tool is left to a separate ADR).
+
+## Revision: 2026-08-11, screens are a governed surface
+
+**Finding.** The first display-copy renders (see the 2026-08-11 evaluation memo, finding four) showed that the renderer fills device screens with invented content, and that the severity grows as scene direction improves. One run produced fabricated post-operative clinical instructions attributed to an invented named surgical center, inside marketing material for a healthcare client. The narrowed text safety rule did not hold, because it was written for environmental surfaces and a subject screen is not environmental: the brief asks the device to present content, and the brief wins.
+
+**Decision.** Screen content routes through the same governed door as every other exact element. On prompt-only renders, every device screen, including a device that is the subject of the shot, shows abstract non-textual content. Readable screen content appears only when supplied as a protected asset, in which case the asset's own display is preserved exactly and every other screen stays abstract. Preflight discloses the abstraction and names the path to real content.
+
+**Why not wait for client calibration.** The deferral discipline applied to the ADR 0013 audit boundary does not apply here, because this failure is not a threshold that needs tuning against real volume. Fabricated clinical guidance attributed to a fabricated organization is categorically ungoverned content beside governed copy, and the mitigation reuses an existing wall (the protected asset path) rather than building a speculative one. This closes the qualification the evaluation memo recorded as unresolved.
+
+**What this does not change.** Authored display copy continues to render under the narrowed text safety rule. The scale and posture collision on screen-bearing scenes (memo finding three) remains open in deferred work. Read-back verification remains the unbuilt acceptance bar for calling display copy governed.
