@@ -1,6 +1,6 @@
 # ADR 0014: Produce governed copy alongside imagery, and split the typography position
 
-- Status: Part one accepted and shipped 2026-08-10 (steps 1 through 3). Part two resolved by the revision of 2026-08-10: generated in-image copy is rejected, deterministic compositing is the path.
+- Status: Part one accepted and shipped 2026-08-10 (steps 1 through 3). Part two reopened and revised 2026-08-11: display copy is rendered into images, gated on measurement rather than prohibited. The 2026-08-10 revision overreached and is superseded.
 - Date: 2026-08-10
 - Owner: Higher Roads
 - Supersedes: The blanket generative-typography exclusion recorded in the Design Studio primer and enforced as universal text safety in the compiled prompt, in part (see "The position being revised")
@@ -95,6 +95,26 @@ Step 5 of the sequencing is replaced: **Scope deterministic compositing.** No fi
 **Open question, deliberately unresolved here.** Whether the compositor is built inside this system or whether the system hands off to a tool that already does layout is not decided. Simple compositing, meaning approved text typeset at a known position in a known type style, is bounded and sits inside this product's lane. Layout across arbitrary formats is a different product and probably an integration. The distinction matters because building the second inside this system reintroduces exactly the competence problem this revision was written to avoid. A separate ADR should decide it before a compositor is built.
 
 **Marketing consequence.** The "placed directly, never regenerated" claim on the homepage is currently unsupported by the live implementation, which uses model-based asset placement. Deterministic compositing would make that claim true for copy specifically. It does not make it true for asset placement, and the two should not be conflated in any material written before the compositor exists.
+
+## Revision: 2026-08-11, display copy enters the render
+
+The revision of 2026-08-10 rejected generated in-image copy permanently and named deterministic compositing as the path. That went too far, and it is corrected here.
+
+**What the earlier revision got wrong.** It fused two independent questions: whether a string is allowed to be said, and whether the typesetting will hold it exactly. The first is liability and is already solved by the claims spine. The second is mechanical and is answered by measurement. Using "is it a claim" as a proxy for "will it render correctly" is the same category error recorded in the ADR 0013 amendment, where directives and claim strings shared one list.
+
+It also generalized from the hardest case. The argument was built on regulated healthcare claims, where exactness is the governance, and then applied to every string in the system. For a tagline carrying no claim, approximate lettering is a quality problem, and quality problems have acceptable rates.
+
+**What survives.** Layout across arbitrary formats is still not this product's competence, and composed documents remain the domain of layout tools. Nothing here reverses the better-building-blocks position for one-sheets, display ads, or multi-element artifacts. What changes is that a single authored display block, drawn from governed copy, may be rendered into an image.
+
+**Change: text safety is narrowed, not dropped.** The universal rule forbade pseudo-text and letter-like marks anywhere, which would forbid the feature outright. When a job carries authored display copy, the rule becomes: apart from the specified copy, environmental surfaces stay blank and no other words are invented. Every other job keeps the original rule verbatim. This is a real narrowing of a safety rule and is recorded rather than made quietly.
+
+**Change: the production order inverts for these jobs.** Copy is produced after the render everywhere else, so a copy failure never costs an image that already succeeded. A string that must be rendered has to exist first. The inverted failure is handled rather than propagated: if the display copy cannot be written, the job renders without it and reports that plainly. A blocked image is worse than an image missing its headline.
+
+**Change: display copy is budgeted in characters, not words.** Copy read in a feed is limited by attention; copy rendered into an image is limited by space, and a word limit does not express width. Budgets derive from the format's shape and the chosen zone, and an over-budget line is flagged deterministically. **The characters-per-line figures are REASONED from typographic practice, not measured against rendered output, and should be corrected once real renders exist.**
+
+**Not built, and stated plainly: read-back verification.** Part two specified that the system reads the rendered text back out of the image and fails on mismatch. That does not exist. Until it does, the person is the verification step: the result screen shows the intended string beside the image and says nothing checks it automatically. The compiled record carries `verified: false` and nothing may set it true by assertion.
+
+**The benchmark this enables.** With governed display copy reaching the renderer, the measurement can now run against real strings rather than synthetic fixtures. It needs two numbers, not one: the exact-match rate by string class, which sets the retry cost, and the rate at which verification passes a string that was actually wrong, which determines whether stakes matter. Mismatches should be scored by kind, malformed characters against substituted words, because a renderer that mangles letters is a quality problem while one that swaps words is a governance problem.
 
 ## Options considered
 

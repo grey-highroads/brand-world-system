@@ -18,6 +18,7 @@
 // only thing the interface reads to make that distinction.
 
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../claims/copy-audit.js";
+import { checkDisplayBudgets } from "./display-budget.js";
 import { checkProseRules, collapseProseFindings } from "./prose-check.js";
 import { getCopyType } from "./types.js";
 
@@ -99,8 +100,16 @@ export function buildCopySystemPrompt({ copyType, brain, product, claimsSet, con
 
   if (copyType.structured) {
     parts.push(``, `FIELDS TO PRODUCE:`);
+    const budgets = new Map((context.displayBudgets || []).map((budget) => [budget.fieldId, budget]));
     for (const field of copyType.fields) {
-      parts.push(`- ${field.id} (${field.label}): ${field.note} Maximum ${field.maxWords} words.`);
+      const budget = budgets.get(field.id);
+      const limit = budget
+        ? `Maximum ${budget.maxChars} characters, which is about ${budget.charsPerLine} characters across up to ${budget.lines} ${budget.lines === 1 ? "line" : "lines"}.`
+        : `Maximum ${field.maxWords} words.`;
+      parts.push(`- ${field.id} (${field.label}): ${field.note} ${limit}`);
+    }
+    if (budgets.size) {
+      parts.push(`These budgets exist because the copy is rendered into the image. Shorter is safer than longer.`);
     }
   }
 
@@ -273,6 +282,11 @@ export async function produceCopy({ copyTypeId, brain, product, claimsSet, conte
 
   const audit = await auditProducedCopy({ text, claimsSet, apiKey });
   if (fields) attributeFindingsToFields(audit, fields);
+  // Deterministic, like the prose check. A line over its character budget is
+  // a fact about the string, not a judgment about it.
+  if (fields && context.displayBudgets) {
+    audit.findings.push(...checkDisplayBudgets(fields, context.displayBudgets));
+  }
 
   return {
     copyTypeId: copyType.id,

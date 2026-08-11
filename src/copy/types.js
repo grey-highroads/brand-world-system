@@ -92,8 +92,10 @@ export const copyTypes = {
     ],
     roleLine: (context) =>
       `You are writing display copy for ${context.brandName}${context.brandDescription ? ` (${context.brandDescription})` : ""}.`,
-    lengthGuidance: () =>
-      "Every line is display copy, read at a glance. Stay inside the word limit given for each field. A line that needs a second reading is too long.",
+    lengthGuidance: (context) =>
+      context.displayBudgets
+        ? "Every line will be rendered into the image itself. The character budget per field is a hard limit, not a target: a line over budget either shrinks below readable size or overflows the space. Count characters, including spaces."
+        : "Every line is display copy, read at a glance. Stay inside the word limit given for each field. A line that needs a second reading is too long.",
     structuralRules: [
       ...sharedProseRules,
       "The headline must stand on its own. A reader who sees only the headline should get the idea.",

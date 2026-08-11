@@ -8125,3 +8125,10 @@ button.ws-attention-item:hover {
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+
+/* The intended string, shown for manual comparison against the render.
+   Warning-toned rather than neutral: nothing verifies this yet. */
+
+.produced-copy-check {
+  border-color: var(--border-strong);
+}

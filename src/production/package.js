@@ -7,7 +7,9 @@ import {
   inferScreenBearing,
   neutralizeScreenOrientation,
   auditConstraints,
+  displayCopyBlock,
 } from "./prompt-craft.js";
+import { getZone } from "../copy/display-budget.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
@@ -309,7 +311,7 @@ function compileProductSection(product) {
   return parts.join(" ");
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -360,6 +362,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     format: packageFormat,
     peopleExcluded: false,
     screenBearing,
+    displayCopy,
   });
 
   const sourceCount = approvedBrain.sourceCount || null;
@@ -471,6 +474,12 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         exclusions ? `Also avoid: ${exclusions}` : "",
       ].filter(Boolean).join(" "),
     },
+    displayCopy && displayCopy.lines?.some((line) => line.text)
+      ? {
+          title: "Display copy",
+          body: displayCopyBlock({ lines: displayCopy.lines, zone: getZone(displayCopy.zoneId), format }),
+        }
+      : null,
     {
       title: "Output",
       body: isTemplate
@@ -539,7 +548,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     requirementCheck,
     ready,
     product: product ? { product_id: product.product_id, product_name: product.product_name, version: product.version, open_questions: openProductQuestions } : null,
-    ...compileCopyContract({ copyOutputs, claimsSet, placement, segment: brief?.segment }),
+    ...compileCopyContract({ copyOutputs, claimsSet, placement, segment: brief?.segment, displayCopy }),
     policy: {
       groundedIn: sourceCount
         ? `Approved Brand Brain v${Number(brainVersion || 1)}, built from ${sourceCount} ${sourceCount === 1 ? "source" : "sources"}`
@@ -562,7 +571,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 // job declared and which claims govern them. Produced text and audit findings
 // are written into the same structure after generation, so the saved package
 // carries the whole record of what the brand asserted in words.
-function compileCopyContract({ copyOutputs, claimsSet, placement, segment }) {
+function compileCopyContract({ copyOutputs, claimsSet, placement, segment, displayCopy }) {
   const declared = Array.isArray(copyOutputs) ? copyOutputs.filter(Boolean) : [];
   if (declared.length === 0) return {};
   const set = claimsSet || { approved: [], prohibited: [], disclosures: [] };
@@ -577,6 +586,13 @@ function compileCopyContract({ copyOutputs, claimsSet, placement, segment }) {
         disclosures: (set.disclosures || []).map((claim) => ({ text: claim.text, source: claim.source })),
         directives: (set.directives || []).map((claim) => ({ text: claim.text, source: claim.source })),
       },
+      // What was asked of the renderer, and what it must reproduce exactly.
+      // Recorded so a past output can be checked against the intended string
+      // rather than against memory. `verified` stays false until read-back
+      // verification exists; it is never set true by assertion.
+      display: displayCopy
+        ? { zoneId: displayCopy.zoneId, format: displayCopy.format || null, lines: displayCopy.lines, verified: false }
+        : null,
       // Claims a missing segment held back. Surfaced so the exclusion is
       // visible rather than silent.
       withheldForSegment: (set.withheldForSegment || []).map((claim) => ({ text: claim.text, segment: claim.segment })),

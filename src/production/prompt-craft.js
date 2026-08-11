@@ -107,6 +107,13 @@ export function integrationSentence(format) {
 const STATEFUL_FORMATS = new Set(["can", "jar", "tub", "bottle", "box", "pouch", "cooler"]);
 const TEXT_SAFETY = "Any environmental surface that would carry writing (signs, screens, menus, posters, or displays) is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text or letter-like marks anywhere.";
 
+// When authored display copy is rendered into the image, the blanket rule
+// above would forbid the very thing being asked for. It is narrowed rather
+// than dropped: environmental surfaces stay blank, and exactly one authored
+// block is permitted. Recorded as an amendment to ADR 0014 part two, since
+// the original position was that no text is rendered at any time.
+const TEXT_SAFETY_WITH_DISPLAY_COPY = "Apart from the authored display copy specified below, any environmental surface that would carry writing (signs, screens, menus, posters, or displays) is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text or letter-like marks anywhere. Invent no other words, labels, captions, watermarks, or letter-like marks.";
+
 /**
  * Build the protection block for a production prompt.
  *
@@ -124,12 +131,13 @@ const SCREEN_ORIENTATION_LINES = [
   "Never render the device held in a viewing grip with the screen rotated toward the camera, and never show the back of the device to the camera.",
 ];
 
-export function protectionBlock({ lockedAsset, format, peopleExcluded = false, screenBearing = false }) {
+export function protectionBlock({ lockedAsset, format, peopleExcluded = false, screenBearing = false, displayCopy = null }) {
+  const textSafety = displayCopy ? TEXT_SAFETY_WITH_DISPLAY_COPY : TEXT_SAFETY;
   // Case 1: world-only, no locked asset
   if (!lockedAsset) {
     const lines = [
       "Render only the authored environment and its explicitly approved unbranded environmental objects; introduce no additional focal object or readable identity mark.",
-      TEXT_SAFETY,
+      textSafety,
     ];
     if (peopleExcluded) lines.push("No people or hands appear in the frame.");
     return lines.join(" ");
@@ -146,7 +154,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
       `Use the supplied ${assetName} as the identity source of truth; preserve its protected subject, marks, proportions, and visible structure unchanged.`,
       "Do not redraw, replace, or reinterpret the protected identity.",
       "Integrate it only through non-destructive environmental light, contact shadow, reflected color, atmosphere, occlusion, and depth effects that do not alter protected identity.",
-      TEXT_SAFETY,
+      textSafety,
     ];
     if (screenBearing) lines.splice(2, 0, ...SCREEN_ORIENTATION_LINES);
     if (peopleExcluded) lines.push("No additional people or hands appear in the frame.");
@@ -165,7 +173,7 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
   }
   if (screenBearing) lines.push(...SCREEN_ORIENTATION_LINES);
   lines.push(integrationSentence(format));
-  lines.push(TEXT_SAFETY);
+  lines.push(textSafety);
   if (peopleExcluded) lines.push("No people or hands appear in the frame.");
   return lines.join(" ");
 }
@@ -206,6 +214,44 @@ const MODE_SIGNAL_PATTERNS = [
   { mode: "editorial_commercial", patterns: [/\beditorial\b/i, /\bmagazine\b/i, /\bfashion\b/i, /\bconsidered\b/i] },
   { mode: "vernacular_ugc", patterns: [/\bvernacular\b/i, /\bugc\b/i, /\bphone[- ]camera\b/i, /\bincidental\b/i, /\bcasual\b/i] },
 ];
+
+// ---------------------------------------------------------------------------
+// Authored display copy
+// ---------------------------------------------------------------------------
+
+/**
+ * The block that asks the renderer to draw a specific string.
+ *
+ * Three things it must communicate, in this order of importance: the exact
+ * characters, that they are not to be altered, and where they go. The zone
+ * is a composition instruction as much as a placement one, because the
+ * render has to leave the space before anything can sit in it.
+ *
+ * Fidelity is asserted here and not verified here. Read-back verification is
+ * specified in ADR 0014 part two and is not built. Until it is, an output
+ * carrying rendered copy is unverified and the interface says so.
+ */
+export function displayCopyBlock({ lines, zone, format }) {
+  const rendered = (lines || []).filter((line) => line.text);
+  if (!rendered.length) return "";
+
+  const parts = [
+    `Render the following authored copy into the image, ${zone.description}, composed as part of the photograph rather than pasted over it.`,
+    `Leave clean, uncluttered space in that area when composing the scene so the copy sits legibly without covering the subject.`,
+  ];
+
+  for (const line of rendered) {
+    parts.push(`${line.label}, set exactly as written with no changes to wording, spelling, capitalization, or punctuation: "${line.text}"`);
+  }
+
+  parts.push(
+    `Set this copy in a clean, contemporary sans-serif with high contrast against what sits behind it, at a size that stays comfortably readable when the image is viewed small.`,
+    `Reproduce every character exactly. Do not paraphrase, translate, abbreviate, re-order, correct, or add to the copy above, and do not repeat it anywhere else in the frame.`,
+  );
+  if (format) parts.push(`The composition is ${format}; keep the copy clear of the outer edges.`);
+
+  return parts.join(" ");
+}
 
 /**
  * Select an aesthetic mode from creative direction text in the approved brain.

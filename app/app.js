@@ -1086,6 +1086,8 @@ const state = {
     // the message from the brief and the Brand Brain.
     captionOn: true,
     headlineSetOn: false,
+    renderCopyIntoImage: false,
+    displayZone: "lower_third",
     copyDirection: "",
     referenceOpen: false,
     directionOpen: false,
@@ -2904,6 +2906,8 @@ function renderStudioSetup() {
 
               ${headlineSetField()}
 
+              ${renderCopyField()}
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
@@ -3552,6 +3556,8 @@ function renderSalesSetup(cat) {
               ${segmentField("sales")}
 
               ${headlineSetField()}
+
+              ${renderCopyField()}
 
               ${sceneSuggestField({
                 id: "sales-element",
@@ -5486,6 +5492,35 @@ function buildEvaluationFindings(job) {
 // side panel. Stacked rather than gridded: caption length varies enormously
 // between a one-line TikTok caption and a three-hundred-word LinkedIn post,
 // and a grid row stretches to its tallest cell.
+// The intended string, shown beside the image so a person can compare it
+// against what was drawn.
+//
+// This is the manual stand-in for read-back verification, which ADR 0014
+// specifies and which is not built. It is deliberately not styled as a pass:
+// nothing here confirms the lettering is correct, and the panel says who is
+// responsible for checking.
+function renderedCopyCheckPanel(job) {
+  const display = job?.generationPackage?.copy?.display;
+  if (!display || !display.lines?.length) return "";
+  return `
+    <div class="produced-copy produced-copy-check">
+      <div class="produced-copy-header">
+        <span class="section-label">Placed on the image</span>
+        <span class="mini-pill pill-warning">Check the lettering</span>
+      </div>
+      <p class="field-note field-spaced">This is what the renderer was told to draw, character for character. Compare it against the image. Nothing checks this automatically yet.</p>
+      <dl class="produced-copy-fields">
+        ${display.lines.map((line) => `
+          <div class="produced-copy-field">
+            <dt>${escapeHtml(line.label)}</dt>
+            <dd>${escapeHtml(line.text)}</dd>
+          </div>
+        `).join("")}
+      </dl>
+    </div>
+  `;
+}
+
 function producedCopyPanel(job) {
   const produced = job?.generationPackage?.copy?.produced || [];
   if (!produced.length) return "";
@@ -5542,6 +5577,16 @@ function copyAuditPill(audit) {
 function buildCopyFindings(job) {
   const produced = job?.generationPackage?.copy?.produced || [];
   const findings = [];
+  const displayError = job?.generationPackage?.copy?.displayCopyError;
+  if (displayError) {
+    findings.push({
+      id: "copy-display-failed",
+      element: "The headline was not placed on the image",
+      category: "Copy",
+      status: "unchecked",
+      finding: `${displayError} The image was rendered without it, so it is usable, but the words are not on it.`,
+    });
+  }
   produced.forEach((block, blockIndex) => {
     if (block.failed) return;
     const audit = block.audit || {};
@@ -5578,8 +5623,10 @@ function buildCopyFindings(job) {
             ? "A required disclosure is missing"
             : finding.kind === "prose"
               ? "This breaks one of your writing rules"
+            : finding.kind === "display_budget"
+              ? "This line is too long for the space"
               : "This claim is not on your approved list"),
-        category: finding.kind === "prose" ? "Writing" : "Claims",
+        category: finding.kind === "prose" ? "Writing" : finding.kind === "display_budget" ? "Layout" : "Claims",
         status: finding.severity === "violation" ? "violation" : "review",
         sentence: finding.sentence,
         rule: finding.rule,
@@ -5711,6 +5758,7 @@ function renderResult() {
                     ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
                 : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image" onerror="this.closest('.generated-output').classList.add('generated-output-missing'); this.remove();"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
+                   ${renderedCopyCheckPanel(job)}
                    ${producedCopyPanel(job)}`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
@@ -6278,6 +6326,45 @@ function headlineSetField() {
   `;
 }
 
+// Placing the headline into the render. Nested under the headline set,
+// because there is nothing to place until a headline exists.
+//
+// The warning is not decoration. Read-back verification is specified in ADR
+// 0014 and is not built, so nothing checks that the rendered characters match
+// the intended ones. Until that exists the person is the verification step,
+// and the interface has to say so rather than imply the string is guaranteed.
+function renderCopyField() {
+  if (!state.studio.headlineSetOn) return "";
+  const zones = [
+    { id: "lower_third", label: "Lower third" },
+    { id: "upper_third", label: "Upper third" },
+    { id: "left_panel", label: "Left panel" },
+    { id: "center", label: "Center" },
+  ];
+  return `
+    <div class="field full">
+      <button class="studio-toggle-row" type="button" data-action="toggle-render-copy-into-image">
+        <span class="studio-toggle-track ${state.studio.renderCopyIntoImage ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+        <span class="studio-toggle-content">
+          <strong>Place the headline on the image</strong>
+          <span class="field-note">The headline is written to fit the space and rendered into the picture. Check the result against the intended wording before you use it; nothing verifies the lettering yet.</span>
+        </span>
+      </button>
+    </div>
+    ${state.studio.renderCopyIntoImage ? `
+      <div class="field full studio-setup-field">
+        <label for="studio-display-zone">Where should it sit?</label>
+        <span class="field-note">The scene is composed to leave this area clear.</span>
+        <div class="studio-campaign-row">
+          <select id="studio-display-zone" data-action="studio-display-zone-change">
+            ${zones.map((zone) => `<option value="${zone.id}" ${state.studio.displayZone === zone.id ? "selected" : ""}>${zone.label}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+    ` : ""}
+  `;
+}
+
 function segmentField(idPrefix) {
   const segments = state.segments.list || [];
   if (!segments.length) return "";
@@ -6305,6 +6392,9 @@ function productionRequest(jobId) {
     templateAssetId: state.studio.salesTemplateId || undefined,
     segment: state.studio.segment || undefined,
     copyOutputs: declaredCopyOutputs(),
+    renderCopyIntoImage: state.studio.headlineSetOn && state.studio.renderCopyIntoImage ? true : undefined,
+    displayZone: state.studio.renderCopyIntoImage ? state.studio.displayZone : undefined,
+    displayFields: state.studio.renderCopyIntoImage ? ["headline"] : undefined,
     copyDirection: state.studio.copyDirection || undefined,
     references: state.references.map((item) => ({
       id: item.id,
@@ -7044,6 +7134,10 @@ root.addEventListener("change", async (event) => {
     state.studio.segment = event.target.value;
     render();
   }
+  if (action === "studio-display-zone-change") {
+    state.studio.displayZone = event.target.value;
+    render();
+  }
   if (action === "product-add-file") {
     const file = Array.from(event.target.files ?? [])[0];
     if (file) {
@@ -7364,6 +7458,7 @@ root.addEventListener("click", (event) => {
     state.studio.copyDirection = "";
     state.studio.captionOn = true;
     state.studio.headlineSetOn = false;
+    state.studio.renderCopyIntoImage = false;
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
@@ -7420,6 +7515,11 @@ root.addEventListener("click", (event) => {
   }
   if (action === "toggle-studio-headline-set") {
     state.studio.headlineSetOn = !state.studio.headlineSetOn;
+    if (!state.studio.headlineSetOn) state.studio.renderCopyIntoImage = false;
+    render();
+  }
+  if (action === "toggle-render-copy-into-image") {
+    state.studio.renderCopyIntoImage = !state.studio.renderCopyIntoImage;
     render();
   }
   if (action === "studio-toggle-section") {

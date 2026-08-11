@@ -3,6 +3,7 @@ import { createVercelBlobProductStore } from "../products/store.js";
 import { OPENAI_IMAGE_MODEL, chooseOpenAIImageEndpoint, renderWithOpenAIImages } from "../renderers/openai-images.js";
 import { assembleClaimsSet } from "../claims/assembly.js";
 import { produceCopy } from "../copy/generate.js";
+import { displayBudgets } from "../copy/display-budget.js";
 import { buildJobScope } from "../scope/resolver.js";
 import { compileBrandWorldImagePackage } from "./package.js";
 
@@ -225,6 +226,50 @@ export async function prepareProductionPackage(body, options) {
     });
   }
 
+  // Text in the image inverts the normal order. Copy is produced after the
+  // render everywhere else, deliberately, so a copy failure never costs an
+  // image that already succeeded. A string that has to be rendered has to
+  // exist first, so it is produced here, before the compile.
+  //
+  // The failure is handled rather than propagated: if the copy cannot be
+  // written, the job renders without it and says so. A blocked image is a
+  // worse outcome than an image missing its headline, and the user can add
+  // the copy in a layout tool either way.
+  let displayCopy = null;
+  let displayCopyBlock = null;
+  let displayCopyError = null;
+  if (body.renderCopyIntoImage && copyOutputs.includes("headline_set") && options.env?.OPENAI_API_KEY) {
+    const zoneId = body.displayZone || "lower_third";
+    const format = body.brief?.format || "";
+    try {
+      displayCopyBlock = await produceCopy({
+        copyTypeId: "headline_set",
+        brain: approvedBrain,
+        product,
+        claimsSet: claimsSet || { approved: [], prohibited: [], disclosures: [] },
+        context: {
+          placement: body.brief?.placement || "",
+          copyDirection: body.copyDirection || "",
+          scene: body.brief?.scene || "",
+          exclusions: body.brief?.exclusions || "",
+          displayBudgets: displayBudgets({ format, zoneId, fieldIds: body.displayFields || ["headline"] }),
+        },
+        apiKey: options.env.OPENAI_API_KEY,
+      });
+      const wanted = new Set(body.displayFields || ["headline"]);
+      displayCopy = {
+        zoneId,
+        format,
+        lines: (displayCopyBlock.fields || [])
+          .filter((field) => wanted.has(field.id) && field.text)
+          .map((field) => ({ id: field.id, label: field.label, text: field.text })),
+      };
+      if (!displayCopy.lines.length) displayCopy = null;
+    } catch (error) {
+      displayCopyError = error.message || "The display copy could not be written.";
+    }
+  }
+
   const generationPackage = compileBrandWorldImagePackage({
     approvedBrain,
     brainVersion,
@@ -236,7 +281,15 @@ export async function prepareProductionPackage(body, options) {
     product,
     copyOutputs,
     claimsSet,
+    displayCopy,
   });
+  if (generationPackage.copy) {
+    generationPackage.copy.displayCopyError = displayCopyError;
+    // The block was produced before the render, so it is already done. It is
+    // carried forward rather than regenerated, or the image would carry one
+    // headline and the package would record a different one.
+    if (displayCopyBlock) generationPackage.copy.preproduced = [displayCopyBlock];
+  }
   return { generationPackage, references, lockedAsset, templateAsset, stored, approvedBrain, product, claimsSet };
 }
 
@@ -334,7 +387,12 @@ export async function generateProductionImage(body, options) {
     // and a caption nobody checked look identical otherwise.
     if (generationPackage.copy) {
       const produced = [];
+      const preproduced = new Map((generationPackage.copy.preproduced || []).map((block) => [block.copyTypeId, block]));
       for (const declared of generationPackage.copy.declared) {
+        if (preproduced.has(declared.copyTypeId)) {
+          produced.push(preproduced.get(declared.copyTypeId));
+          continue;
+        }
         try {
           produced.push(await produceCopy({
             copyTypeId: declared.copyTypeId,
@@ -365,6 +423,7 @@ export async function generateProductionImage(body, options) {
         }
       }
       generationPackage.copy.produced = produced;
+      delete generationPackage.copy.preproduced;
     }
     // Persist the compiled package alongside the image so this output stays
     // reviewable after the current-job slot is reused. A failure here should not
