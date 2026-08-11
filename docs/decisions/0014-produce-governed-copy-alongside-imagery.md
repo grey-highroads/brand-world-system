@@ -116,6 +116,10 @@ It also generalized from the hardest case. The argument was built on regulated h
 
 **The benchmark this enables.** With governed display copy reaching the renderer, the measurement can now run against real strings rather than synthetic fixtures. It needs two numbers, not one: the exact-match rate by string class, which sets the retry cost, and the rate at which verification passes a string that was actually wrong, which determines whether stakes matter. Mismatches should be scored by kind, malformed characters against substituted words, because a renderer that mangles letters is a quality problem while one that swaps words is a governance problem.
 
+## Evidence
+
+First real renders are recorded in [`evaluations/2026-08-11-display-copy-first-renders.md`](../evaluations/2026-08-11-display-copy-first-renders.md). Summary: authored strings rendered character-exact across three runs including punctuation, proportional design instruction outperformed character counts, and two unresolved problems sit in scene composition rather than in text. Both are logged in deferred work. The sample is one brand and is not the benchmark.
+
 ## Options considered
 
 - Keep copy as a per-channel side path and add channels one at a time (rejected: repeats the hardcoded-catalog contradiction ADR 0011 named; each channel becomes bespoke code).
