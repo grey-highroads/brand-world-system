@@ -2305,6 +2305,15 @@ function sourceLibraryGroups() {
 // Slots are detection rules over the existing source records, not a new
 // storage model. Removing or renaming a source updates the slot state on the
 // next render with no bookkeeping.
+// Borrowed material never counts as brand presence. External references carry
+// the same material type as brand work, so presence slots must check the
+// provenance the intake recorded, or a competitor screenshot and a mood board
+// end up displayed as how this brand shows up. Sources from before the
+// provenance contract carry neither field and keep their current slotting.
+function sourceIsBorrowed(source) {
+  return source.provenance === "emulate" || source.authority === "creative-reference";
+}
+
 const sourceSlots = [
   {
     id: "website", layer: 1, title: "Website",
@@ -2332,19 +2341,19 @@ const sourceSlots = [
   },
   {
     id: "instagram", layer: 2, title: "Instagram", note: "Upload a screenshot of your grid.", tip: "A recent full-screen capture works best.", accessNote: "We can’t access Instagram directly. Please upload a screenshot.",
-    match: (source) => /instagram|insta\b|ig grid/i.test(source.name || ""),
+    match: (source) => !sourceIsBorrowed(source) && /instagram|insta\b|ig grid/i.test(source.name || ""),
     intake: { kind: "work", form: "files", materialType: "single-image", usage: "A screenshot of the brand's Instagram grid. Read for how the brand actually shows up: subjects, palette in practice, pacing, and tone." },
     cta: "Add screenshot",
   },
   {
     id: "linkedin", layer: 2, title: "LinkedIn", note: "Upload a screenshot of the company page and a few recent posts.", accessNote: "We can’t access LinkedIn directly. Please upload a screenshot.",
-    match: (source) => /linkedin/i.test(source.name || ""),
+    match: (source) => !sourceIsBorrowed(source) && /linkedin/i.test(source.name || ""),
     intake: { kind: "work", form: "files", materialType: "single-image", usage: "A screenshot of the brand's LinkedIn presence. Read for how the brand speaks and shows up professionally." },
     cta: "Add screenshot",
   },
   {
     id: "recent-work", layer: 2, title: "Recent work", note: "Add a campaign, deck, launch, or other work your team has actually shipped.", plural: true,
-    match: (source, material) => material?.id === "past-work-research" && !/instagram|insta\b|linkedin/i.test(source.name || ""),
+    match: (source, material) => material?.id === "past-work-research" && !sourceIsBorrowed(source) && !/instagram|insta\b|linkedin/i.test(source.name || ""),
     intake: { kind: "work", form: "files", usage: "Work the brand has shipped. Shows how the brand behaves in practice without governing anything." },
     cta: "Add an example",
   },
