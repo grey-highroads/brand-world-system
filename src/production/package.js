@@ -214,6 +214,10 @@ const formatSizes = {
   "1.91:1 landscape": "1536x800",
   "16:9 landscape": "1536x864",
   "4:3 landscape": "1536x1152",
+  // Pinterest. Both sides divisible by 16, ratio within 3:1, pixel count inside
+  // the accepted range, and each holds its stated ratio exactly.
+  "2:3 portrait": "1024x1536",
+  "1:2.1 portrait": "960x2016",
   // Template formats (target-use driven)
   "1080x1080": "1024x1024",
   "1080x1350": "1024x1280",
