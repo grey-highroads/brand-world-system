@@ -2994,6 +2994,17 @@ function renderDossierArtifact(artifact) {
   `;
 }
 
+function basisNote(item) {
+  const basis = item && item.basis;
+  if (!basis || !basis.origin) return "";
+  const reasoned = basis.origin === "inference";
+  const label = reasoned ? "Reasoned" : "From your sources";
+  const cls = reasoned ? "pill-info" : "pill-success";
+  const confidence = reasoned && basis.confidence ? ` \u00b7 ${escapeHtml(basis.confidence)} confidence` : "";
+  const from = basis.derivedFrom ? `<span class="artifact-basis-from">${escapeHtml(basis.derivedFrom)}</span>` : "";
+  return `<p class="artifact-basis"><span class="${cls}">${label}${confidence}</span>${from}</p>`;
+}
+
 function renderLivedArtifact(artifact) {
   return `
     <section class="artifact-module artifact-person-module">
@@ -3016,16 +3027,16 @@ function renderLivedArtifact(artifact) {
     </section>
     <section class="artifact-module">
       ${artifactSectionHeading(artifact, "Life patterns", "A normal day, felt from the inside", "patterns")}
-      <div class="artifact-dayline">${artifact.patterns.map((item) => `<article><span>${escapeHtml(item.time)}</span><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.body)}</p></article>`).join("")}</div>
+      <div class="artifact-dayline">${artifact.patterns.map((item) => `<article><span>${escapeHtml(item.time)}</span><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.body)}</p>${basisNote(item)}</article>`).join("")}</div>
       <div class="artifact-emotion-line">${artifact.emotions.map((item, index) => `<span style="--step:${index}"><i></i>${escapeHtml(item)}</span>`).join("")}</div>
     </section>
     <section class="artifact-module">
       ${artifactSectionHeading(artifact, "Their social world", "Alone and together", "social")}
-      <div class="artifact-social">${artifact.social.map((item) => `<article><strong>${escapeHtml(item.mode)}</strong><p>${escapeHtml(item.body)}</p></article>`).join("")}</div>
+      <div class="artifact-social">${artifact.social.map((item) => `<article><strong>${escapeHtml(item.mode)}</strong><p>${escapeHtml(item.body)}</p>${basisNote(item)}</article>`).join("")}</div>
     </section>
     <section class="artifact-module">
       ${artifactSectionHeading(artifact, "Environments they have earned", "Settings justified by behavior", "environments")}
-      <div class="artifact-environments">${artifact.environments.map((item) => `<article><span class="artifact-environment-mark" aria-hidden="true"></span><div><strong>${escapeHtml(item.name)}</strong><small>Earned by: ${escapeHtml(item.earned)}</small><p>${escapeHtml(item.detail)}</p></div></article>`).join("")}</div>
+      <div class="artifact-environments">${artifact.environments.map((item) => `<article><span class="artifact-environment-mark" aria-hidden="true"></span><div><strong>${escapeHtml(item.name)}</strong><small>Earned by: ${escapeHtml(item.earned)}</small><p>${escapeHtml(item.detail)}</p>${basisNote(item)}</div></article>`).join("")}</div>
     </section>
     <div class="artifact-split">
       <section class="artifact-module artifact-highlight-module">${artifactSectionHeading(artifact, "Where the brand belongs", "The useful role", "belongs")}<p>${escapeHtml(artifact.belongs)}</p></section>

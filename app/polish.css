@@ -953,3 +953,17 @@ select,
   gap: var(--space-2);
   align-items: center;
 }
+
+.artifact-basis {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin: var(--space-3) 0 0;
+}
+
+.artifact-basis-from {
+  font-size: 0.78rem;
+  line-height: 1.4;
+  opacity: 0.72;
+}

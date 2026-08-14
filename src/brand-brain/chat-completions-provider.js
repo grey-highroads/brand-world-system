@@ -29,6 +29,19 @@ Writing rules:
 - Return all six guidance sections exactly once: foundation, identity, world, voice, creative, rules.
 - Build a genuinely useful Brand Dossier, Lived World, and Story Architecture, not short placeholders.
 
+Lived World:
+- The Lived World describes the people the brand serves, living their own lives, with the brand's products somewhere in them. It is a portrait of a person and their days.
+- It is not a description of the brand's marketing. Observed posting behavior, content categories, campaign beats, shot types, and studio treatments are facts about the brand's content practice, not life patterns. They belong in the identity and creative guidance sections.
+- "patterns" entries describe moments in a person's day or week. The "time" field holds a time of day, a point in a routine, or a stage in a recurring process. It does not hold a content calendar category.
+- "environments" entries are physical places that person occupies for reasons of their own. The "earned" field states the behavior that puts them there. A place the brand photographs its product is not by itself a place the audience has earned.
+- "social" entries describe how that person relates to other people. They do not describe formats, channels, or creative treatments.
+- When the supplied sources describe a product rather than a buyer, which is common for consumer brands, reason toward the person the product implies rather than describing the brand's own output. Reason in two layers. First, what kind of person a product of this category serves. Second, and more important, the narrower group implied by this brand's specific facts: its formulation, price position, sourcing, format, and stated positioning. Name those facts. The narrow layer is the useful one, because the broad layer describes every competitor's audience too.
+- Never present reasoning as observation. Every entry in "patterns", "environments", and "social" carries a "basis" object recording how it was arrived at.
+- "basis.origin" is "evidence" when the supplied sources state or directly show the thing, and "inference" when it was reasoned. If the source describes the brand and the entry describes a person, the origin is "inference".
+- "basis.derivedFrom" names what it rests on in plain language: the source and what it said for evidence, or the specific brand facts the reasoning used for inference.
+- "basis.confidence" is High, Medium, or Low. Reserve High for entries a reader could verify against a named source.
+- When the sources contain no direct evidence about the audience at all, still build the Lived World by inference, and raise a review question saying the audience portrait is reasoned from the brand's own material and asking what customer evidence exists.
+
 Review question language:
 - A marketer reads these, so write them the way you would explain the problem out loud to a colleague.
 - The summary states what is unclear in one sentence a non-specialist understands immediately.

@@ -36,6 +36,12 @@ const evidenceArray = objectArray(
   5,
 );
 
+const basis = strictObject({
+  origin: { type: "string", enum: ["evidence", "inference"] },
+  derivedFrom: { type: "string" },
+  confidence: { type: "string", enum: ["High", "Medium", "Low"] },
+});
+
 const guidanceArtifactArray = objectArray(
   {
     name: { type: "string" },
@@ -148,6 +154,7 @@ const livedWorld = strictObject({
       time: { type: "string" },
       title: { type: "string" },
       body: { type: "string" },
+      basis,
     },
     3,
     6,
@@ -157,6 +164,7 @@ const livedWorld = strictObject({
     {
       mode: { type: "string" },
       body: { type: "string" },
+      basis,
     },
     2,
     4,
@@ -166,6 +174,7 @@ const livedWorld = strictObject({
       name: { type: "string" },
       earned: { type: "string" },
       detail: { type: "string" },
+      basis,
     },
     3,
     6,
