@@ -1217,6 +1217,8 @@ const state = {
     artifactVersion: 1,
     artifactStatus: "not-created",
     revisionPending: false,
+    rebuildRequested: false,
+    rebuildConfirm: false,
     approvedVersion: 0,
     approvedResult: null,
     pendingSourceIds: [],
@@ -1449,6 +1451,21 @@ function brainSourceCount() {
 
 function brainResolvedCount() {
   return brainExceptions.filter((item) => state.brain.resolutions[item.id]).length;
+}
+
+function brainBuildLabel() {
+  const kind = state.brain.synthesisKind;
+  if (kind === "incremental-synthesis") {
+    const base = state.brain.candidateBaseVersion || state.brain.approvedVersion;
+    return base ? `Update to v${base}. Unchanged guidance was carried forward from the earlier version.` : "Update to an earlier version. Unchanged guidance was carried forward.";
+  }
+  if (kind === "synthesis") return "Full build. Every source was read again from the beginning.";
+  if (kind === "sample") return "Sample content. No sources have been processed yet.";
+  return "How this version was built has not been recorded.";
+}
+
+function brainCarriesForward() {
+  return state.brain.synthesisKind === "incremental-synthesis";
 }
 
 function brainCreatedLabel() {
@@ -1778,6 +1795,25 @@ function renderBrainOverview() {
           <span class="${unresolved === 0 && state.brain.processingComplete ? "complete" : ""}"><i></i><strong>Questions reviewed</strong><small>${state.brain.processingComplete ? `${unresolved} remaining` : "Not started"}</small></span>
           <span class="${ready ? "complete" : ""}"><i></i><strong>Approved for production</strong><small>${ready ? `Version ${state.brain.artifactVersion}` : "Not yet"}</small></span>
         </div>
+        ${state.brain.artifactStatus === "not-created" ? "" : `
+        <div class="brain-version-provenance">
+          <div>
+            <span class="section-label">How this version was built</span>
+            <p>${escapeHtml(brainBuildLabel())}</p>
+            <small>Prepared ${escapeHtml(brainCreatedLabel())} from ${brainSourceCount()} source items.</small>
+            ${brainCarriesForward() ? `<p class="brain-version-warning">Guidance and artifacts that the new sources did not touch were copied from the earlier version. They were written under the rules in force at that time.</p>` : ""}
+          </div>
+          ${state.brain.rebuildConfirm ? `
+            <div class="brain-rebuild-confirm">
+              <strong>Rebuild reads every source again</strong>
+              <p>The current version and every review decision attached to it are replaced by a new draft. Sources stay where they are. This cannot be undone.</p>
+              <div class="brain-rebuild-actions">
+                <button class="button primary" type="button" data-action="confirm-brain-rebuild">Rebuild from all sources</button>
+                <button class="button secondary" type="button" data-action="cancel-brain-rebuild">Keep this version</button>
+              </div>
+            </div>
+          ` : `<button class="button secondary" type="button" data-action="request-brain-rebuild">Rebuild from all sources</button>`}
+        </div>`}
       </section>
     `,
   );
@@ -6902,7 +6938,9 @@ async function startBrainSynthesis() {
     navigate("brain-processing");
     return;
   }
-  const incremental = sourceHasApprovedBaseline();
+  const rebuilding = state.brain.rebuildRequested;
+  state.brain.rebuildRequested = false;
+  const incremental = !rebuilding && sourceHasApprovedBaseline();
   if (incremental && !state.brain.pendingSourceIds.length) {
     setToast("Add at least one new source before preparing an update");
     return;
@@ -6932,6 +6970,16 @@ async function startBrainSynthesis() {
     return;
   }
   const baseline = incremental ? state.brain.approvedResult : null;
+  if (rebuilding) {
+    // A rebuild replaces the version rather than proposing a change to it, so
+    // nothing from the earlier version stays behind to be compared against.
+    state.brain.approvedResult = null;
+    state.brain.approvedVersion = 0;
+    state.brain.candidateBaseVersion = 0;
+    state.brain.affectedGuidanceIds = [];
+    state.brain.pendingSourceIds = [];
+    state.brain.artifactStatus = "draft";
+  }
   state.brain.revisionPending = incremental;
   state.brain.selectedExceptionId = brainExceptions[0]?.id ?? "";
   state.brain.cleanApproved = false;
@@ -8839,6 +8887,19 @@ root.addEventListener("click", (event) => {
   if (action === "begin-brain-onboarding") {
     state.brain.stage = "intake";
     navigate("brain-sources");
+  }
+  if (action === "request-brain-rebuild") {
+    state.brain.rebuildConfirm = true;
+    render();
+  }
+  if (action === "cancel-brain-rebuild") {
+    state.brain.rebuildConfirm = false;
+    render();
+  }
+  if (action === "confirm-brain-rebuild") {
+    state.brain.rebuildConfirm = false;
+    state.brain.rebuildRequested = true;
+    void startBrainSynthesis();
   }
   if (action === "load-sample-sources") loadSampleSources();
   if (action === "set-source-provenance") {
