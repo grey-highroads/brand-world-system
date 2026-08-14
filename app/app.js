@@ -1154,6 +1154,9 @@ const state = {
     sourceForm: "files",
     // Which intent door is open: "" (chooser), "evidence", "asset".
     intakeDoor: "",
+    // UI routing only: a named Sources slot has already answered the generic
+    // classification question. "context" is the lightweight file/link drawer.
+    intakeSlotId: "",
     sourceUrl: "",
     sourceTitle: "",
     sourceText: "",
@@ -1562,6 +1565,7 @@ function resetSourceComposer() {
   state.brain.sourceFileReading = false;
   state.brain.intakeDoor = "";
   state.brain.intakeKind = "";
+  state.brain.intakeSlotId = "";
 }
 
 function commentsForTarget(target) {
@@ -1799,8 +1803,9 @@ function sourceAddReady() {
     return true;
   }
 
-  // Aspiration is the one question no card can answer on the user's behalf.
-  return Boolean(state.brain.sourceAspiration);
+  // Named slots answer provenance on the user's behalf; More context does
+  // not. Both values are required before evidence may enter synthesis.
+  return Boolean(state.brain.sourceProvenance && state.brain.sourceAspiration);
 }
 
 // Says which required answer is missing, so a disabled button is never a
@@ -1818,6 +1823,8 @@ function sourceMissingMessage() {
     if (material.isTemplate && !state.brain.sourceTemplateRatio) return "Choose a template format";
     if (!material.isTemplate && !state.brain.sourceAssetVariation) return "Choose which variation this is";
     if (state.brain.sourceAssetVariation === "Other" && !state.brain.sourceAssetVariationOther.trim()) return "Name the variation";
+  } else if (!state.brain.sourceProvenance) {
+    return "Say whether this is your brand's material or an outside reference";
   } else if (!state.brain.sourceAspiration) {
     return "Say whether this reflects the brand today or where it is heading";
   }
@@ -1914,20 +1921,20 @@ function intakeKindStep() {
 }
 
 // Step 2. The file, URL, or pasted text, plus whatever that kind needs.
-function intakeContentStep(kind) {
+function intakeContentStep(kind, stepNumber = 2, slot = null) {
   const mode = state.brain.sourceForm;
   const pendingFile = state.brain.pendingFiles[0];
   const material = sourceMaterialType();
-  const accept = kind.isAsset ? (material?.accept || "") : evidenceAcceptString();
+  const accept = material?.accept || (kind.isAsset ? "" : evidenceAcceptString());
 
   return `
     <div class="intake-step">
       <div class="intake-step-head">
-        <strong>2. ${escapeHtml(kind.isAsset ? "The file" : "The material")}</strong>
+        <strong>${stepNumber}. ${escapeHtml(kind.isAsset ? "The file" : "The material")}</strong>
         <small>${escapeHtml(kind.isAsset ? "Used exactly as supplied. Never altered, never fed into synthesis." : "Read once and kept with your instructions.")}</small>
       </div>
 
-      ${kind.forms.length > 1 ? `
+      ${kind.forms.length > 1 && !slot ? `
         <div class="source-method-tabs" role="tablist" aria-label="Source form">
           ${kind.forms.map((id) => `<button class="${mode === id ? "active" : ""}" type="button" data-action="set-source-form" data-kind="${id}">${escapeHtml(intakeFormLabel(id))}</button>`).join("")}
         </div>
@@ -1935,13 +1942,13 @@ function intakeContentStep(kind) {
 
       ${kind.isAsset ? `
         <div class="intake-field-grid">
-          <label>
+          ${slot ? "" : `<label>
             <span>What kind of asset? <b>Required</b></span>
             <select data-action="select-source-material-type-select">
               <option value="" ${!material ? "selected" : ""}>Choose one</option>
               ${assetMaterialOptions().map((item) => `<option value="${item.id}" ${material?.id === item.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
             </select>
-          </label>
+          </label>`}
           ${material && !material.isTemplate ? `
             <label>
               <span>Which variation? <b>Required</b></span>
@@ -2006,17 +2013,17 @@ function intakeContentStep(kind) {
 
 // Step 3. What the Brain should do with it. Protected assets skip the
 // aspiration question, since a registered file is current by definition.
-function intakeContextStep(kind) {
+function intakeContextStep(kind, stepNumber = 3, slot = null) {
   const material = sourceMaterialType();
   const asp = state.brain.sourceAspiration;
   return `
     <div class="intake-step">
       <div class="intake-step-head">
-        <strong>3. What should the Brain know?</strong>
+        <strong>${stepNumber}. What should the Brain know?</strong>
         <small>Your instructions travel with this one source into synthesis and future updates.</small>
       </div>
 
-      ${kind.isAsset ? "" : `
+      ${kind.isAsset || slot ? "" : `
         <div class="source-intent-question">
           <span class="source-intent-label">Does this reflect the brand today, or where it is heading? <b>Required</b></span>
           <div class="source-choice-row">
@@ -2076,9 +2083,9 @@ function intakeContextStep(kind) {
 
 // The line above the button, so what is about to be recorded is legible before
 // it is recorded.
-function intakeSummaryLine(kind) {
+function intakeSummaryLine(kind, slot = null) {
   const material = sourceMaterialType();
-  const parts = [kind.title];
+  const parts = [slot ? `${slot.title}${slot.id === "instagram" || slot.id === "linkedin" ? " screenshot" : ""}` : kind.title];
   if (kind.isAsset && material) parts.push(material.label);
   if (kind.isAsset && state.brain.sourceAssetVariation) {
     parts.push(state.brain.sourceAssetVariation === "Other" && state.brain.sourceAssetVariationOther
@@ -2095,21 +2102,25 @@ function intakeSummaryLine(kind) {
 
 function sourceIntakeScreen() {
   const kind = intakeKind();
+  const slot = sourceSlots.find((item) => item.id === state.brain.intakeSlotId) || null;
   const canAdd = sourceAddReady();
   const mode = state.brain.sourceForm;
-  const summary = kind ? intakeSummaryLine(kind) : null;
+  const summary = kind ? intakeSummaryLine(kind, slot) : null;
 
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
-        <span><span class="section-label">Sources / Add</span><h2>Add one source</h2></span>
+        <span class="source-intake-title">
+          ${slot ? sourceIcon(slot.id === "recent-work" ? "work" : slot.id) : ""}
+          <span><span class="section-label">${slot ? "Guided source" : "Sources / Add"}</span><h2>${escapeHtml(slot ? `Add ${slot.title === "Instagram" || slot.title === "LinkedIn" ? `${slot.title} screenshot` : slot.title.toLowerCase()}` : "Add one source")}</h2></span>
+        </span>
         <button class="button" type="button" data-action="close-intake-door">Back</button>
       </div>
-      <p class="page-description">Add anything that helps the Brand Brain understand your brand.</p>
+      <p class="page-description">${escapeHtml(slot ? "The source type is already selected. Add the material and tell the Brain how to use it." : "Add anything that helps the Brand Brain understand your brand.")}</p>
 
-      ${intakeKindStep()}
-      ${kind ? intakeContentStep(kind) : ""}
-      ${kind ? intakeContextStep(kind) : ""}
+      ${slot ? "" : intakeKindStep()}
+      ${kind ? intakeContentStep(kind, slot ? 1 : 2, slot) : ""}
+      ${kind ? intakeContextStep(kind, slot ? 2 : 3, slot) : ""}
 
       ${kind ? `
         <div class="intake-footer">
@@ -2139,6 +2150,35 @@ function sourceComposer() {
   return sourceIntakeScreen();
 }
 
+// A small local icon set keeps Sources scannable without adding an icon
+// dependency or creating a second visual system. Every icon inherits the
+// section color and is paired with a text label.
+function sourceIcon(name) {
+  const icons = {
+    website: '<circle cx="12" cy="12" r="8"></circle><path d="M4 12h16M12 4c2.2 2.2 3.3 4.9 3.3 8s-1.1 5.8-3.3 8c-2.2-2.2-3.3-4.9-3.3-8S9.8 6.2 12 4Z"></path>',
+    logo: '<circle cx="9" cy="12" r="5"></circle><circle cx="15" cy="12" r="5"></circle>',
+    guide: '<path d="M4 5.5A3.5 3.5 0 0 1 7.5 2H11v17H7.5A3.5 3.5 0 0 0 4 22V5.5ZM20 5.5A3.5 3.5 0 0 0 16.5 2H13v17h3.5A3.5 3.5 0 0 1 20 22V5.5Z"></path>',
+    templates: '<rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 9h18M9 9v11"></path>',
+    instagram: '<rect x="3" y="3" width="18" height="18" rx="5"></rect><circle cx="12" cy="12" r="4"></circle><path d="M17.5 6.5h.01"></path>',
+    linkedin: '<rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M8 10v7M8 7v.01M12 17v-4a3 3 0 0 1 6 0v4M12 10v7"></path>',
+    work: '<rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18"></path>',
+    context: '<circle cx="12" cy="12" r="8"></circle><path d="M12 8v8M8 12h8"></path>',
+    file: '<path d="M6 2h8l4 4v16H6V2Z"></path><path d="M14 2v5h5"></path>',
+    product: '<path d="m4 7 8-4 8 4-8 4-8-4Z"></path><path d="m4 7 8 4 8-4v10l-8 4-8-4V7Z"></path>',
+    check: '<circle cx="12" cy="12" r="9"></circle><path d="m8 12 2.6 2.6L16.5 9"></path>',
+  };
+  return `<span class="source-ui-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${icons[name] || icons.file}</svg></span>`;
+}
+
+function sourceMaterialIcon(material, source) {
+  if (source?.productMeta) return "product";
+  if (material?.id === "protected-asset") return "logo";
+  if (material?.isTemplate) return "templates";
+  if (material?.id === "approved-guidance" || material?.id === "asset-bearing-guide") return "guide";
+  if (material?.id === "past-work-research") return "work";
+  return "file";
+}
+
 // Compact library row: kind mark, name, one differentiating label, status.
 // Repeated pills (role, influence, active-version) are demoted into the
 // expandable detail rather than shown on every row. Editing lives in the
@@ -2159,14 +2199,23 @@ function sourceGroupRow(source) {
   return `
     <article class="brain-source-item ${expanded ? "expanded" : ""} ${pending ? "pending" : ""} ${locked ? "locked" : ""}">
       <div class="brain-source-row">
-        <span class="source-kind-icon" aria-hidden="true">${escapeHtml((material?.shortLabel || source.type).slice(0, 1))}</span>
+        <span class="source-library-kind">
+          ${sourceIcon(sourceMaterialIcon(material, source))}
+          <span>${escapeHtml(material?.shortLabel || source.type)}</span>
+        </span>
         <span class="brain-source-copy">
           <strong>${escapeHtml(source.name)}</strong>
-          <span>${escapeHtml(assetVariationLabel(source.contract) || material?.shortLabel || source.type)} · ${escapeHtml(source.detail)}</span>
+          <span>${escapeHtml(assetVariationLabel(source.contract) || source.detail)}</span>
         </span>
-        ${statusPill}
-        <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Details"}</button>
-        <button class="icon-button" type="button" data-action="remove-brain-source" data-id="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.name)}" ${locked ? "disabled" : ""}>×</button>
+        <span class="source-library-use">
+          <strong>${escapeHtml(source.role || "Multiple areas")}</strong>
+          <span>${escapeHtml(weighted ? source.influence : material?.handling || "Not weighted")}</span>
+        </span>
+        <span class="source-library-status">${statusPill || '<span class="mini-pill pill-neutral">Ready</span>'}</span>
+        <span class="source-library-actions">
+          <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Details"}</button>
+          <button class="icon-button" type="button" data-action="remove-brain-source" data-id="${escapeHtml(source.id)}" aria-label="Remove ${escapeHtml(source.name)}" ${locked ? "disabled" : ""}>×</button>
+        </span>
       </div>
       ${
         expanded
@@ -2242,45 +2291,43 @@ function sourceLibraryGroups() {
 // next render with no bookkeeping.
 const sourceSlots = [
   {
-    id: "website", layer: 1, title: "Your website", note: "The main site the Brain should read.",
+    id: "website", layer: 1, title: "Website",
     match: (source, material) => (source.kind === "url" || source.url) && material?.id === "approved-guidance",
     intake: { kind: "guidance", form: "url", usage: "The brand's own website, read as current guidance." },
-    cta: "Add your site",
+    cta: "Add website",
   },
   {
-    id: "logo", layer: 1, title: "Your logo", note: "The logo files your team uses.", plural: true,
+    id: "logo", layer: 1, title: "Logo", plural: true,
     match: (source, material) => material?.id === "protected-asset",
     intake: { kind: "asset", form: "files", materialType: "protected-asset", usage: "An official brand mark. Use exactly as supplied." },
     cta: "Add a logo",
   },
   {
-    id: "guide", layer: 1, title: "Your brand guide", note: "Brand book, style guide, or approved standards.",
+    id: "guide", layer: 1, title: "Brand guide",
     match: (source, material) => (material?.id === "approved-guidance" || material?.id === "asset-bearing-guide") && !(source.kind === "url" || source.url),
     intake: { kind: "guidance", form: "files", usage: "Approved brand standards. Follow wherever relevant." },
-    cta: "Add your guide",
+    cta: "Add guide",
   },
   {
-    id: "templates", layer: 1, title: "Your templates", note: "Templates your team uses to create.", plural: true,
+    id: "templates", layer: 1, title: "Templates", plural: true,
     match: (source, material) => material?.isTemplate || source.templateMeta?.isTemplate,
     intake: { kind: "asset", form: "files", materialType: "brand-template", usage: "A branded template. Used as a locked background layer." },
-    cta: "Add templates",
+    cta: "Add template",
   },
   {
-    id: "instagram", layer: 2, title: "Instagram", note: "Upload a screenshot of your grid. A recent full-screen capture works best.",
-    constraintNote: "We can't access Instagram directly, so a screenshot is the way in.",
+    id: "instagram", layer: 2, title: "Instagram", note: "Upload a screenshot of your grid.", tip: "A recent full-screen capture works best.", accessNote: "We can’t access Instagram directly. Please upload a screenshot.",
     match: (source) => /instagram|insta\b|ig grid/i.test(source.name || ""),
     intake: { kind: "work", form: "files", materialType: "single-image", usage: "A screenshot of the brand's Instagram grid. Read for how the brand actually shows up: subjects, palette in practice, pacing, and tone." },
     cta: "Add screenshot",
   },
   {
-    id: "linkedin", layer: 2, title: "LinkedIn", note: "Upload a screenshot of the company page and a few recent posts.",
-    constraintNote: "We can't access LinkedIn directly, so a screenshot is the way in.",
+    id: "linkedin", layer: 2, title: "LinkedIn", note: "Upload a screenshot of the company page and a few recent posts.", accessNote: "We can’t access LinkedIn directly. Please upload a screenshot.",
     match: (source) => /linkedin/i.test(source.name || ""),
     intake: { kind: "work", form: "files", materialType: "single-image", usage: "A screenshot of the brand's LinkedIn presence. Read for how the brand speaks and shows up professionally." },
     cta: "Add screenshot",
   },
   {
-    id: "recent-work", layer: 2, title: "Recent work", note: "A campaign, sales deck, launch, or other work your team has actually shipped.", plural: true,
+    id: "recent-work", layer: 2, title: "Recent work", note: "Add a campaign, deck, launch, or other work your team has actually shipped.", plural: true,
     match: (source, material) => material?.id === "past-work-research" && !/instagram|insta\b|linkedin/i.test(source.name || ""),
     intake: { kind: "work", form: "files", usage: "Work the brand has shipped. Shows how the brand behaves in practice without governing anything." },
     cta: "Add an example",
@@ -2301,51 +2348,343 @@ function sourceSlotRows(slot) {
   });
 }
 
-function slotStatus(slot, rows, locked) {
-  if (!rows.length) return { text: "Not added yet", filled: false };
+function slotStatus(slot, rows) {
+  if (!rows.length) return { text: "Not added", filled: false };
   const text = rows.length === 1 ? "Added" : `${rows.length} added`;
-  return { text: locked ? `${text} · in the approved Brain` : text, filled: true };
+  return { text, filled: true };
 }
 
 function slotAction(slot, rows, locked) {
   if (!rows.length) return { action: "open-slot-intake", label: slot.cta };
   if (slot.plural) return { action: "open-slot-intake", label: "Add another" };
   if (locked) {
-    // A locked source cannot be swapped in place. Update opens the intake with
-    // the consequence stated rather than pretending replacement is one click.
-    return { action: "open-slot-intake", label: "Update", note: "Adds a new version for review. The approved Brain keeps the current one until you approve." };
+    // A locked source cannot be swapped in place. The action says what it
+    // actually does; the intake and proposed-update callout explain review.
+    return { action: "open-slot-intake", label: "Add update" };
   }
   return { action: "open-slot-intake", label: "Add another" };
 }
 
-function sourceSlotRow(slot, locked) {
-  const rows = sourceSlotRows(slot);
-  const status = slotStatus(slot, rows, locked && rows.length > 0);
-  const act = slotAction(slot, rows, locked);
+function sourceLayerCoverage() {
+  const foundation = sourceSlots.filter((slot) => slot.layer === 1);
+  const presence = sourceSlots.filter((slot) => slot.layer === 2);
+  const covered = foundation.filter((slot) => sourceSlotRows(slot).length > 0).length;
+  const present = presence.filter((slot) => sourceSlotRows(slot).length > 0).length;
+  const slotted = new Set();
+  sourceSlots.forEach((slot) => sourceSlotRows(slot).forEach((source) => slotted.add(source.id)));
+  const context = state.brain.sources.filter((source) => !source.productMeta && !slotted.has(source.id)).length;
+  return { covered, foundationTotal: foundation.length, present, presenceTotal: presence.length, context };
+}
+
+function sourceRhythmHeader({ number, label, title, description, status, value = null, max = null }) {
   return `
-    <div class="slot-row">
-      <span class="slot-copy">
-        <strong>${escapeHtml(slot.title)}</strong>
-        <span>${escapeHtml(slot.note)}</span>
-        ${slot.constraintNote ? `<small>${escapeHtml(slot.constraintNote)}</small>` : ""}
+    <header class="source-rhythm-header">
+      <span class="source-section-number" aria-hidden="true">${number}</span>
+      <span class="source-rhythm-copy">
+        <span class="section-label">${escapeHtml(label)}</span>
+        <h2>${escapeHtml(title)}</h2>
+        <p>${escapeHtml(description)}</p>
       </span>
-      <span class="slot-status ${status.filled ? "filled" : ""}">${status.filled ? "✓ " : ""}${escapeHtml(status.text)}</span>
-      <span class="slot-action">
-        <button class="button ${status.filled ? "" : "primary"}" type="button" data-action="${act.action}" data-slot="${slot.id}">${escapeHtml(act.label)}</button>
-        ${act.note ? `<small>${escapeHtml(act.note)}</small>` : ""}
+      <span class="source-section-metric">
+        <strong>${escapeHtml(status)}</strong>
+        ${max !== null ? `<progress class="source-section-progress" value="${value}" max="${max}" aria-label="${escapeHtml(status)}"></progress>` : ""}
       </span>
+    </header>
+  `;
+}
+
+// Named slots are small, local tasks. Keep the page's section rhythm in view
+// and reveal only the fields that belong to the selected slot. More context
+// uses the same local-drawer pattern, but asks the few questions a named slot
+// cannot answer on the user's behalf.
+function sourceInlineMoreControl(kind) {
+  const material = sourceMaterialType();
+  return `
+    <details class="intake-more source-inline-more" ${state.brain.sourceExclusions.trim() ? "open" : ""}>
+      <summary>More control <small>focus and what to leave out</small></summary>
+      <div class="intake-more-body">
+        ${kind.isAsset ? "" : `
+          <div class="intake-field-grid">
+            <label>
+              <span>What should this teach?</span>
+              <select data-action="brain-source-role">${sourceRoleOptions.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceRole === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+            </label>
+            ${sourceUsesInfluence(material?.authority) ? `
+              <label>
+                <span>How influential should this be?</span>
+                <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceInfluence === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+                <small>Creative priority, not a blend percentage.</small>
+              </label>
+            ` : ""}
+          </div>
+        `}
+        <label>
+          <span>What should we leave out?</span>
+          <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
+        </label>
+      </div>
+    </details>
+  `;
+}
+
+function sourceInlineDrawer(slot) {
+  const kind = intakeKind();
+  if (!kind || state.brain.intakeSlotId !== slot.id) return "";
+  const mode = state.brain.sourceForm;
+  const material = sourceMaterialType();
+  const pendingFile = state.brain.pendingFiles[0];
+  const accept = kind.isAsset ? (material?.accept || "") : evidenceAcceptString();
+  const canAdd = sourceAddReady();
+  const addAction = mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source";
+  const addLabel = slot.cta;
+  const titlePlaceholder = slot.id === "website"
+    ? "Company website"
+    : slot.id === "instagram"
+      ? "Instagram grid"
+      : slot.id === "linkedin"
+        ? "LinkedIn company page"
+        : kind.isAsset
+          ? "Primary logo, dark backgrounds"
+          : "Name this source";
+
+  return `
+    <div class="source-inline-drawer" id="source-drawer-${slot.id}" role="region" aria-labelledby="source-drawer-title-${slot.id}">
+      <div class="source-inline-drawer-head">
+        <span>
+          <strong id="source-drawer-title-${slot.id}">Add ${escapeHtml(slot.id === "instagram" || slot.id === "linkedin" ? `${slot.title} screenshot` : slot.title.toLowerCase())}</strong>
+          <small>Only the details this source needs.</small>
+        </span>
+      </div>
+
+      <div class="source-inline-fields">
+        ${mode === "files" ? `
+          <label class="source-drop-zone source-inline-upload source-inline-field-full ${state.brain.sourceFileReading ? "reading" : ""}">
+            <input type="file" data-action="source-file-input" accept="${escapeHtml(accept)}" data-door="${kind.isAsset ? "asset" : "evidence"}">
+            <span class="source-drop-icon">+</span>
+            <span class="source-inline-upload-copy">
+              <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : "Choose or drag a file here"}</strong>
+              <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : `${escapeHtml(material?.examples || "Documents, images, PDFs")} · 20 MB maximum`}</span>
+            </span>
+          </label>
+        ` : ""}
+
+        ${kind.isAsset && material && !material.isTemplate ? `
+          <label>
+            <span>Which variation? <b>Required</b></span>
+            <select data-action="brain-source-asset-variation">
+              <option value="" ${!state.brain.sourceAssetVariation ? "selected" : ""}>Choose one</option>
+              ${logoVariations.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceAssetVariation === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+            </select>
+          </label>
+        ` : ""}
+
+        ${kind.isAsset && !material?.isTemplate && state.brain.sourceAssetVariation === "Other" ? `
+          <label>
+            <span>Name the variation <b>Required</b></span>
+            <input class="input-like" type="text" data-action="brain-source-asset-variation-other" value="${escapeHtml(state.brain.sourceAssetVariationOther)}" placeholder="Example: anniversary lockup">
+          </label>
+        ` : ""}
+
+        ${mode === "url" ? `
+          <label>
+            <span>Web address <b>Required</b></span>
+            <input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com">
+          </label>
+        ` : ""}
+
+        ${mode === "text" ? `
+          <label class="source-inline-field-full">
+            <span>Paste the material <b>Required</b></span>
+            <textarea data-action="brain-source-text" placeholder="Paste notes, a brief, transcript, or reference context here.">${escapeHtml(state.brain.sourceText)}</textarea>
+          </label>
+        ` : ""}
+
+        <label>
+          <span>Source name <b>Required</b></span>
+          <input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="${escapeHtml(titlePlaceholder)}">
+        </label>
+
+        ${kind.isAsset && material?.isTemplate ? `
+          <label>
+            <span>Template format <b>Required</b></span>
+            <select data-action="brain-source-template-ratio">
+              <option value="" ${!state.brain.sourceTemplateRatio ? "selected" : ""}>Choose a format</option>
+              <option value="16:9" ${state.brain.sourceTemplateRatio === "16:9" ? "selected" : ""}>Slide (16:9 widescreen)</option>
+              <option value="4:3" ${state.brain.sourceTemplateRatio === "4:3" ? "selected" : ""}>Slide (4:3 standard)</option>
+              <option value="17:22" ${state.brain.sourceTemplateRatio === "17:22" ? "selected" : ""}>One-pager (8.5 x 11)</option>
+            </select>
+          </label>
+        ` : ""}
+
+        <label class="source-inline-field-full">
+          <span>${escapeHtml(kind.isAsset ? "How should this be used?" : "How should the Brain use this?")} <b>Required</b></span>
+          <textarea data-action="brain-source-usage" placeholder="Add a concise instruction for this source.">${escapeHtml(state.brain.sourceUsage)}</textarea>
+        </label>
+      </div>
+
+      ${kind.id === "guidance" && mode === "files" ? `
+        <label class="source-guide-check source-inline-guide-check">
+          <input type="checkbox" data-action="toggle-guide-assets" ${state.brain.sourceMaterialType === "asset-bearing-guide" ? "checked" : ""}>
+          <span><strong>This file shows logos or other assets on its pages</strong><small>Register anything you need to place as a brand asset separately.</small></span>
+        </label>
+      ` : ""}
+
+      ${sourceInlineMoreControl(kind)}
+
+      <div class="source-inline-footer">
+        <small>${canAdd ? "Ready to add" : escapeHtml(sourceMissingMessage())}</small>
+        <span>
+          <button class="button compact" type="button" data-action="close-intake-door">Cancel</button>
+          <button class="button primary compact" data-source-add="1" type="button" data-action="${addAction}" ${canAdd ? "" : "disabled"}>${escapeHtml(addLabel)}</button>
+        </span>
+      </div>
     </div>
   `;
 }
 
-function sourceLayerCoverage() {
-  const layer1 = sourceSlots.filter((slot) => slot.layer === 1);
-  const covered = layer1.filter((slot) => sourceSlotRows(slot).length > 0).length;
-  const layer2Count = sourceSlots.filter((slot) => slot.layer === 2).reduce((sum, slot) => sum + sourceSlotRows(slot).length, 0);
-  const slotted = new Set();
-  for (const slot of sourceSlots) sourceSlotRows(slot).forEach((source) => slotted.add(source.id));
-  const contextCount = state.brain.sources.filter((source) => !source.productMeta && !slotted.has(source.id)).length;
-  return { covered, layer1Total: layer1.length, layer2Count, contextCount };
+function sourceFoundationRow(slot, locked) {
+  const rows = sourceSlotRows(slot);
+  const status = slotStatus(slot, rows);
+  const act = slotAction(slot, rows, locked);
+  const expanded = state.brain.intakeSlotId === slot.id;
+  return `
+    <div class="source-foundation-item ${expanded ? "expanded" : ""}">
+      <div class="source-foundation-row ${status.filled ? "filled" : "empty"} ${expanded ? "active" : ""}">
+        ${sourceIcon(slot.id)}
+        <strong>${escapeHtml(slot.title)}</strong>
+        <span class="source-slot-status ${status.filled ? "filled" : ""}">${status.filled ? sourceIcon("check") : ""}${escapeHtml(status.text)}</span>
+        <button class="button compact" type="button" data-action="${expanded ? "close-intake-door" : act.action}" data-slot="${slot.id}" aria-expanded="${expanded}" aria-controls="source-drawer-${slot.id}">${escapeHtml(expanded ? "Close" : act.label)}</button>
+      </div>
+      ${expanded ? sourceInlineDrawer(slot) : ""}
+    </div>
+  `;
+}
+
+function sourcePresenceCard(slot, locked) {
+  const rows = sourceSlotRows(slot);
+  const status = slotStatus(slot, rows);
+  const act = slotAction(slot, rows, locked);
+  const expanded = state.brain.intakeSlotId === slot.id;
+  const latest = rows[0] || null;
+  return `
+    <article class="source-presence-card ${status.filled ? "filled" : "empty"} ${expanded ? "active" : ""}">
+      <div class="source-presence-card-header">
+        <span class="source-presence-title">${sourceIcon(slot.id === "recent-work" ? "work" : slot.id)}<strong>${escapeHtml(slot.title)}</strong></span>
+        ${status.filled ? `<span class="source-slot-status filled">${sourceIcon("check")}${escapeHtml(status.text)}</span>` : ""}
+      </div>
+      <p class="source-presence-description">${escapeHtml(slot.note)}${slot.tip ? `<span>${escapeHtml(slot.tip)}</span>` : ""}</p>
+      ${slot.id === "recent-work" && latest ? `
+        <div class="source-presence-record">
+          ${sourceIcon("check")}
+          <span><strong>${escapeHtml(latest.name)}</strong><small>${escapeHtml(latest.detail || "Added to the source library")}</small></span>
+        </div>
+      ` : ""}
+      <button class="button compact" type="button" data-action="${expanded ? "close-intake-door" : act.action}" data-slot="${slot.id}" aria-expanded="${expanded}" aria-controls="source-drawer-${slot.id}">${escapeHtml(expanded ? "Close" : act.label)}</button>
+      ${slot.accessNote ? `<small class="source-presence-access-note">${escapeHtml(slot.accessNote)}</small>` : ""}
+    </article>
+  `;
+}
+
+function sourceContextDrawer() {
+  if (state.brain.intakeSlotId !== "context") return "";
+  const kind = intakeKind();
+  if (!kind) return "";
+  const mode = state.brain.sourceForm === "url" ? "url" : "files";
+  const pendingFile = state.brain.pendingFiles[0];
+  const canAdd = sourceAddReady();
+  const addAction = mode === "url" ? "add-url-source" : "add-file-source";
+  const asp = state.brain.sourceAspiration;
+  const provenance = state.brain.sourceProvenance;
+
+  return `
+    <div class="source-inline-drawer source-context-drawer" id="source-drawer-context" role="region" aria-labelledby="source-drawer-title-context">
+      <div class="source-inline-drawer-head">
+        <span><strong id="source-drawer-title-context">Add another source</strong><small>A file or link, with only the context the Brain needs to use it correctly.</small></span>
+      </div>
+
+      <div class="source-method-tabs source-context-tabs" role="tablist" aria-label="Source form">
+        <button class="${mode === "files" ? "active" : ""}" type="button" role="tab" aria-selected="${mode === "files"}" data-action="set-source-form" data-kind="files">File</button>
+        <button class="${mode === "url" ? "active" : ""}" type="button" role="tab" aria-selected="${mode === "url"}" data-action="set-source-form" data-kind="url">Link</button>
+      </div>
+
+      <div class="source-inline-fields">
+        ${mode === "files" ? `
+          <label class="source-drop-zone source-inline-upload source-inline-field-full ${state.brain.sourceFileReading ? "reading" : ""}">
+            <input type="file" data-action="source-file-input" accept="${escapeHtml(evidenceAcceptString())}" data-door="evidence">
+            <span class="source-drop-icon">+</span>
+            <span class="source-inline-upload-copy">
+              <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : "Choose or drag a file here"}</strong>
+              <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : "Documents or supported images · 20 MB maximum"}</span>
+            </span>
+          </label>
+        ` : `
+          <label class="source-inline-field-full">
+            <span>Web address <b>Required</b></span>
+            <input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com/reference">
+          </label>
+        `}
+
+        <label class="source-inline-field-full">
+          <span>Source name <b>Required</b></span>
+          <input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="Example: Category moodboard or competitor launch">
+        </label>
+
+        <div class="source-intent-question source-inline-field-full">
+          <span class="source-intent-label">Where did this come from? <b>Required</b></span>
+          <div class="source-choice-row source-context-choice-row">
+            <button class="source-choice ${provenance === "ours" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="ours">
+              <strong>Our brand</strong><small>Something our team made, learned, or approved.</small>
+            </button>
+            <button class="source-choice ${provenance === "emulate" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="emulate">
+              <strong>Outside reference</strong><small>Context or inspiration—not evidence of what our brand is.</small>
+            </button>
+          </div>
+        </div>
+
+        <div class="source-intent-question source-inline-field-full">
+          <span class="source-intent-label">Does this show the brand today, or a direction to explore? <b>Required</b></span>
+          <div class="source-choice-row source-context-choice-row">
+            <button class="source-choice ${asp === "current" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="current">
+              <strong>Today</strong><small>Use it to understand the current brand and context.</small>
+            </button>
+            <button class="source-choice ${asp === "aspiration" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="aspiration">
+              <strong>Direction</strong><small>Use it as a signal of where the brand wants to go.</small>
+            </button>
+          </div>
+        </div>
+
+        <label class="source-inline-field-full">
+          <span>How should the Brain use this? <b>Required</b></span>
+          <textarea data-action="brain-source-usage" placeholder="Example: draw on the restrained pacing and confident tone; ignore the specific category and product claims.">${escapeHtml(state.brain.sourceUsage)}</textarea>
+        </label>
+
+        <label>
+          <span>What should this teach?</span>
+          <select data-action="brain-source-role">${sourceRoleOptions.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceRole === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+        </label>
+        <label>
+          <span>Influence</span>
+          <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceInfluence === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+          <small>Creative priority, not a blend percentage.</small>
+        </label>
+      </div>
+
+      <details class="intake-more source-inline-more" ${state.brain.sourceExclusions.trim() ? "open" : ""}>
+        <summary>More control <small>what to leave out</small></summary>
+        <div class="intake-more-body">
+          <label><span>What should we leave out?</span><textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the campaign tagline or specific page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea></label>
+        </div>
+      </details>
+
+      <div class="source-inline-footer">
+        <small>${canAdd ? "Ready to add" : escapeHtml(sourceMissingMessage())}</small>
+        <span>
+          <button class="button compact" type="button" data-action="close-intake-door">Cancel</button>
+          <button class="button primary compact" data-source-add="1" type="button" data-action="${addAction}" ${canAdd ? "" : "disabled"}>Add source</button>
+        </span>
+      </div>
+    </div>
+  `;
 }
 
 function renderBrainSources() {
@@ -2354,6 +2693,10 @@ function renderBrainSources() {
   const pending = pendingSourceCount();
   const canSynthesize = hasApproved ? pending > 0 : hasSources;
   const groups = sourceLibraryGroups();
+  const coverage = sourceLayerCoverage();
+  const genericIntakeOpen = Boolean(state.brain.intakeDoor && !state.brain.intakeSlotId);
+  const presenceSlot = sourceSlots.find((slot) => slot.layer === 2 && slot.id === state.brain.intakeSlotId) || null;
+  const contextOpen = state.brain.intakeSlotId === "context";
   return brainWorkspace(
     "Sources",
     "Add material the system reads to build brand knowledge, plus the protected assets and product briefs it works from.",
@@ -2363,68 +2706,79 @@ function renderBrainSources() {
           ? `<section class="brain-source-update-callout"><span class="brain-status governed">${pending} pending</span><span><strong>You have a proposed update ready</strong><p>New material creates a proposed update. Only guidance touched by it is reconsidered, and nothing changes for production until you review and approve the next version.</p></span><button class="button primary" type="button" data-action="start-brain-synthesis">Prepare proposed update</button></section>`
           : ""
       }
-      ${state.brain.intakeDoor ? "" : `
-        <section class="card slot-coverage">
-          <div class="slot-coverage-cell">
-            <strong>Brand foundation</strong>
-            <span class="slot-coverage-count">${sourceLayerCoverage().covered} of ${sourceLayerCoverage().layer1Total} covered</span>
-          </div>
-          <div class="slot-coverage-cell">
-            <strong>Real-world examples</strong>
-            <span class="slot-coverage-count">${sourceLayerCoverage().layer2Count} added</span>
-          </div>
-          <div class="slot-coverage-cell">
-            <strong>More context</strong>
-            <span class="slot-coverage-count">${sourceLayerCoverage().contextCount} ${sourceLayerCoverage().contextCount === 1 ? "source" : "sources"}</span>
-          </div>
-        </section>
-
-        <section class="card slot-layer">
-          <div class="card-header">
-            <span><h2>1. Brand foundation</h2><span class="mini-pill pill-governed">Recommended first</span></span>
-          </div>
-          <p class="page-description">The core materials your team relies on.</p>
-          <div class="slot-rows">
-            ${sourceSlots.filter((slot) => slot.layer === 1).map((slot) => sourceSlotRow(slot, hasApproved)).join("")}
+      ${genericIntakeOpen ? "" : `
+        <div class="source-rhythm-stack">
+        <section class="source-rhythm-section source-foundation tone-info">
+          ${sourceRhythmHeader({
+            number: "1",
+            label: "Core materials",
+            title: "Brand foundation",
+            description: "The official materials your team relies on.",
+            status: `${coverage.covered} of ${coverage.foundationTotal} covered`,
+            value: coverage.covered,
+            max: coverage.foundationTotal,
+          })}
+          <div class="source-foundation-list">
+            ${sourceSlots.filter((slot) => slot.layer === 1).map((slot) => sourceFoundationRow(slot, hasApproved)).join("")}
           </div>
         </section>
 
-        <section class="card slot-layer">
-          <div class="card-header">
-            <span><h2>2. How the brand shows up</h2><span class="mini-pill pill-warning">Important</span></span>
-          </div>
-          <p class="page-description">Real examples help the Brain understand how the brand actually looks and behaves.</p>
-          <div class="slot-rows">
-            ${sourceSlots.filter((slot) => slot.layer === 2).map((slot) => sourceSlotRow(slot, hasApproved)).join("")}
+        <section class="source-rhythm-section source-presence-section tone-coral">
+          ${sourceRhythmHeader({
+            number: "2",
+            label: "Real-world examples",
+            title: "How the brand shows up",
+            description: "Show the Brain what the brand looks and sounds like in practice.",
+            status: `${coverage.present} of ${coverage.presenceTotal} represented`,
+            value: coverage.present,
+            max: coverage.presenceTotal,
+          })}
+          <div class="source-presence-grid">
+            ${sourceSlots.filter((slot) => slot.layer === 2).map((slot) => sourcePresenceCard(slot, hasApproved)).join("")}
+            ${presenceSlot ? sourceInlineDrawer(presenceSlot) : ""}
           </div>
         </section>
 
-        <section class="card slot-layer slot-layer-context">
-          <div class="card-header">
-            <span><h2>3. More context</h2><span class="mini-pill pill-neutral">Optional</span></span>
-            <button class="button primary" type="button" data-action="open-intake-door" data-door="evidence">+ Add another source</button>
+        <section class="source-rhythm-section source-context-section tone-governed">
+          ${sourceRhythmHeader({
+            number: "3",
+            label: "Optional context",
+            title: "More context",
+            description: "Competitors, category references, moodboards, aspirations, or anything else that helps explain the brand.",
+            status: `${coverage.context} ${coverage.context === 1 ? "source" : "sources"}`,
+          })}
+          <div class="source-context-entry ${contextOpen ? "active" : ""}">
+            ${sourceIcon("context")}
+            <span class="source-context-copy"><strong>Anything else the Brain should understand?</strong><span>Add a file or link, then explain where it came from and how much it should influence the brand.</span></span>
+            <button class="button compact" type="button" data-action="${contextOpen ? "close-intake-door" : "open-context-intake"}" aria-expanded="${contextOpen}" aria-controls="source-drawer-context">${contextOpen ? "Close" : "Add another source"}</button>
           </div>
-          <p class="page-description">Anything else that helps the Brain understand where the brand fits, what it responds to, or where it wants to go. Competitors, references, moodboards, aspirations.</p>
+          ${sourceContextDrawer()}
         </section>
+        </div>
       `}
 
-      <div class="brain-sources-layout ${state.brain.intakeDoor && hasSources ? "has-sources" : ""}">
-        ${state.brain.intakeDoor ? sourceComposer() : ""}
+      <div class="brain-sources-layout ${genericIntakeOpen && hasSources ? "has-sources" : ""} ${genericIntakeOpen ? "intake-open" : "sources-landing"}">
+        ${genericIntakeOpen ? sourceComposer() : ""}
 
-        <section class="card brain-source-batch">
-          <div class="card-header">
-            <span><span class="section-label">${hasApproved ? "Source library" : "Current batch"}</span><h2>${hasSources ? `${state.brain.sources.length} ${state.brain.sources.length === 1 ? "source" : "sources"}` : "Nothing added yet"}</h2></span>
-            ${hasApproved && !pending && hasSources ? `<span class="mini-pill pill-governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span>` : ""}
-          </div>
+        <section class="source-rhythm-section source-library-section tone-neutral ${genericIntakeOpen ? "source-library-intake" : ""}">
+          ${sourceRhythmHeader({
+            number: "4",
+            label: "Detailed library",
+            title: "All sources",
+            description: "Every source, with its handling and detailed instructions.",
+            status: `${state.brain.sources.length} ${state.brain.sources.length === 1 ? "source" : "sources"}`,
+          })}
+          <div class="card brain-source-batch source-library">
+          ${hasApproved && !pending && hasSources ? `<div class="source-library-version"><span class="mini-pill pill-governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span></div>` : ""}
           ${
             hasSources
-              ? `<div class="brain-source-groups">${groups.map((g) => `
+              ? `<div class="source-library-table-head" aria-hidden="true"><span>Type</span><span>Source</span><span>Use</span><span>Status</span><span>Actions</span></div><div class="brain-source-groups">${groups.map((g) => `
                   <div class="brain-source-group">
                     <span class="brain-source-group-label">${escapeHtml(g.label)} <i>${g.rows.length}</i></span>
                     <div class="brain-source-list">${g.rows.map(sourceGroupRow).join("")}</div>
                   </div>
                 `).join("")}</div>`
-              : `<div class="brain-source-empty"><strong>Your sources will appear here</strong><span>Add material above, or use the SLAKE sample batch to walk through the prototype.</span></div>`
+              : `<div class="brain-source-empty"><strong>No sources added yet</strong><span>Detailed records will appear here after you add material above.</span></div>`
           }
           ${
             !hasApproved
@@ -2437,6 +2791,7 @@ function renderBrainSources() {
                 </div>`
               : ""
           }
+          </div>
         </section>
       </div>
     `,
@@ -7864,20 +8219,40 @@ root.addEventListener("click", (event) => {
     const slot = sourceSlots.find((item) => item.id === target.dataset.slot);
     if (!slot) return;
     resetSourceComposer();
-    state.brain.intakeDoor = "add";
+    state.brain.intakeDoor = "";
+    state.brain.intakeSlotId = slot.id;
     const kind = intakeKinds.find((item) => item.id === slot.intake.kind);
     state.brain.intakeKind = kind.id;
     state.brain.sourceProvenance = kind.provenance;
     state.brain.sourceForm = slot.intake.form;
     state.brain.sourceMaterialType = slot.intake.materialType || kind.materialType || "";
     state.brain.sourceAuthority = state.brain.sourceMaterialType ? sourceMaterialType(state.brain.sourceMaterialType).authority : "";
+    state.brain.sourceAssetKind = slot.id === "logo" ? "logo" : "";
     // Slots are the brand's own present-day material by definition. Stating
     // rather than assuming: the person chose a slot named "Your website".
     state.brain.sourceAspiration = "current";
     state.brain.sourceUsage = slot.intake.usage;
     render();
-    const composer = document.querySelector(".brain-source-composer");
-    if (composer) composer.scrollIntoView({ behavior: "smooth", block: "start" });
+    const drawer = document.querySelector(`#source-drawer-${slot.id}`);
+    if (drawer) drawer.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    return;
+  }
+  if (action === "open-context-intake") {
+    resetSourceComposer();
+    state.brain.intakeDoor = "";
+    state.brain.intakeSlotId = "context";
+    state.brain.intakeKind = "reference";
+    state.brain.sourceForm = "files";
+    // Context accepts a deliberately broad work-and-research contract. The
+    // provenance answer below can still demote outside material to creative
+    // reference, preserving the existing authority rule.
+    state.brain.sourceMaterialType = "past-work-research";
+    state.brain.sourceAuthority = sourceMaterialType("past-work-research").authority;
+    state.brain.sourceProvenance = "";
+    state.brain.sourceAspiration = "";
+    render();
+    const drawer = document.querySelector("#source-drawer-context");
+    if (drawer) drawer.scrollIntoView({ behavior: "smooth", block: "nearest" });
     return;
   }
   if (action === "open-intake-door") {
@@ -8981,10 +9356,3 @@ void hydrateStoredBrain();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());
-
-
-
-
-
-
-
