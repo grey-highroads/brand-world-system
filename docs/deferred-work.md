@@ -72,6 +72,22 @@ Bring it back when: working through the Design Studio screens, where most of the
 
 Work that functions but stops short of where it should land.
 
+### Brands and sub-brands below the client
+
+The source intake has no way to say which brand or sub-brand a source belongs to. Every source belongs to the client. Dialog Health has a sample brand, and enterprise clients routinely have sub-brands with their own marks and their own guidance.
+
+Adding a picker is the small part. The real work is the entity: what a sub-brand inherits from its parent, whether it gets its own brain or a scoped view of one, what happens when parent and child guidance conflict, and how production resolves which applies to a job. That is a data model decision, not an intake field.
+
+Bring it back when: a client needs to produce for two brands under one account, or when the segment axis work makes scoped resolution a solved problem that a brand axis could reuse.
+
+### Protected asset variations are recorded but not chosen automatically
+
+Logos carry an asset kind and, for logos and lockups, a required variation. The variation makes the production picker readable when a brand has five logo files, and it is the same data an automatic chooser would need.
+
+Nothing chooses automatically. A job cannot ask for the monochrome mark because it knows the background is busy, because placement runs through the model rather than a compositor that can reason about the background.
+
+Bring it back when: deterministic compositing lands. The intake data is already in the contract, so the work is on the production side only.
+
 ### Remaking a drifted output has no Design Studio path
 
 Snapshot used to offer "Remake with current guidance" on drift rows. It restored the brief from an output record and navigated to the legacy production brief, because studio setup state is not reconstructible from an output record. That route was removed: the drift rows now offer Open evaluation and Dismiss, and retrying belongs to the evaluation screen where the findings are.
