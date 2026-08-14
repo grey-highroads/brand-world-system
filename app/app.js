@@ -451,6 +451,46 @@ const sourceMaterialTypes = [
   },
 ];
 
+// What kind of protected asset a file is, and for logos, which variation.
+// Almost every brand has several lockups, and a production picker showing five
+// files named alike is unusable. Recording the variation makes that picker
+// readable now, and is the same data an automatic chooser would need later
+// once placement can act on it.
+const protectedAssetKinds = [
+  { id: "logo", label: "Logo or mark", hasVariations: true },
+  { id: "packaging", label: "Packaging or product file" },
+  { id: "typeface", label: "Typeface" },
+  { id: "lockup", label: "Claim or campaign lockup", hasVariations: true },
+  { id: "other", label: "Something else" },
+];
+
+const logoVariations = [
+  "Primary",
+  "Alternate",
+  "Monochrome",
+  "Icon or mark only",
+  "Wordmark",
+  "Horizontal lockup",
+  "Stacked lockup",
+  "Other",
+];
+
+function protectedAssetKind(id = state.brain.sourceAssetKind) {
+  return protectedAssetKinds.find((kind) => kind.id === id) || null;
+}
+
+// The label a person reads in a list of five logo files.
+function assetVariationLabel(contract) {
+  if (!contract?.assetKind) return "";
+  const kind = protectedAssetKinds.find((k) => k.id === contract.assetKind);
+  if (!kind) return "";
+  if (!contract.assetVariation) return kind.label;
+  const variation = contract.assetVariation === "Other" && contract.assetVariationOther
+    ? contract.assetVariationOther
+    : contract.assetVariation;
+  return `${kind.label} · ${variation}`;
+}
+
 const sourceRoleOptions = ["Multiple areas", "Brand foundation", "Identity", "World and story", "Voice and messaging", "Creative direction", "Creative rules"];
 
 // Intake doors group material types by what the user is doing, not by the
@@ -1135,6 +1175,9 @@ const state = {
     // direction it is reaching for ("aspiration"). Also starts empty.
     sourceAspiration: "",
     sourceTemplateRatio: "",
+    sourceAssetKind: "",
+    sourceAssetVariation: "",
+    sourceAssetVariationOther: "",
     sourceProductName: "",
     pendingFiles: [],
     sourceFileReading: false,
@@ -1479,6 +1522,11 @@ function sourceContract(materialTypeId = state.brain.sourceMaterialType) {
     provenance: authority === "exact-asset" ? "ours" : state.brain.sourceProvenance,
     aspiration: authority === "exact-asset" ? "current" : state.brain.sourceAspiration,
     verification: "Pending content check",
+    ...(authority === "exact-asset" && state.brain.sourceAssetKind ? {
+      assetKind: state.brain.sourceAssetKind,
+      assetVariation: state.brain.sourceAssetVariation,
+      assetVariationOther: state.brain.sourceAssetVariation === "Other" ? state.brain.sourceAssetVariationOther.trim() : "",
+    } : {}),
   };
 }
 
@@ -1506,6 +1554,9 @@ function resetSourceComposer() {
   state.brain.sourceAspiration = "";
   state.brain.sourceMaterialType = "";
   state.brain.sourceTemplateRatio = "";
+  state.brain.sourceAssetKind = "";
+  state.brain.sourceAssetVariation = "";
+  state.brain.sourceAssetVariationOther = "";
   state.brain.sourceProductName = "";
   state.brain.pendingFiles = [];
   state.brain.sourceFileReading = false;
@@ -1767,6 +1818,33 @@ function sourceContractFields(material) {
             : `<div class="source-fixed-handling"><span>How it is weighted</span><strong>It is not weighted</strong><small>${material?.authority === "exact-asset" ? "The supplied file stays exact." : "Approved guidance applies wherever it is relevant."}</small></div>`
         }
       </div>
+      ${material?.authority === "exact-asset" && !material?.isTemplate ? `
+        <div class="source-contract-grid">
+          <label>
+            <span>What kind of asset? <b>Required</b></span>
+            <select data-action="brain-source-asset-kind">
+              <option value="" ${!state.brain.sourceAssetKind ? "selected" : ""}>Choose one</option>
+              ${protectedAssetKinds.map((kind) => `<option value="${kind.id}" ${state.brain.sourceAssetKind === kind.id ? "selected" : ""}>${escapeHtml(kind.label)}</option>`).join("")}
+            </select>
+          </label>
+          ${protectedAssetKind()?.hasVariations ? `
+            <label>
+              <span>Which variation? <b>Required</b></span>
+              <select data-action="brain-source-asset-variation">
+                <option value="" ${!state.brain.sourceAssetVariation ? "selected" : ""}>Choose one</option>
+                ${logoVariations.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceAssetVariation === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+              </select>
+              <small>Most brands have several. Naming this one keeps the production picker readable.</small>
+            </label>
+          ` : ""}
+        </div>
+        ${state.brain.sourceAssetVariation === "Other" ? `
+          <label>
+            <span>Name the variation <b>Required</b></span>
+            <input class="input-like" type="text" data-action="brain-source-asset-variation-other" value="${escapeHtml(state.brain.sourceAssetVariationOther)}" placeholder="Example: anniversary lockup">
+          </label>
+        ` : ""}
+      ` : ""}
       <label>
         <span>Usage instruction <b>Required</b></span>
         <textarea data-action="brain-source-usage" placeholder="Example: use only the color temperature and material contrast; ignore the subject matter.">${escapeHtml(state.brain.sourceUsage)}</textarea>
@@ -1876,7 +1954,14 @@ function sourceAddReady() {
 
   if (!state.brain.pendingFiles.length || !material) return false;
   if (material.authority === "exact-asset") {
-    return !material.isTemplate || Boolean(state.brain.sourceTemplateRatio);
+    if (material.isTemplate) return Boolean(state.brain.sourceTemplateRatio);
+    const kind = protectedAssetKind();
+    if (!kind) return false;
+    if (kind.hasVariations) {
+      if (!state.brain.sourceAssetVariation) return false;
+      if (state.brain.sourceAssetVariation === "Other" && !state.brain.sourceAssetVariationOther.trim()) return false;
+    }
+    return true;
   }
   return sourceIntentAnswered() && (!material.isTemplate || Boolean(state.brain.sourceTemplateRatio));
 }
@@ -2038,7 +2123,7 @@ function sourceGroupRow(source) {
         <span class="source-kind-icon" aria-hidden="true">${escapeHtml((material?.shortLabel || source.type).slice(0, 1))}</span>
         <span class="brain-source-copy">
           <strong>${escapeHtml(source.name)}</strong>
-          <span>${escapeHtml(material?.shortLabel || source.type)} · ${escapeHtml(source.detail)}</span>
+          <span>${escapeHtml(assetVariationLabel(source.contract) || material?.shortLabel || source.type)} · ${escapeHtml(source.detail)}</span>
         </span>
         ${statusPill}
         <button class="text-button" type="button" data-action="toggle-source-details" data-id="${escapeHtml(source.id)}">${expanded ? "Close" : "Details"}</button>
@@ -4750,7 +4835,10 @@ function productionLockedAssets() {
     .map((source) => {
       const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
       if (!file) return null;
-      return { id: source.id, name: source.name, detail: source.detail || source.declaredType || "Protected asset", fileName: file.name };
+      // The variation is the point of this list when a brand has five logos,
+      // so it leads the detail line rather than the generic type label.
+      const variation = assetVariationLabel(source.contract);
+      return { id: source.id, name: source.name, detail: variation || source.detail || source.declaredType || "Protected asset", fileName: file.name };
     })
     .filter(Boolean);
 }
@@ -6601,11 +6689,16 @@ root.addEventListener("input", (event) => {
     state.brain.sourceUsage = event.target.value;
     syncSourceAddButton();
   }
+  if (event.target.matches('[data-action="brain-source-asset-variation-other"]')) {
+    state.brain.sourceAssetVariationOther = event.target.value;
+    syncSourceAddButton();
+  }
   if (event.target.matches('[data-action="brain-source-exclusions"]')) {
     state.brain.sourceExclusions = event.target.value;
   }
   if (event.target.matches('[data-action="brain-source-template-ratio"]')) {
     state.brain.sourceTemplateRatio = event.target.value;
+    syncSourceAddButton();
     render();
   }
   if (event.target.matches('[data-action="brain-source-product-name"]')) {
@@ -6848,6 +6941,18 @@ root.addEventListener("change", async (event) => {
     render();
     return;
   }
+  if (action === "brain-source-asset-kind") {
+    state.brain.sourceAssetKind = event.target.value;
+    state.brain.sourceAssetVariation = "";
+    state.brain.sourceAssetVariationOther = "";
+    render();
+    return;
+  }
+  if (action === "brain-source-asset-variation") {
+    state.brain.sourceAssetVariation = event.target.value;
+    render();
+    return;
+  }
   if (action === "brain-source-role") state.brain.sourceRole = event.target.value;
   if (action === "brain-source-influence") state.brain.sourceInfluence = event.target.value;
   if (action === "brain-source-item-authority") {
@@ -6930,8 +7035,6 @@ root.addEventListener("click", (event) => {
   if (action === "toggle-client-switcher") { state.clientSwitcherOpen = !state.clientSwitcherOpen; render(); return; }
   if (action === "switch-client") { switchClient(target.dataset.id); return; }
   if (action === "create-client") { state.clientSwitcherOpen = false; void createClient(); return; }
-  if (action === "archive-client") { void archiveClient(target.dataset.id); return; }
-  if (action === "purge-client") { void purgeClient(target.dataset.id); return; }
 
   if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
@@ -7580,6 +7683,8 @@ root.addEventListener("click", (event) => {
       setToast("Add a usage instruction before continuing");
     } else if (material.authority !== "exact-asset" && (!state.brain.sourceProvenance || !state.brain.sourceAspiration)) {
       setToast("Say whose this is and whether it reflects the brand today");
+    } else if (material.authority === "exact-asset" && !material.isTemplate && !sourceAddReady()) {
+      setToast("Say what kind of asset this is before continuing");
     } else if (material.isTemplate && !state.brain.sourceTemplateRatio) {
       setToast("Choose a template format before adding");
     } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
@@ -8026,40 +8131,18 @@ function activeClientSecondary() {
 }
 
 function clientSwitcherMenu() {
-  const activeClients = state.clients.filter((client) => client.status !== "archived");
-  const archivedClients = state.clients.filter((client) => client.status === "archived");
-  const items = activeClients
+  const items = state.clients
     .map((client) => {
       const isActive = client.id === state.activeClientId;
       const initial = escapeHtml((client.name || "?").slice(0, 1).toUpperCase());
-      const canArchive = client.id !== "default" && !isActive;
       return `
-        <div class="client-switcher-row">
-          <button class="client-switcher-item${isActive ? " is-active" : ""}" type="button" role="menuitem" data-action="switch-client" data-id="${escapeHtml(client.id)}">
-            <span class="brand-mark">${initial}</span>
-            <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
-            ${isActive ? `<span class="client-switcher-check" aria-hidden="true">✓</span>` : ""}
-          </button>
-          ${canArchive ? `<button class="client-switcher-manage" type="button" aria-label="Archive ${escapeHtml(client.name)}" title="Archive" data-action="archive-client" data-id="${escapeHtml(client.id)}">Archive</button>` : ""}
-        </div>`;
+        <button class="client-switcher-item${isActive ? " is-active" : ""}" type="button" role="menuitem" data-action="switch-client" data-id="${escapeHtml(client.id)}">
+          <span class="brand-mark">${initial}</span>
+          <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
+          ${isActive ? `<span class="client-switcher-check" aria-hidden="true">✓</span>` : ""}
+        </button>`;
     })
     .join("");
-  const archivedSection = archivedClients.length
-    ? `
-      <div class="client-switcher-divider">Archived</div>
-      ${archivedClients
-        .map(
-          (client) => `
-        <div class="client-switcher-row is-archived">
-          <span class="client-switcher-item client-switcher-item-static">
-            <span class="brand-mark">${escapeHtml((client.name || "?").slice(0, 1).toUpperCase())}</span>
-            <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
-          </span>
-          <button class="client-switcher-manage is-danger" type="button" aria-label="Permanently delete ${escapeHtml(client.name)}" title="Delete forever" data-action="purge-client" data-id="${escapeHtml(client.id)}">Delete forever</button>
-        </div>`,
-        )
-        .join("")}`
-    : "";
   return `
     <div class="client-switcher-menu" role="menu">
       ${items}
@@ -8067,7 +8150,6 @@ function clientSwitcherMenu() {
         <span class="brand-mark" aria-hidden="true">+</span>
         <span class="client-switcher-item-name">New client</span>
       </button>
-      ${archivedSection}
     </div>`;
 }
 
@@ -8617,58 +8699,6 @@ function switchClient(id) {
   }
   setActiveClientCookie(id);
   window.location.reload();
-}
-
-async function archiveClient(id) {
-  const client = state.clients.find((entry) => entry.id === id);
-  if (!client) return;
-  const confirmed = window.confirm(`Archive ${client.name}? It leaves the client list but every record it holds is kept. You can ask to have it restored or permanently deleted later.`);
-  if (!confirmed) return;
-  try {
-    const response = await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ action: "archive", id }),
-    });
-    if (!response.ok) {
-      let message = "The client could not be archived.";
-      try {
-        const body = await readApiJson(response);
-        if (body?.error) message = body.error;
-      } catch {}
-      window.alert(message);
-      return;
-    }
-    await hydrateClients();
-  } catch {
-    window.alert("The client could not be archived.");
-  }
-}
-
-async function purgeClient(id) {
-  const client = state.clients.find((entry) => entry.id === id);
-  if (!client) return;
-  const typed = window.prompt(`Permanently delete ${client.name} and everything it holds: brain, products, claims, and all production history. This cannot be undone.\n\nType the client's exact name to confirm.`);
-  if (typed === null) return;
-  try {
-    const response = await fetch("/api/clients", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
-      body: JSON.stringify({ action: "purge", id, confirmName: typed }),
-    });
-    if (!response.ok) {
-      let message = "The client could not be deleted.";
-      try {
-        const body = await readApiJson(response);
-        if (body?.error) message = body.error;
-      } catch {}
-      window.alert(message);
-      return;
-    }
-    await hydrateClients();
-  } catch {
-    window.alert("The client could not be deleted.");
-  }
 }
 
 async function createClient() {
