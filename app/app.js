@@ -147,53 +147,53 @@ const studioPlatformFormats = {
   instagram: {
     label: "Instagram",
     formats: [
-      { id: "ig-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: true },
-      { id: "ig-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false },
-      { id: "ig-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false },
-      { id: "ig-carousel", name: "Carousel card", ratio: "4:5", dim: "1080 x 1350", default: false },
+      { id: "ig-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: true, craft: "The largest shape in the Instagram feed, which is why it is the default. It arrives top edge first as someone scrolls, so put the subject in the upper two thirds and let the lower third carry ground, shadow, or open space. Vertical depth reads better here than side to side composition. Caption text sits directly beneath, so the bottom edge should feel finished rather than cut off." },
+      { id: "ig-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false, craft: "Displays smaller than the portrait shape and gives you less room, so commit to one idea. Center the subject, keep the composition balanced enough that a tight crop does not ruin it, and hold detail to what survives at phone scale." },
+      { id: "ig-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false, craft: "Full bleed and full screen, with interface elements sitting over roughly the top and bottom sixth. Keep the subject and anything that carries meaning inside the middle band. This is seen for a second or two before a tap, so it needs one clear read rather than a scene that rewards study." },
+      { id: "ig-carousel", name: "Carousel card", ratio: "4:5", dim: "1080 x 1350", default: false, craft: "One card in a swipeable set, so it has to hold on its own and belong to the ones beside it. Keep horizon height, light direction, and palette consistent across the set. The grid preview crops this to a square, so keep the subject clear of the top and bottom edges." },
     ],
   },
   linkedin: {
     label: "LinkedIn",
     formats: [
-      { id: "li-square", name: "Feed square", ratio: "1:1", dim: "1200 x 1200", default: true },
-      { id: "li-landscape", name: "Feed landscape", ratio: "1.91:1", dim: "1200 x 627", default: false },
-      { id: "li-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: false },
+      { id: "li-square", name: "Feed square", ratio: "1:1", dim: "1200 x 1200", default: true, craft: "The LinkedIn feed is text first, and this sits between written posts read by people who are working. Restraint carries more credibility here than spectacle, and an image that looks like an ad gets scrolled past. One clear subject, considered light, nothing staged for the camera." },
+      { id: "li-landscape", name: "Feed landscape", ratio: "1.91:1", dim: "1200 x 627", default: false, craft: "A wide strip that displays small beside a headline and description. Favor high contrast and a single legible subject, avoid fine texture that turns to noise at this size, and keep anything meaningful away from the left and right edges." },
+      { id: "li-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: false, craft: "Takes the most vertical space available in the LinkedIn feed, which is the reason to choose it. Use the height for depth rather than for a taller subject: foreground, middle, and background each doing separate work. Hold the professional register of the square shape, since the audience is the same." },
     ],
   },
   facebook: {
     label: "Facebook",
     formats: [
-      { id: "fb-feed", name: "Feed", ratio: "1.91:1", dim: "1200 x 630", default: true },
-      { id: "fb-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: false },
-      { id: "fb-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false },
-      { id: "fb-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false },
+      { id: "fb-feed", name: "Feed", ratio: "1.91:1", dim: "1200 x 630", default: true, craft: "Wide and small, sitting on a light interface surrounded by heavy chrome. One subject, strong separation from the background, and enough contrast to hold against white. Fine detail and low contrast both disappear at this size." },
+      { id: "fb-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: false, craft: "The tallest shape Facebook gives a feed post and the one that holds attention longest. Subject in the upper two thirds, open ground below, and enough contrast to carry against a light interface." },
+      { id: "fb-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false, craft: "A middle ground shape read at moderate size. Center weight the subject, keep the composition balanced, and favor contrast over subtlety, since this sits on a light background surrounded by interface." },
+      { id: "fb-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false, craft: "Full bleed and full screen with interface over the top and bottom sixth. Keep the subject in the middle band, compose for one read rather than several, and let the edges carry atmosphere rather than information." },
     ],
   },
   x: {
     label: "X",
     formats: [
-      { id: "x-landscape", name: "Feed", ratio: "16:9", dim: "1600 x 900", default: true },
-      { id: "x-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false },
+      { id: "x-landscape", name: "Feed", ratio: "16:9", dim: "1600 x 900", default: true, craft: "The timeline is dense, text led, and scrolled quickly. This shows as a wide strip beside the post text, so it needs a single subject that reads at a glance. High contrast, simple composition, nothing that depends on detail." },
+      { id: "x-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false, craft: "Displays narrower than the landscape shape in a dense timeline, so it works best with the subject centered and large in frame. One idea, strong contrast, no fine detail." },
     ],
   },
   threads: {
     label: "Threads",
     formats: [
-      { id: "th-portrait", name: "Feed", ratio: "4:5", dim: "1080 x 1350", default: true },
+      { id: "th-portrait", name: "Feed", ratio: "4:5", dim: "1080 x 1350", default: true, craft: "Threads runs conversational and casual, closer to a phone camera than a campaign frame. Use the vertical shape for a real moment with depth rather than a polished product placement, and keep the subject in the upper two thirds where it enters the scroll." },
     ],
   },
   pinterest: {
     label: "Pinterest",
     formats: [
-      { id: "pin-standard", name: "Standard pin", ratio: "2:3", dim: "1000 x 1500", default: true },
-      { id: "pin-long", name: "Long pin", ratio: "1:2.1", dim: "1000 x 2100", default: false },
+      { id: "pin-standard", name: "Standard pin", ratio: "2:3", dim: "1000 x 1500", default: true, craft: "Pinterest is a search and save surface rather than a feed, so people arrive with intent and keep what they plan to use. This works as a still object rather than a moment: clear subject, clean composition, and enough context that someone understands what it is without a caption. It sits in a grid beside unrelated pins, so being distinct matters more than being atmospheric." },
+      { id: "pin-long", name: "Long pin", ratio: "1:2.1", dim: "1000 x 2100", default: false, craft: "Very tall and takes a full column in the grid, so the height has to earn itself. Stack the composition vertically in distinct zones top to bottom rather than floating one subject in a long frame. Someone scans this while scrolling past, so each zone should read on its own." },
     ],
   },
   tiktok: {
     label: "TikTok",
     formats: [
-      { id: "tt-cover", name: "Cover", ratio: "9:16", dim: "1080 x 1920", default: true },
+      { id: "tt-cover", name: "Cover", ratio: "9:16", dim: "1080 x 1920", default: true, craft: "A cover frame rather than a post. This is the still someone sees on a profile grid and in search results, not something that plays, so it has to explain the video without motion. Keep the subject centered and large, since the profile grid crops the top and bottom hard, and leave the lower third clear of anything important because the caption and handle overlay it." },
     ],
   },
 };
@@ -8434,6 +8434,7 @@ root.addEventListener("click", (event) => {
           const legacyPlacement = Object.keys(placementFormats).find((p) => p.toLowerCase().includes(platform.label.toLowerCase()));
           if (legacyPlacement) state.brief.placement = legacyPlacement;
           state.brief.format = `${match.ratio} ${orientationForRatio(match.ratio)}`;
+          if (match.craft) state.brief.scene = `${state.brief.scene.trim()} ${match.craft}`;
           break;
         }
       }
@@ -9654,7 +9655,7 @@ async function suggestSceneBriefs(kind = "scene", field = "brief") {
       const first = state.studio.activeFormats[0];
       for (const platform of Object.values(studioPlatformFormats)) {
         const match = (platform.formats || []).find((f) => f.id === first);
-        if (match) { fmt = { label: `${platform.label} ${match.name}`, ratio: match.ratio }; break; }
+        if (match) { fmt = { label: `${platform.label} ${match.name}`, ratio: match.ratio, craft: match.craft }; break; }
       }
     }
     const productId = category === "sales" ? state.studio.salesProductId : state.studio.websiteProductId;
