@@ -1561,6 +1561,7 @@ function resetSourceComposer() {
   state.brain.pendingFiles = [];
   state.brain.sourceFileReading = false;
   state.brain.intakeDoor = "";
+  state.brain.intakeKind = "";
 }
 
 function commentsForTarget(target) {
@@ -1762,212 +1763,67 @@ function renderBrainOverview() {
   );
 }
 
-function intakeChooser() {
-  return `
-    <section class="card intake-chooser">
-      <div class="card-header">
-        <span><span class="section-label">Add material</span><h2>What are you adding?</h2></span>
-      </div>
-      <div class="intake-door-grid">
-        <button class="intake-door" type="button" data-action="open-intake-door" data-door="evidence">
-          <span class="intake-door-mark" aria-hidden="true">B</span>
-          <span class="intake-door-body">
-            <strong>Teach the system about the brand</strong>
-            <small>Brand guides, past work, research, references, and images the system reads to build brand knowledge.</small>
-          </span>
-          <i aria-hidden="true">&rsaquo;</i>
-        </button>
-        <button class="intake-door" type="button" data-action="open-intake-door" data-door="asset">
-          <span class="intake-door-mark" aria-hidden="true">A</span>
-          <span class="intake-door-body">
-            <strong>Add a protected asset</strong>
-            <small>Logos, packaging, type, or background templates that production must place unchanged. These stay exact in every job.</small>
-          </span>
-          <i aria-hidden="true">&rsaquo;</i>
-        </button>
-      </div>
-      <p class="intake-product-note">Adding a product or feature? Products are built and reviewed on the <button class="studio-add-link" type="button" data-action="open-product-from-intake">Products screen</button>.</p>
-    </section>
-  `;
-}
-
-// The shared contract fields (role, influence, usage, exclusions, template
-// ratio) reused by both the evidence and asset doors.
-function sourceContractFields(material) {
-  return `
-    <div class="source-contract-block">
-      <div class="source-contract-heading">
-        <span><strong>How should we use this source?</strong><small>Your instructions travel with this one source into synthesis and future updates.</small></span>
-        <span class="source-handling-pill">${escapeHtml(material?.handling || "")}</span>
-      </div>
-      ${material?.assetsInside ? `
-        <p class="field-note">This file is read as guidance. The logos and treatments shown on its pages stay inside it, so register each one you need to place as a protected asset separately.</p>
-      ` : ""}
-      <div class="source-entry-row source-contract-row">
-        <label>
-          <span>What should it inform?</span>
-          <select data-action="brain-source-role">${sourceRoleOptions.map((value) => option(value, state.brain.sourceRole)).join("")}</select>
-        </label>
-        ${
-          sourceUsesInfluence(material?.authority)
-            ? `<label>
-                <span>Influence</span>
-                <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
-                <small>Creative priority, not a blend percentage.</small>
-              </label>`
-            : `<div class="source-fixed-handling"><span>How it is weighted</span><strong>It is not weighted</strong><small>${material?.authority === "exact-asset" ? "The supplied file stays exact." : "Approved guidance applies wherever it is relevant."}</small></div>`
-        }
-      </div>
-      ${material?.authority === "exact-asset" && !material?.isTemplate ? `
-        <div class="source-contract-grid">
-          <label>
-            <span>What kind of asset? <b>Required</b></span>
-            <select data-action="brain-source-asset-kind">
-              <option value="" ${!state.brain.sourceAssetKind ? "selected" : ""}>Choose one</option>
-              ${protectedAssetKinds.map((kind) => `<option value="${kind.id}" ${state.brain.sourceAssetKind === kind.id ? "selected" : ""}>${escapeHtml(kind.label)}</option>`).join("")}
-            </select>
-          </label>
-          ${protectedAssetKind()?.hasVariations ? `
-            <label>
-              <span>Which variation? <b>Required</b></span>
-              <select data-action="brain-source-asset-variation">
-                <option value="" ${!state.brain.sourceAssetVariation ? "selected" : ""}>Choose one</option>
-                ${logoVariations.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceAssetVariation === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
-              </select>
-              <small>Most brands have several. Naming this one keeps the production picker readable.</small>
-            </label>
-          ` : ""}
-        </div>
-        ${state.brain.sourceAssetVariation === "Other" ? `
-          <label>
-            <span>Name the variation <b>Required</b></span>
-            <input class="input-like" type="text" data-action="brain-source-asset-variation-other" value="${escapeHtml(state.brain.sourceAssetVariationOther)}" placeholder="Example: anniversary lockup">
-          </label>
-        ` : ""}
-      ` : ""}
-      <label>
-        <span>Usage instruction <b>Required</b></span>
-        <textarea data-action="brain-source-usage" placeholder="Example: use only the color temperature and material contrast; ignore the subject matter.">${escapeHtml(state.brain.sourceUsage)}</textarea>
-      </label>
-      <label>
-        <span>What should we leave out? <small>Optional</small></span>
-        <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
-      </label>
-      ${material?.isTemplate ? `
-      <label>
-        <span>Template format</span>
-        <select data-action="brain-source-template-ratio">
-          <option value="" ${!state.brain.sourceTemplateRatio ? "selected" : ""}>Choose a format</option>
-          <option value="16:9" ${state.brain.sourceTemplateRatio === "16:9" ? "selected" : ""}>Slide (16:9 widescreen)</option>
-          <option value="4:3" ${state.brain.sourceTemplateRatio === "4:3" ? "selected" : ""}>Slide (4:3 standard)</option>
-          <option value="17:22" ${state.brain.sourceTemplateRatio === "17:22" ? "selected" : ""}>One-pager (8.5 x 11)</option>
-        </select>
-        <small>Determines where this template appears in the Sales enablement workflow.</small>
-      </label>
-      ` : ""}
-    </div>
-  `;
-}
-
-// For URL and pasted text, the discriminating question is intent, not file
-// taxonomy: whose property this is, whether it reflects the brand today or a
-// direction it is reaching for, how much it should drive the brand, and why
-// it is being shared. The material type is set implicitly from provenance so
-// the existing contract and add handlers keep working.
 // The two questions that carry the most weight downstream. Provenance and
 // aspiration decide whether synthesis may treat material as evidence of what
 // the brand is, so every path that creates a source has to ask them. Files ask
 // them alongside the material type; URL and text ask them instead of taxonomy.
-function sourceProvenanceQuestions(ownWording) {
-  const prov = state.brain.sourceProvenance;
-  const asp = state.brain.sourceAspiration;
-  const ourLabel = ownWording || "Our own website or brand property.";
-  return `
-      <div class="source-intent-question">
-        <span class="source-intent-label">Whose is this?</span>
-        <div class="source-choice-row">
-          <button class="source-choice ${prov === "ours" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="ours">
-            <strong>Ours</strong><small>${escapeHtml(ourLabel)}</small>
-          </button>
-          <button class="source-choice ${prov === "emulate" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="emulate">
-            <strong>Someone else's</strong><small>A reference we want to draw from, not our own.</small>
-          </button>
-        </div>
-      </div>
-      <div class="source-intent-question">
-        <span class="source-intent-label">Does this reflect the brand today, or where it is heading?</span>
-        <div class="source-choice-row">
-          <button class="source-choice ${asp === "current" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="current">
-            <strong>How it shows up today</strong><small>An accurate picture of the brand as it is now.</small>
-          </button>
-          <button class="source-choice ${asp === "aspiration" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="aspiration">
-            <strong>A direction we're reaching for</strong><small>Where we want the brand to go. Influences aesthetics without becoming fact.</small>
-          </button>
-        </div>
-      </div>
-  `;
-}
 
 // The file tab asks the same questions as URL and written material, plus one
 // files genuinely need: whether the material governs, records, or is imagery.
 // URL and text can infer that from provenance alone. A file cannot.
-function sourceFileKindField() {
-  const chosen = state.brain.sourceMaterialType;
-  const isGuide = chosen === "approved-guidance" || chosen === "asset-bearing-guide";
-  return `
-    <div class="source-intent-question">
-      <span class="source-intent-label">What kind of material is this?</span>
-      <div class="source-choice-row source-choice-row-three">
-        ${evidenceFileMaterialOptions().map((item) => `
-          <button class="source-choice ${item.id === chosen || (item.id === "approved-guidance" && chosen === "asset-bearing-guide") ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
-            <strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.pickerNote || item.description)}</small>
-          </button>
-        `).join("")}
-      </div>
-    </div>
-    ${isGuide ? `
-      <label class="source-guide-check">
-        <input type="checkbox" data-action="toggle-guide-assets" ${chosen === "asset-bearing-guide" ? "checked" : ""}>
-        <span>
-          <strong>This file shows logos or other assets on its pages</strong>
-          <small>The pages teach the brand. Register anything you need to place as a protected asset separately.</small>
-        </span>
-      </label>
-    ` : ""}
-  `;
-}
 
 // Typing in a textarea does not re-render, since that would take the cursor
 // out of the field mid-sentence, so the Add button has to be synced here. The
 // gate reads the same conditions the render does, kept in one place so the two
 // cannot drift apart.
+// One gate for every path. What is required follows from the card the user
+// chose, so the render, the live sync, and the add handlers cannot disagree.
 function sourceAddReady() {
-  // The protected asset door is always a file upload regardless of which form
-  // tab the evidence door was last left on.
-  const mode = state.brain.intakeDoor === "asset" ? "files" : state.brain.sourceForm;
-  const material = sourceMaterialType(state.brain.sourceMaterialType);
+  const kind = intakeKind();
+  if (!kind) return false;
   if (state.brain.sourceFileReading) return false;
   if (!state.brain.sourceUsage.trim()) return false;
+  if (!state.brain.sourceTitle.trim()) return false;
 
-  if (mode === "url") return Boolean(state.brain.sourceUrl.trim()) && sourceIntentAnswered();
-  if (mode === "text") return Boolean(state.brain.sourceText.trim()) && sourceIntentAnswered();
+  const mode = kind.forms.includes(state.brain.sourceForm) ? state.brain.sourceForm : kind.forms[0];
+  if (mode === "url" && !state.brain.sourceUrl.trim()) return false;
+  if (mode === "text" && !state.brain.sourceText.trim()) return false;
+  if (mode === "files" && !state.brain.pendingFiles.length) return false;
 
-  if (!state.brain.pendingFiles.length || !material) return false;
-  if (material.authority === "exact-asset") {
+  if (kind.isAsset) {
+    const material = sourceMaterialType(state.brain.sourceMaterialType);
+    if (!material) return false;
     if (material.isTemplate) return Boolean(state.brain.sourceTemplateRatio);
-    const kind = protectedAssetKind();
-    if (!kind) return false;
-    if (kind.hasVariations) {
-      if (!state.brain.sourceAssetVariation) return false;
-      if (state.brain.sourceAssetVariation === "Other" && !state.brain.sourceAssetVariationOther.trim()) return false;
-    }
+    if (!state.brain.sourceAssetVariation) return false;
+    if (state.brain.sourceAssetVariation === "Other" && !state.brain.sourceAssetVariationOther.trim()) return false;
     return true;
   }
-  return sourceIntentAnswered() && (!material.isTemplate || Boolean(state.brain.sourceTemplateRatio));
+
+  // Aspiration is the one question no card can answer on the user's behalf.
+  return Boolean(state.brain.sourceAspiration);
 }
 
-function sourceIntentAnswered() {
-  return Boolean(state.brain.sourceProvenance && state.brain.sourceAspiration);
+// Says which required answer is missing, so a disabled button is never a
+// guessing game.
+function sourceMissingMessage() {
+  const kind = intakeKind();
+  if (!kind) return "Choose what you are adding first";
+  const mode = kind.forms.includes(state.brain.sourceForm) ? state.brain.sourceForm : kind.forms[0];
+  if (mode === "files" && !state.brain.pendingFiles.length) return "Choose one file first";
+  if (mode === "url" && !state.brain.sourceUrl.trim()) return "Add a web address first";
+  if (mode === "text" && !state.brain.sourceText.trim()) return "Paste some material first";
+  if (kind.isAsset) {
+    const material = sourceMaterialType(state.brain.sourceMaterialType);
+    if (!material) return "Choose what kind of asset this is";
+    if (material.isTemplate && !state.brain.sourceTemplateRatio) return "Choose a template format";
+    if (!material.isTemplate && !state.brain.sourceAssetVariation) return "Choose which variation this is";
+    if (state.brain.sourceAssetVariation === "Other" && !state.brain.sourceAssetVariationOther.trim()) return "Name the variation";
+  } else if (!state.brain.sourceAspiration) {
+    return "Say whether this reflects the brand today or where it is heading";
+  }
+  if (!state.brain.sourceTitle.trim()) return "Name this source before adding";
+  if (!state.brain.sourceUsage.trim()) return "Add a usage instruction before continuing";
+  return "Fill in the required fields before adding";
 }
 
 function syncSourceAddButton() {
@@ -1977,111 +1833,275 @@ function syncSourceAddButton() {
   });
 }
 
-function sourceIntentBlock(includeFileKind) {
+
+// One intake screen. The old two-door split asked "brand usage or protected
+// asset," which is the system's vocabulary for a distinction the user should
+// not have to learn. Four cards ask what they have instead, and the door falls
+// out of the answer: brand asset is the protected path, the other three feed
+// synthesis.
+//
+// Provenance is folded into the card choice. External reference means someone
+// else's, the other three mean ours, so the question disappears without the
+// answer being assumed. Aspiration has no such shortcut and stays visible and
+// required, because it decides whether material can stand as fact.
+const intakeKinds = [
+  {
+    id: "asset",
+    title: "Brand asset",
+    blurb: "Canonical files the brand owns and uses.",
+    examples: "Logos, lockups, background templates",
+    forms: ["files"],
+    provenance: "ours",
+    isAsset: true,
+  },
+  {
+    id: "guidance",
+    title: "Brand guidance",
+    blurb: "Rules, standards, and decisions that govern their area.",
+    examples: "Brand books, tone of voice, naming rules",
+    forms: ["files", "url", "text"],
+    provenance: "ours",
+    materialType: "approved-guidance",
+  },
+  {
+    id: "work",
+    title: "Brand work",
+    blurb: "Things the brand has made and published.",
+    examples: "Campaigns, websites, decks, social posts",
+    forms: ["files", "url", "text"],
+    provenance: "ours",
+    materialType: "past-work-research",
+  },
+  {
+    id: "reference",
+    title: "External reference",
+    blurb: "Outside material for context or inspiration.",
+    examples: "Competitor work, category examples, moodboards",
+    forms: ["files", "url", "text"],
+    provenance: "emulate",
+    materialType: "past-work-research",
+  },
+];
+
+function intakeKind(id = state.brain.intakeKind) {
+  return intakeKinds.find((kind) => kind.id === id) || null;
+}
+
+function intakeFormLabel(id) {
+  return { files: "File", url: "URL", text: "Written material" }[id] || id;
+}
+
+// Step 1. What are you adding?
+function intakeKindStep() {
+  const chosen = state.brain.intakeKind;
   return `
-    <div class="source-intent-block">
-      ${includeFileKind ? sourceFileKindField() : ""}
-      ${sourceProvenanceQuestions(includeFileKind ? "A file we made or commissioned for this brand." : undefined)}
-      <label>
-        <span>How influential should this be?</span>
-        <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => option(value, state.brain.sourceInfluence)).join("")}</select>
-        <small>Creative priority, not a blend percentage.</small>
-      </label>
-      <label>
-        <span>How should this inform the brand? <b>Required</b></span>
-        <textarea data-action="brain-source-usage" placeholder="Example: draw on the calm, unhurried pacing and the way they use whitespace. Ignore the specific product category.">${escapeHtml(state.brain.sourceUsage)}</textarea>
-      </label>
-      <label>
-        <span>What should we leave out? <small>Optional</small></span>
-        <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward their color palette or logo treatment.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
-      </label>
+    <div class="intake-step">
+      <div class="intake-step-head">
+        <strong>1. What are you adding?</strong>
+        <small>This decides how the Brand Brain treats it.</small>
+      </div>
+      <div class="intake-kind-grid">
+        ${intakeKinds.map((kind) => `
+          <button class="intake-kind-card ${chosen === kind.id ? "active" : ""}" type="button" data-action="set-intake-kind" data-id="${kind.id}">
+            <strong>${escapeHtml(kind.title)}</strong>
+            <span>${escapeHtml(kind.blurb)}</span>
+            <small>${escapeHtml(kind.examples)}</small>
+          </button>
+        `).join("")}
+      </div>
     </div>
   `;
 }
 
-function evidenceDoor() {
+// Step 2. The file, URL, or pasted text, plus whatever that kind needs.
+function intakeContentStep(kind) {
   const mode = state.brain.sourceForm;
-  const material = sourceMaterialType();
   const pendingFile = state.brain.pendingFiles[0];
-  const canAdd = sourceAddReady();
+  const material = sourceMaterialType();
+  const accept = kind.isAsset ? (material?.accept || "") : evidenceAcceptString();
 
   return `
-    <section class="card brain-source-composer">
-      <div class="card-header">
-        <span><span class="section-label">Brand usage</span><h2>Add one source</h2></span>
-        <button class="button" type="button" data-action="close-intake-door">Back</button>
-      </div>
-      <div class="source-method-tabs" role="tablist" aria-label="Source type">
-        ${[["files", "File"], ["url", "URL"], ["text", "Written material"]]
-          .map(([id, label]) => `<button class="${mode === id ? "active" : ""}" type="button" data-action="set-source-form" data-kind="${id}">${label}</button>`)
-          .join("")}
+    <div class="intake-step">
+      <div class="intake-step-head">
+        <strong>2. ${escapeHtml(kind.isAsset ? "The file" : "The material")}</strong>
+        <small>${escapeHtml(kind.isAsset ? "Used exactly as supplied. Never altered, never fed into synthesis." : "Read once and kept with your instructions.")}</small>
       </div>
 
+      ${kind.forms.length > 1 ? `
+        <div class="source-method-tabs" role="tablist" aria-label="Source form">
+          ${kind.forms.map((id) => `<button class="${mode === id ? "active" : ""}" type="button" data-action="set-source-form" data-kind="${id}">${escapeHtml(intakeFormLabel(id))}</button>`).join("")}
+        </div>
+      ` : ""}
+
+      ${kind.isAsset ? `
+        <div class="intake-field-grid">
+          <label>
+            <span>What kind of asset? <b>Required</b></span>
+            <select data-action="select-source-material-type-select">
+              <option value="" ${!material ? "selected" : ""}>Choose one</option>
+              ${assetMaterialOptions().map((item) => `<option value="${item.id}" ${material?.id === item.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
+            </select>
+          </label>
+        </div>
+      ` : ""}
+
       ${mode === "files" ? `
-        <label class="source-drop-zone ${state.brain.sourceFileReading ? "reading" : ""}">
-          <input type="file" data-action="source-file-input" accept="${escapeHtml(evidenceAcceptString())}" data-door="evidence">
+        <label class="source-drop-zone ${state.brain.sourceFileReading ? "reading" : ""} ${kind.isAsset && !material ? "is-disabled" : ""}">
+          <input type="file" data-action="source-file-input" accept="${escapeHtml(accept)}" data-door="${kind.isAsset ? "asset" : "evidence"}" ${kind.isAsset && !material ? "disabled" : ""}>
           <span class="source-drop-icon">+</span>
-          <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : "Choose one file"}</strong>
-          <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : "Documents or images, 20 MB maximum. One file at a time."}</span>
+          <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : kind.isAsset && !material ? "Choose an asset type first" : "Choose or drag a file here"}</strong>
+          <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : `${escapeHtml(kind.isAsset ? material?.examples || "" : "Documents, images, PDFs")} · 20 MB maximum`}</span>
         </label>
       ` : ""}
 
       ${mode === "url" ? `
         <div class="source-entry-form source-content-form">
-          <label><span>Web address</span><input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com/about"></label>
-          <label><span>Name this source</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="About page"></label>
+          <label><span>Web address <b>Required</b></span><input class="input-like" type="url" data-action="brain-source-url" value="${escapeHtml(state.brain.sourceUrl)}" placeholder="https://example.com/about"></label>
         </div>
       ` : ""}
 
       ${mode === "text" ? `
         <div class="source-entry-form source-content-form">
-          <label><span>Title</span><input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="What should we call this?"></label>
-          <label><span>Paste the material</span><textarea data-action="brain-source-text" placeholder="Paste notes, a brief, transcript, observation, or reference context here.">${escapeHtml(state.brain.sourceText)}</textarea></label>
+          <label><span>Paste the material <b>Required</b></span><textarea data-action="brain-source-text" placeholder="Paste notes, a brief, transcript, observation, or reference context here.">${escapeHtml(state.brain.sourceText)}</textarea></label>
         </div>
       ` : ""}
 
-      ${sourceIntentBlock(mode === "files")}
+      <label>
+        <span>Name this ${escapeHtml(kind.isAsset ? "asset" : "source")} <b>Required</b></span>
+        <input class="input-like" data-action="brain-source-title" value="${escapeHtml(state.brain.sourceTitle)}" placeholder="${escapeHtml(kind.isAsset ? "Primary logo, dark backgrounds" : "About page")}">
+        <small>${escapeHtml(kind.isAsset ? "This is what you will pick from when producing. Make it tell you apart from the others." : "How this appears in your source list.")}</small>
+      </label>
 
-      <button class="button primary source-add-button" data-source-add="1" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add source"}</button>
-    </section>
+      ${kind.isAsset && material?.isTemplate ? `
+        <label>
+          <span>Template format <b>Required</b></span>
+          <select data-action="brain-source-template-ratio">
+            <option value="" ${!state.brain.sourceTemplateRatio ? "selected" : ""}>Choose a format</option>
+            <option value="16:9" ${state.brain.sourceTemplateRatio === "16:9" ? "selected" : ""}>Slide (16:9 widescreen)</option>
+            <option value="4:3" ${state.brain.sourceTemplateRatio === "4:3" ? "selected" : ""}>Slide (4:3 standard)</option>
+            <option value="17:22" ${state.brain.sourceTemplateRatio === "17:22" ? "selected" : ""}>One-pager (8.5 x 11)</option>
+          </select>
+          <small>Decides where this template appears in the Sales enablement workflow.</small>
+        </label>
+      ` : ""}
+    </div>
   `;
 }
 
-function assetDoor() {
+// Step 3. What the Brain should do with it. Protected assets skip the
+// aspiration question, since a registered file is current by definition.
+function intakeContextStep(kind) {
   const material = sourceMaterialType();
-  const isAsset = material && assetMaterialIds.includes(material.id);
+  const asp = state.brain.sourceAspiration;
+  return `
+    <div class="intake-step">
+      <div class="intake-step-head">
+        <strong>3. What should the Brain know?</strong>
+        <small>Your instructions travel with this one source into synthesis and future updates.</small>
+      </div>
+
+      ${kind.isAsset ? "" : `
+        <div class="source-intent-question">
+          <span class="source-intent-label">Does this reflect the brand today, or where it is heading? <b>Required</b></span>
+          <div class="source-choice-row">
+            <button class="source-choice ${asp === "current" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="current">
+              <strong>How it shows up today</strong><small>An accurate picture of the brand as it is now.</small>
+            </button>
+            <button class="source-choice ${asp === "aspiration" ? "active" : ""}" type="button" data-action="set-source-aspiration" data-value="aspiration">
+              <strong>A direction we're reaching for</strong><small>Where the brand is going. Influences aesthetics without becoming fact.</small>
+            </button>
+          </div>
+        </div>
+      `}
+
+      <label>
+        <span>${escapeHtml(kind.isAsset ? "How should this be used?" : "How should this inform the brand?")} <b>Required</b></span>
+        <textarea data-action="brain-source-usage" placeholder="${escapeHtml(kind.isAsset ? "Example: the official primary logo. Use on light backgrounds. Never recolor it." : "Example: draw on the calm, unhurried pacing and the way they use whitespace. Ignore the specific product category.")}">${escapeHtml(state.brain.sourceUsage)}</textarea>
+      </label>
+
+      ${material?.assetsInside ? `
+        <p class="field-note">This file is read as guidance. The logos and treatments shown on its pages stay inside it, so register each one you need to place as a brand asset separately.</p>
+      ` : ""}
+
+      <details class="intake-more" ${state.brain.sourceExclusions.trim() ? "open" : ""}>
+        <summary>More control <small>influence, focus, what to ignore</small></summary>
+        <div class="intake-more-body">
+          ${kind.isAsset ? "" : `
+            <div class="intake-field-grid">
+              <label>
+                <span>What should this teach?</span>
+                <select data-action="brain-source-role">${sourceRoleOptions.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceRole === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+              </label>
+              ${sourceUsesInfluence(material?.authority) ? `
+                <label>
+                  <span>How influential should this be?</span>
+                  <select data-action="brain-source-influence">${sourceInfluenceOptions.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceInfluence === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select>
+                  <small>Creative priority, not a blend percentage.</small>
+                </label>
+              ` : ""}
+            </div>
+          `}
+          ${kind.isAsset && protectedAssetKind()?.hasVariations ? "" : ""}
+          <label>
+            <span>What should we leave out?</span>
+            <textarea data-action="brain-source-exclusions" placeholder="Example: do not carry forward the seasonal tagline or page layout.">${escapeHtml(state.brain.sourceExclusions)}</textarea>
+          </label>
+        </div>
+      </details>
+    </div>
+  `;
+}
+
+// The line above the button, so what is about to be recorded is legible before
+// it is recorded.
+function intakeSummaryLine(kind) {
+  const material = sourceMaterialType();
+  const parts = [kind.title];
+  if (kind.isAsset && material) parts.push(material.label);
+  if (kind.isAsset && state.brain.sourceAssetVariation) {
+    parts.push(state.brain.sourceAssetVariation === "Other" && state.brain.sourceAssetVariationOther
+      ? state.brain.sourceAssetVariationOther
+      : state.brain.sourceAssetVariation);
+  }
+  if (!kind.isAsset && state.brain.sourceAspiration) {
+    parts.push(state.brain.sourceAspiration === "aspiration" ? "A direction we're reaching for" : "How it shows up today");
+  }
   const pendingFile = state.brain.pendingFiles[0];
+  const content = pendingFile ? pendingFile.name : state.brain.sourceUrl.trim() || (state.brain.sourceText.trim() ? "Pasted material" : "");
+  return { parts, content };
+}
+
+function sourceIntakeScreen() {
+  const kind = intakeKind();
   const canAdd = sourceAddReady();
+  const mode = state.brain.sourceForm;
+  const summary = kind ? intakeSummaryLine(kind) : null;
+
   return `
     <section class="card brain-source-composer">
       <div class="card-header">
-        <span><span class="section-label">Add a protected asset</span><h2>Register a protected file</h2></span>
+        <span><span class="section-label">Sources / Add</span><h2>Add one source</h2></span>
         <button class="button" type="button" data-action="close-intake-door">Back</button>
       </div>
-      <p class="page-description">These files are used exactly as supplied. They are never altered and never fed into brand synthesis.</p>
+      <p class="page-description">Add anything that helps the Brand Brain understand your brand.</p>
 
-      <div class="source-type-step">
-        <div class="source-material-grid">
-          ${assetMaterialOptions().map((item) => `
-            <button class="source-material-option ${material?.id === item.id ? "active" : ""}" type="button" data-action="select-source-material-type" data-id="${item.id}">
-              <span class="source-material-mark" aria-hidden="true">${escapeHtml(item.label.slice(0, 1))}</span>
-              <span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.description)}</small></span>
-              <i aria-hidden="true">${material?.id === item.id ? "✓" : ""}</i>
-            </button>
-          `).join("")}
+      ${intakeKindStep()}
+      ${kind ? intakeContentStep(kind) : ""}
+      ${kind ? intakeContextStep(kind) : ""}
+
+      ${kind ? `
+        <div class="intake-footer">
+          <div class="intake-summary">
+            <span class="section-label">Source summary</span>
+            <strong>${summary.parts.map((part) => escapeHtml(part)).join(" · ")}</strong>
+            ${summary.content ? `<small>${escapeHtml(summary.content)}</small>` : ""}
+          </div>
+          <div class="intake-submit">
+            <button class="button primary source-add-button" data-source-add="1" type="button" data-action="${mode === "files" ? "add-file-source" : mode === "url" ? "add-url-source" : "add-text-source"}" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add source"}</button>
+            <small>You can edit the details later.</small>
+          </div>
         </div>
-      </div>
-
-      ${isAsset ? `
-        <label class="source-drop-zone ${state.brain.sourceFileReading ? "reading" : ""}">
-          <input type="file" data-action="source-file-input" accept="${escapeHtml(material.accept || "")}" data-door="asset">
-          <span class="source-drop-icon">+</span>
-          <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : "Choose one file"}</strong>
-          <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : `${escapeHtml(material.examples)} · 20 MB maximum`}</span>
-        </label>
-        ${sourceContractFields(material)}
-        <button class="button primary source-add-button" data-source-add="1" type="button" data-action="add-file-source" ${canAdd ? "" : "disabled"}>${state.brain.sourceFileReading ? "Reading file" : sourceHasApprovedBaseline() ? "Add to proposed update" : "Add asset"}</button>
-      ` : `<p class="field-note">Choose an asset type to continue.</p>`}
+      ` : ""}
     </section>
   `;
 }
@@ -2094,10 +2114,7 @@ function evidenceAcceptString() {
 }
 
 function sourceComposer() {
-  const door = state.brain.intakeDoor;
-  if (door === "evidence") return evidenceDoor();
-  if (door === "asset") return assetDoor();
-  return intakeChooser();
+  return sourceIntakeScreen();
 }
 
 // Compact library row: kind mark, name, one differentiating label, status.
@@ -6680,6 +6697,7 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="brain-source-title"]')) {
     state.brain.sourceTitle = event.target.value;
+    syncSourceAddButton();
   }
   if (event.target.matches('[data-action="brain-source-text"]')) {
     state.brain.sourceText = event.target.value;
@@ -6941,10 +6959,43 @@ root.addEventListener("change", async (event) => {
     render();
     return;
   }
+  if (action === "set-intake-kind") {
+    const kind = intakeKinds.find((item) => item.id === target.dataset.id);
+    if (!kind) return;
+    state.brain.intakeKind = kind.id;
+    // Provenance follows from the card. External reference means someone
+    // else's; the other three mean ours. The user is never asked a question
+    // their answer above already settled.
+    state.brain.sourceProvenance = kind.provenance;
+    state.brain.sourceMaterialType = kind.materialType || "";
+    state.brain.sourceAuthority = kind.materialType ? sourceMaterialType(kind.materialType).authority : "";
+    if (!kind.forms.includes(state.brain.sourceForm)) state.brain.sourceForm = kind.forms[0];
+    if (kind.isAsset) {
+      state.brain.sourceAspiration = "current";
+    } else {
+      state.brain.sourceAspiration = "";
+      state.brain.sourceAssetVariation = "";
+      state.brain.sourceAssetVariationOther = "";
+      state.brain.sourceTemplateRatio = "";
+    }
+    render();
+    return;
+  }
   if (action === "brain-source-asset-kind") {
     state.brain.sourceAssetKind = event.target.value;
     state.brain.sourceAssetVariation = "";
     state.brain.sourceAssetVariationOther = "";
+    render();
+    return;
+  }
+  if (action === "select-source-material-type-select") {
+    const material = sourceMaterialType(event.target.value);
+    state.brain.sourceMaterialType = material ? material.id : "";
+    state.brain.sourceAuthority = material ? material.authority : "";
+    state.brain.sourceAssetVariation = "";
+    state.brain.sourceAssetVariationOther = "";
+    state.brain.sourceTemplateRatio = "";
+    state.brain.pendingFiles = [];
     render();
     return;
   }
@@ -7627,13 +7678,21 @@ root.addEventListener("click", (event) => {
   }
   if (action === "open-intake-door") {
     resetSourceComposer();
-    state.brain.intakeDoor = target.dataset.door;
+    state.brain.intakeDoor = "add";
     state.brain.sourceForm = "files";
+    // Entry points that used to open the protected asset door land on the
+    // brand asset card, so links from elsewhere keep their meaning.
+    if (target.dataset.door === "asset") {
+      state.brain.intakeKind = "asset";
+      state.brain.sourceProvenance = "ours";
+      state.brain.sourceAspiration = "current";
+    }
     render();
   }
   if (action === "close-intake-door") {
     resetSourceComposer();
     state.brain.intakeDoor = "";
+    state.brain.intakeKind = "";
     render();
   }
   if (action === "open-product-from-intake") {
@@ -7648,10 +7707,12 @@ root.addEventListener("click", (event) => {
     render();
   }
   if (action === "set-source-form") {
-    const door = state.brain.intakeDoor;
-    resetSourceComposer();
-    state.brain.intakeDoor = door;
+    // Only the content changes. The card, the aspiration answer, and the
+    // written context all survive a tab switch.
     state.brain.sourceForm = target.dataset.kind;
+    state.brain.pendingFiles = [];
+    state.brain.sourceUrl = "";
+    state.brain.sourceText = "";
     render();
   }
   if (action === "select-source-material-type") {
@@ -7679,16 +7740,10 @@ root.addEventListener("click", (event) => {
       setToast("Choose what kind of material this is first");
     } else if (!files.length) {
       setToast("Choose one file first");
-    } else if (!state.brain.sourceUsage.trim()) {
-      setToast("Add a usage instruction before continuing");
-    } else if (material.authority !== "exact-asset" && (!state.brain.sourceProvenance || !state.brain.sourceAspiration)) {
-      setToast("Say whose this is and whether it reflects the brand today");
-    } else if (material.authority === "exact-asset" && !material.isTemplate && !sourceAddReady()) {
-      setToast("Say what kind of asset this is before continuing");
-    } else if (material.isTemplate && !state.brain.sourceTemplateRatio) {
-      setToast("Choose a template format before adding");
     } else if (material.isProductBrief && !state.brain.sourceProductName.trim()) {
       setToast("Enter a product name before adding");
+    } else if (!sourceAddReady()) {
+      setToast(sourceMissingMessage());
     } else {
       const file = files[0];
       const sourceId = `file-${Date.now()}`;
@@ -7696,7 +7751,7 @@ root.addEventListener("click", (event) => {
       const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
       state.brain.sources.push({
         id: sourceId,
-        name: file.name,
+        name: state.brain.sourceTitle.trim() || file.name,
         type: material.label,
         detail: `${fileExtension(file).toUpperCase()} · ${formatFileSize(file.size)}`,
         count: 1,
@@ -7714,18 +7769,10 @@ root.addEventListener("click", (event) => {
   }
   if (action === "add-url-source") {
     const url = state.brain.sourceUrl.trim();
-    // URL/text ask intent, not taxonomy. Resolve the implicit material type
-    // from provenance when the user has not set one explicitly.
-    if (!state.brain.sourceMaterialType) {
-      state.brain.sourceMaterialType = state.brain.sourceProvenance === "emulate" ? "cultural-reference" : "approved-guidance";
-    }
+    // The card already set the material type, so nothing is inferred here.
     const material = sourceMaterialType();
-    if (!url) {
-      setToast("Add a web address first");
-    } else if (!state.brain.sourceUsage.trim()) {
-      setToast("Add a usage instruction before continuing");
-    } else if (!state.brain.sourceProvenance || !state.brain.sourceAspiration) {
-      setToast("Say whose this is and whether it reflects the brand today");
+    if (!sourceAddReady()) {
+      setToast(sourceMissingMessage());
     } else {
       const sourceId = `url-${Date.now()}`;
       const productMeta = material.isProductBrief ? { isProductBrief: true, productName: state.brain.sourceProductName.trim() } : undefined;
@@ -7748,16 +7795,9 @@ root.addEventListener("click", (event) => {
   }
   if (action === "add-text-source") {
     const sourceText = state.brain.sourceText.trim();
-    if (!state.brain.sourceMaterialType) {
-      state.brain.sourceMaterialType = state.brain.sourceProvenance === "emulate" ? "cultural-reference" : "approved-guidance";
-    }
     const material = sourceMaterialType();
-    if (!sourceText) {
-      setToast("Paste some material first");
-    } else if (!state.brain.sourceUsage.trim()) {
-      setToast("Add a usage instruction before continuing");
-    } else if (!state.brain.sourceProvenance || !state.brain.sourceAspiration) {
-      setToast("Say whose this is and whether it reflects the brand today");
+    if (!sourceAddReady()) {
+      setToast(sourceMissingMessage());
     } else {
       const title = state.brain.sourceTitle.trim() || material.label;
       const sourceId = `text-${Date.now()}`;

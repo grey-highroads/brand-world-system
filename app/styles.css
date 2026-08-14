@@ -7996,3 +7996,193 @@ button.ws-attention-item:hover {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Source intake. One screen with numbered steps replaces the two doors: the
+   split between brand usage and protected asset was the system's vocabulary
+   for a distinction the four cards make without naming it. */
+.intake-step {
+  padding-top: var(--space-5);
+  margin-top: var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.intake-step:first-of-type {
+  border-top: none;
+  margin-top: var(--space-2);
+}
+
+.intake-step-head {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.intake-step-head strong {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.intake-step-head small {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.intake-kind-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 1000px) {
+  .intake-kind-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .intake-kind-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.intake-kind-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  text-align: left;
+  background: var(--ink-900);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.intake-kind-card:hover {
+  border-color: var(--celery);
+}
+
+.intake-kind-card.active {
+  border-color: var(--celery);
+  box-shadow: inset 0 0 0 1px var(--celery);
+}
+
+.intake-kind-card strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.intake-kind-card span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.intake-kind-card small {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.8;
+  line-height: 1.45;
+}
+
+.intake-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+@media (max-width: 700px) {
+  .intake-field-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.source-drop-zone.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.intake-more {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.intake-more > summary {
+  list-style: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.intake-more > summary::-webkit-details-marker {
+  display: none;
+}
+
+.intake-more > summary small {
+  margin-left: var(--space-2);
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.intake-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-3);
+}
+
+/* The summary sits beside the button so what is about to be recorded is
+   legible before it is recorded. */
+.intake-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-5);
+  margin-top: var(--space-5);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--border-subtle);
+  flex-wrap: wrap;
+}
+
+.intake-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.intake-summary strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.intake-summary small {
+  font-size: 12px;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.intake-submit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+}
+
+.intake-submit small {
+  font-size: 11px;
+  color: var(--muted);
+}
