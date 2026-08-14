@@ -1942,7 +1942,23 @@ function intakeContentStep(kind) {
               ${assetMaterialOptions().map((item) => `<option value="${item.id}" ${material?.id === item.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}
             </select>
           </label>
+          ${material && !material.isTemplate ? `
+            <label>
+              <span>Which variation? <b>Required</b></span>
+              <select data-action="brain-source-asset-variation">
+                <option value="" ${!state.brain.sourceAssetVariation ? "selected" : ""}>Choose one</option>
+                ${logoVariations.map((value) => `<option value="${escapeHtml(value)}" ${state.brain.sourceAssetVariation === value ? "selected" : ""}>${escapeHtml(value)}</option>`).join("")}
+              </select>
+              <small>Most brands have several. Naming this one keeps the production picker readable.</small>
+            </label>
+          ` : ""}
         </div>
+        ${material && !material.isTemplate && state.brain.sourceAssetVariation === "Other" ? `
+          <label>
+            <span>Name the variation <b>Required</b></span>
+            <input class="input-like" type="text" data-action="brain-source-asset-variation-other" value="${escapeHtml(state.brain.sourceAssetVariationOther)}" placeholder="Example: anniversary lockup">
+          </label>
+        ` : ""}
       ` : ""}
 
       ${mode === "files" ? `
@@ -2019,8 +2035,14 @@ function intakeContextStep(kind) {
         <textarea data-action="brain-source-usage" placeholder="${escapeHtml(kind.isAsset ? "Example: the official primary logo. Use on light backgrounds. Never recolor it." : "Example: draw on the calm, unhurried pacing and the way they use whitespace. Ignore the specific product category.")}">${escapeHtml(state.brain.sourceUsage)}</textarea>
       </label>
 
-      ${material?.assetsInside ? `
-        <p class="field-note">This file is read as guidance. The logos and treatments shown on its pages stay inside it, so register each one you need to place as a brand asset separately.</p>
+      ${kind.id === "guidance" && state.brain.sourceForm === "files" ? `
+        <label class="source-guide-check">
+          <input type="checkbox" data-action="toggle-guide-assets" ${state.brain.sourceMaterialType === "asset-bearing-guide" ? "checked" : ""}>
+          <span>
+            <strong>This file shows logos or other assets on its pages</strong>
+            <small>The pages teach the brand. Register anything you need to place as a brand asset separately.</small>
+          </span>
+        </label>
       ` : ""}
 
       <details class="intake-more" ${state.brain.sourceExclusions.trim() ? "open" : ""}>
@@ -6959,28 +6981,6 @@ root.addEventListener("change", async (event) => {
     render();
     return;
   }
-  if (action === "set-intake-kind") {
-    const kind = intakeKinds.find((item) => item.id === target.dataset.id);
-    if (!kind) return;
-    state.brain.intakeKind = kind.id;
-    // Provenance follows from the card. External reference means someone
-    // else's; the other three mean ours. The user is never asked a question
-    // their answer above already settled.
-    state.brain.sourceProvenance = kind.provenance;
-    state.brain.sourceMaterialType = kind.materialType || "";
-    state.brain.sourceAuthority = kind.materialType ? sourceMaterialType(kind.materialType).authority : "";
-    if (!kind.forms.includes(state.brain.sourceForm)) state.brain.sourceForm = kind.forms[0];
-    if (kind.isAsset) {
-      state.brain.sourceAspiration = "current";
-    } else {
-      state.brain.sourceAspiration = "";
-      state.brain.sourceAssetVariation = "";
-      state.brain.sourceAssetVariationOther = "";
-      state.brain.sourceTemplateRatio = "";
-    }
-    render();
-    return;
-  }
   if (action === "brain-source-asset-kind") {
     state.brain.sourceAssetKind = event.target.value;
     state.brain.sourceAssetVariation = "";
@@ -7675,6 +7675,28 @@ root.addEventListener("click", (event) => {
   if (action === "set-source-aspiration") {
     state.brain.sourceAspiration = target.dataset.value;
     render();
+  }
+  if (action === "set-intake-kind") {
+    const kind = intakeKinds.find((item) => item.id === target.dataset.id);
+    if (!kind) return;
+    state.brain.intakeKind = kind.id;
+    // Provenance follows from the card. External reference means someone
+    // else's; the other three mean ours. The user is never asked a question
+    // their answer above already settled.
+    state.brain.sourceProvenance = kind.provenance;
+    state.brain.sourceMaterialType = kind.materialType || "";
+    state.brain.sourceAuthority = kind.materialType ? sourceMaterialType(kind.materialType).authority : "";
+    if (!kind.forms.includes(state.brain.sourceForm)) state.brain.sourceForm = kind.forms[0];
+    if (kind.isAsset) {
+      state.brain.sourceAspiration = "current";
+    } else {
+      state.brain.sourceAspiration = "";
+      state.brain.sourceAssetVariation = "";
+      state.brain.sourceAssetVariationOther = "";
+      state.brain.sourceTemplateRatio = "";
+    }
+    render();
+    return;
   }
   if (action === "open-intake-door") {
     resetSourceComposer();
