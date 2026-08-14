@@ -2,6 +2,8 @@
 
 The experience workstream gives the product model a visible, testable form before implementation. Mockups are working hypotheses: they expose missing states, confusing language, excessive metadata, weak approvals, and gaps between policy and production.
 
+The active product-wide standard for judging functional, structural, interaction, visual, responsive, and accessibility quality is [`design-quality-standard.md`](design-quality-standard.md). Read it before proposing or implementing a meaningful interface change.
+
 Two artifact types are maintained:
 
 - **North-star views** show a coherent finished application and keep product decisions pointed toward the same destination.
