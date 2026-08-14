@@ -112,8 +112,14 @@ test("openingLine strips tabletop clause for world-only images", () => {
   assert.doesNotMatch(worldOnly, /tabletop/);
 
   const withProduct = openingLine(AESTHETIC_MODES.cinematic_film_still, true);
-  // The cinematic opening does not have a tabletop clause in BWS, so both should be the same framing line
-  assert.ok(withProduct.length > 20);
+  assert.match(withProduct, /not a tabletop product photo\.$/);
+  assert.equal(worldOnly, withProduct.replace(/,\s*not a tabletop product photo\.$/, "."));
+});
+
+test("no aesthetic mode asserts a fixed output shape", () => {
+  for (const mode of Object.values(AESTHETIC_MODES)) {
+    assert.doesNotMatch(mode.openingLine, /\b(landscape|portrait|square)\b/i);
+  }
 });
 
 // ---------------------------------------------------------------------------

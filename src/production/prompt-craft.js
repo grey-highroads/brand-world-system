@@ -202,11 +202,17 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
 // Aesthetic mode library
 // ---------------------------------------------------------------------------
 
+// No mode states an output shape. The cinematic line carried "wide" and "in
+// landscape framing" from PWP, where every output was landscape. Output shape
+// is now resolved per format and the per-format craft direction carries the
+// composition consequences, so an opening line asserting landscape contradicted
+// a 4:5 portrait job in three other places. The wide-shot intent is kept as a
+// framing distance, which is what actually works against a tabletop composition.
 export const AESTHETIC_MODES = {
   cinematic_film_still: {
     id: "cinematic_film_still",
     name: "Cinematic film still",
-    openingLine: "A wide cinematic campaign-film still in landscape framing, a real environment with depth and atmosphere, not a tabletop product photo.",
+    openingLine: "A cinematic campaign-film still in a real environment with depth and atmosphere, framed wide enough to show the place, not a tabletop product photo.",
     bestWhen: "premium, ritual, cinematic, heritage, design-led, or elevated ceremony",
   },
   documentary_lifestyle: {
