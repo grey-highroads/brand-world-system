@@ -6930,6 +6930,8 @@ root.addEventListener("click", (event) => {
   if (action === "toggle-client-switcher") { state.clientSwitcherOpen = !state.clientSwitcherOpen; render(); return; }
   if (action === "switch-client") { switchClient(target.dataset.id); return; }
   if (action === "create-client") { state.clientSwitcherOpen = false; void createClient(); return; }
+  if (action === "archive-client") { void archiveClient(target.dataset.id); return; }
+  if (action === "purge-client") { void purgeClient(target.dataset.id); return; }
 
   if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
@@ -8024,18 +8026,40 @@ function activeClientSecondary() {
 }
 
 function clientSwitcherMenu() {
-  const items = state.clients
+  const activeClients = state.clients.filter((client) => client.status !== "archived");
+  const archivedClients = state.clients.filter((client) => client.status === "archived");
+  const items = activeClients
     .map((client) => {
       const isActive = client.id === state.activeClientId;
       const initial = escapeHtml((client.name || "?").slice(0, 1).toUpperCase());
+      const canArchive = client.id !== "default" && !isActive;
       return `
-        <button class="client-switcher-item${isActive ? " is-active" : ""}" type="button" role="menuitem" data-action="switch-client" data-id="${escapeHtml(client.id)}">
-          <span class="brand-mark">${initial}</span>
-          <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
-          ${isActive ? `<span class="client-switcher-check" aria-hidden="true">✓</span>` : ""}
-        </button>`;
+        <div class="client-switcher-row">
+          <button class="client-switcher-item${isActive ? " is-active" : ""}" type="button" role="menuitem" data-action="switch-client" data-id="${escapeHtml(client.id)}">
+            <span class="brand-mark">${initial}</span>
+            <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
+            ${isActive ? `<span class="client-switcher-check" aria-hidden="true">✓</span>` : ""}
+          </button>
+          ${canArchive ? `<button class="client-switcher-manage" type="button" aria-label="Archive ${escapeHtml(client.name)}" title="Archive" data-action="archive-client" data-id="${escapeHtml(client.id)}">Archive</button>` : ""}
+        </div>`;
     })
     .join("");
+  const archivedSection = archivedClients.length
+    ? `
+      <div class="client-switcher-divider">Archived</div>
+      ${archivedClients
+        .map(
+          (client) => `
+        <div class="client-switcher-row is-archived">
+          <span class="client-switcher-item client-switcher-item-static">
+            <span class="brand-mark">${escapeHtml((client.name || "?").slice(0, 1).toUpperCase())}</span>
+            <span class="client-switcher-item-name">${escapeHtml(client.name)}</span>
+          </span>
+          <button class="client-switcher-manage is-danger" type="button" aria-label="Permanently delete ${escapeHtml(client.name)}" title="Delete forever" data-action="purge-client" data-id="${escapeHtml(client.id)}">Delete forever</button>
+        </div>`,
+        )
+        .join("")}`
+    : "";
   return `
     <div class="client-switcher-menu" role="menu">
       ${items}
@@ -8043,6 +8067,7 @@ function clientSwitcherMenu() {
         <span class="brand-mark" aria-hidden="true">+</span>
         <span class="client-switcher-item-name">New client</span>
       </button>
+      ${archivedSection}
     </div>`;
 }
 
@@ -8592,6 +8617,58 @@ function switchClient(id) {
   }
   setActiveClientCookie(id);
   window.location.reload();
+}
+
+async function archiveClient(id) {
+  const client = state.clients.find((entry) => entry.id === id);
+  if (!client) return;
+  const confirmed = window.confirm(`Archive ${client.name}? It leaves the client list but every record it holds is kept. You can ask to have it restored or permanently deleted later.`);
+  if (!confirmed) return;
+  try {
+    const response = await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "archive", id }),
+    });
+    if (!response.ok) {
+      let message = "The client could not be archived.";
+      try {
+        const body = await readApiJson(response);
+        if (body?.error) message = body.error;
+      } catch {}
+      window.alert(message);
+      return;
+    }
+    await hydrateClients();
+  } catch {
+    window.alert("The client could not be archived.");
+  }
+}
+
+async function purgeClient(id) {
+  const client = state.clients.find((entry) => entry.id === id);
+  if (!client) return;
+  const typed = window.prompt(`Permanently delete ${client.name} and everything it holds: brain, products, claims, and all production history. This cannot be undone.\n\nType the client's exact name to confirm.`);
+  if (typed === null) return;
+  try {
+    const response = await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      body: JSON.stringify({ action: "purge", id, confirmName: typed }),
+    });
+    if (!response.ok) {
+      let message = "The client could not be deleted.";
+      try {
+        const body = await readApiJson(response);
+        if (body?.error) message = body.error;
+      } catch {}
+      window.alert(message);
+      return;
+    }
+    await hydrateClients();
+  } catch {
+    window.alert("The client could not be deleted.");
+  }
 }
 
 async function createClient() {

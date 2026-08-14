@@ -1,4 +1,4 @@
-import { get, put } from "@vercel/blob";
+import { del, get, list, put } from "@vercel/blob";
 
 // The one document that lives outside any client namespace: the flat list of
 // clients the steward can switch between. See ADR 0011.
@@ -63,6 +63,66 @@ export function createVercelBlobClientStore(options = {}) {
       clients.push(record);
       await writeIndex(clients);
       return record;
+    },
+    // Archiving removes a client from the switcher and keeps every record in
+    // its namespace. It is the default meaning of delete, and it is
+    // reversible by hand. The default client cannot be archived because it
+    // anchors the pre-namespace brain (ADR 0011).
+    async archive(id) {
+      if (id === "default") {
+        const error = new Error("The default client cannot be archived.");
+        error.status = 400;
+        throw error;
+      }
+      const index = (await readIndexOrNull()) || { clients: [] };
+      const clients = Array.isArray(index.clients) ? index.clients : [];
+      const record = clients.find((client) => client.id === id);
+      if (!record) {
+        const error = new Error("That client was not found.");
+        error.status = 404;
+        throw error;
+      }
+      record.status = "archived";
+      record.archivedAt = new Date().toISOString();
+      await writeIndex(clients);
+      return record;
+    },
+    // Purging permanently deletes every blob in the client's namespace and
+    // removes the client from the index. Irreversible. Only archived clients
+    // can be purged, so destruction is always a second, separate decision.
+    async purge(id) {
+      if (id === "default") {
+        const error = new Error("The default client cannot be deleted.");
+        error.status = 400;
+        throw error;
+      }
+      const index = (await readIndexOrNull()) || { clients: [] };
+      const clients = Array.isArray(index.clients) ? index.clients : [];
+      const record = clients.find((client) => client.id === id);
+      if (!record) {
+        const error = new Error("That client was not found.");
+        error.status = 404;
+        throw error;
+      }
+      if (record.status !== "archived") {
+        const error = new Error("Archive this client first. Permanent deletion is only available for archived clients.");
+        error.status = 400;
+        throw error;
+      }
+      const prefix = `brand-world-system/clients/${id}/`;
+      let cursor;
+      let deleted = 0;
+      do {
+        const page = await list({ prefix, cursor, limit: 1000, ...credentials });
+        const urls = (page.blobs || []).map((blob) => blob.url);
+        if (urls.length) {
+          await del(urls, { ...credentials });
+          deleted += urls.length;
+        }
+        cursor = page.cursor;
+      } while (cursor);
+      await writeIndex(clients.filter((client) => client.id !== id));
+      return { id, deleted };
     },
   };
 }
