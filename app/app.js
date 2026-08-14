@@ -2231,6 +2231,123 @@ function sourceLibraryGroups() {
   return groups.filter((g) => g.rows.length);
 }
 
+// The Sources landing is organized around three layers that answer different
+// questions: what the brand says it is, how it shows up in the world, and what
+// surrounds it. Slots name the things almost every brand has, because the ask
+// itself is the product insight: nobody thinks their Instagram grid is a brand
+// document, so the interface has to ask for it by name.
+//
+// Slots are detection rules over the existing source records, not a new
+// storage model. Removing or renaming a source updates the slot state on the
+// next render with no bookkeeping.
+const sourceSlots = [
+  {
+    id: "website", layer: 1, title: "Your website", note: "The main site the Brain should read.",
+    match: (source, material) => (source.kind === "url" || source.url) && material?.id === "approved-guidance",
+    intake: { kind: "guidance", form: "url", usage: "The brand's own website, read as current guidance." },
+    cta: "Add your site",
+  },
+  {
+    id: "logo", layer: 1, title: "Your logo", note: "The logo files your team uses.", plural: true,
+    match: (source, material) => material?.id === "protected-asset",
+    intake: { kind: "asset", form: "files", materialType: "protected-asset", usage: "An official brand mark. Use exactly as supplied." },
+    cta: "Add a logo",
+  },
+  {
+    id: "guide", layer: 1, title: "Your brand guide", note: "Brand book, style guide, or approved standards.",
+    match: (source, material) => (material?.id === "approved-guidance" || material?.id === "asset-bearing-guide") && !(source.kind === "url" || source.url),
+    intake: { kind: "guidance", form: "files", usage: "Approved brand standards. Follow wherever relevant." },
+    cta: "Add your guide",
+  },
+  {
+    id: "templates", layer: 1, title: "Your templates", note: "Templates your team uses to create.", plural: true,
+    match: (source, material) => material?.isTemplate || source.templateMeta?.isTemplate,
+    intake: { kind: "asset", form: "files", materialType: "brand-template", usage: "A branded template. Used as a locked background layer." },
+    cta: "Add templates",
+  },
+  {
+    id: "instagram", layer: 2, title: "Instagram", note: "Upload a screenshot of your grid. A recent full-screen capture works best.",
+    constraintNote: "We can't access Instagram directly, so a screenshot is the way in.",
+    match: (source) => /instagram|insta\b|ig grid/i.test(source.name || ""),
+    intake: { kind: "work", form: "files", materialType: "single-image", usage: "A screenshot of the brand's Instagram grid. Read for how the brand actually shows up: subjects, palette in practice, pacing, and tone." },
+    cta: "Add screenshot",
+  },
+  {
+    id: "linkedin", layer: 2, title: "LinkedIn", note: "Upload a screenshot of the company page and a few recent posts.",
+    constraintNote: "We can't access LinkedIn directly, so a screenshot is the way in.",
+    match: (source) => /linkedin/i.test(source.name || ""),
+    intake: { kind: "work", form: "files", materialType: "single-image", usage: "A screenshot of the brand's LinkedIn presence. Read for how the brand speaks and shows up professionally." },
+    cta: "Add screenshot",
+  },
+  {
+    id: "recent-work", layer: 2, title: "Recent work", note: "A campaign, sales deck, launch, or other work your team has actually shipped.", plural: true,
+    match: (source, material) => material?.id === "past-work-research" && !/instagram|insta\b|linkedin/i.test(source.name || ""),
+    intake: { kind: "work", form: "files", usage: "Work the brand has shipped. Shows how the brand behaves in practice without governing anything." },
+    cta: "Add an example",
+  },
+];
+
+function sourceSlotRows(slot) {
+  return state.brain.sources.filter((source) => {
+    if (source.productMeta) return false;
+    const material = sourceMaterialType(source);
+    // Earlier slots claim their matches first, so a LinkedIn screenshot does
+    // not also count as recent work.
+    for (const prior of sourceSlots) {
+      if (prior.id === slot.id) break;
+      if (prior.match(source, material)) return false;
+    }
+    return slot.match(source, material);
+  });
+}
+
+function slotStatus(slot, rows, locked) {
+  if (!rows.length) return { text: "Not added yet", filled: false };
+  const text = rows.length === 1 ? "Added" : `${rows.length} added`;
+  return { text: locked ? `${text} · in the approved Brain` : text, filled: true };
+}
+
+function slotAction(slot, rows, locked) {
+  if (!rows.length) return { action: "open-slot-intake", label: slot.cta };
+  if (slot.plural) return { action: "open-slot-intake", label: "Add another" };
+  if (locked) {
+    // A locked source cannot be swapped in place. Update opens the intake with
+    // the consequence stated rather than pretending replacement is one click.
+    return { action: "open-slot-intake", label: "Update", note: "Adds a new version for review. The approved Brain keeps the current one until you approve." };
+  }
+  return { action: "open-slot-intake", label: "Add another" };
+}
+
+function sourceSlotRow(slot, locked) {
+  const rows = sourceSlotRows(slot);
+  const status = slotStatus(slot, rows, locked && rows.length > 0);
+  const act = slotAction(slot, rows, locked);
+  return `
+    <div class="slot-row">
+      <span class="slot-copy">
+        <strong>${escapeHtml(slot.title)}</strong>
+        <span>${escapeHtml(slot.note)}</span>
+        ${slot.constraintNote ? `<small>${escapeHtml(slot.constraintNote)}</small>` : ""}
+      </span>
+      <span class="slot-status ${status.filled ? "filled" : ""}">${status.filled ? "✓ " : ""}${escapeHtml(status.text)}</span>
+      <span class="slot-action">
+        <button class="button ${status.filled ? "" : "primary"}" type="button" data-action="${act.action}" data-slot="${slot.id}">${escapeHtml(act.label)}</button>
+        ${act.note ? `<small>${escapeHtml(act.note)}</small>` : ""}
+      </span>
+    </div>
+  `;
+}
+
+function sourceLayerCoverage() {
+  const layer1 = sourceSlots.filter((slot) => slot.layer === 1);
+  const covered = layer1.filter((slot) => sourceSlotRows(slot).length > 0).length;
+  const layer2Count = sourceSlots.filter((slot) => slot.layer === 2).reduce((sum, slot) => sum + sourceSlotRows(slot).length, 0);
+  const slotted = new Set();
+  for (const slot of sourceSlots) sourceSlotRows(slot).forEach((source) => slotted.add(source.id));
+  const contextCount = state.brain.sources.filter((source) => !source.productMeta && !slotted.has(source.id)).length;
+  return { covered, layer1Total: layer1.length, layer2Count, contextCount };
+}
+
 function renderBrainSources() {
   const hasSources = state.brain.sources.length > 0;
   const hasApproved = sourceHasApprovedBaseline();
@@ -2246,8 +2363,53 @@ function renderBrainSources() {
           ? `<section class="brain-source-update-callout"><span class="brain-status governed">${pending} pending</span><span><strong>You have a proposed update ready</strong><p>New material creates a proposed update. Only guidance touched by it is reconsidered, and nothing changes for production until you review and approve the next version.</p></span><button class="button primary" type="button" data-action="start-brain-synthesis">Prepare proposed update</button></section>`
           : ""
       }
-      <div class="brain-sources-layout ${hasSources ? "has-sources" : ""}">
-        ${sourceComposer()}
+      ${state.brain.intakeDoor ? "" : `
+        <section class="card slot-coverage">
+          <div class="slot-coverage-cell">
+            <strong>Brand foundation</strong>
+            <span class="slot-coverage-count">${sourceLayerCoverage().covered} of ${sourceLayerCoverage().layer1Total} covered</span>
+          </div>
+          <div class="slot-coverage-cell">
+            <strong>Real-world examples</strong>
+            <span class="slot-coverage-count">${sourceLayerCoverage().layer2Count} added</span>
+          </div>
+          <div class="slot-coverage-cell">
+            <strong>More context</strong>
+            <span class="slot-coverage-count">${sourceLayerCoverage().contextCount} ${sourceLayerCoverage().contextCount === 1 ? "source" : "sources"}</span>
+          </div>
+        </section>
+
+        <section class="card slot-layer">
+          <div class="card-header">
+            <span><h2>1. Brand foundation</h2><span class="mini-pill pill-governed">Recommended first</span></span>
+          </div>
+          <p class="page-description">The core materials your team relies on.</p>
+          <div class="slot-rows">
+            ${sourceSlots.filter((slot) => slot.layer === 1).map((slot) => sourceSlotRow(slot, hasApproved)).join("")}
+          </div>
+        </section>
+
+        <section class="card slot-layer">
+          <div class="card-header">
+            <span><h2>2. How the brand shows up</h2><span class="mini-pill pill-warning">Important</span></span>
+          </div>
+          <p class="page-description">Real examples help the Brain understand how the brand actually looks and behaves.</p>
+          <div class="slot-rows">
+            ${sourceSlots.filter((slot) => slot.layer === 2).map((slot) => sourceSlotRow(slot, hasApproved)).join("")}
+          </div>
+        </section>
+
+        <section class="card slot-layer slot-layer-context">
+          <div class="card-header">
+            <span><h2>3. More context</h2><span class="mini-pill pill-neutral">Optional</span></span>
+            <button class="button primary" type="button" data-action="open-intake-door" data-door="evidence">+ Add another source</button>
+          </div>
+          <p class="page-description">Anything else that helps the Brain understand where the brand fits, what it responds to, or where it wants to go. Competitors, references, moodboards, aspirations.</p>
+        </section>
+      `}
+
+      <div class="brain-sources-layout ${state.brain.intakeDoor && hasSources ? "has-sources" : ""}">
+        ${state.brain.intakeDoor ? sourceComposer() : ""}
 
         <section class="card brain-source-batch">
           <div class="card-header">
@@ -7696,6 +7858,26 @@ root.addEventListener("click", (event) => {
       state.brain.sourceTemplateRatio = "";
     }
     render();
+    return;
+  }
+  if (action === "open-slot-intake") {
+    const slot = sourceSlots.find((item) => item.id === target.dataset.slot);
+    if (!slot) return;
+    resetSourceComposer();
+    state.brain.intakeDoor = "add";
+    const kind = intakeKinds.find((item) => item.id === slot.intake.kind);
+    state.brain.intakeKind = kind.id;
+    state.brain.sourceProvenance = kind.provenance;
+    state.brain.sourceForm = slot.intake.form;
+    state.brain.sourceMaterialType = slot.intake.materialType || kind.materialType || "";
+    state.brain.sourceAuthority = state.brain.sourceMaterialType ? sourceMaterialType(state.brain.sourceMaterialType).authority : "";
+    // Slots are the brand's own present-day material by definition. Stating
+    // rather than assuming: the person chose a slot named "Your website".
+    state.brain.sourceAspiration = "current";
+    state.brain.sourceUsage = slot.intake.usage;
+    render();
+    const composer = document.querySelector(".brain-source-composer");
+    if (composer) composer.scrollIntoView({ behavior: "smooth", block: "start" });
     return;
   }
   if (action === "open-intake-door") {

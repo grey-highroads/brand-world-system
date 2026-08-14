@@ -8186,3 +8186,125 @@ button.ws-attention-item:hover {
   font-size: 11px;
   color: var(--muted);
 }
+
+/* Sources landing. Three layers, each a card of named slots. Slots read from
+   the existing source records, so the states here are derived, never stored. */
+.slot-coverage {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+@media (max-width: 700px) {
+  .slot-coverage {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.slot-coverage-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  border-left: 2px solid var(--border-subtle);
+}
+
+.slot-coverage-cell strong {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.slot-coverage-count {
+  font-size: 12px;
+  color: var(--celery-ink);
+  font-weight: 600;
+}
+
+.slot-layer {
+  margin-top: var(--space-5);
+}
+
+.slot-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border-subtle);
+}
+
+.slot-row:first-child {
+  border-top: none;
+}
+
+.slot-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.slot-copy strong {
+  font-size: 14px;
+  color: var(--text);
+}
+
+.slot-copy > span {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.slot-copy small {
+  font-size: 11px;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.slot-status {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slot-status.filled {
+  color: var(--celery-ink);
+  font-weight: 600;
+}
+
+.slot-action {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-1);
+  max-width: 240px;
+}
+
+.slot-action small {
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  line-height: 1.4;
+}
+
+.slot-layer-context .card-header {
+  align-items: center;
+}
+
+@media (max-width: 700px) {
+  .slot-row {
+    flex-wrap: wrap;
+    gap: var(--space-3);
+  }
+  .slot-action {
+    align-items: flex-start;
+    max-width: none;
+  }
+}
