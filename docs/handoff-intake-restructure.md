@@ -1,5 +1,7 @@
 # Handoff: source intake restructure (complete) and what it opened
 
+> Update, 2026-08-14: The Brand Brain Sources landing page and its guided intake interactions were redesigned after this handoff. Read `docs/handoff-2026-08-14-brand-brain-sources.md` first. It supersedes the Sources-page interaction guidance below while preserving the underlying source contracts.
+
 - Date: 2026-08-09
 - Repository: `github.com/grey-highroads/brand-world-system`, branch `main`
 - Status: shipped and iterated through live testing. Stable. One tracked synthesis follow-up.
