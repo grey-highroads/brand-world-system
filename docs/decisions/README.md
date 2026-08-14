@@ -29,4 +29,4 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 - [`0012-model-products-as-governed-records.md`](0012-model-products-as-governed-records.md), Accepted (implemented 2026-08-09)
 - [`0013-govern-copy-through-derived-claims.md`](0013-govern-copy-through-derived-claims.md), Accepted (mechanism test passed 2026-08-09)
 - [`0014-produce-governed-copy-alongside-imagery.md`](0014-produce-governed-copy-alongside-imagery.md), Part one accepted and shipped 2026-08-10; part two revised 2026-08-11
-- [`0015-infer-the-lived-world-when-evidence-cannot-supply-it.md`](0015-infer-the-lived-world-when-evidence-cannot-supply-it.md), Proposed
+- [`0015-build-render-quality-on-people-scene-and-rejects.md`](0015-build-render-quality-on-people-scene-and-rejects.md), Proposed
