@@ -378,11 +378,16 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   // line and the rules change with it. Everything else is shared.
   const kinds = {
     scene: {
-      task: "You write short scene briefs for brand image production. A scene brief describes what a single image should show: subject, setting, action, light, and mood. It is direction for a photographer, not marketing copy.",
+      task: "You art direct brand image production. For each direction you write four separate fields: the world, the composition, the lighting, and the props. This is direction for a photographer on set, not marketing copy. Write it the way a director of photography would be briefed.",
       rules: [
         "Describe only what a camera could see. No slogans, no statistics, no claims about the product's performance.",
         "Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in.",
-        "The three briefs must differ in setting or moment, not merely in wording.",
+        "The world field carries the place, the person, the moment, and what is happening. Name the hour and the specific physical evidence that the place is used by real people.",
+        "The composition field carries camera behavior and spatial structure: where the subject sits in frame, camera height, focal length, depth of field, what runs from foreground to background, what is cropped by which frame edge, and an explicit ranking of what the eye should hit first, second, and third.",
+        "The lighting field carries light behavior: the dominant source and its direction and color, any secondary source, how the two interact, contrast level, and where shadows fall.",
+        "The props field is a short list of specific objects present in the scene. Objects with wear and use, not category defaults.",
+        "The three directions must differ in world, not merely in wording.",
+        "The brand's creative direction and declared ambitions are direction to follow, not background reading. If the brand has named an aesthetic it is reaching for, one of the three directions should pursue it.",
       ],
     },
     template_surface: {
@@ -414,10 +419,14 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     "RULES:",
     ...kind.rules.map((rule) => `- ${rule}`),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",
-    "- Two or three sentences per brief. Concrete nouns over adjectives.",
+    String(body.kind || "scene") === "scene"
+      ? "- Two to four sentences per field. Concrete nouns over adjectives. Specific over evocative."
+      : "- Two or three sentences per brief. Concrete nouns over adjectives.",
     "",
     "OUTPUT FORMAT:",
-    'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
+    String(body.kind || "scene") === "scene"
+      ? 'Return only JSON: {"options":[{"label":"three or four words","brief":"the world","composition":"the composition","lighting":"the lighting","props":"comma separated objects"}]} with exactly three options. No markdown fences, no preamble.'
+      : 'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
 
   const userPrompt = [
@@ -435,7 +444,7 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: 800,
+      max_tokens: String(body.kind || "scene") === "scene" ? 2200 : 800,
       temperature: 0.9,
     }),
   });

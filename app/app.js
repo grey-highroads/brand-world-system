@@ -1075,6 +1075,9 @@ const state = {
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
     exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
+    sceneComposition: "",
+    sceneLighting: "",
+    sceneProps: "",
     placement: "Instagram feed",
     format: "4:5 portrait",
     assetType: "scene",
@@ -7938,6 +7941,12 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="scene-input"]')) {
     state.brief.scene = event.target.value;
+    // Composition and lighting were authored for the direction that was
+    // applied. Once the scene is rewritten by hand they describe a different
+    // picture, so they are retired rather than carried onto a new one.
+    state.brief.sceneComposition = "";
+    state.brief.sceneLighting = "";
+    state.brief.sceneProps = "";
   }
   if (event.target.matches('[data-action="exclusions-input"]')) {
     state.brief.exclusions = event.target.value;
@@ -8557,6 +8566,11 @@ root.addEventListener("click", (event) => {
     const option = state.studio.sceneSuggestions[Number(target.dataset.index)];
     if (option) {
       state.studio[state.studio.sceneField || "brief"] = option.brief || "";
+      // The visible field stays plain prose the user can edit. Camera and light
+      // behaviour ride alongside it rather than being flattened into it.
+      state.brief.sceneComposition = option.composition || "";
+      state.brief.sceneLighting = option.lighting || "";
+      state.brief.sceneProps = option.props || "";
       state.studio.sceneSuggestions = [];
       state.studio.sceneSourcesOpen = false;
       setToast("Direction applied. Edit it however you like.");

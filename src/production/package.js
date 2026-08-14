@@ -278,14 +278,47 @@ function optionalText(value, label, maximumLength) {
   return text;
 }
 
-function sectionDirection(section) {
-  const pieces = [
-    section.summary,
-    ...(section.prose || []),
-    ...(section.principles || []).map((principle) => `Principle: ${principle}.`),
-    section.productionUse,
-  ];
+// Guidance sections are strategic prose written for a person to read. Reciting
+// them at synthesized length crowds out the authored scene, which is the part
+// that describes the picture. The summary states the position and the
+// principles are the actionable direction. The prose paragraphs argue the case
+// and the production-use note is briefing advice for a marketer, so neither
+// reaches an image model as instruction.
+function sectionDirection(section, { compact = false } = {}) {
+  const pieces = compact
+    ? [section.summary, ...(section.principles || []).map((principle) => `${principle}`)]
+    : [
+        section.summary,
+        ...(section.prose || []),
+        ...(section.principles || []).map((principle) => `Principle: ${principle}.`),
+        section.productionUse,
+      ];
   return pieces.map((piece) => cleanText(piece)).filter(Boolean).join(" ");
+}
+
+// What the brand is not. Instruction that closes off wrong answers leaves the
+// rest of the space open, which is the opposite of prescriptive guidance. The
+// renderer takes one prompt string and has no negative channel, so these
+// compile as avoid-clauses inside the positive prompt.
+function rejectsDirection(approvedBrain) {
+  const lived = approvedBrain?.artifacts?.livedWorld || approvedBrain?.artifacts?.lived_world;
+  const rejects = Array.isArray(lived?.rejects) ? lived.rejects.map((item) => cleanText(item)).filter(Boolean) : [];
+  if (!rejects.length) return "";
+  return `This brand is not these things, and none of them belong in the frame: ${rejects.join("; ")}.`;
+}
+
+// The image prompt needs the product's physical form, its visual direction, and
+// its exclusions. Claim wording and substantiation notes govern copy, not
+// pictures, and they are the single largest block in the compiled prompt.
+function compileProductSectionForImage(product) {
+  const parts = [];
+  if (product.one_true_thing) {
+    parts.push(`This output is for the product "${product.product_name}." ${cleanText(product.one_true_thing)}`);
+  } else if (product.product_name) {
+    parts.push(`This output is for the product "${product.product_name}."`);
+  }
+  if (product.visual_direction) parts.push(`Visual direction: ${cleanText(product.visual_direction)}`);
+  return parts.join(" ");
 }
 
 function referenceDirection(reference) {
@@ -334,6 +367,12 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   }
 
   let scene = requiredText(brief?.scene, "Describe the image", 4000);
+  // Camera behaviour, light behaviour, and compositional hierarchy have nowhere
+  // to be recorded in a single prose field. When the scene writer authors them
+  // separately they are carried separately.
+  const sceneComposition = cleanText(brief?.sceneComposition || "");
+  const sceneLighting = cleanText(brief?.sceneLighting || "");
+  const sceneProps = cleanText(brief?.sceneProps || "");
   const exclusions = optionalText(brief?.exclusions, "The list of things to avoid", 2000);
   const placement = requiredText(brief?.placement, "Placement", 120);
   const format = requiredText(brief?.format, "Format", 120);
@@ -446,7 +485,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         ? `Create one ${format} reusable brand template surface for ${cleanText(approvedBrain.brandName)}. ${scene}`
         : isSalesEnablement
         ? `Create one ${format} polished content element for ${cleanText(approvedBrain.brandName)} sales materials. ${scene}`
-        : `${modeOpeningLine} Create one ${format} brand world image for ${placement}. ${scene}`,
+        : [
+            `${modeOpeningLine} Create one ${format} brand world image for ${placement}.`,
+            scene,
+            sceneComposition ? `Composition: ${sceneComposition}` : "",
+            sceneLighting ? `Lighting: ${sceneLighting}` : "",
+            sceneProps ? `Present in the scene: ${sceneProps}.` : "",
+          ].filter(Boolean).join(" "),
     },
     {
       title: "Brand foundation",
@@ -454,9 +499,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     },
     product ? {
       title: "Product knowledge",
-      body: compileProductSection(product),
+      body: compileProductSectionForImage(product),
     } : null,
-    ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section) })),
+    ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section, { compact: true }) })),
     isTemplate ? templateProductionInstructions : null,
     isSalesEnablement ? buildSalesElementInstructions(hasTemplate) : null,
     campaignSection,
@@ -473,6 +518,10 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         (isTemplate || isSalesEnablement) ? "" : (dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : ""),
       ].filter(Boolean).join(" "),
     },
+    (isTemplate || isSalesEnablement) ? null : (rejectsDirection(approvedBrain) ? {
+      title: "What this brand is not",
+      body: rejectsDirection(approvedBrain),
+    } : null),
     {
       title: "Creative references",
       body: references.length
