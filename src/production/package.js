@@ -229,9 +229,20 @@ const formatSizes = {
   "1024x768": "1024x768",
   "1024x1024": "1024x1024",
   "1280x672": "1280x672",
-  "1920x800": "1536x640",
-  "1200x800": "1536x1024",
 };
+
+// The synthesizer stores brandDescription as a complete sentence, and it
+// usually opens with the brand name. The template here supplied the subject as
+// well, which produced "MycoPop is MycoPop is a functional mushroom energy
+// drink." When the description already names the brand, use it as written.
+function brandOpener(approvedBrain) {
+  const name = cleanText(approvedBrain.brandName);
+  const description = cleanText(approvedBrain.brandDescription, "the approved brand");
+  const sentence = new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(description)
+    ? description
+    : `${name} is ${description}`;
+  return /[.!?]$/.test(sentence) ? sentence : `${sentence}.`;
+}
 
 function cleanText(value, fallback = "") {
   const text = String(value || "").replace(/\s+/g, " ").trim();
@@ -435,7 +446,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     },
     {
       title: "Brand foundation",
-      body: `${cleanText(approvedBrain.brandName)} is ${cleanText(approvedBrain.brandDescription, "the approved brand")}. ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
+      body: `${brandOpener(approvedBrain)} ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
     },
     product ? {
       title: "Product knowledge",

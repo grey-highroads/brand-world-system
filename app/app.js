@@ -2314,6 +2314,20 @@ function sourceIsBorrowed(source) {
   return source.provenance === "emulate" || source.authority === "creative-reference";
 }
 
+// Orientation is decided by comparing the two sides of the ratio to each other.
+// An earlier version compared the first number to 1, so any ratio whose first
+// number exceeded 1 was labelled landscape: "4:5" became "4:5 landscape" and
+// "1.91:1" became "1.91:1 square". Neither string is a key in formatSizes, so
+// imageSizeForFormat fell through to its 1024x1024 default and every affected
+// job rendered square while the compiled prompt said landscape three times.
+function orientationForRatio(ratio) {
+  const [width, height] = String(ratio || "").split(":").map((part) => parseFloat(part));
+  if (!Number.isFinite(width) || !Number.isFinite(height) || height === 0) return "square";
+  if (width > height) return "landscape";
+  if (width < height) return "portrait";
+  return "square";
+}
+
 const sourceSlots = [
   {
     id: "website", layer: 1, title: "Website",
@@ -2661,7 +2675,7 @@ function sourceContextDrawer() {
               <strong>Our brand</strong><small>Something our team made, learned, or approved.</small>
             </button>
             <button class="source-choice ${provenance === "emulate" ? "active" : ""}" type="button" data-action="set-source-provenance" data-value="emulate">
-              <strong>Outside reference</strong><small>Context or inspiration—not evidence of what our brand is.</small>
+              <strong>Outside reference</strong><small>Context or inspiration, not evidence of what our brand is.</small>
             </button>
           </div>
         </div>
@@ -8419,7 +8433,7 @@ root.addEventListener("click", (event) => {
           // Map to legacy placement format
           const legacyPlacement = Object.keys(placementFormats).find((p) => p.toLowerCase().includes(platform.label.toLowerCase()));
           if (legacyPlacement) state.brief.placement = legacyPlacement;
-          state.brief.format = match.ratio + (match.ratio.includes(":") && parseInt(match.ratio) > 1 ? " landscape" : parseInt(match.ratio.split(":")[0]) < parseInt(match.ratio.split(":")[1] || "1") ? " portrait" : " square");
+          state.brief.format = `${match.ratio} ${orientationForRatio(match.ratio)}`;
           break;
         }
       }

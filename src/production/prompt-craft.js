@@ -206,7 +206,7 @@ export const AESTHETIC_MODES = {
   cinematic_film_still: {
     id: "cinematic_film_still",
     name: "Cinematic film still",
-    openingLine: "A wide cinematic campaign-film still in landscape framing, a real environment with depth and atmosphere.",
+    openingLine: "A wide cinematic campaign-film still in landscape framing, a real environment with depth and atmosphere, not a tabletop product photo.",
     bestWhen: "premium, ritual, cinematic, heritage, design-led, or elevated ceremony",
   },
   documentary_lifestyle: {
