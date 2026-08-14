@@ -107,3 +107,8 @@ async function loadX(force = false) {
 ### Reference incident
 
 On 2026-08-09, the initial ADR 0012 step 5 implementation put `void loadProducts()` inside `renderWorkspace`, `renderChooser`, and `renderSalesSetup` to keep product-version drift cards populated. Combined with a guard that treated empty results as unloaded and no concurrent-call protection, this created a runaway render/fetch loop on any client with no products yet. Every existing client fit that description. The tab pegged 100% CPU, hydrateClients never got room to complete its render, the client switcher stayed empty, and hard refresh timed out. Full chain and fix in `docs/incidents/2026-08-09-loadproducts-render-loop.md`.
+
+## Shrink check before every push
+
+Fetch-fresh was not enough; see the 2026-08-14 incident. Before committing, compare each pushed file's line count against the same file at the current remote head. If a file shrinks by more than two percent, stop. Either the shrink is intentional, in which case the commit message names what was removed and why, or the base was stale and the push would destroy other sessions' work. Whole-file pushes make this the single most important mechanical habit in the workflow.
+

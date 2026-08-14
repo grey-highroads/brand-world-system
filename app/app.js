@@ -1112,6 +1112,7 @@ const state = {
     // audit trail. Consolidating the two is a deliberate follow-up.
     completedOutputs: [],
   },
+  segments: { list: [], loading: false, loadedForClient: null, error: "" },
   studio: {
     category: null,
     brief: "",
@@ -1119,8 +1120,23 @@ const state = {
     activeFormats: [],
     textOverlay: false,
     campaignId: "",
-    caption: "",
-    captionOpen: false,
+    segment: "",
+    // A social job writes its caption unless the user turns it off. The
+    // direction field steers what the caption says; leaving it blank draws
+    // the message from the brief and the Brand Brain.
+    captionOn: true,
+    headlineSetOn: false,
+    renderCopyIntoImage: false,
+    displayZone: "lower_third",
+    displayFields: ["headline"],
+    // Copy drafted in setup, before any render. `stale` means the user has
+    // edited since the last claim check, so the audit on screen no longer
+    // describes the text on screen.
+    draftCopy: null,
+    draftCopyLoading: false,
+    draftCopyError: "",
+    draftCopyStale: false,
+    copyDirection: "",
     referenceOpen: false,
     directionOpen: false,
     direction: "",
@@ -3565,6 +3581,12 @@ function renderStudioSetup() {
                 </div>
               </div>
 
+              ${segmentField("studio")}
+
+              ${headlineSetField()}
+
+              ${renderCopyField()}
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
@@ -3611,18 +3633,23 @@ function renderStudioSetup() {
               ` : ""}
             </div>
 
-            ${state.studio.captionOpen ? `
-              <div class="studio-additive-section">
+            <div class="field full">
+              <button class="studio-toggle-row" type="button" data-action="toggle-studio-caption">
+                <span class="studio-toggle-track ${state.studio.captionOn ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+                <span class="studio-toggle-content">
+                  <strong>Write the caption too</strong>
+                  <span class="field-note">The words that run with the image in the feed. Checked against your approved and prohibited claims before you see them.</span>
+                </span>
+              </button>
+            </div>
+
+            ${state.studio.captionOn ? `
+              <div class="studio-additive-section studio-copy-section">
                 <div class="studio-additive-header">
-                  <span class="section-label">Post caption</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="captionOpen" aria-label="Remove post caption">&times;</button>
+                  <span class="section-label">What should the caption say?</span>
                 </div>
-                <div class="studio-additive-header">
-                  <span class="field-note">Text that accompanies the image in the feed. Not rendered on the image.</span>
-                  <span class="field-note">Governed by brand voice</span>
-                </div>
-                <textarea data-action="studio-caption-input" placeholder="Write your post text, or leave blank to draft from your Brand Brain">${escapeHtml(state.studio.caption)}</textarea>
-                <span class="field-note">Approved claims available. Prohibited claims blocked.</span>
+                <p class="field-note field-spaced">Leave this blank and the caption is written from your brief and your Brand Brain.</p>
+                <textarea data-action="studio-copy-direction-input" placeholder="The point you want the post to land, or the audience it is written for.">${escapeHtml(state.studio.copyDirection)}</textarea>
               </div>
             ` : ""}
 
@@ -3651,7 +3678,6 @@ function renderStudioSetup() {
             ` : ""}
 
             <div class="studio-additive-links">
-              ${!state.studio.captionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="captionOpen">+ Add post caption</button>` : ""}
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
               ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
             </div>
@@ -4049,6 +4075,12 @@ function renderWebsiteSetup(cat) {
                 </div>
               </div>
 
+              ${segmentField("website")}
+
+              ${headlineSetField()}
+
+              ${renderCopyField()}
+
               ${sceneSuggestField({
                 id: "website-brief",
                 field: "brief",
@@ -4206,6 +4238,12 @@ function renderSalesSetup(cat) {
                   </select>
                 </div>
               </div>
+              ${segmentField("sales")}
+
+              ${headlineSetField()}
+
+              ${renderCopyField()}
+
               ${sceneSuggestField({
                 id: "sales-element",
                 field: "salesElement",
@@ -5829,6 +5867,71 @@ function option(value, selected) {
   return `<option value="${escapeHtml(value)}" ${value === selected ? "selected" : ""}>${escapeHtml(value)}</option>`;
 }
 
+// What governs the words, in the brand's own language. Approved claims are
+// the wording the copy may use; prohibited claims are the wording it may not.
+// A job with nothing on either list says so plainly, because a client who has
+// not written a claims document yet should see an accurate empty state rather
+// than an implication that the check was skipped.
+function copyPreflightPanel(generationPackage) {
+  const copy = generationPackage.copy;
+  if (!copy) return "";
+  const claims = copy.governingClaims || { approved: [], prohibited: [], disclosures: [], directives: [] };
+  const directives = claims.directives || [];
+  const total = claims.approved.length + claims.prohibited.length + claims.disclosures.length + directives.length;
+  const declaredLabels = copy.declared.map((entry) => copyTypeLabel(entry.copyTypeId)).join(", ");
+
+  const group = (label, entries, pillClass, note) => entries.length ? `
+    <div class="rule-card">
+      <span class="section-label">${label}</span>
+      ${entries.map((entry) => `
+        <div class="rule rule-stacked">
+          <span class="mini-pill ${pillClass}">${escapeHtml(note)}</span>
+          <span><strong>${escapeHtml(entry.text)}</strong><span>${escapeHtml(entry.source || "Brand claims")}</span></span>
+        </div>
+      `).join("")}
+    </div>
+  ` : "";
+
+  return `
+    <details class="card collapsible-card" open>
+      <summary class="card-header collapsible-header">
+        <h2>What stays exact in the words</h2>
+        <span class="collapsible-meta"><span class="mini-pill ${total ? "pill-success" : "pill-neutral"}">${total ? `${total} governing ${total === 1 ? "rule" : "rules"}` : "Voice guidance only"}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+      </summary>
+      <p class="page-description">${escapeHtml(declaredLabels)} will be written with this job and checked before you see it.${copy.segment ? ` Written for ${escapeHtml(copy.segment)}.` : ""}</p>
+      ${total === 0 ? `
+        <div class="rule-card">
+          <div class="rule rule-stacked">
+            <span class="mini-pill pill-neutral">Nothing to enforce</span>
+            <span><strong>No approved or prohibited claims apply to this job yet</strong><span>The caption will follow your brand voice guidance. Once you add claims, every caption gets checked against them.</span></span>
+          </div>
+        </div>
+      ` : ""}
+      ${group("Wording the caption may use", claims.approved, "pill-protected", "Approved")}
+      ${group("Wording the caption may not use", claims.prohibited, "pill-warning", "Prohibited")}
+      ${group("Must appear when triggered", claims.disclosures, "pill-neutral", "Disclosure")}
+      ${group("Instructions the caption follows", directives, "pill-neutral", "Directive")}
+      ${(copy.withheldForSegment || []).length ? `
+        <div class="rule-card">
+          <span class="section-label">Held back because no segment is set</span>
+          <p class="field-note field-spaced">These are approved for a specific segment. Pick that segment in setup and they become available to this job.</p>
+          ${copy.withheldForSegment.map((entry) => `
+            <div class="rule rule-stacked">
+              <span class="mini-pill pill-neutral">${escapeHtml(entry.segment || "Segment")}</span>
+              <span><strong>${escapeHtml(entry.text)}</strong><span>Not used here</span></span>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+    </details>
+  `;
+}
+
+function copyTypeLabel(copyTypeId) {
+  const labels = { social_caption: "A post caption", headline_set: "A headline set" };
+  return labels[copyTypeId] || "Copy";
+}
+
 function renderPreflight() {
   const generationPackage = state.production.package;
   if (!generationPackage) {
@@ -5889,7 +5992,11 @@ function renderPreflight() {
               <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
             </ul>
             ${generationPackage.stateNeutralizations?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the protected asset sealed</strong><span>${escapeHtml(generationPackage.stateNeutralizations.join(", "))} changed to match the supplied asset state.</span></span></div></div>` : ""}
+            ${generationPackage.orientationAdjustments?.length ? `<div class="rule-card"><span class="section-label">Scene adjustments</span><div class="rule"><span class="mini-pill">Adjusted</span><span><strong>Your scene was adjusted to keep the screen facing the camera</strong><span>${escapeHtml(generationPackage.orientationAdjustments.join(", "))} changed so the device screen stays visible in the final image.</span></span></div></div>` : ""}
+            ${generationPackage.screenContentAbstracted ? `<div class="rule-card"><span class="section-label">Screens in this scene</span><div class="rule"><span class="mini-pill">Protected</span><span><strong>Screens will show abstract content, not readable text</strong><span>To show your real product content on a screen, add it as a protected asset and it will be preserved exactly.</span></span></div></div>` : ""}
           </details>
+
+          ${copyPreflightPanel(generationPackage)}
 
           ${generationPackage.treatments?.length ? `
           <details class="card collapsible-card">
@@ -6070,6 +6177,201 @@ function buildEvaluationFindings(job) {
   return findings;
 }
 
+// The produced words, shown as part of the finished piece rather than as a
+// side panel. Stacked rather than gridded: caption length varies enormously
+// between a one-line TikTok caption and a three-hundred-word LinkedIn post,
+// and a grid row stretches to its tallest cell.
+// The intended string, shown beside the image so a person can compare it
+// against what was drawn.
+//
+// This is the manual stand-in for read-back verification, which ADR 0014
+// specifies and which is not built. It is deliberately not styled as a pass:
+// nothing here confirms the lettering is correct, and the panel says who is
+// responsible for checking.
+function renderedCopyCheckPanel(job) {
+  const display = job?.generationPackage?.copy?.display;
+  if (!display || !display.lines?.length) return "";
+  return `
+    <div class="produced-copy produced-copy-check">
+      <div class="produced-copy-header">
+        <span class="section-label">Placed on the image</span>
+        <span class="mini-pill pill-warning">Check the lettering</span>
+      </div>
+      <p class="field-note field-spaced">This is what the renderer was told to draw, character for character. Compare it against the image. Nothing checks this automatically yet.</p>
+      <dl class="produced-copy-fields">
+        ${display.lines.map((line) => `
+          <div class="produced-copy-field">
+            <dt>${escapeHtml(line.label)}</dt>
+            <dd>${escapeHtml(line.text)}</dd>
+          </div>
+        `).join("")}
+      </dl>
+    </div>
+  `;
+}
+
+function producedCopyPanel(job) {
+  const produced = job?.generationPackage?.copy?.produced || [];
+  if (!produced.length) return "";
+  return produced.map((block, index) => {
+    if (block.failed) {
+      return `
+        <div class="produced-copy produced-copy-failed">
+          <div class="produced-copy-header">
+            <span class="section-label">${escapeHtml(copyTypeLabel(block.copyTypeId))}</span>
+            <span class="mini-pill pill-danger">Not written</span>
+          </div>
+          <p class="page-description">${escapeHtml(block.error || "The copy could not be written.")} The image is still usable. Try the caption again from the actions panel.</p>
+        </div>
+      `;
+    }
+    return `
+      <div class="produced-copy">
+        <div class="produced-copy-header">
+          <span class="section-label">${escapeHtml(block.label || copyTypeLabel(block.copyTypeId))}</span>
+          ${copyAuditPill(block.audit)}
+        </div>
+        ${block.fields
+          ? `<dl class="produced-copy-fields">${block.fields.map((field) => `
+              <div class="produced-copy-field">
+                <dt>${escapeHtml(field.label)}${field.overLength ? ` <span class="mini-pill pill-warning">Runs long</span>` : ""}</dt>
+                <dd>${field.text ? escapeHtml(field.text) : `<span class="field-note">Nothing came back for this line. Write it again.</span>`}</dd>
+              </div>
+            `).join("")}</dl>`
+          : `<div class="produced-copy-text">${escapeHtml(block.text)}</div>`}
+        <div class="produced-copy-actions">
+          <button class="button small" type="button" data-action="copy-produced-text" data-index="${index}">Copy text</button>
+          <button class="button small" type="button" data-action="rewrite-caption" data-index="${index}">Write it again</button>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// The audit state, in one pill. An audit that could not run says so; it never
+// borrows the language of a clean pass.
+function copyAuditPill(audit) {
+  const status = audit?.status || "errored";
+  const findings = audit?.findings || [];
+  const violations = findings.filter((f) => f.severity === "violation").length;
+  const reviews = findings.filter((f) => f.severity === "review").length;
+
+  // Findings are counted before the status is reported, because the claim
+  // audit is not the only check that runs. The prose and display budget
+  // checks are deterministic and run in every state, including the ones where
+  // the claim audit found nothing to check or could not run at all.
+  //
+  // The earlier version returned on status first, so a caption containing an
+  // em dash sat under a neutral "No claims to check" pill while the finding
+  // was recorded below. A pill that reports a check the copy failed as though
+  // nothing were wrong is the same fault as an errored audit rendering as a
+  // clean pass.
+  if (violations) return `<span class="mini-pill pill-danger">${violations} ${violations === 1 ? "violation" : "violations"}</span>`;
+  if (status === "errored") {
+    return reviews
+      ? `<span class="mini-pill pill-danger">Not checked, ${reviews} to review</span>`
+      : '<span class="mini-pill pill-danger">Not checked</span>';
+  }
+  if (reviews) return `<span class="mini-pill pill-warning">${reviews} to review</span>`;
+  if (status === "no_claims") return '<span class="mini-pill pill-neutral">No claims to check</span>';
+  return '<span class="mini-pill pill-success">Claims check passed</span>';
+}
+
+// Copy findings in the same shape as image findings: the specific sentence,
+// what kind of finding it is, and the rule that governs it.
+function buildCopyFindings(job) {
+  const produced = job?.generationPackage?.copy?.produced || [];
+  const findings = [];
+  const displayError = job?.generationPackage?.copy?.displayCopyError;
+  if (displayError) {
+    findings.push({
+      id: "copy-display-failed",
+      element: "The headline was not placed on the image",
+      category: "Copy",
+      status: "unchecked",
+      finding: `${displayError} The image was rendered without it, so it is usable, but the words are not on it.`,
+    });
+  }
+  produced.forEach((block, blockIndex) => {
+    if (block.failed) return;
+    const audit = block.audit || {};
+    const label = block.label || copyTypeLabel(block.copyTypeId);
+
+    if (audit.status === "errored") {
+      findings.push({
+        id: `copy-${blockIndex}-errored`,
+        element: `${label}: not checked`,
+        category: "Claims",
+        status: "unchecked",
+        finding: audit.message || "The claim check could not run, so this copy has not been checked against your claims.",
+        repairAction: "rewrite-caption",
+        repairIndex: blockIndex,
+        repairLabel: "Write it again and re-check",
+      });
+      return;
+    }
+    if (audit.status === "no_claims") {
+      findings.push({
+        id: `copy-${blockIndex}-noclaims`,
+        element: `${label}: nothing to check against`,
+        category: "Claims",
+        status: "verify",
+        finding: audit.message || "No approved or prohibited claims apply to this job yet.",
+      });
+    }
+    (audit.findings || []).forEach((finding, findingIndex) => {
+      findings.push({
+        id: `copy-${blockIndex}-${findingIndex}`,
+        element: (finding.field ? `${finding.field}: ` : "") + (finding.kind === "prohibited"
+          ? "This claim is on your prohibited list"
+          : finding.kind === "disclosure"
+            ? "A required disclosure is missing"
+            : finding.kind === "prose"
+              ? "This breaks one of your writing rules"
+            : finding.kind === "display_budget"
+              ? "This line is too long for the space"
+              : "This claim is not on your approved list"),
+        category: finding.kind === "prose" ? "Writing" : finding.kind === "display_budget" ? "Layout" : "Claims",
+        status: finding.severity === "violation" ? "violation" : "review",
+        sentence: finding.sentence,
+        rule: finding.rule,
+        finding: finding.reason,
+        repairAction: "rewrite-caption",
+        repairIndex: blockIndex,
+        repairLabel: "Write it again",
+      });
+    });
+  });
+  return findings;
+}
+
+// Coral means a problem: a claim the brand has prohibited, or a check that did
+// not run. Yellow means a human should look. Green means the check ran and
+// found nothing.
+function findingPillClass(status) {
+  if (status === "violation") return "pill-danger";
+  if (status === "unchecked") return "pill-danger";
+  if (status === "enforced") return "pill-success";
+  return "pill-warning";
+}
+
+function findingStatusLabel(status) {
+  if (status === "violation") return "Violation";
+  if (status === "unchecked") return "Not checked";
+  if (status === "enforced") return "Enforced";
+  if (status === "review") return "Review recommended";
+  return "Verify";
+}
+
+function findingCountLabel(findings) {
+  const violations = findings.filter((f) => f.status === "violation").length;
+  const unchecked = findings.filter((f) => f.status === "unchecked").length;
+  if (violations) return `${violations} ${violations === 1 ? "violation" : "violations"}`;
+  if (unchecked) return "A check did not run";
+  const toVerify = findings.filter((f) => f.status === "verify" || f.status === "review").length;
+  return `${toVerify} to verify`;
+}
+
 function renderResult() {
   if (state.production.reviewLoading) {
     return shell(`
@@ -6096,7 +6398,7 @@ function renderResult() {
   const complete = job?.status === "complete" && job.imageUrl;
   const isLinkedIn = job?.deliverable === "linkedin-post" || job?.generationPackage?.deliverable === "linkedin-post";
   const generationMethod = isLinkedIn ? "Post copy + image" : job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
-  const findings = complete ? buildEvaluationFindings(job) : [];
+  const findings = complete ? [...buildCopyFindings(job), ...buildEvaluationFindings(job)] : [];
 
   // Add LinkedIn-specific evaluation findings
   if (complete && isLinkedIn && job.postCopy) {
@@ -6160,7 +6462,9 @@ function renderResult() {
                     ${job.postCopy ? `<div class="linkedin-post-copy"><span class="section-label">Generated post</span><div class="linkedin-post-text">${escapeHtml(job.postCopy).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</div><button class="button small" type="button" data-action="copy-post-text">Copy text</button></div>` : ""}
                     ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
-                : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+                : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
+                   ${renderedCopyCheckPanel(job)}
+                   ${producedCopyPanel(job)}`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
           </section>
@@ -6169,18 +6473,20 @@ function renderResult() {
           <section class="card">
             <div class="card-header">
               <h2>Evaluation findings</h2>
-              <span class="mini-pill">${findings.filter((f) => f.status === "verify").length} to verify</span>
+              <span class="mini-pill">${findingCountLabel(findings)}</span>
             </div>
             <ul class="evaluation-list">
               ${findings.map((f) => `
                 <li class="evaluation-item ${f.status}">
                   <div class="evaluation-item-header">
-                    <span class="mini-pill ${f.status === "enforced" ? "pill-success" : "pill-warning"}">${f.status === "enforced" ? "Enforced" : "Verify"}</span>
+                    <span class="mini-pill ${findingPillClass(f.status)}">${escapeHtml(findingStatusLabel(f.status))}</span>
                     <strong>${escapeHtml(f.element)}</strong>
                     <span class="evaluation-category">${escapeHtml(f.category)}</span>
                   </div>
+                  ${f.sentence ? `<blockquote class="evaluation-sentence">${escapeHtml(f.sentence)}</blockquote>` : ""}
+                  ${f.rule ? `<p class="evaluation-rule"><span class="section-label">Governing rule</span>${escapeHtml(f.rule)}</p>` : ""}
                   <p>${escapeHtml(f.finding)}</p>
-                  ${f.repairAction ? `<button class="button small" type="button" data-action="${f.repairAction}" data-finding="${f.id}">${escapeHtml(f.repairLabel)}</button>` : ""}
+                  ${f.repairAction ? `<button class="button small" type="button" data-action="${f.repairAction}" data-finding="${f.id}" ${Number.isInteger(f.repairIndex) ? `data-index="${f.repairIndex}"` : ""}>${escapeHtml(f.repairLabel)}</button>` : ""}
                 </li>
               `).join("")}
             </ul>
@@ -6687,14 +6993,215 @@ function wait(milliseconds) {
   return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
+// Which copy the job asks for. Only the social flow declares copy today, and
+// only when the user has left the caption switched on. Every other flow sends
+// an empty list, which compiles exactly as it did before copy existed.
+function declaredCopyOutputs() {
+  const declared = [];
+  // The caption is prose for a feed, so it is offered on social only and is
+  // on by default. A headline set is display copy, useful wherever the image
+  // ends up, so it is offered broadly and is off by default: most jobs do not
+  // need one, and an unrequested model call is a cost with no reader.
+  if (state.studio.category === "social" && state.studio.captionOn) declared.push("social_caption");
+  if (state.studio.headlineSetOn) declared.push("headline_set");
+  return declared;
+}
+
+// Segment picker. A segment is a subset of audience: surgery centers within
+// healthcare providers, not "healthcare providers" itself. Optional
+// everywhere, because broadcast work legitimately addresses no one segment
+// and a required field just gets answered with whatever is first in the list.
+//
+// The list comes from the segments already named on the client's claims, so
+// it needs no separate registry and no admin screen. A client with no
+// segmented claims sees no picker at all rather than an empty control.
+// Headline set toggle. Offered on any flow that produces an image, because
+// display copy is useful in a layout tool regardless of where the image goes.
+function headlineSetField() {
+  return `
+    <div class="field full">
+      <button class="studio-toggle-row" type="button" data-action="toggle-studio-headline-set">
+        <span class="studio-toggle-track ${state.studio.headlineSetOn ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+        <span class="studio-toggle-content">
+          <strong>Write a headline set</strong>
+          <span class="field-note">A headline, a supporting line, and a call to action. Short enough for a slide or an ad, checked against your claims like any other copy.</span>
+        </span>
+      </button>
+    </div>
+  `;
+}
+
+// Placing the headline into the render. Nested under the headline set,
+// because there is nothing to place until a headline exists.
+//
+// The warning is not decoration. Read-back verification is specified in ADR
+// 0014 and is not built, so nothing checks that the rendered characters match
+// the intended ones. Until that exists the person is the verification step,
+// and the interface has to say so rather than imply the string is guaranteed.
+// Draft the headline set in setup, before any render.
+//
+// The point is cost: a render pass takes time and money, and a wrong call to
+// action is obvious in two seconds of reading and invisible until the image
+// comes back. Seeing the words first turns a wasted render into an edit.
+//
+// Editing has a governance consequence. ADR 0014 part two allows in-image
+// copy only from a produced-and-audited source, so an edit makes the audit
+// stale and the copy is re-checked before it can render. The interface says
+// so rather than showing a stale green pill.
+// Editing a draft field must not trigger a full render: re-rendering the
+// textarea while someone is typing in it destroys focus and caret position.
+// The two things that change on edit are updated directly instead.
+function updateDraftStaleNotice() {
+  const pill = document.querySelector("[data-draft-pill]");
+  if (pill) pill.innerHTML = '<span class="mini-pill pill-warning">Edited, not re-checked</span>';
+  const notice = document.querySelector("[data-draft-stale-notice]");
+  if (notice) notice.hidden = false;
+}
+
+function draftCopyPanel() {
+  if (!state.studio.renderCopyIntoImage) return "";
+  const draft = state.studio.draftCopy;
+  const busy = state.studio.draftCopyLoading;
+  const stale = state.studio.draftCopyStale;
+
+  if (!draft) {
+    return `
+      <div class="field full studio-setup-field">
+        <span class="section-label">See the words first</span>
+        <span class="field-note">Draft the copy before rendering so you can fix it here instead of after an image comes back.</span>
+        <button class="button primary scene-suggest-cta" type="button" data-action="draft-display-copy" ${busy ? "disabled" : ""}>
+          ${busy ? "Writing the lines" : "Draft the copy"}
+        </button>
+        ${state.studio.draftCopyError ? `<span class="field-note field-error">${escapeHtml(state.studio.draftCopyError)}</span>` : ""}
+      </div>
+    `;
+  }
+
+  const findings = stale ? [] : (draft.audit?.findings || []);
+  return `
+    <div class="field full studio-setup-field">
+      <div class="studio-additive-header">
+        <span class="section-label">The words that will go on the image</span>
+        <span data-draft-pill>${stale
+          ? `<span class="mini-pill pill-warning">Edited, not re-checked</span>`
+          : draftAuditPill(draft.audit)}</span>
+      </div>
+      <span class="field-note">Edit any line. The copy is checked against your claims again before it renders.</span>
+      ${draft.fields.map((field, index) => `
+        <div class="draft-copy-field">
+          <label for="draft-field-${field.id}">${escapeHtml(field.label)}${state.studio.displayFields.includes(field.id) ? "" : ` <span class="field-note">(stays beside the image)</span>`}</label>
+          <textarea id="draft-field-${field.id}" class="draft-copy-input" data-action="draft-copy-input" data-index="${index}" rows="2">${escapeHtml(field.text)}</textarea>
+        </div>
+      `).join("")}
+      ${findings.length ? `
+        <div class="rule-card">
+          <span class="section-label">Worth a look before you render</span>
+          ${findings.map((finding) => `
+            <div class="rule rule-stacked">
+              <span class="mini-pill ${finding.severity === "violation" ? "pill-danger" : "pill-warning"}">${finding.severity === "violation" ? "Violation" : "Review"}</span>
+              <span><strong>${escapeHtml(finding.field ? `${finding.field}: ${finding.reason}` : finding.reason)}</strong><span>${escapeHtml(finding.rule || "")}</span></span>
+            </div>
+          `).join("")}
+        </div>
+      ` : ""}
+      <div class="produced-copy-actions">
+        <button class="button small" type="button" data-action="recheck-display-copy" ${busy ? "disabled" : ""}>
+          ${busy ? "Checking" : stale ? "Check it again" : "Check it again"}
+        </button>
+        <button class="button small" type="button" data-action="draft-display-copy" ${busy ? "disabled" : ""}>
+          ${busy ? "Writing" : "Write new lines"}
+        </button>
+      </div>
+      ${state.studio.draftCopyError ? `<span class="field-note field-error">${escapeHtml(state.studio.draftCopyError)}</span>` : ""}
+      <span class="field-note" data-draft-stale-notice ${stale ? "" : "hidden"}>These edits have not been checked yet. Rendering now would draft fresh copy instead of using yours.</span>
+    </div>
+  `;
+}
+
+function draftAuditPill(audit) {
+  return copyAuditPill(audit);
+}
+
+function renderCopyField() {
+  if (!state.studio.headlineSetOn) return "";
+  const zones = [
+    { id: "lower_third", label: "Lower third" },
+    { id: "upper_third", label: "Upper third" },
+    { id: "left_panel", label: "Left panel" },
+    { id: "center", label: "Center" },
+  ];
+  return `
+    <div class="field full">
+      <button class="studio-toggle-row" type="button" data-action="toggle-render-copy-into-image">
+        <span class="studio-toggle-track ${state.studio.renderCopyIntoImage ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+        <span class="studio-toggle-content">
+          <strong>Place the headline on the image</strong>
+          <span class="field-note">The headline is written to fit the space and rendered into the picture. Check the result against the intended wording before you use it; nothing verifies the lettering yet.</span>
+        </span>
+      </button>
+    </div>
+    ${state.studio.renderCopyIntoImage ? `
+      <div class="field full studio-setup-field">
+        <span class="section-label">Which lines go on the image?</span>
+        <span class="field-note">The rest are still written, they just stay beside the image for use elsewhere. More lines in one area means smaller type for each.</span>
+        <div class="studio-platform-grid">
+          ${[
+            { id: "headline", label: "Headline" },
+            { id: "subhead", label: "Supporting line" },
+            { id: "cta", label: "Call to action" },
+          ].map((field) => `
+            <button class="studio-platform-chip ${state.studio.displayFields.includes(field.id) ? "selected" : ""}" type="button" data-action="toggle-display-field" data-id="${field.id}">${field.label}</button>
+          `).join("")}
+        </div>
+      </div>
+      <div class="field full studio-setup-field">
+        <label for="studio-display-zone">Where should it sit?</label>
+        <span class="field-note">The scene is composed to leave this area clear.</span>
+        <div class="studio-campaign-row">
+          <select id="studio-display-zone" data-action="studio-display-zone-change">
+            ${zones.map((zone) => `<option value="${zone.id}" ${state.studio.displayZone === zone.id ? "selected" : ""}>${zone.label}</option>`).join("")}
+          </select>
+        </div>
+      </div>
+      ${draftCopyPanel()}
+    ` : ""}
+  `;
+}
+
+function segmentField(idPrefix) {
+  const segments = state.segments.list || [];
+  if (!segments.length) return "";
+  return `
+    <div class="field full studio-setup-field">
+      <label for="${idPrefix}-segment">Who is this for?</label>
+      <span class="field-note">Optional. Narrows the approved wording to what is true for that segment.</span>
+      <div class="studio-campaign-row">
+        <select id="${idPrefix}-segment" data-action="studio-segment-change">
+          <option value="">No specific segment</option>
+          ${segments.map((segment) => `<option value="${escapeHtml(segment.id)}" ${state.studio.segment === segment.id ? "selected" : ""}>${escapeHtml(segment.label)}</option>`).join("")}
+        </select>
+      </div>
+    </div>
+  `;
+}
+
 function productionRequest(jobId) {
   const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   return {
     jobId,
-    brief: { ...state.brief },
+    brief: { ...state.brief, segment: state.studio.segment || undefined },
     productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
     lockedAssetId: state.lockedAssetId || undefined,
     templateAssetId: state.studio.salesTemplateId || undefined,
+    segment: state.studio.segment || undefined,
+    copyOutputs: declaredCopyOutputs(),
+    draftedCopy: state.studio.renderCopyIntoImage && state.studio.draftCopy && !state.studio.draftCopyStale
+      ? state.studio.draftCopy
+      : undefined,
+    renderCopyIntoImage: state.studio.headlineSetOn && state.studio.renderCopyIntoImage ? true : undefined,
+    displayZone: state.studio.renderCopyIntoImage ? state.studio.displayZone : undefined,
+    displayFields: state.studio.renderCopyIntoImage ? state.studio.displayFields : undefined,
+    copyDirection: state.studio.copyDirection || undefined,
     references: state.references.map((item) => ({
       id: item.id,
       role: item.role,
@@ -6763,6 +7270,22 @@ function outputLabel(pkg, assetType) {
 // Upsert by job id. Generation writes a draft; approval promotes it. Re-entry
 // from a refresh or a recovered job updates the existing record rather than
 // creating a duplicate.
+// A one-line marker for the output log so a list row can say the piece
+// included words and whether they cleared. The words themselves stay in the
+// package blob.
+function summarizeCopy(pkg) {
+  const produced = pkg?.copy?.produced || [];
+  if (!produced.length) return null;
+  const statuses = produced.map((block) => (block.failed ? "errored" : block.audit?.status || "errored"));
+  const violations = produced.reduce((total, block) => total + ((block.audit?.findings || []).filter((f) => f.severity === "violation").length), 0);
+  return {
+    count: produced.length,
+    types: produced.map((block) => block.copyTypeId),
+    status: statuses.includes("errored") ? "errored" : violations ? "violations" : statuses.includes("no_claims") ? "no_claims" : "governed",
+    violations,
+  };
+}
+
 function recordOutput(job, extras = {}) {
   if (!job?.jobId) return null;
   const pkg = job.generationPackage || null;
@@ -6792,6 +7315,7 @@ function recordOutput(job, extras = {}) {
     // fresh presigned URL on read even after the cached one has expired.
     hadImage: Boolean(extras.imageUrl || job.imageUrl || existing?.imageUrl || existing?.hadImage),
     postCopy: extras.postCopy || job.postCopy || existing?.postCopy || null,
+    copySummary: summarizeCopy(pkg) || existing?.copySummary || null,
     model: job.model || existing?.model || null,
     // The durable substrate. Guidance section names decay as the brain is revised;
     // the compiled prompt is the only record of what the brand actually asserted
@@ -7027,7 +7551,7 @@ async function openOutputForReview(outputId) {
     state.production.job = {
       jobId: outputId,
       status: "complete",
-      imageUrl: saved?.imageUrl || record?.imageUrl || null,
+      imageUrl: saved?.imageUrl || null,
       postCopy: saved?.postCopy || record?.postCopy || null,
       model: payload.package?.model || record?.model || null,
       endpoint: payload.package?.endpoint || null,
@@ -7140,6 +7664,61 @@ function downloadPackage() {
   setToast("Generation package downloaded");
 }
 
+// Targeted repair: rewrite the words, keep the picture. A caption the audit
+// flagged is a copy problem, and re-rendering the image to fix it would throw
+// away a result the user already accepted.
+//
+// The guard pattern from the UI contribution guide applies: a concurrent call
+// is refused, and both the success and failure paths clear the flag, so a
+// failed rewrite never leaves the button dead.
+let rewritingCaption = false;
+
+async function rewriteCaption(blockIndex) {
+  if (rewritingCaption) return;
+  const job = state.production.job;
+  const copy = job?.generationPackage?.copy;
+  // Regenerate one block, not the set. With a caption and a headline set on
+  // the same job, replacing the whole produced array would discard the block
+  // the user did not ask to change.
+  const index = Number.isInteger(blockIndex) ? blockIndex : 0;
+  const declared = copy?.declared?.[index];
+  if (!declared) {
+    setToast("There is no copy here to write again");
+    return;
+  }
+  rewritingCaption = true;
+  state.production.copyRewriting = true;
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "copy_type",
+        copyTypeId: declared.copyTypeId,
+        placement: job.generationPackage?.output?.placement || "",
+        copyDirection: state.studio.copyDirection || "",
+        scene: job.generationPackage?.brief?.scene || "",
+        exclusions: job.generationPackage?.brief?.exclusions || "",
+        productId: job.generationPackage?.product?.product_id || undefined,
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The caption could not be rewritten.");
+    copy.produced = copy.produced.map((block, position) => (position === index ? body.copy : block));
+    if (body.governingClaims) copy.governingClaims = body.governingClaims;
+    recordOutput(job);
+    void persistOutputs();
+    setToast("Caption rewritten and re-checked");
+  } catch (error) {
+    setToast(error.message || "The caption could not be rewritten");
+  } finally {
+    rewritingCaption = false;
+    state.production.copyRewriting = false;
+    render();
+  }
+}
+
 async function downloadGeneratedImage() {
   const imageUrl = state.production.job?.imageUrl;
   if (!imageUrl) return;
@@ -7232,7 +7811,6 @@ async function readApiJson(response) {
 root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="brain-source-url"]')) {
     state.brain.sourceUrl = event.target.value;
-    syncSourceAddButton();
   }
   if (event.target.matches('[data-action="brain-source-title"]')) {
     state.brain.sourceTitle = event.target.value;
@@ -7240,11 +7818,9 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="brain-source-text"]')) {
     state.brain.sourceText = event.target.value;
-    syncSourceAddButton();
   }
   if (event.target.matches('[data-action="brain-source-usage"]')) {
     state.brain.sourceUsage = event.target.value;
-    syncSourceAddButton();
   }
   if (event.target.matches('[data-action="brain-source-asset-variation-other"]')) {
     state.brain.sourceAssetVariationOther = event.target.value;
@@ -7313,8 +7889,20 @@ root.addEventListener("input", (event) => {
     // the brief therefore has to be synced here instead.
     syncBriefGatedControls();
   }
-  if (event.target.matches('[data-action="studio-caption-input"]')) {
-    state.studio.caption = event.target.value;
+  if (event.target.matches('[data-action="draft-copy-input"]')) {
+    const index = Number(event.target.dataset.index || 0);
+    const draft = state.studio.draftCopy;
+    if (draft?.fields?.[index]) {
+      draft.fields[index].text = event.target.value;
+      // The audit on screen described the previous wording. Say so rather
+      // than leaving a pill that now refers to text that no longer exists.
+      state.studio.draftCopyStale = true;
+      updateDraftStaleNotice();
+    }
+    return;
+  }
+  if (event.target.matches('[data-action="studio-copy-direction-input"]')) {
+    state.studio.copyDirection = event.target.value;
   }
   if (event.target.matches('[data-action="studio-direction-input"]')) {
     state.studio.direction = event.target.value;
@@ -7364,6 +7952,14 @@ root.addEventListener("change", async (event) => {
   if (action === "studio-campaign-change") {
     clearSceneSuggestions();
     state.studio.campaignId = event.target.value;
+    render();
+  }
+  if (action === "studio-segment-change") {
+    state.studio.segment = event.target.value;
+    render();
+  }
+  if (action === "studio-display-zone-change") {
+    state.studio.displayZone = event.target.value;
     render();
   }
   if (action === "product-add-file") {
@@ -7696,7 +8292,7 @@ root.addEventListener("click", (event) => {
     // the picker has options ready. Loaders belong in action handlers, not in
     // render functions. See docs/ui-contribution-guide.md.
     // Website and sales both offer the product picker, so both need the list.
-    if (["sales", "website", "social"].includes(target.dataset.id)) void loadProducts();
+    if (["sales", "website", "social"].includes(target.dataset.id)) { void loadProducts(); void loadSegments(); }
     state.studio.brief = "";
     state.studio.sceneSuggestions = [];
     state.studio.sceneSuggestionsDrewOn = [];
@@ -7706,8 +8302,14 @@ root.addEventListener("click", (event) => {
     state.studio.activeFormats = [];
     state.studio.textOverlay = false;
     state.studio.campaignId = "";
-    state.studio.caption = "";
-    state.studio.captionOpen = false;
+    state.studio.copyDirection = "";
+    state.studio.captionOn = true;
+    state.studio.headlineSetOn = false;
+    state.studio.renderCopyIntoImage = false;
+    state.studio.displayFields = ["headline"];
+    state.studio.draftCopy = null;
+    state.studio.draftCopyStale = false;
+    state.studio.draftCopyError = "";
     state.studio.referenceOpen = false;
     state.studio.directionOpen = false;
     state.studio.direction = "";
@@ -7758,6 +8360,30 @@ root.addEventListener("click", (event) => {
     state.studio.textOverlay = !state.studio.textOverlay;
     render();
   }
+  if (action === "toggle-studio-caption") {
+    state.studio.captionOn = !state.studio.captionOn;
+    render();
+  }
+  if (action === "toggle-studio-headline-set") {
+    state.studio.headlineSetOn = !state.studio.headlineSetOn;
+    if (!state.studio.headlineSetOn) state.studio.renderCopyIntoImage = false;
+    render();
+  }
+  if (action === "draft-display-copy") void draftDisplayCopy();
+  if (action === "recheck-display-copy") void recheckDisplayCopy();
+  if (action === "toggle-display-field") {
+    const id = target.dataset.id;
+    const current = state.studio.displayFields;
+    // Turning off the last line would leave the render nothing to place, so
+    // the final selection cannot be cleared.
+    const next = current.includes(id) ? current.filter((entry) => entry !== id) : [...current, id];
+    state.studio.displayFields = next.length ? next : current;
+    render();
+  }
+  if (action === "toggle-render-copy-into-image") {
+    state.studio.renderCopyIntoImage = !state.studio.renderCopyIntoImage;
+    render();
+  }
   if (action === "studio-toggle-section") {
     const section = target.dataset.section;
     state.studio[section] = !state.studio[section];
@@ -7766,7 +8392,6 @@ root.addEventListener("click", (event) => {
   if (action === "studio-close-section") {
     const section = target.dataset.section;
     state.studio[section] = false;
-    if (section === "captionOpen") state.studio.caption = "";
     if (section === "directionOpen") state.studio.direction = "";
     render();
   }
@@ -8603,6 +9228,15 @@ root.addEventListener("click", (event) => {
       setToast("Post text copied");
     }
   }
+  if (action === "copy-produced-text") {
+    const index = Number(target.dataset.index || 0);
+    const text = state.production.job?.generationPackage?.copy?.produced?.[index]?.text || "";
+    if (text) {
+      try { navigator.clipboard.writeText(text); } catch { /* fallback not needed for prototype */ }
+      setToast("Caption copied");
+    }
+  }
+  if (action === "rewrite-caption") void rewriteCaption(Number(target.dataset.index || 0));
   if (action === "download-result") void downloadGeneratedImage();
   if (action === "approve-output") {
     state.production.approved = true;
@@ -8824,6 +9458,130 @@ async function hydrateClients() {
 // Fetch the product index for the active client and store it in state. The
 // list contains summary entries (product_id, product_name, version, status).
 // Full records are loaded on demand via loadProductDetail.
+// The segments this client uses, derived from their claims entries. Same
+// guard shape as loadProducts: a concurrent call is refused, and the attempt
+// is recorded on both success and failure so repeated render passes cannot
+// retry forever.
+// Draft or re-check the display copy from setup. Both follow the guarded
+// loader pattern: a concurrent call is refused, and both the success and
+// failure paths clear the flag so a failed attempt never leaves the button
+// dead. Neither is called from a render function.
+// The setup screens hold their brief and placement in different places, and
+// `state.brief` is not populated until the user leaves setup for preflight.
+// Drafting copy happens before that, so these resolve from studio state
+// directly.
+//
+// Placement matters beyond wording: it is a scope axis, so a stale value
+// would assemble the claims of some previous job. Resolving it per category
+// keeps the draft governed by the same claims the render will use.
+function studioPlacementForDraft() {
+  if (state.studio.category === "sales") return "Sales enablement";
+  if (state.studio.category === "website") {
+    const format = websiteOutputFormats[state.studio.websiteFormat];
+    return format?.placement || "Website";
+  }
+  if (state.studio.category === "template") return "Brand template";
+  const platformId = (state.studio.platforms || [])[0];
+  return studioPlatformFormats[platformId]?.placement || state.brief.placement || "";
+}
+
+function studioBriefForDraft() {
+  if (state.studio.category === "sales") return state.studio.salesElement || "";
+  return state.studio.brief || "";
+}
+
+async function draftDisplayCopy() {
+  if (state.studio.draftCopyLoading) return;
+  state.studio.draftCopyLoading = true;
+  state.studio.draftCopyError = "";
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "copy_type",
+        copyTypeId: "headline_set",
+        placement: studioPlacementForDraft(),
+        copyDirection: state.studio.copyDirection || "",
+        scene: studioBriefForDraft(),
+        segment: state.studio.segment || undefined,
+        productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
+        campaignId: state.studio.campaignId || undefined,
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The copy could not be drafted.");
+    state.studio.draftCopy = body.copy;
+    state.studio.draftCopyStale = false;
+  } catch (error) {
+    state.studio.draftCopyError = error.message || "The copy could not be drafted.";
+  } finally {
+    state.studio.draftCopyLoading = false;
+    render();
+  }
+}
+
+async function recheckDisplayCopy() {
+  if (state.studio.draftCopyLoading) return;
+  const draft = state.studio.draftCopy;
+  if (!draft) return;
+  state.studio.draftCopyLoading = true;
+  state.studio.draftCopyError = "";
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "audit_copy",
+        fields: draft.fields.map((field) => ({ id: field.id, label: field.label, text: field.text })),
+        placement: studioPlacementForDraft(),
+        segment: state.studio.segment || undefined,
+        productId: state.studio.salesProductId || state.studio.websiteProductId || undefined,
+        campaignId: state.studio.campaignId || undefined,
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The copy could not be checked.");
+    draft.audit = body.audit;
+    draft.edited = true;
+    state.studio.draftCopyStale = false;
+  } catch (error) {
+    state.studio.draftCopyError = error.message || "The copy could not be checked.";
+  } finally {
+    state.studio.draftCopyLoading = false;
+    render();
+  }
+}
+
+async function loadSegments(force = false) {
+  if (typeof fetch !== "function") return;
+  if (state.segments.loading) return;
+  if (!force && state.segments.loadedForClient === state.activeClientId) return;
+  const attemptingClientId = state.activeClientId;
+  state.segments.loading = true;
+  state.segments.error = "";
+  render();
+  try {
+    const response = await fetch("/api/production/generate-copy", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "segments" }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The segment list could not be loaded.");
+    state.segments.list = Array.isArray(body.segments) ? body.segments : [];
+  } catch (error) {
+    state.segments.error = error.message || "The segment list could not be loaded.";
+    state.segments.list = [];
+  } finally {
+    state.segments.loadedForClient = attemptingClientId;
+    state.segments.loading = false;
+    render();
+  }
+}
+
 async function loadProducts(force = false) {
   if (typeof fetch !== "function") return;
   // Guard against concurrent loads. Without this, renderWorkspace/renderChooser
