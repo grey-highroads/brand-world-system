@@ -1386,7 +1386,7 @@ function renderOutputPreview() {
         </div>
         <div class="preview-media">
           ${output.imageUrl
-            ? `<img src="${escapeHtml(output.imageUrl)}" alt="${escapeHtml(output.label)}" onerror="this.closest('.preview-media').classList.add('preview-media-missing'); this.remove();">`
+            ? `<img src="${escapeHtml(outputImageSrc(output))}" alt="${escapeHtml(output.label)}" onerror="this.closest('.preview-media').classList.add('preview-media-missing'); this.remove();">`
             : ""}
         </div>
         ${output.scene ? `<p class="preview-scene">${escapeHtml(output.scene)}</p>` : ""}
@@ -3304,7 +3304,7 @@ function renderWorkspace() {
         ${recentOutputs.map((o) => `
           <button class="ws-output-card" type="button" data-action="preview-output" data-id="${o.id}">
             ${o.imageUrl
-              ? `<span class="ws-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+              ? `<span class="ws-output-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
               : `<span class="ws-output-thumb ws-thumb-empty"></span>`}
             <span class="ws-output-info">
               <strong>${escapeHtml(o.label || "Untitled")}</strong>
@@ -3445,7 +3445,7 @@ function renderChooser() {
           ${recentOutputs.map((o) => `
             <button class="ws-output-card" type="button" data-action="preview-output" data-id="${o.id}">
               ${o.imageUrl
-                ? `<span class="ws-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+                ? `<span class="ws-output-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
                 : `<span class="ws-output-thumb ws-thumb-empty"></span>`}
               <span class="ws-output-info">
                 <strong>${escapeHtml(o.label || "Untitled")}</strong>
@@ -4328,7 +4328,7 @@ function renderCampaigns() {
         <p>${escapeHtml(campaign.description)}</p>
         ${thumbs.length ? `
           <div class="campaign-card-thumbs">
-            ${thumbs.map((o) => `<span class="campaign-card-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.campaign-card-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`).join("")}
+            ${thumbs.map((o) => `<span class="campaign-card-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.campaign-card-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`).join("")}
           </div>
         ` : ""}
         <span class="chooser-contract">${escapeHtml(campaign.objective)}${approvedCount ? ` · ${approvedCount} approved` : ""}</span>
@@ -4988,7 +4988,7 @@ function renderCampaignWorkspace() {
             ${campaignOutputs.map((o) => `
               <button class="campaign-output-card" type="button" data-action="preview-output" data-id="${o.id}">
                 ${o.imageUrl
-                  ? `<span class="campaign-output-thumb"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.campaign-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
+                  ? `<span class="campaign-output-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.campaign-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
                   : `<span class="campaign-output-thumb ws-thumb-empty"></span>`}
                 <span class="campaign-output-info">
                   <strong>${escapeHtml(o.label || "Untitled")}</strong>
@@ -5599,7 +5599,7 @@ function renderBrief() {
               ${recentOutputs.map((o) => `
                 <div class="recent-item">
                   ${o.imageUrl
-                    ? `<button class="output-thumb output-thumb-button" type="button" data-action="preview-output" data-id="${o.id}" aria-label="Preview ${escapeHtml(o.label)}"><img src="${escapeHtml(o.imageUrl)}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();"></button>`
+                    ? `<button class="output-thumb output-thumb-button" type="button" data-action="preview-output" data-id="${o.id}" aria-label="Preview ${escapeHtml(o.label)}"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();"></button>`
                     : `<span class="output-thumb"></span>`}
                   <span class="recent-item-body">
                     <strong>${escapeHtml(o.label)}</strong>
@@ -6158,9 +6158,9 @@ function renderResult() {
               ? isLinkedIn
                 ? `<div class="linkedin-result">
                     ${job.postCopy ? `<div class="linkedin-post-copy"><span class="section-label">Generated post</span><div class="linkedin-post-text">${escapeHtml(job.postCopy).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</div><button class="button small" type="button" data-action="copy-post-text">Copy text</button></div>` : ""}
-                    ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
+                    ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
-                : `<figure class="generated-output"><img src="${escapeHtml(job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
+                : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
           </section>
@@ -8770,6 +8770,19 @@ function clientSwitcherMenu() {
         <span class="client-switcher-item-name">New client</span>
       </button>
     </div>`;
+}
+
+// Every image in the interface points at the stable route rather than at a
+// presigned URL. The server redirects to a freshly signed URL per request, so
+// nothing in the browser or in a saved record can go stale. Records made
+// before per-job image paths existed have no reachable image; those fall back
+// to the missing state rather than to a dead link.
+function outputImageSrc(output) {
+  if (!output) return "";
+  const id = output.id || output.jobId || "";
+  if (!id) return output.imageUrl || "";
+  if (!output.hadImage && !output.imageUrl) return "";
+  return `/api/production/outputs?action=image&outputId=${encodeURIComponent(id)}`;
 }
 
 function readActiveClientCookie() {

@@ -16,7 +16,38 @@ export default async function handler(request, response) {
       // A single output is requested when the user opens past work for review.
       // The compiled package comes back with it so the evaluation screen has
       // the same material it had at generation time.
-      const requestedId = new URL(request.url, "http://localhost").searchParams.get("outputId");
+      const params = new URL(request.url, "http://localhost").searchParams;
+
+      // The stable image path. Every <img> in the app points here and the
+      // browser never holds a presigned URL. Signed URLs live fifteen minutes;
+      // this route mints a fresh one per request and redirects to it, so an
+      // image link in the interface never goes stale no matter how long a
+      // screen stays open or how long ago the output was made.
+      if (params.get("action") === "image") {
+        const imageId = String(params.get("outputId") || "");
+        if (!imageId || !store.outputImageUrl) {
+          sendJson(response, 404, { error: "That image is not available." });
+          return;
+        }
+        try {
+          const signed = await store.outputImageUrl(imageId);
+          if (!signed) {
+            sendJson(response, 404, { error: "That image is not available." });
+            return;
+          }
+          // No caching of the redirect itself: a cached 302 would pin a URL
+          // that expires, which is the bug this route exists to end.
+          response.setHeader("Cache-Control", "no-store, max-age=0");
+          response.setHeader("Location", signed);
+          response.statusCode = 302;
+          response.end();
+        } catch {
+          sendJson(response, 404, { error: "That image is not available." });
+        }
+        return;
+      }
+
+      const requestedId = params.get("outputId");
       if (requestedId) {
         const log = await store.readOutputs();
         const output = (log?.outputs || []).find((entry) => entry.id === requestedId) || null;
@@ -108,9 +139,11 @@ export default async function handler(request, response) {
         scene: output.scene || null,
         brainVersion: output.brainVersion || null,
         createdAt: output.createdAt || null,
-        // The URL itself expires and is kept only as a legacy fallback. The
-        // durable fact is whether this output ever produced an image.
-        imageUrl: output.imageUrl || null,
+        // Presigned URLs are never persisted. They expire in fifteen minutes,
+        // so a stored one is guaranteed stale by the time it is read back and
+        // becomes a broken image. The durable fact is whether this output ever
+        // produced an image; the browser reaches it through the stable image
+        // route above.
         hadImage: Boolean(output.hadImage || output.imageUrl),
         postCopy: output.postCopy || null,
         // A marker, not the copy itself. The produced text and its audit live
