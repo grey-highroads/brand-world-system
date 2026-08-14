@@ -116,43 +116,6 @@ Bring it back when: those categories are built. The options are a background-rem
 
 ---
 
-## Display copy in renders (ADR 0014 part two)
-
-### Screen-bearing scenes carry a rule collision with no scale constraint
-
-The screen orientation rules in `prompt-craft.js` require that a device screen faces the camera directly and stays fully visible and readable, and that a person be positioned beside or behind it presenting outward rather than holding it in a viewing grip. Renders on 2026-08-11 violated the pose rule and oversized the device.
-
-Two causes, both in the rules rather than in the renderer:
-
-- **No rule caps the device's share of the frame.** "Fully visible and readable" gives the model a reason to enlarge it and nothing to stop at.
-- **Legibility and natural posture conflict, with no resolution order.** A person reading their own phone angles it toward themselves; a screen facing the camera requires presenting it outward. Asked for both, the model produces a pose that is neither. The behavior seen in earlier sessions where screen content lifts off the device into a floating overlay is likely the same collision resolving the other way.
-
-The fix is a scale constraint plus a stated resolution order for which requirement wins. Evidence in `evaluations/2026-08-11-display-copy-first-renders.md`.
-
-### Invented screen content is ungoverned
-
-Every screen-bearing render on 2026-08-11 filled its screen with invented text, and the severity rose as scene direction improved. One produced an internally consistent analytics dashboard with fabricated performance figures. Another produced a patient message from an invented, verified-badged surgical center containing post-operative instructions including a specific lifting limit.
-
-The narrowed text safety rule states that apart from authored display copy, no other words are invented. It does not hold, because it was written for background surfaces and a product demonstration scene makes the screen the subject.
-
-Three directions were identified and none chosen: screen content becomes governed copy, declared and audited like a headline; screen-bearing scenes get a hard rule that device screens carry no readable text; or screen content is permitted but flagged in findings as ungoverned text requiring review. There is a hook in `inferScreenBearing` for whichever way it goes.
-
-**Deferred deliberately**, per the owner: the iteration waits for a real client to say what is a dealbreaker rather than being solved speculatively. Recorded with the qualification raised at the time, that a fabricated named healthcare organization issuing fabricated clinical instructions is a different class from audit noise, because the failure is not a threshold needing calibration.
-
-### Display copy character budgets are reasoned, not measured
-
-The characters-per-line figures in `src/copy/display-budget.js` come from typographic practice rather than measurement against rendered output. The first run allowed roughly 114 characters for a headline that set at 27 and broke across three lines, so the budget was not constraining anything.
-
-The budget has since been reframed from a fit ceiling to a legibility floor, which is the correct model, but the numbers behind it are unchanged. Correct them using actual line breaks from real renders rather than arithmetic.
-
-### Read-back verification for rendered copy does not exist
-
-ADR 0014 part two specifies that the system reads rendered text back out of the image and compares it against the intended string, failing on mismatch. It is not built. The person is currently the verification step: the result screen shows the intended string beside the image and states that nothing checks it, and the compiled record carries `verified: false`, never set true by assertion.
-
-When it is built, the measurement needs two numbers, not one. The exact-match rate by string class sets the retry cost. The rate at which verification passes a string that was actually wrong determines whether stakes matter at all. Mismatches should be scored by kind, malformed characters against substituted words, because the first is a quality problem and the second is a governance problem.
-
----
-
 ## Content and prompt debt
 
 ### Review questions written under earlier synthesis instructions
