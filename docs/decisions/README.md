@@ -15,16 +15,18 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 
 ## Decision index
 
-- [`0001-separate-world-building-and-production.md`](0001-separate-world-building-and-production.md) — Accepted
-- [`0002-model-canon-as-a-governed-view.md`](0002-model-canon-as-a-governed-view.md) — Accepted
-- [`0003-compile-and-snapshot-production-policy.md`](0003-compile-and-snapshot-production-policy.md) — Superseded in part by ADR 0005
-- [`0004-separate-shared-platform-and-private-brand-data.md`](0004-separate-shared-platform-and-private-brand-data.md) — Superseded in part by ADR 0007
-- [`0005-apply-policy-presets-per-workflow-stage.md`](0005-apply-policy-presets-per-workflow-stage.md) — Accepted
-- [`0006-treat-generation-package-as-portable-artifact.md`](0006-treat-generation-package-as-portable-artifact.md) — Accepted
-- [`0007-deliver-isolated-client-installations-first.md`](0007-deliver-isolated-client-installations-first.md) — Superseded in part by ADR 0011
-- [`0008-use-openai-as-the-initial-renderer.md`](0008-use-openai-as-the-initial-renderer.md) — Accepted
-- [`0009-update-brand-brain-from-an-approved-baseline.md`](0009-update-brand-brain-from-an-approved-baseline.md) — Accepted
-- [`0010-route-production-feedback-through-candidate-rules.md`](0010-route-production-feedback-through-candidate-rules.md) — Accepted
-- [`0011-operate-a-shared-multi-client-deployment.md`](0011-operate-a-shared-multi-client-deployment.md) — Accepted
-- [`0012-model-products-as-governed-records.md`](0012-model-products-as-governed-records.md) — Accepted (implemented 2026-08-09)
-- [`0013-govern-copy-through-derived-claims.md`](0013-govern-copy-through-derived-claims.md) — Accepted (mechanism test passed 2026-08-09)
+- [`0001-separate-world-building-and-production.md`](0001-separate-world-building-and-production.md), Accepted
+- [`0002-model-canon-as-a-governed-view.md`](0002-model-canon-as-a-governed-view.md), Accepted
+- [`0003-compile-and-snapshot-production-policy.md`](0003-compile-and-snapshot-production-policy.md), Superseded in part by ADR 0005
+- [`0004-separate-shared-platform-and-private-brand-data.md`](0004-separate-shared-platform-and-private-brand-data.md), Superseded in part by ADR 0007
+- [`0005-apply-policy-presets-per-workflow-stage.md`](0005-apply-policy-presets-per-workflow-stage.md), Accepted
+- [`0006-treat-generation-package-as-portable-artifact.md`](0006-treat-generation-package-as-portable-artifact.md), Accepted
+- [`0007-deliver-isolated-client-installations-first.md`](0007-deliver-isolated-client-installations-first.md), Superseded in part by ADR 0011
+- [`0008-use-openai-as-the-initial-renderer.md`](0008-use-openai-as-the-initial-renderer.md), Accepted
+- [`0009-update-brand-brain-from-an-approved-baseline.md`](0009-update-brand-brain-from-an-approved-baseline.md), Accepted
+- [`0010-route-production-feedback-through-candidate-rules.md`](0010-route-production-feedback-through-candidate-rules.md), Accepted
+- [`0011-operate-a-shared-multi-client-deployment.md`](0011-operate-a-shared-multi-client-deployment.md), Accepted
+- [`0012-model-products-as-governed-records.md`](0012-model-products-as-governed-records.md), Accepted (implemented 2026-08-09)
+- [`0013-govern-copy-through-derived-claims.md`](0013-govern-copy-through-derived-claims.md), Accepted (mechanism test passed 2026-08-09)
+- [`0014-produce-governed-copy-alongside-imagery.md`](0014-produce-governed-copy-alongside-imagery.md), Part one accepted and shipped 2026-08-10; part two revised 2026-08-11
+- [`0015-infer-the-lived-world-when-evidence-cannot-supply-it.md`](0015-infer-the-lived-world-when-evidence-cannot-supply-it.md), Proposed
