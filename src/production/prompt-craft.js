@@ -184,6 +184,13 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
   const noun = FORMAT_NOUN[format] || "package";
   const lines = [
     `Preserve the supplied ${noun} exactly as pictured: logo, label hierarchy, typography, colors, proportions, silhouette, and open or closed state unchanged, fully readable.`,
+    // The protected asset is one physical object and the reference covers one
+    // instance of it. A scene with people in it invites more, and every extra
+    // unit is drawn from memory rather than from the reference, which is where
+    // the fabricated lettering comes from. Extra units are allowed, since a
+    // person holding the product is a real moment, but only where no invented
+    // label can appear on them.
+    `Exactly one ${noun} in the frame carries readable branding, and it is the supplied one. If the scene places any further unit of this product anywhere, including in a hand, on a surface, or in the background, that unit is turned away from camera, occluded, cropped, or defocused so that no lettering, wordmark, or label detail is legible on it. Do not draw a second readable ${noun} from memory.`,
   ];
   if (STATEFUL_FORMATS.has(format)) {
     lines.push(
