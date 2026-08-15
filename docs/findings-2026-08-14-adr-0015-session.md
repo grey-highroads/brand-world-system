@@ -113,3 +113,17 @@ The remaining ADR 0015 work is step 3 and the defect list above. None of it is b
 The larger conclusion is that ADR 0015 addressed the production path and the Lived World, and left the gap the thesis named. Visual grammar as a first-class brain artifact is the next decision and needs its own ADR. Its scope: what the people look like, what they wear, the era and condition of the objects, the rooms and surfaces, how light behaves, what the camera does, and what visual territory the brand refuses. Brand-specific, synthesized from sources, editable, versioned, and consumed by the scene writer in place of a summary.
 
 Two things to carry into that ADR. Substitution rather than suppression is the governing principle, from finding 2. And the visual rejects list belongs there rather than in `livedWorld`, from finding 3.
+
+## Addendum: an independent repo review, same evening
+
+A review of the repository was run separately against the question of why renders read as generic. It reached the same central conclusion, that the missing visual grammar artifact is the architectural gap, and it cites this document, so its agreement on findings 1, 2, 3, and on the protection measurement is not independent corroboration. Three of its points are new and are recorded here.
+
+**There is no aesthetic evaluation loop.** The existing audit confirms that rules reached the compiled text. Nothing examines the returned image and asks whether it is generic, over-rendered, too clean, or compositionally obvious. A frame that is fully compliant and mediocre passes every check the system has.
+
+This changes the scope of the visual grammar ADR rather than adding a second project. An evaluation loop needs a standard to evaluate against and visual grammar is that standard. Grammar states what the brand looks like; evaluation asks whether the frame met it. Building either alone leaves half a mechanism.
+
+**The aesthetic mode selector steers rather than merely failing to steer.** Recorded above as coarse. The sharper reading is that its fallback default is a cinematic film still, and vocabulary of that kind is what produces a recognisable generated-commercial treatment. The opening line of every unmatched prompt is therefore pushing toward the failure mode. Step 3 of the ADR sequencing was scoped as cleanup folded into other work; it is better understood as a small change with plausibly high effect and the cheapest item outstanding.
+
+**A usable starting vocabulary for visual rejects.** Centred symmetry, spotless environments, decorative haze, teal and orange grading, exaggerated rim light, floating particles, showroom materials, staged influencer poses, stock-photo behaviour. This is the register finding 3 says is missing: exclusions a camera can see.
+
+One claim from the review is not accepted. It holds that protection at 21.6 percent of the payload pushes the renderer toward the safest and most conventional answer. The measurement is verified and the effect is **assumed**. It is a claim about attention weighting that nobody has tested, and it should not justify compressing a section where every line performs governance until it is.
