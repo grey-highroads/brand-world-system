@@ -331,34 +331,6 @@ export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
 
-// Compile a product record into a prompt section. The product's approved claim
-// language, features, and visual direction feed into the generation prompt so
-// product-specific outputs draw on governed knowledge (ADR 0012 step 4).
-function compileProductSection(product) {
-  const parts = [];
-  if (product.one_true_thing) {
-    parts.push(`This output is for the product "${product.product_name}." ${product.one_true_thing}`);
-  }
-  if (product.audience_note) {
-    parts.push(`Audience: ${product.audience_note}`);
-  }
-  if (product.features?.length) {
-    const featureLines = product.features.map((f) => {
-      const claim = f.approved_claim_language ? ` Approved language: "${f.approved_claim_language}"` : "";
-      const note = f.accuracy_note ? ` Note: ${f.accuracy_note}` : "";
-      return `${f.name}: ${f.benefit}.${claim}${note}`;
-    });
-    parts.push(`Key features: ${featureLines.join(" ")}`);
-  }
-  if (product.visual_direction) {
-    parts.push(`Product imagery reference, describing what imagery for this product typically shows. Brand identity and world rules govern style; where they conflict, the brand rules win: ${product.visual_direction}`);
-  }
-  if (product.proof_points?.length) {
-    parts.push(`Proof points: ${product.proof_points.join("; ")}.`);
-  }
-  return parts.join(" ");
-}
-
 export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
