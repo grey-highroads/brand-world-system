@@ -58,6 +58,8 @@ What the brain produced from it:
 
 **Verified.** The scene writer receives the world and creative principles, the guardrails, and the identity summary. It does not receive identity principles. `api/production/generate-copy.js` pushes `identity.summary` alone while world and creative push summary plus principles. The most concrete statement about the aesthetic never arrives.
 
+**Fixed 2026-08-15.** The identity push now sends summary plus principles, matching the world and creative pattern, an interim fix under ADR 0015 taken during the ADR 0016 amendment pass. The ADR 0016 review required either this fix or a recorded decision to leave the known-broken state in place, and the owner chose the fix. Payload effect, reasoned from the schema rather than measured from a live compile: identity principles are three to six sentences, added to the scene writer's input context only. The compiled render package is untouched, so the ADR 0015 render payload budget is unaffected. The fix is superseded when ADR 0016 step 4 replaces guidance summaries with the visual grammar as the scene writer's craft source.
+
 **Verified.** Of what does arrive, the guardrail is the most specific and it is a brake. It is delivered under the heading RULES AND GUARDRAILS, alongside claim rules and asset-reconstruction rules.
 
 **Verified.** Every usable statement describes retro gaming as a graphic system: icons, frames, motion, navigation, data display. Nothing states what the people look like, what they wear, what room they are in, or what era the objects belong to. The scene writer composes photographic worlds and has nothing to build from.

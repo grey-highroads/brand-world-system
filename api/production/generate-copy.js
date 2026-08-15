@@ -339,7 +339,7 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     drewOn.push("Brand world guidance");
   }
   if (identity) {
-    context.push(`IDENTITY: ${identity.summary}`);
+    context.push(`IDENTITY: ${identity.summary}. ${(identity.principles || []).join(". ")}`);
     drewOn.push("Identity guidance");
   }
   if (creative) {
