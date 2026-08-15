@@ -187,6 +187,12 @@ The artifact reader clipped its own content because two heading slots were fed m
 
 Standing check rather than a task: **any slot that renders model output should be tested against text several times longer than the fixture provides.**
 
+### The studio reference picker offers a narrow slice and cannot upload
+
+Reported broken in the live app on 2026-08-15: the creative inputs picker in the studio would not let the user upload or choose from previously uploaded sources. What the code confirms: the picker offers only sources that already contain a PNG, JPG, or WEBP file stored in Blob. Link sources never appear, document sources never appear, and the picker has no upload of its own. A client whose inspiration went in as links or documents sees an empty list. Whether a further live failure sits on top of the filter is not yet established.
+
+The larger design answer is ADR 0016: declared influences reach every render automatically through the visual grammar, and the manual picker stops being the only channel where an intake influence touches an image. The picker's remaining job, sending literal image files to the renderer, is slated to become automatic as well, with the default mechanism a pending owner decision recorded in that ADR's discussion. Fixing the picker's filter and empty state is worthwhile independent of that decision, since the reference-image channel survives.
+
 ---
 
 ## Known deficiencies with owners elsewhere
