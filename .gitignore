@@ -3,3 +3,10 @@ dist/
 .superdesign/tmp/
 .env.local
 .data/
+
+# ADR 0016 step 1 prototype inputs and outputs. Real client brain payloads,
+# product records, and captured suggestion sets stay out of the repo per the
+# ADR 0004 separation of shared platform and private brand data.
+fixtures/adr-0016-step1-brains/
+fixtures/adr-0016-step1-products/
+fixtures/adr-0016-step1-captures/

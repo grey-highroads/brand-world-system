@@ -102,6 +102,16 @@ The compiled package is now written per job at generation time, which is what ma
 
 No backfill is possible. The package was never stored. Recorded so nobody spends time looking for a migration.
 
+### Brain export and import
+
+There is no way to get a brain out of the system or back into it. Both halves came up during ADR 0016 step 1, when the prototype needed the Mycopop and Dialog Health brains in a working session and the only route was a manual copy of the stored state.
+
+Export is the small half and the near-term one. The GET endpoint already serves the brain payload, so export is a download of what that endpoint returns rather than new synthesis or new shape. It unblocks offline review, fixture authoring, diffing two versions by hand, and handing a client their own brand intelligence.
+
+Import is the later half and it carries a governance decision rather than a file format problem. Imported content should arrive as candidate rather than approved. A brain that arrives approved would let anything bypass the approval gate that every other path into the brain respects, which is the whole separation the system exists to enforce. Decide that before building it, not during.
+
+Bring it back when: export follows the next brain endpoint work. Import waits for a session that can settle the candidate arrival rule and how an imported brain reconciles with an existing one.
+
 ### Product picker exists only on sales enablement
 
 Social image, ad image, and website image flows do not expose the product picker. Wiring it follows the established pattern.
