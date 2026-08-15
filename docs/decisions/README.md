@@ -30,3 +30,4 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 - [`0013-govern-copy-through-derived-claims.md`](0013-govern-copy-through-derived-claims.md), Accepted (mechanism test passed 2026-08-09)
 - [`0014-produce-governed-copy-alongside-imagery.md`](0014-produce-governed-copy-alongside-imagery.md), Part one accepted and shipped 2026-08-10; part two revised 2026-08-11
 - [`0015-build-render-quality-on-people-scene-and-rejects.md`](0015-build-render-quality-on-people-scene-and-rejects.md), Proposed; steps 1, 2, 4, and 5 shipped 2026-08-14, visual grammar rejection corrected by session findings
+- [`0016-articulate-visual-grammar-and-evaluate-renders-against-it.md`](0016-articulate-visual-grammar-and-evaluate-renders-against-it.md), Proposed
