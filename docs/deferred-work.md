@@ -161,6 +161,12 @@ The characters-per-line figures in `src/copy/display-budget.js` come from typogr
 
 The budget has since been reframed from a fit ceiling to a legibility floor, which is the correct model, but the numbers behind it are unchanged. Correct them using actual line breaks from real renders rather than arithmetic.
 
+### The server does not refuse unaudited display copy
+
+`prepareProductionPackage` uses `body.draftedCopy` as sent. A draft arriving without an audit gets an errored-audit placeholder attached and the string still compiles into the render prompt. The gate that keeps display copy a produced-and-audited source is the interface, which blocks generation while an edit is unchecked; a direct API caller can render an unaudited string, and the package records the audit state without refusing the string. Found while writing the image pipeline contract (Known ambient states, item 3).
+
+Required before any client-facing beta touches display copy: the server refuses a display block whose audit is absent or errored, in the same invocation that would render it. Until then, interface-as-gate is the accepted state, per the owner's 2026-08-15 disposition.
+
 ### Read-back verification for rendered copy does not exist
 
 ADR 0014 part two specifies that the system reads rendered text back out of the image and compares it against the intended string, failing on mismatch. It is not built. The person is currently the verification step: the result screen shows the intended string beside the image and states that nothing checks it, and the compiled record carries `verified: false`, never set true by assertion.

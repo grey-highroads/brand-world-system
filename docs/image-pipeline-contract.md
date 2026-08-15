@@ -1,8 +1,8 @@
 # Image pipeline contract
 
 - Date: 2026-08-15
-- Status: Draft. Practice gate per the spec: stages 6 and 7 only, stopped for owner review before the remaining ten stages and the cross-cutting sections are written.
-- Verified against commit: `f7e0843c46eab62a6bd52988d1c85d60372c8ed7`
+- Status: Complete. All twelve stages and the three cross-cutting sections. The practice gate (stages 6 and 7) passed owner review on 2026-08-15.
+- Verified against commit: `cfddd0a86841bf14790f55d5eee3bc755f1c6b2b`
 - Spec: `docs/image-pipeline-contract-spec.md` (the prep artifact defining the template, the twelve stages, and the acceptance test)
 - Line anchors below are line numbers in the named file at the verified commit. Every claim is Verified by reading the code at that commit unless labeled Reasoned or Assumed inline.
 
@@ -13,6 +13,254 @@ One authoritative account of everything the system does when making an image. Ev
 ## Maintenance rule
 
 Any commit that changes a module listed in the contract updates the contract in the same commit, or states in the commit message why no update is needed. The contract header's verified-against commit moves with every update. A contract more than ten commits behind the modules it covers is stale and must say so in its header until re-verified. This joins the shrink check as the second mechanical ritual of the push workflow.
+
+---
+
+## Stage 1: Brain synthesis and approval
+
+### Trigger
+
+Synthesis: a POST to `/api/brand-brain/synthesize` (`api/brand-brain/synthesize.js#handler`, L5), fired by the brain build journey in the interface. `body.mode === "incremental"` selects the incremental update path; anything else is a first synthesis.
+
+Approval is a separate act and never a model call: the `approve-brain-artifact` action handler in `app/app.js` (L9180 to L9184) sets `artifactStatus` to `ready` and copies the current synthesis result into `state.brain.approvedResult`, and the whole brain snapshot is persisted through POST `/api/brand-brain/save` (`api/brand-brain/save.js#handler`, calling `src/brand-brain/service.js#saveBrandBrainSnapshot`, L21 to L25). The server performs no validation of the approval itself; it saves the snapshot it is sent.
+
+### Inputs
+
+Request body (`src/brand-brain/service.js#synthesizeBrandBrain`, L27 to L96):
+
+- `sources`: at least one required (L31 to L35). Each carries name, type, `declaredType`, `authority` (`exact-asset`, `approved-guidance`, or evidence), `role`, `influence`, `usage`, `exclusions`, `provenance` (`ours` or `emulate`, default ours), `aspiration` (`current` or `aspiration`, default current), optional `url`, optional `content`, and `files` (data URLs or Blob pathnames). A `single-source-v1` source may carry at most one file (L36 to L40). Total uploaded bytes across the request are capped at 40 MB (L41 to L49); the endpoint's body limit is 45 MB (`api/brand-brain/synthesize.js` L14); each individual file is capped at 20 MB (`src/brand-brain/source-normalizer.js#MAX_SOURCE_FILE_BYTES`, L4, enforced L68 to L72 and L88 to L92).
+- `mode`, `baselineVersion`, `requestId`.
+
+From storage on incremental: the stored brain state, from which `#selectApprovedBaseline` (L12 to L14) resolves the approved baseline. Note the fallback: when no `approvedResult` exists but `brain.artifactStatus === "ready"`, the raw `result` counts as the approved baseline.
+
+Environment: `OPENAI_API_KEY`; `OPENAI_MODEL`, defaulting to `gpt-5.6` (`src/brand-brain/chat-completions-provider.js#DEFAULT_BRAND_BRAIN_MODEL`, L3).
+
+### Owner
+
+`src/brand-brain/service.js#synthesizeBrandBrain` (L27). The model call is `src/brand-brain/chat-completions-provider.js#synthesizeWithChatCompletions` (L193), request construction `#buildSynthesisRequest` (L75), stream collection `#collectChatCompletionStream` (L171), parsing `#parseSynthesisCompletion` (L142). URL enrichment is `src/brand-brain/source-reader.js#enrichUrlSources` (L226); file normalization is `src/brand-brain/source-normalizer.js#normalizeSourcesForSynthesis` (L123). Persistence is `src/brand-brain/store.js#createVercelBlobBrandBrainStore` (L48).
+
+### Transformations
+
+In order:
+
+1. **URL enrichment** (`source-reader.js#enrichUrlSources`, L226 to L234): each URL source's page is fetched and its text appended to the source content. `#assertSafeRemoteUrl` (L19 to L32) blocks non-http(s), localhost, `.local`, and any hostname resolving to a private address. `#readRemotePage` (L145 to L173) retries up to three times with exponential backoff on transient failures; `#readRemotePageOnce` (L175 to L226) follows up to eight redirects including meta-refresh, sends browser-like headers, caps pages at 2 MB, strips HTML to text capped at 120,000 characters, and throws named errors on bot-challenge pages (`#looksLikeChallenge`, L94 to L97) and near-empty shells (`#looksLikeThinContent`, L99 to L104). On rendering-shaped failures, `#readWithFirecrawl` (L114 to L143) is tried when `FIRECRAWL_API_KEY` is set.
+2. **File normalization** (`source-normalizer.js#normalizeUploadedFile`, L67 to L121): raster images (gif, jpeg, png, webp) become vision entries; direct text types are decoded; docx, pdf, pptx, and rtf go through officeparser text extraction capped at 160,000 characters (`#extractPortableDocument`, L36 to L55); legacy `.doc` and `.ppt` are rejected with a conversion message. An `exact-asset` source's non-raster files are never content-interpreted: they pass through as metadata with a preservation note (L75 to L84 and L98 to L106). Extracted text is folded into `source.content` (L123 to L134).
+3. **Incremental merge** (`service.js#mergeIncrementalSources`, L16 to L19): incoming sources replace stored sources with the same id; the union persists.
+4. **Request construction** (`chat-completions-provider.js#buildSynthesisRequest`, L75 to L133): a developer message carries `SYSTEM_INSTRUCTIONS` (L5 to L52), which state the authority rules (protected assets never reinterpreted; approved guidance governs; evidence never silently becomes guidance; emulate provenance is reference, not evidence; aspiration is declared direction, never fact; influence is creative priority, not a blend percentage, L12, which is its only definition, with no rule mapping influence levels to synthesis behavior); the writing rules (trace claims to named sources, review question over gap-filling, all six guidance sections exactly once); the Lived World subject anchor and inference rules (the person the brand serves, two-layer inference from category then brand facts, every `patterns`, `environments`, and `social` entry carrying a `basis` object, ADR 0015 steps 1 and 2); and the review-question language rules. The user message carries either the first-synthesis source register or the incremental text with the full approved baseline JSON and the new register (L79 to L97), plus every raster file as an `image_url` at high detail (L105 to L113). The response format is strict structured output against `brandBrainSchema` (L124 to L131).
+5. **Schema enforcement** (`src/brand-brain/schema.js`): the strict schema requires exactly six guidance sections, zero to eight review questions, and exactly three artifacts (`dossier`, `livedWorld`, `storyArchitecture`, L226 to L230). Lived World arrays carry floors the model must fill: `wants` 3 to 6, `rejects` 3 to 6, `tensions` 3 to 6, `patterns` 3 to 6, `social` 2 to 4, `environments` 3 to 6 (L149 to L184). `basis.origin` is an enum of `evidence` and `inference` only (L39 to L43); no `ambition` origin exists, consistent with ADR 0016 being unimplemented. Guardrails are 3 to 6 title/body pairs (L134 to L141).
+6. **Model call and parse**: streamed chat completion collected by `#collectChatCompletionStream` (L171 to L191); `#parseSynthesisCompletion` (L142 to L148) parses the JSON and throws unless all six section ids are present.
+7. **Persistence** (`service.js` L73 to L95): the snapshot is written to the brain store with file data stripped from sources (`#persistedSources`, L5 to L10). On incremental, the snapshot carries `approvedResult` (the baseline, unchanged), `baselineVersion`, and a `brain` block marking `stage: "review"` and `revisionPending: true`, so the new result is a candidate beside the still-active baseline.
+
+### Outputs and artifacts
+
+Returns the saved snapshot to the endpoint, which returns it to the interface. Persisted: the full brain state at `brand-world-system/clients/{clientId}/state/current.json` (`store.js#brainStatePathname`, L20 to L22, written L66 to L75), carrying `sources` (file bytes stripped), `result` (the candidate), `approvedResult` (the active baseline or null), `responseId`, `model`, `usage`, and the `brain` state block. Source files themselves live under `brand-world-system/clients/{clientId}/sources/` and are uploaded by the browser through `api/blob/upload.js`, which confines presigned puts and gets to the caller's own client namespace (L46 to L47).
+
+### Invariants
+
+- **Only supplied sources feed synthesis** (`SYSTEM_INSTRUCTIONS` L5). No web knowledge, no invented sources, approvals, quotes, or facts (L24). Source: the evidence discipline of ADR 0009 and ADR 0012.
+- **Authority separation is stated in the prompt, enforced partly in code.** Exact-asset file contents are never text-extracted or handed to the model except as raster vision entries (`source-normalizer.js` L75 to L84); the rest of the authority model (evidence never becomes guidance, emulate is not evidence, aspiration is not fact) is prompt instruction on a strict schema, not code enforcement.
+- **Incremental synthesis preserves the baseline.** The instructions require copying unaffected fields exactly and raising a review question instead of silently replacing on conflict (L82 to L87); the persisted snapshot keeps `approvedResult` untouched (service.js L78). Source: ADR 0009.
+- **Schema floors override the review-question-over-gap instruction.** Structured output cannot return fewer entries than the minimums, so thin evidence produces inferred entries labeled with `basis` rather than gaps. Source: ADR 0015 context (verified there) and steps 1 and 2 (shipped).
+- **Approval is a human act with no model in it.** `selectApprovedBaseline` is the single gate every production consumer reads (service.js L12 to L14). Its `artifactStatus === "ready"` fallback means a brain approved before the `approvedResult` field existed still compiles.
+- **All state is client-namespaced** (store paths, L16 to L26; ADR 0011), with a legacy flat-path read-through for the default client only (L12 to L13, L61 to L64).
+
+### Failure states
+
+- 400: no sources; multiple files on a single-source-v1 source. 413: over 40 MB total, over 45 MB body, over 20 MB per file. 409: incremental with no approved baseline (service.js L54 to L58).
+- URL reads throw named, user-facing errors: invalid URL, private network, bot challenge, thin content, too large, too many redirects, unreadable content type (source-reader.js).
+- File normalization throws on undecodable files, legacy Office formats, and extraction failures, each naming the file.
+- OpenAI non-2xx throws with the API's message and status (provider L203 to L208); a model refusal throws its text (L137); a response missing any of the six sections throws (L146).
+- All surface through `sendPublicError`. There is no empty-success shape: synthesis either returns a full schema-valid brain or throws.
+
+### Consumers
+
+- Stage 6 (`api/production/generate-copy.js` L24 to L27) and stage 7 via `service.js#approvedContext` consume the approved baseline.
+- The copy path (`src/copy/generate.js#buildCopySystemPrompt`) consumes guidance sections and dossier guardrails.
+- Stage 2 product synthesis reads the brain's stored sources to find the product brief (`api/products/index.js#handleSynthesize`, L126 to L131) and uses the brain store's `readSourceFile` for stored bytes.
+- `api/brand-brain/index.js#handler` GET returns the saved state to the interface (L21 to L25); the same handler dispatches the claims document actions (stage 3).
+
+---
+
+## Stage 2: Product records
+
+### Trigger
+
+A POST to `/api/products` with `body.action === "synthesize"` and a `sourceId` naming a stored brain source (`api/products/index.js#handler` L53 to L56, `#handleSynthesize` L126 to L163). Fired from the product synthesis button on product-brief source rows in the interface. Approval is a second POST with `action === "approve"` (`#handleApprove`, L175). Other actions on the same handler: `read`, `delete`, `add_image`, `remove_image`, `defer_question`, `resolve_question` (dispatch at L51 to L119).
+
+### Inputs
+
+- The stored brain source matched by `sourceId` (L131). A miss returns 400 with the available source list (L132 to L143).
+- Environment: `OPENAI_API_KEY`, `OPENAI_MODEL` defaulting to `gpt-5.6` (`src/products/service.js#DEFAULT_PRODUCT_MODEL`, L9).
+- The existing product index, to detect re-synthesis: a product whose `provenance.source_ref` matches the source id is versioned up rather than duplicated (L240 to L263).
+
+### Owner
+
+`src/products/service.js#synthesizeAndPersistProduct` (L218). The model call is `#callSynthesis` (L184), request construction `#buildSynthesisRequest` (L125), reusing the brain's stream collector and text extractor. Record lifecycle owners: `#approveProduct` (L364), `#resolveReviewQuestion` (L386), `#deferReviewQuestion` (L433), `#addProductImage` (L321), `#removeProductImage` (L351), `#deleteProductRecord` (L419). Storage is `src/products/store.js#createVercelBlobProductStore` (L49).
+
+### Transformations
+
+1. The source is URL-enriched and normalized exactly as brain sources are, reusing `enrichUrlSources` and `normalizeSourcesForSynthesis` (L229 to L233).
+2. One model call against `SYNTHESIS_SCHEMA` (L17 to L102), strict structured output. The instructions (L106 to L123) require verbatim evidence quotes, verbatim `approved_claim_language` or an empty string ("Never compose new claim language", L110), honest `origin` marking (`stated` or `inferred`), conditional capability recorded in `accuracy_note`, review questions over gap-filling, and 2 to 4 suggested answers per question phrased for verbatim resolution.
+3. Version resolution (L240 to L263): re-synthesis of an existing source bumps the version; a first synthesis mints a product id via `store.js#generateProductId` (L40 to L47).
+4. The record is assembled with `schema_version "1.0.0"`, provenance pointing at the source, `synthesized_at`, and `approved_at: null` (L265 to L281). **Every synthesis produces a candidate; re-synthesis explicitly resets approval** (comment L276 to L278).
+5. `writeProduct` persists the record at its own key and updates the index entry with status (`approved` or `candidate`) and open question count (`store.js` L94 to L120).
+
+### Outputs and artifacts
+
+Returns `{ record, contentLength, visionFiles, usage }` to the endpoint. Persisted: the record at `brand-world-system/clients/{clientId}/products/{productId}.json` and the index at `.../products/index.json` (`store.js` L7 to L17).
+
+### Invariants
+
+- **Production consumes approved records only.** Enforced at three doors: `service.js#resolveProduct` for image jobs (production service L142 to L159, 409), the copy endpoint's product resolution (`api/production/generate-copy.js` L30 to L40, 409), and re-synthesis clearing `approved_at` (L278). Source: ADR 0012.
+- **Claim language is verbatim or absent** (instructions L109 to L110). The paraphrase risk on claim language is the highest-stakes failure in copy governance (ADR 0013), which is why the schema allows an empty string and the instruction forbids composition.
+- **Images do not touch the approval gate.** Adding or removing a product image bumps nothing and resets nothing, because a picture is not a claim (comment L317 to L320). Review-question resolution and deferral likewise leave version and approval untouched (L382 to L385, L430 to L432).
+- **Independent versioning.** One record changes without touching the brain or other records (ADR 0012; per-record keys in the store).
+- **The record is bounded.** No inventory, pricing, or availability; the shape is the synthesis schema and nothing more (ADR 0012's stated PIM line).
+
+### Failure states
+
+- 400: unknown `sourceId` (with the available list), missing `productId` on read/approve, invalid image attachment, unknown question index, empty resolution note. 404: unknown product on read, approve, delete, image, and question actions. 409: consuming an unapproved record (raised by the consumers named above, not by this stage).
+- Model-call failures throw with the API message and status (L197 to L205). All surface through `sendPublicError`. No empty-success shape exists; synthesis returns a schema-valid record or throws.
+
+### Consumers
+
+- Stage 5 claims assembly consumes `features[].approved_claim_language` and `exclusions` (`src/claims/assembly.js` L135 to L160).
+- Stage 7 consumes the record through `compileProductSectionForImage` and the exclusions in the Protection section; `prepareProductionPackage` consumes product `images` as locked asset and references (production service L177 to L206).
+- Stage 6 consumes name, one true thing, visual direction, exclusions (`generate-copy.js` L369 to L375).
+- The copy path consumes name, one true thing, and features with claim language (`src/copy/generate.js` L70 to L78).
+- `buildConsumptionRecord` and the interface's product screens read the record and index.
+
+---
+
+## Stage 3: Claims document
+
+### Trigger
+
+Claims actions dispatch through the brain endpoint: POST `/api/brand-brain` with `action` of `read_claims`, `add_claim`, `edit_claim`, or `remove_claim` (`api/brand-brain/index.js#handler`, L38 to L86), fired from the claims management interface. `run_audit_test` on the same handler runs the ADR 0013 mechanism test (L88 to L94). The document is human-authored only; nothing synthesizes into it.
+
+### Inputs
+
+For `add_claim` and `edit_claim`: `section` (`approved`, `prohibited`, or `disclosures`), `text` (required), `scope` (defaulting to `{ brand_wide: true }`), `source_ref`, `added_by`, and for disclosures `trigger_scope` (`src/claims/store.js#addEntry`, L77 to L104; `#editEntry`, L107 to L141). For `remove_claim`: `section` and `entryId`.
+
+### Owner
+
+`src/claims/store.js#createVercelBlobClaimsStore` (L37). One document per client at `brand-world-system/clients/{clientId}/claims.json` (L12 to L14).
+
+### Transformations
+
+- `addEntry` appends an entry with a generated id, `added_at`, and null supersession fields, then bumps the document version (L85 to L103).
+- `editEntry` never mutates in place: the existing entry is marked `superseded_at` with a pointer to its replacement, the replacement is appended, and the version bumps (L107 to L141). The supersession chain is the audit trail ADR 0013 requires.
+- `removeEntry` marks the entry superseded with no replacement (L144 to L158).
+- A missing document reads as an empty one with version 1 (`#emptyDocument`, L26 to L35); the store never 404s on read.
+
+### Outputs and artifacts
+
+Each mutation returns the full document plus the affected entries. Persisted: the document, with `updated_at` refreshed on every persist (L54 to L67).
+
+### Invariants
+
+- **Human-authored, never synthesized** (module comment L3 to L10; no synthesis path writes to this store anywhere in `src/` or `api/`). Source: ADR 0013.
+- **Nothing is ever deleted.** Every edit and removal is a supersession with a timestamp; consumers read only active entries through `#activeEntries` (L161 to L163), so history persists without governing.
+- **The document versions independently** of the brain and product records (version bump on every mutation).
+- **Three sections only.** Any other section name throws (L79 to L81). Directives are not a stored section: the directive split happens at assembly time (stage 5), never in this document.
+
+### Failure states
+
+- Throws on invalid section, empty text, and unknown entry id, each with the offending value named. Surfaced through the endpoint's `sendPublicError`. Reads cannot fail into an empty-vs-error ambiguity: a missing document is a well-formed empty document.
+
+### Consumers
+
+- Stage 5 assembly reads active entries per section (`assembly.js` L94 to L131).
+- `listSegments` derives the client's segment list from scope declarations on active entries (`assembly.js` L49 to L62), served through the `segments` action on the copy endpoint (`generate-copy.js` L58 to L63).
+- The claims management interface reads the document and active lists through `read_claims`.
+
+---
+
+## Stage 4: Job scope resolution
+
+### Trigger
+
+Never user-initiated and never an endpoint: `buildJobScope` is called wherever a job's context must be normalized for scope matching. Callers at the verified commit: claims assembly setup in `prepareProductionPackage` (production service L220 to L225), the copy endpoint's three claim-consuming actions (`generate-copy.js` L76 to L81, L106 to L111, L153 to L158), and `resolveTreatments` in the compiler (package.js L112).
+
+### Inputs
+
+`{ placement, productId, campaignId, segment }`, all optional (`src/scope/resolver.js#buildJobScope`, L80 to L98). Rules and claims bring their own scope declarations in one of two formats: the claims document's object format (`brand_wide`, `channel`, `placement`, `product_id`, `campaign_id`, `segment`) and the brain review question's array format of label/value pairs (module header, L8 to L19).
+
+### Owner
+
+`src/scope/resolver.js`: `#buildJobScope` (L80), `#objectScopeAppliesToJob` (L133), `#arrayScopeAppliesToJob` (L200), `#scopeAppliesToJob` (L256), the placement map `placementScopes` (L39 to L63).
+
+### Transformations
+
+- `buildJobScope` maps the placement string to a channel and platform through `placementScopes`; an unmapped placement sets `unknownPlacement: true` and logs a warning (L82 to L88), which under fail-closed matching excludes scoped approved claims rather than silently including them.
+- `objectScopeAppliesToJob` checks each declared axis in turn: channel, placement (matching raw placement or mapped platform), product, campaign, segment (L133 to L185). `brand_wide` short-circuits to true (L134).
+- `arrayScopeAppliesToJob` handles label/value entries with `all ...` wildcard values per axis (L200 to L241).
+- The axis primitive returns true, false, or null-for-unresolvable (`#axisResult`, L106 to L110); the `unmatchedAxis` mode decides what null means (`#resolveNull`, L115 to L117).
+
+### Outputs and artifacts
+
+A boolean per rule per job, and the normalized job scope object. Persisted: none. Scope decisions leave their trace in what the assembled claims set and the treatments contain, not as their own record.
+
+### Invariants
+
+- **The fail direction is asymmetric and is this module's reason to exist.** `unmatchedAxis: "exclude"` (fail closed) governs approved claims and disclosures, so scoped safe-harbor language never leaks into a job that cannot evaluate the axis. `unmatchedAxis: "include"` (fail open) governs prohibited claims and brain review question rules, because over-blocking is the safe error (header, L21 to L33). Source: ADR 0013 revision of 2026-08-09. Any new scope axis must preserve this asymmetry; the segment axis (L178 to L182) is the worked example, with its silent fail-closed exclusion made visible by the preflight's withheld-for-segment report (stage 5).
+- **One resolver for both paths.** Image treatments and copy claims share this module by design (header L3 to L6), so a scope semantics change cannot fork between them.
+
+### Failure states
+
+None of its own: the functions are pure and total over their inputs. An unrecognized placement is a logged warning plus the unmatched-axis posture, never a throw (L85 to L88). A malformed scope declaration matches nothing it cannot read and falls through to true only via the documented defaults.
+
+### Consumers
+
+Stage 5 assembly (both fail directions), stage 7 treatments (`arrayScopeAppliesToJob`, fail open default), and every claims-consuming action on the copy endpoint.
+
+---
+
+## Stage 5: Claims assembly
+
+### Trigger
+
+Called at compile-adjacent moments, never an endpoint of its own: `prepareProductionPackage` when the job declares copy outputs (production service L212 to L227); the copy endpoint's `copy_type`, `audit_copy`, and legacy LinkedIn actions (`generate-copy.js` L72 to L82, L100 to L112, L160 to L165).
+
+### Inputs
+
+`{ claimsDocument, product, activeEntries, jobScope }` (`src/claims/assembly.js#assembleClaimsSet`, L82). `activeEntries` is the claims store's filter; `product` is an approved record or null; `jobScope` comes from stage 4.
+
+### Owner
+
+`src/claims/assembly.js#assembleClaimsSet` (L82), with the directive classifier `#isDirective` (L64), the segment reporter `#withheldOnlyForSegment` (L34), and `#listSegments` (L49).
+
+### Transformations
+
+A union of two reads, in order, nothing paraphrased, merged, or reconciled (module header L3 to L10):
+
+1. Brand document approved entries, scope-matched fail closed; entries dropped solely for a missing job segment are recorded in `withheldForSegment` so the exclusion is visible rather than silent (L94 to L111).
+2. Brand document prohibited entries, scope-matched fail open (L112 to L121).
+3. Brand document disclosures, matched on `trigger_scope`, fail closed (L122 to L131).
+4. Product `approved_claim_language` per feature into approved with a product-scoped source string (L135 to L144).
+5. Product `exclusions`, each classified by `isDirective`: a clearly imperative opening (L26 to L29) routes to `directives`; everything else, including anything ambiguous, stays on `prohibited` and gets audited, which costs noise rather than safety (comment L19 to L25, L145 to L160). Source: the ADR 0013 amendment of 2026-08-10.
+
+### Outputs and artifacts
+
+`{ approved, prohibited, disclosures, directives, withheldForSegment }` (L163). Persisted: nothing here. The set is recorded downstream in the compiled package's `governingClaims` (stage 7) and echoed in copy endpoint responses.
+
+### Invariants
+
+- **Derived, never stored.** No third claims catalog exists; the product record and the brand document each stay authoritative for their own scope, with no sync mechanism to fall out of date. Source: ADR 0013's central decision.
+- **The fail-direction asymmetry is applied here** exactly as stage 4 defines it (`FAIL_CLOSED` and `FAIL_OPEN`, L71 to L72).
+- **Directives never reach the claim auditor.** They steer generation through their own prompt section (`src/copy/generate.js` L96 to L99) and are excluded from the audited prohibited list, because a directive has no claim to match and hands the auditor a topic match. Source: ADR 0013 amendment, 2026-08-10.
+- **The directive classifier fails toward auditing.** Ambiguous entries stay prohibited (comment L21 to L25), consistent with over-blocking as the safe error.
+
+### Failure states
+
+None of its own: pure function, total over inputs. A null document contributes nothing; a null product contributes nothing. The caller decides whether an empty set is a problem (the copy path reports `no_claims` as a distinct audit status, never a clean pass).
+
+### Consumers
+
+- Stage 7 records the set in the copy contract (`compileCopyContract`, package.js L641 to L669).
+- Copy generation steers with all four lists (`src/copy/generate.js#buildCopySystemPrompt`, L80 to L99).
+- The audit consumes approved and prohibited (`#auditProducedCopy`, L159 to L239); disclosures feed `checkDisclosurePresence`.
+- The preflight copy panel renders the governing claims and the withheld-for-segment report (`app/app.js#copyPreflightPanel`, L5948 to L6001).
 
 ---
 
@@ -183,15 +431,301 @@ Persisted by this stage: none. The compiler is a pure function over its inputs. 
 
 ---
 
-## Known ambient states (draft scope: stages 6 and 7)
+## Stage 8: Preflight
 
-Findings recorded during the practice build. Each names the disagreement and the evidence; none has been reconciled in code.
+### Trigger
 
-1. **ADR 0016 carries a stale Verified claim about the scene writer.** The ADR's context section states, marked Verified, that `api/production/generate-copy.js` pushes `identity.summary` alone and the identity principles never reach the scene writer. Commit `1a9357e` (after `bcee418`, before this contract's verified commit) changed the writer to include identity principles (`api/production/generate-copy.js` L341 to L343). The ADR text has not been updated. The spec for this contract (`docs/image-pipeline-contract-spec.md`, stage 6) carries the same stale statement, dating from its verification at `bcee418`.
-2. **The spec names a scene writer kind that does not exist.** The spec's stage 6 lists kinds `scene` and `object`. The kinds at the verified commit are `scene`, `template_surface`, and `sales_element` (`api/production/generate-copy.js` L379 to L414). No `object` kind exists anywhere in the file.
-3. **Display copy governance is enforced client-side at the API seam.** ADR 0014 part two requires in-image copy to come only from a produced-and-audited source. Server-side, `prepareProductionPackage` uses `body.draftedCopy` as sent (service.js L253 to L268); when the draft arrives without an audit, an errored-audit placeholder is attached and the string still compiles into the render prompt. The comment records that the interface blocks generation while an edit is unchecked (L249 to L252), so the gate is the client, and a direct API caller can render an unaudited string. The package records the audit state honestly; it does not refuse the string.
-4. **The suggestion picker displays one of four authored fields.** `app/app.js#sceneSuggestionPanel` (L4056 to L4083, card markup at L4070 to L4074) renders only `label` and `brief`. Selection applies all four fields (L8565 to L8581), so the data is complete and the defect is display-only. Already recorded in `docs/deferred-work.md` and in ADR 0016's consequences.
-5. **`checkRequirements` runs with a hardcoded deliverable id.** `compileBrandWorldImagePackage` calls it with `"brand-world-image"` for every placement (package.js L582), so template and sales enablement jobs are checked against the brand-world-image requirement list, and the `product-showcase` entry in `deliverableRequirements` (L78 to L83) is reachable only by a direct call with that id, which no caller at the verified commit makes. Requirements are advisory (ADR 0005 finding 4), so the mismatch has no blocking effect today.
-6. **`compileProductSection` is dead code.** `src/production/package.js#compileProductSection` (L337 to L360) compiles the full product record including approved claim language into a prompt section and is called from nowhere in `src/` or `api/` at the verified commit. The live image path uses `#compileProductSectionForImage` (L313 to L322), which deliberately excludes claim language from image prompts. A session finding the dead function by search could mistake it for the live compiler; that is the exact misreading class this contract exists to prevent.
-7. **The constraint audit is structurally satisfied by construction.** Guardrails and brief exclusions are compiled verbatim into the Protection section (package.js L538 to L540) and then presence-checked against the same prompt (prompt-craft.js L442, L452), so their `carried` status is guaranteed while that compilation holds. The audit's value is as a regression tripwire, not a live filter (Reasoned).
-8. **ADR 0016 is proposed and unimplemented at the verified commit.** No `visualGrammar` artifact exists; `livedWorld.rejects` remains the live source of image-path avoid-clauses (`#rejectsDirection`, package.js L303 to L308). This is consistent with the ADR's status; recorded here so a session does not go looking for grammar consumption that does not exist yet.
+A POST to `/api/production/preflight` (`api/production/preflight.js#handler`, L7 to L26), fired when the user continues from Design Studio setup into preflight. The endpoint compiles the package and returns it; nothing is generated and nothing is spent beyond the display-copy pre-production described below.
+
+### Inputs
+
+The job body: brief, references, locked asset id, template asset id, product id, campaign, copy outputs, segment, display copy settings. The full resolution of these into compiler inputs is documented under stage 7's Inputs, which is the authoritative account; this stage adds nothing to it. The endpoint constructs the three stores from the resolved client id (preflight.js L17 to L21).
+
+### Owner
+
+`api/production/preflight.js#handler` (L7), delegating entirely to `src/production/service.js#prepareProductionPackage` (L161), whose internals stage 7 documents.
+
+### Transformations
+
+One: `prepareProductionPackage` runs, which resolves inputs, assembles claims when copy is declared, pre-produces display copy when requested (a real model call before any render spend, service.js L238 to L302), and compiles the package. The endpoint returns `{ generationPackage }` (L22).
+
+### Outputs and artifacts
+
+Returns the compiled package. Persisted: none. The preflight package is held in interface state (`state.production.package`); the package the render eventually uses is compiled again inside the generate invocation (stage 7 Trigger), not this one.
+
+What the user is shown before spend, and the package fields each element reads (`app/app.js#renderPreflight`, L6008 to L6180):
+
+- Compiled sections count and the full prompt text in a collapsible (`sections`, `compiledComponents`, L6023 to L6055).
+- Grounding, protected asset, product record and version, visual register, flexible and excluded lists (`policy`, `lockedAsset`, `product`, `aestheticMode`, L6057 to L6065).
+- Scene adjustments: state neutralizations and orientation adjustments, each naming the changed phrases (`stateNeutralizations`, `orientationAdjustments`, L6067 to L6068).
+- The screen abstraction disclosure with the path to real content (`screenContentAbstracted`, L6069).
+- The copy panel: declared types, governing claims in four groups, the segment, the withheld-for-segment report, and the nothing-to-enforce state (`copy.governingClaims`, `copy.declared`, `copy.segment`, `copy.withheldForSegment`, `#copyPreflightPanel` L5948 to L6001).
+- Treatments grouped by locked, suggested, and not-needed with counts (`treatments`, L6074 to L6100).
+- The requirement check and the ready/needs-input card; unmet requirements are named and generation is not blocked (`requirementCheck`, `ready`, L6102 to L6123).
+- What travels with the render: brain version, protected asset, reference count (`brainVersion`, `lockedAsset`, `references`, L6131 to L6145).
+
+### Invariants
+
+- **Preflight precedes spend.** The compile is deterministic and free; the one model call this stage can make is display-copy pre-production, which exists because a string that must be rendered has to exist first (service.js comment L229 to L237). Source: ADR 0003's preflight contract; the ADR 0014 revision of 2026-08-11 for the inversion.
+- **What is shown is what compiles.** The panel renders fields of the same package object the compiler returned; nothing is recomputed for display. The known gap: the render invocation compiles again from the same request body, so a store change between preflight and generate (a claims edit, a product re-synthesis clearing approval) changes or blocks the render relative to what preflight showed. The second compile re-runs every resolver, so the approval gates still hold; what is not guaranteed is that preflight's picture and the render's package are identical. Reasoned from the two call sites; no code pins the preflight package to the render.
+- **Unmet requirements advise, never block** (ADR 0005 finding 4; `ready` is display only, stage 7 invariants).
+
+### Failure states
+
+Everything stage 7 and its resolvers throw, surfaced by `sendPublicError` (preflight.js L23 to L25). A display-copy failure is not a preflight failure: it is recorded on the copy contract and preflight renders without the block (stage 7 Failure states).
+
+### Consumers
+
+The interface preflight screen exclusively. The package it displays is the user's evidence for the generate decision; the render itself consumes the second compile.
+
+---
+
+## Stage 9: Render call
+
+### Trigger
+
+`src/production/service.js#generateProductionImage` (L377), reached from `api/production/generate.js#handler` when the user confirms generation after preflight. Before the render is reached, the duplicate-invocation guards run (stage 10's invariants cover the record semantics): a complete record for the same job id returns immediately (L380); a working record younger than five minutes turns this invocation into a poller that waits up to 200 seconds and returns the original's result (L384 to L396, intervals at L367 to L369); a working record older than five minutes is treated as abandoned and re-rendered.
+
+### Inputs
+
+The compiled package's prompt string (`generationPackage.prompt`, L443); up to ten reference images loaded from Blob as bytes, ordered template asset first, locked asset second, then creative references (L408 to L417, L431 to L440); the OpenAI API key from `options.env`; size from `generationPackage.output.size` via `imageSizeForFormat` (stage 7); quality fixed at `"medium"` and output format `"png"` (L447 to L448). The reference ceiling of eight applies to creative references at resolution time (`#resolveReferences`, L38); the template and locked asset ride above that count.
+
+### Owner
+
+`src/renderers/openai-images.js#renderWithOpenAIImages` (L53), with endpoint selection in `#chooseOpenAIImageEndpoint` (L17 to L19) and request construction in `#buildOpenAIImageGenerationRequest` (L21 to L33) and `#buildOpenAIImageEditRequest` (L35 to L52).
+
+### Transformations
+
+Endpoint chosen by reference presence: any reference images route to the edits endpoint as multipart form data with each image appended as `image[]`; none routes to generations as JSON (L17 to L19, L54 to L57). Model `gpt-image-2`, constants at L1 to L3. The prompt passes through unmodified: `#requiredPrompt` (L5 to L8) validates non-empty only. The response is returned as OpenAI sends it; the service decodes `data[0].b64_json` from base64 (service.js L451 to L453).
+
+### Outputs and artifacts
+
+Returns the OpenAI response object to the service; the service extracts the image bytes. Persists nothing itself. The service owns persistence (stage 10).
+
+### Invariants
+
+- **The prompt is the compiled package's prompt exactly**; no stage between compilation and the API call may append or rewrite (source: the compiled prompt is the durable record, ADR 0003 and ADR 0006; verified by `#requiredPrompt` being the only touch).
+- **Endpoint selection is mechanical from reference count, never a user choice** (source: ADR 0005, presets not selectors; L17 to L19).
+- **The renderer is provider-shaped, not policy-shaped.** No governance logic lives here; it takes a prompt, images, and options, and returns bytes or throws.
+
+### Failure states
+
+Non-2xx from OpenAI throws with the API's message and status (L66 to L70); a missing API key fails here, not silently upstream (L54). Empty image data throws in the service ("OpenAI returned no image data.", L452). The service's catch owns what happens next (stage 10).
+
+### Consumers
+
+Stage 10 consumes the bytes; the result screen consumes the job status; the package record persisted alongside the output is unaffected by render failure.
+
+---
+
+## Stage 10: Persistence
+
+### Trigger
+
+The render succeeding or failing inside `generateProductionImage` (service.js L419 to L552). Separately, the interface persists its output log through POST `/api/production/outputs` (stage 11) after saving or discarding work.
+
+### Inputs
+
+The working job record, the rendered bytes, the compiled package (including the copy contract), and the post-render copy production results.
+
+### Owner
+
+`src/production/store.js#createVercelBlobProductionStore` (L101): `write` for the current-job record (L126 to L135), `writeImage` (L136 to L148), `writeOutputPackage` (L160 to L169), `readOutputPackage` (L170 to L172), `deleteOutputArtifacts` (L175 to L180), `readOutputs` and `writeOutputs` (L181 to L194), `outputImageUrl` and `imageUrl` presigners (L105 to L112, L149 to L157). The write sequence is owned by `generateProductionImage`.
+
+### Transformations
+
+In order, on the success path:
+
+1. The working record (job id, attempt id, status `working`, model, endpoint, the full compiled package) is written before the render starts (L419 to L428).
+2. After the render, the ownership check: the record is re-read, and if another attempt now owns it, this attempt discards its result rather than overwriting (L458 to L461). Source: the 2026-08-11 duplicate-render incident.
+3. The image bytes are written to the per-job deterministic path `brand-world-system/clients/{clientId}/production/jobs/{jobId}/output.png` (`#productionImagePathname`, store L22 to L24).
+4. Governed copy is produced after the image, one block per declared type, pre-produced display blocks carried forward rather than regenerated; a block that fails is recorded as a failure with an errored audit rather than silently omitted (service L470 to L509).
+5. The package, now carrying produced copy and findings, is written beside the image at `.../jobs/{jobId}/package.json` (`writeOutputPackage`, service L513 to L524); a failure here is swallowed, costing later review, never the image (comment L521 to L523).
+6. The complete record is written with `imagePathname` and `imagePublicUrl: null` (L525 to L534).
+
+On the failure path: only the attempt that owns the record may write the error record, so a failing retry cannot mark a succeeded job failed (L536 to L551).
+
+### Outputs and artifacts
+
+Persisted, per client namespace: the current-job record at `production/current.json` (one slot; a new job replaces it); the image at the per-job path; the package at the per-job path; the output log at `production/outputs.json`, written by the interface through stage 11 with at most 200 entries and every field stripped to the durable minimum (outputs.js L129 to L153).
+
+### Invariants
+
+- **No presigned URL is ever persisted.** `imagePublicUrl` is written null (service L531); the output log stores `hadImage` as a boolean and never a URL (outputs.js L142 to L147); presigned URLs live fifteen minutes and are minted per read (store L105 to L112, comment L150 to L153). Source: the broken-thumbnail class of bugs, closed structurally by stage 11's redirect route.
+- **The compiled package persists with the output** and is the durable record of what the brand asserted; reopening past work reads it back (stage 11). Source: ADR 0003, ADR 0006, ADR 0014's copy contract.
+- **Attempt ownership gates every durable write.** The `attemptId` check before the image write and before the error write are the two walls from the duplicate-render incident, covered by `test/duplicate-render.test.js`.
+- **A duplicate is a reader, a dead job is retryable.** The three time constants (2-second poll, 200-second wait, 300-second abandonment) encode the incident's fix (L367 to L369).
+- **Copy failure never costs the image** (L470 to L509); package-write failure never costs the image (L513 to L524).
+- **The current-job slot is one deep.** Anything durable about an output beyond the latest job lives in the per-job blobs and the output log, which is why the package must be written per job.
+
+### Failure states
+
+A render failure writes an error record (if owned) and rethrows; the endpoint returns the message and the result screen renders the failed state with retry. A blob write failure on the image path fails the job; on the package path it is swallowed; on the output log it is the interface's problem (stage 11). Failure and empty are distinguishable everywhere: status is `working`, `complete`, or `error`, and a complete record without an image cannot exist because the image write precedes it.
+
+### Consumers
+
+Stage 11 serves the persisted image and package; `api/production/current.js#handler` returns the current job with a freshly minted image URL for recovery (`readProductionJob`, service L349 to L355); the interface's `recoverProductionJob` (app.js L7438) uses it when the gateway drops the response mid-render (app.js L7491 to L7495).
+
+---
+
+## Stage 11: Serving
+
+### Trigger
+
+GET and POST on `/api/production/outputs` (`api/production/outputs.js#handler`, L9). GETs: the stable image redirect (`?action=image&outputId=`), a single output with its package (`?outputId=`), or the full log. POSTs: save the trimmed log, or `action: "discard"` for a hard delete.
+
+### Inputs
+
+Query parameters or the posted output list. The interface builds every image `src` through `app/app.js#outputImageSrc` (L9524 to L9530), which returns the stable route for any output with an id and `hadImage`, and an empty string for pre-image-path legacy outputs so they fall to the missing state rather than a dead link.
+
+### Owner
+
+`api/production/outputs.js#handler` (L9), with the store functions from stage 10.
+
+### Transformations
+
+- **The stable image route** (L26 to L48): mints a fresh fifteen-minute presigned URL for the job's PNG and responds 302 with `Cache-Control: no-store, max-age=0`, because a cached redirect would pin a URL that expires, which is the bug this route exists to end (comment L38 to L39). Any failure is a 404 JSON body, never a broken redirect.
+- **Single-output read** (L50 to L68): finds the log entry, mints an image URL when the output had one, and returns the entry together with the persisted per-job package, so the evaluation screen has the same material it had at generation time.
+- **Log read** (L70 to L87): re-mints image URLs for at most the first 60 outputs (`MAX_SIGNED_IMAGES`, L7); the rest return without URLs, reachable through the stable route on demand.
+- **Log write** (L121 to L155): caps at 200 (`MAX_OUTPUTS`, L4) and strips each entry to the durable fields, converting any incoming URL to the `hadImage` boolean and keeping `copySummary` as a marker while the produced text and audit live in the per-job package (comments L142 to L152).
+- **Discard** (L100 to L119): removes the log entry, then best-effort deletes the image and package blobs; a blob-delete failure orphans the blobs rather than reporting the discard failed (comment L114 to L116).
+
+### Outputs and artifacts
+
+Responses only; the persisted artifacts are stage 10's. The legacy-output missing state is a contract with the interface: an empty `src` from `outputImageSrc` plus the `onerror` fallbacks on every figure (app.js L1410, L3396, L3537, L4442, L5102, L5713) render a visible missing state instead of a broken image.
+
+### Invariants
+
+- **Every image the interface shows travels through the stable route.** The browser never holds a presigned URL (comment L21 to L25); the durable fact is `hadImage`, never a URL. Source: the stable image route decision closing the broken-thumbnail bug class.
+- **The redirect is never cacheable** (L40).
+- **Discard is a hard delete of record, image, and package together**, so no surface has to remember to filter a ghost (comment L98 to L99; store `deleteOutputArtifacts`).
+- **Failure is distinguishable from missing**: image route failures are 404 JSON; log reads that find no document return an empty list; a legacy output renders the missing state by construction.
+
+### Failure states
+
+400 on a discard without an id or a save without a list; 404 on unknown output id and on any image-route failure. All others via `sendPublicError`.
+
+### Consumers
+
+Every thumbnail and result figure in the interface via `outputImageSrc`; `persistOutputs` (app.js L7603), `openOutputForReview` (L7621, which navigates to the result screen and loads the per-job package, refusing evaluation when the package was never saved, L7633 to L7635), `discardOutput` (L7664), `hydrateOutputs` (L7698).
+
+---
+
+## Stage 12: Surfacing
+
+The contract documents which package and job fields each surface reads, not the markup.
+
+### Trigger
+
+Rendering: `app/app.js#renderPreflight` (L6008) on the preflight screen and `#renderResult` (L6448) on the result screen. The result screen renders in three modes: live generation (navigated to at generate time with a working stub carrying the preflight package, L7474 to L7480), completed or failed current job, and reopened past work (`openOutputForReview` rebuilding the job from the persisted package).
+
+### Inputs
+
+`state.production.package` (preflight) and `state.production.job` with its `generationPackage` (result).
+
+### Owner
+
+`app/app.js`: `#renderPreflight` (L6008), `#copyPreflightPanel` (L5948), `#renderResult` (L6448), `#buildEvaluationFindings` (L6183), `#buildCopyFindings` (L6355), `#renderedCopyCheckPanel` (L6264), `#producedCopyPanel` (L6286), `#copyAuditPill` (L6326 region), `#outputImageSrc` (L9524).
+
+### Transformations
+
+Preflight field reads are enumerated under stage 8. Result-screen reads:
+
+- Job status drives the working, failed, and complete states; `job.imageUrl` is the figure source; `job.endpoint` containing `/edits` labels the generation method (L6469 to L6474).
+- `#buildEvaluationFindings` (L6183 to L6262) reads `pkg.lockedAsset` (fidelity check card), `pkg.output.format`, `pkg.output.size`, `pkg.output.placement` (composition card), `pkg.brandName` (brand fidelity card), and `pkg.constraintAudit` (rules cards for `excluded` and `warning` entries). The first four cards are fixed verify prompts for the human reviewer, not model findings; nothing at this commit examines the returned image (the ADR 0016 evaluation loop is unbuilt).
+- `#buildCopyFindings` (L6355 onward) reads `pkg.copy.displayCopyError` (the headline-not-placed finding) and each `pkg.copy.produced[]` block's `audit.status` and `audit.findings`, rendering `errored` as unchecked with a rewrite action, `no_claims` as a verify note, and each finding with its field, kind, and governing rule.
+- `#producedCopyPanel` reads each produced block's `label`, `fields` (with `overLength` pills and visible gaps for empty fields), `text`, and audit pill; failed blocks render the not-written state with the image explicitly still usable (L6286 to L6323).
+- `#renderedCopyCheckPanel` reads `pkg.copy.display.lines` and renders the intended strings beside the image with the explicit statement that nothing checks the lettering automatically (comment L6260 to L6263). This is the manual stand-in for the unbuilt read-back verification.
+- Reopened work banners read `generationPackage.brainVersion` (L6520 to L6521).
+
+### Outputs and artifacts
+
+Rendering only. The interface persists the output log through stage 11 after save and discard actions.
+
+### Invariants
+
+- **An errored audit never renders as a clean pass.** The audit pill and findings read `audit.status` and say so in words (`#copyAuditPill` comment; `src/copy/generate.js` header L8 to L18). This is the single field the interface trusts for that distinction.
+- **Display copy is presented as unverified** until read-back verification exists, and the panel names the person as the check (ADR 0014 revision of 2026-08-11; `verified: false` on the package, stage 7).
+- **Result figures degrade to a visible missing state**, never a dead link (stage 11 consumers).
+- **The findings shown for a reopened output come from the persisted package**, the same material as at generation time (stage 11; `openOutputForReview`).
+
+### Failure states
+
+The result screen's failed state renders the job error with retry; `openOutputForReview` renders a named refusal when the package was never persisted; missing images render the missing state.
+
+### Consumers
+
+None downstream: this is the terminal stage. The person's approve, save, discard, feedback, and retry actions feed back through the endpoints already documented.
+
+---
+
+## Cross-cutting: the copy path on the image job
+
+Copy has two riding positions on the image pipeline, plus a standalone endpoint.
+
+**Declared copy outputs, produced after the render.** The job declares copy type ids (`#resolveCopyOutputs`, service L330 to L336, unknown ids dropped, capped at four). The claims set assembles once and serves both steering and the record (stage 5). After the image persists, each declared block is produced by `src/copy/generate.js#produceCopy` (L245 to L300): the catalog entry from `src/copy/types.js` supplies role line, length guidance (per-channel caption budgets, types.js L36 to L46), structural rules, and output format; generation is one `gpt-4o` call at temperature 0.7; structured types parse JSON into fields with empty fields kept visible rather than dropped (`#parseStructuredCopy`, L307 to L325). The catalog is configuration, the capability is code (types.js header; ADR 0011's line, ADR 0014 step 1). Placement defaults come from `#defaultCopyOutputsForPlacement` (types.js L131 to L137, social channels get a caption); `#availableCopyOutputsForPlacement` offers the headline set everywhere (L142 to L144).
+
+**The audit on every produced block.** `#auditProducedCopy` (generate.js L159 to L239) normalizes three states that must look different to a reviewer: `governed`, `no_claims`, `errored` (header L8 to L18). It never throws: an audit that cannot complete reports errored rather than failing copy that was produced. The deterministic checks run in every state, including errored: the prose check (`src/copy/prose-check.js#checkProseRules`, L50 onward: em dashes anywhere, the banned-word list, hedging verbs, negation-first pairs, fragment stacks of three or more, each finding quoting its context; deduplicated by `#collapseProseFindings`), the disclosure presence check (`src/claims/copy-audit.js#checkDisclosurePresence`, L118 to L125, normalized substring), and the display budget check (`src/copy/display-budget.js#checkDisplayBudgets`, L179 to L197). The model-based claim audit is `src/claims/copy-audit.js#auditCopyAgainstClaims` (L25 to L116): `gpt-4o` at temperature 0, the falsifiability test as the claim definition, safe-harbor semantics (approved passes, prohibited is a violation, unapproved is advisory, description is no finding), the compliance-is-not-violation rule, and description-when-torn (all four ADR 0013 amendments of 2026-08-10 present in the prompt, L30 to L50). Match tokens resolve back to the governing claim text for the interface (`#resolveGoverningRule`, generate.js L145 to L152); findings are attributed to the field they landed on (`#attributeFindingsToFields`, L333 to L340).
+
+**Display copy, produced before the render.** The inversion and its handling are documented in stage 7's Inputs and the service walkthrough (service L229 to L302). Budgets are characters, not words, and are a legibility floor rather than a fit ceiling; the per-line figures are REASONED from typographic practice, not measured against renders, and say so in the module (display-budget.js header L25 to L31, L146 to L148).
+
+**Standalone actions on the copy endpoint** (`api/production/generate-copy.js`): `copy_type` produces one governed block outside an image job (L99 to L140); `audit_copy` re-audits user-edited copy without a generation call, attributing findings to fields (L69 to L97), which is what keeps an edited display string a produced-and-audited source; `segments` lists the client's segments (L58 to L63); the legacy LinkedIn path (L142 to L310) is the pre-catalog caption generator with the same steering, audit, and disclosure checks inline, still reachable when no `action` is set.
+
+## Cross-cutting: invariant index
+
+Every invariant above in one table. A change to any listed module is checked against every row naming it.
+
+| Invariant | Where enforced | Source |
+| --- | --- | --- |
+| The 12-serverless-function ceiling: all new operations dispatch through existing handlers | `api/` contains exactly 12 function files at the verified commit; dispatch comments in `generate-copy.js` L52 to L54, `api/products/index.js` L22 to L24, `api/blob/upload.js` L4 to L7, `api/brand-brain/index.js` L6 | Vercel Hobby constraint; ADR 0011 operating reality |
+| Only supplied sources feed synthesis; nothing invented | `chat-completions-provider.js` L5, L24; `products/service.js` L109 to L114 | ADR 0009, ADR 0012 |
+| Exact-asset contents are never reinterpreted | `source-normalizer.js` L75 to L84; `prompt-craft.js#protectionBlock` | ADR 0002; PWP-proven protection |
+| Approval gates every production consumer: brain, product, in both paths | `brand-brain/service.js#selectApprovedBaseline`; `production/service.js#resolveProduct` L153 to L157; `generate-copy.js` L35 to L39 | ADR 0009, ADR 0012 |
+| Claims are derived at compile time, never stored as a third catalog | `claims/assembly.js` whole module | ADR 0013 |
+| Fail-direction asymmetry: approved and disclosures fail closed, prohibited fails open, on every scope axis | `scope/resolver.js` header L21 to L33; `assembly.js` L71 to L72 | ADR 0013 revision 2026-08-09 |
+| Directives never reach the claim auditor; ambiguity fails toward auditing | `assembly.js` L19 to L29, L145 to L160; `copy/generate.js` L92 to L99 | ADR 0013 amendment 2026-08-10 |
+| The claims document is human-authored and append-only via supersession | `claims/store.js`; no synthesis write path exists | ADR 0013 |
+| The compiled prompt is the durable record; nothing between compile and render rewrites it | `openai-images.js#requiredPrompt`; package persisted per job | ADR 0003, ADR 0006 |
+| Image-only package parity: no copy outputs, no copy key, byte-identical compile | `package.js#compileCopyContract` L641 to L643; `test/copy-contract.test.js` L57 | ADR 0014 step 2; the 2026-08-09 placement-shape regression |
+| Protection compiles as one compact block and is ported PWP craft, not reworked | `prompt-craft.js` L1 to L12, L151 to L206 | PWP v13; ADR 0015 left it uncompressed |
+| Neutralizers are scoped: state lock only with a locked asset; orientation never on template, sales, or template-asset jobs | `package.js` L399, L404 to L413 | The screen-orientation template regression |
+| Screens are a governed surface; readable screen content enters only as a protected asset | `prompt-craft.js` L117 to L132 | ADR 0014 revision 2026-08-11 |
+| Text safety narrows for authored display copy, never drops | `prompt-craft.js` L108 to L115, L152 | ADR 0014 revision 2026-08-11 |
+| `verified: false` on display copy is never set true by assertion | `package.js` L656 to L661; result screen check panel | ADR 0014 part two; read-back verification unbuilt |
+| Budget discipline: guidance compiles compact; the scene carries the budget; payload measured on change | `package.js#sectionDirection` L281 to L297, sections L481 to L559 | ADR 0015 steps 4 and 5 |
+| Brand rejects reach the model as avoid-clauses (livedWorld.rejects until ADR 0016 lands, then per-client switch on artifact presence) | `package.js#rejectsDirection` L303 to L308 | ADR 0015 step 5; ADR 0016 part 3 |
+| Catalog is configuration; render and generation capabilities are code | `copy/types.js` header; deliverable catalogs per ADR 0011 | ADR 0011, ADR 0014 |
+| Treatments are display-only and do not govern the compile | `package.js` L581; nothing in section assembly reads them | ADR 0005 finding 3 |
+| Deliverable requirements advise, never block | `package.js` L583 to L584; preflight card L6119 to L6123 | ADR 0005 finding 4 |
+| Mode labels never appear as user-facing selectors or status text | aesthetic mode is inferred (`prompt-craft.js#selectAestheticMode`); interface shows plain-language promises | ADR 0005 and its finding 1 |
+| No presigned URL is ever persisted; the stable image route mints per read with no-store | `production/store.js`; `outputs.js` L26 to L48, L142 to L147; `service.js` L531 | The broken-thumbnail bug class |
+| Attempt ownership gates durable writes; a duplicate is a reader; a dead job retries | `service.js` L380 to L401, L458 to L461, L541 to L551 | Incident 2026-08-11; `test/duplicate-render.test.js` |
+| Copy failure never costs a rendered image; display-copy failure never blocks the render | `service.js` L299 to L301, L470 to L509 | ADR 0014 and its 2026-08-11 revision |
+| An errored audit never renders as a clean pass; three audit states are distinct | `copy/generate.js` L8 to L18, L159 to L239; `#copyAuditPill` | ADR 0014 step 3 |
+| The deterministic checks (prose, disclosure, budget) run in every audit state | `copy/generate.js` L161 to L166, L182, L200, L229 | ADR 0013 amendment 2026-08-10 |
+| All durable state is client-namespaced; blob paths are confined to the caller's namespace | every store module; `api/blob/upload.js` L46 to L47; `resolveClientId` sanitization | ADR 0011, ADR 0004 |
+| Production feedback never auto-writes to the brain; scene suggestions persist nothing | `generate-copy.js` L42 to L45; candidate-rule queue design | ADR 0010 |
+
+## Cross-cutting: known ambient states
+
+Everything documented as broken-and-waiting or as a recorded disagreement between code and its records. Silent ambient states are the enemy; this section makes them loud. Items 1 through 8 were recorded at the practice gate and spot-verified by the owner on 2026-08-15; dispositions noted per item.
+
+1. **ADR 0016 carries a stale Verified claim about the scene writer.** The ADR's context states, marked Verified, that `api/production/generate-copy.js` pushes `identity.summary` alone. Commit `1a9357e` changed the writer to include identity principles (L341 to L343). The spec for this contract carries the same stale statement from its verification at `bcee418`. Disposition: pending a separate cleanup session; the ADR text is not corrected by this contract.
+2. **The spec names a scene writer kind that does not exist.** The spec's stage 6 lists kinds `scene` and `object`; the kinds at the verified commit are `scene`, `template_surface`, and `sales_element` (`generate-copy.js` L379 to L414).
+3. **Display copy governance is enforced client-side at the API seam.** `prepareProductionPackage` uses `body.draftedCopy` as sent (service L253 to L268); a draft arriving without an audit gets an errored-audit placeholder and still compiles into the render prompt. The interface is the gate (comment L249 to L252); a direct API caller can render an unaudited string; the package records the audit state, and nothing refuses the string. Disposition: recorded in `docs/deferred-work.md` as server-side refusal of unaudited display copy, required before any client-facing beta touches display copy; interface-as-gate accepted until then.
+4. **`compileProductSection` is dead code.** `src/production/package.js#compileProductSection` (L337 to L360) compiles claim language into a prompt section and is called from nowhere in `src/` or `api/`. The live image path is `#compileProductSectionForImage` (L313 to L322), which deliberately excludes claim language. Disposition: pending a separate cleanup session.
+5. **`checkRequirements` runs with a hardcoded deliverable id.** Every placement is checked against the `brand-world-image` requirement list (package.js L582); the `product-showcase` entry (L78 to L83) is unreachable at the verified commit. Requirements are advisory, so no blocking effect. Disposition: recorded, no action; note Product Showcase is separately slated for deprecation.
+6. **The constraint audit is structurally satisfied by construction.** Guardrails and brief exclusions compile verbatim into Protection (package.js L538 to L540) and are then presence-checked against the same prompt (prompt-craft.js L442, L452). Its live value is a regression tripwire (Reasoned). Disposition: recorded, no action.
+7. **The suggestion picker displays one of four authored fields.** `#sceneSuggestionPanel` (app.js L4056 to L4083) renders label and brief only; selection applies all four (L8565 to L8581). Display-only defect, already in deferred work; ADR 0016 notes its priority rises once the fields draw on the grammar.
+8. **ADR 0016 is proposed and unimplemented.** No `visualGrammar` artifact exists (`schema.js` requires exactly three artifacts, L226 to L230); no `ambition` origin exists (L39 to L43); `livedWorld.rejects` remains the live image-path avoid-clause source (`#rejectsDirection`); no render evaluation examines the returned image (the result screen's evaluation cards are fixed human-verify prompts, `#buildEvaluationFindings`).
+9. **Read-back verification is unbuilt.** ADR 0014 part two specifies the system reads rendered text back out of the image and fails on mismatch. Nothing does. The person is the verification step, the result screen says so (`#renderedCopyCheckPanel`), and the package carries `verified: false` that nothing may set true by assertion.
+10. **The ADR 0013 amended mechanism test is recorded as not yet run.** The ADR states the amended criteria (compliance-not-violation, puffery-as-description) require an API key the implementing session lacked; the falsifiability change is verified by construction and offline unit tests only. Whether it has been run since is not established from the code; the runnable path exists (`run_audit_test`, `api/brand-brain/index.js` L88 to L94, and `fixtures/copy-audit-mechanism-test.mjs`).
+11. **The studio reference picker offers a narrow slice and cannot upload.** Recorded in `docs/deferred-work.md` (raster-only Blob-backed sources appear; links and documents never do; no upload of its own). The owner's 2026-08-15 decision keeps the picker manual; the automatic channel is ADR 0016's grammar.
+12. **Preflight's package and the render's package are compiled separately.** The generate invocation recompiles from the request body (stage 8 invariants), so a store change in the gap changes or blocks the render relative to what preflight showed. The gates re-run, so nothing ungoverned slips through; the picture is what can drift.
+13. **`resolveClientId` trusts the request.** The client id comes from a header or cookie with sanitization but no identity check, marked PROTOTYPE ONLY in `src/server/http.js` (L100 to L107) with the instruction not to ship real auth without closing the seam. Recorded in ADR 0011 as the shared-password gate's known deficiency.
+14. **Legacy flat-path read-throughs remain** for the default client's brain state and production state (`brand-brain/store.js` L8 to L13; `production/store.js` L8 to L12), each marked for removal once the flat blobs are gone.
+15. **The legacy LinkedIn copy path remains live** as the copy endpoint's no-action fallback (`generate-copy.js` L142 to L310), duplicating steering and audit logic that `src/copy/generate.js` now owns for catalog types. Divergence between the two is possible on any change to one; a change to either must check the other.
+
+## Acceptance
+
+Per the spec, verbatim: a session that has read only this contract can answer, without opening the code, what happens between the user clicking generate and the image appearing; which module owns any named behavior; which invariants a change to any listed module must be checked against; and which parts of the pipeline are known-broken-and-waiting. Spot check: the owner picks three behaviors from memory of past incidents and verifies the contract answers each with a correct citation.

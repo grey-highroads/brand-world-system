@@ -112,3 +112,7 @@ On 2026-08-09, the initial ADR 0012 step 5 implementation put `void loadProducts
 
 Fetch-fresh was not enough; see the 2026-08-14 incident. Before committing, compare each pushed file's line count against the same file at the current remote head. If a file shrinks by more than two percent, stop. Either the shrink is intentional, in which case the commit message names what was removed and why, or the base was stale and the push would destroy other sessions' work. Whole-file pushes make this the single most important mechanical habit in the workflow.
 
+
+## The image pipeline contract, before any image-path work
+
+`docs/image-pipeline-contract.md` is the authoritative account of the twelve stages between a source entering intake and an image appearing on the result screen. It is mandatory reading before any session touches the image path, and it carries the second mechanical ritual of the push workflow: any commit that changes a module listed in the contract updates the contract in the same commit, or states in the commit message why no update is needed. The contract header's verified-against commit moves with every update. A contract more than ten commits behind the modules it covers is stale and must say so in its header until re-verified.
