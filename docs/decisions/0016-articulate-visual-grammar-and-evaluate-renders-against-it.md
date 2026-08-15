@@ -57,6 +57,8 @@ Influence gains a defined job on the brain side: it sets how much of the grammar
 
 Origin never sets compile weight. An ambition entry in an approved brain is approved guidance and compiles at full strength with no epistemic hedging in the prompt, because the image model needs direction and the human needs the label. The label persists in the package record and on the result screen. Approved grammar outranks a job-time reference's influence setting, including when both trace to the same source. If an ambition should steer softer, a person edits the brain; the compiler never dampens by origin.
 
+**One gate question is tabled until testing.** Whether an ambition entry needs its own individual sign-off beyond brain approval, the way inferred audience facts do, is deferred to the prototype and the first real renders. The owner's stated inclination on 2026-08-15 is no second approval step, so brain approval stands as the gate unless testing argues otherwise. The schema work in step 2 should not build a second confirmation surface in the meantime.
+
 ### 3. Visual rejects live here, and `livedWorld.rejects` leaves the image path
 
 Grammar rejects compile as avoid-clauses through the existing `rejectsDirection` pattern, which shipped in ADR 0015 step 5 and is proven at the mechanism level. Once grammar rejects compile, `livedWorld.rejects` stops compiling into image prompts. It remains in the schema, the interface, and the copy path, where it is doing the job it was designed for.
