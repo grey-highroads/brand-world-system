@@ -1,6 +1,6 @@
 # ADR 0015: Build render quality on synthesized people, an authored scene, and what the brand is not
 
-- Status: Proposed
+- Status: Proposed. Steps 1, 2, 4, and 5 shipped 2026-08-14. One rejection corrected by the session findings below.
 - Date: 2026-08-14
 - Owner: Higher Roads
 - Supersedes: The 2026-08-14 draft of this ADR, which scoped the problem to Lived World inference alone
@@ -168,6 +168,16 @@ Step two gates steps four and five. A structured scene brief and a rejects list 
 **Avoid-clauses inside a positive prompt may not hold.** Models are known to attend poorly to negations in positive prompts. If the test in step five fails, the fallback is compiling rejects as positive statements of what the brand does instead, which is weaker because it closes the space the rejects were meant to leave open.
 
 **The label can stop at the brain.** Rule 1 of this project requires inferred claims about how a business works to be labelled as inferred. Building that behaviour into the product means the label reaches the compiled prompt and the result screen, not only the brain interface. Cheap at build time, expensive to retrofit.
+
+## Implementation findings, 2026-08-14
+
+Four of the five steps were built the same day this ADR was proposed. The build is recorded in [`../findings-2026-08-14-adr-0015-session.md`](../findings-2026-08-14-adr-0015-session.md), which should be read alongside this decision.
+
+One finding corrects this ADR rather than extending it. The rejection of PWP's visual grammar library, above, reasoned that four authored scene fields carry the same knowledge without the machinery. That was correct about the library and wrong about the knowledge. `docs/product-thesis.md` names visual grammar as a required output of the world-building workflow and no such artifact exists in the schema. Four fields let a scene writer invent craft per job from a summary. They do not give a brand a durable account of how it looks, and the session demonstrated the difference: scene writer rules were tightened three times and each was satisfied at its weakest reading, because nothing specific existed for them to reach.
+
+Visual grammar as a first-class brain artifact is a separate decision and needs its own ADR. Two constraints carry into it. Substitution rather than suppression, since a declared aesthetic ambition currently reaches production only as a prohibition. And the visual rejects list belongs there rather than in `livedWorld`, since a rejects list useful to a copywriter is not the list an image model needs.
+
+Measured effect of steps 4 and 5: compiled payload down 33 percent, authored scene up by a factor of 4.9, authored light behavior reaching a render for the first time. Whether image quality improved is not established. One reviewed render ran through the completed path.
 
 ## Reference case
 
