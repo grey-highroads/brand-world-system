@@ -1404,6 +1404,7 @@ function currentCrumb() {
   if (state.screen === "brain-processing") return "Brand brain / Building";
   if (state.screen === "brain") return "Brand brain / Needs review";
   if (state.screen === "brain-guidance") return "Brand brain / Brand guidance";
+  if (state.screen === "brain-grammar-sample") return "Brand brain / Brand guidance / Visual Grammar sample";
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
   if (state.screen === "chooser") return "Design Studio";
@@ -3271,17 +3272,23 @@ const grammarSectionMeta = [
   ["rejects", "Refused", "Territory this brand stays out of"],
 ];
 
-function renderGrammarArtifact(artifact) {
+function renderGrammarArtifact(artifact, options = {}) {
   const sections = artifact.sections || {};
   return grammarSectionMeta
     .map(([id, label, title]) => {
       const entries = Array.isArray(sections[id]) ? sections[id] : [];
+      // The sample preview renders without the comment affordance. Feedback
+      // buttons there would write into the real client's stored comments, and
+      // a sample is not a thing anyone should be able to give feedback on.
+      const heading = options.readOnly
+        ? `<div class="artifact-section-heading"><span><span class="section-label">${escapeHtml(label)}</span><h3>${escapeHtml(title)}</h3></span></div>`
+        : artifactSectionHeading(artifact, label, title, id);
       const body = entries.length
         ? `<div class="artifact-grammar-entries">${entries.map((item) => `<article><strong>${escapeHtml(item.label || "")}</strong><p>${escapeHtml(item.statement || "")}</p>${basisNote(item)}</article>`).join("")}</div>`
         : `<p class="artifact-grammar-empty">Nothing here yet. The sources did not give the Brand Brain enough to write this without inventing it.</p>`;
       return `
     <section class="artifact-module">
-      ${artifactSectionHeading(artifact, label, title, id)}
+      ${heading}
       ${body}
     </section>`;
     })
@@ -3311,7 +3318,58 @@ function renderBrainArtifactReader() {
       <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
       <div class="brain-artifact-body">${body}</div>
     </article>
+    ${grammarAbsentNote()}
   `;
+}
+
+// Shown when this brain has no visual grammar. The tab is correctly withheld
+// for brains built before the artifact existed, which leaves a person looking
+// at three tabs with no explanation. This says why, and offers the sample so
+// the shape is visible without anything being rebuilt.
+function grammarAbsentNote() {
+  if (brainArtifacts.some((item) => item.id === "grammar")) return "";
+  return `
+    <section class="card brain-grammar-absent">
+      <span class="section-label">Not in this Brand Brain yet</span>
+      <h3>Visual Grammar</h3>
+      <p>It describes what a camera can see in your pictures: who is in frame, what the room is made of, how the light behaves, and what the camera is set to. Brand Brains built before it existed do not have one, and gain it the next time they are rebuilt.</p>
+      <button class="button secondary" type="button" data-action="open-grammar-sample">See it on the sample brand</button>
+    </section>
+  `;
+}
+
+// A read-only look at the sample brand's visual grammar. Deliberately not a
+// demo mode: it loads no client, saves nothing, mutates no state, and names
+// the sample brand in the banner and the header so it cannot be mistaken for
+// the viewer's own data on a shared screen.
+function renderGrammarSample() {
+  const artifact = sampleBrainArtifacts.find((item) => item.id === "grammar");
+  if (!artifact) {
+    return brainWorkspace(
+      "Visual Grammar",
+      "The sample is unavailable.",
+      `<section class="card brain-grammar-absent"><p>The sample brand has no visual grammar to show.</p><button class="button secondary" type="button" data-action="navigate-brain" data-screen="brain-guidance">Back to brand guidance</button></section>`,
+    );
+  }
+  return brainWorkspace(
+    "Visual Grammar, sample brand",
+    "An example of the artifact, shown on a made-up brand so you can see the shape before your own is built.",
+    `
+      <section class="card brain-grammar-sample-banner">
+        <span class="pill-warning">Sample brand</span>
+        <p>Everything below belongs to SLAKE, a made-up sparkling water brand used for examples. None of it is ${escapeHtml(state.brandName || "your")} data, none of it is saved, and none of it reaches production.</p>
+        <button class="button secondary" type="button" data-action="navigate-brain" data-screen="brain-guidance">Back to brand guidance</button>
+      </section>
+      <article class="card brain-artifact-reader artifact-grammar">
+        <header class="brain-artifact-reader-header">
+          <span><span class="section-label">Artifact ${escapeHtml(artifact.number)}</span><h2>${escapeHtml(artifact.name)}</h2><p>${escapeHtml(artifact.description)}</p></span>
+          <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Brand</dt><dd>SLAKE sample</dd></div></dl>
+        </header>
+        <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+        <div class="brain-artifact-body">${renderGrammarArtifact(artifact, { readOnly: true })}</div>
+      </article>
+    `,
+  );
 }
 
 function renderBrainGuidance() {
@@ -6867,6 +6925,7 @@ function render() {
   else if (state.screen === "brain-processing") root.innerHTML = renderBrainProcessing();
   else if (state.screen === "brain") root.innerHTML = renderBrandBrain();
   else if (state.screen === "brain-guidance") root.innerHTML = renderBrainGuidance();
+  else if (state.screen === "brain-grammar-sample") root.innerHTML = renderGrammarSample();
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
   else if (state.screen === "studio-setup") root.innerHTML = renderStudioSetup();
@@ -9110,6 +9169,7 @@ root.addEventListener("click", (event) => {
     void startBrainSynthesis();
   }
   if (action === "load-sample-sources") loadSampleSources();
+  if (action === "open-grammar-sample") navigate("brain-grammar-sample");
   if (action === "set-source-provenance") {
     // Answering this question does not choose a material type. Our own file can
     // be guidance, past work, or an image. URL and written material still get

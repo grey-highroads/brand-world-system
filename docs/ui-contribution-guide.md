@@ -104,7 +104,15 @@ async function loadX(force = false) {
 
 **Test the empty state.** A feature works in the state where its data exists. It has to also work in the state where its data does not yet exist. Empty-state testing catches loops, null accesses, and misleading UI that happy-path testing misses. Before pushing a new loader-backed feature, cold-start the app with a client that has none of the relevant data. Every screen that references the feature must render cleanly and not fire loads it does not need.
 
-### Reference incident
+**Test both presence states, on the sample and on a pre-existing real record.** Any interface keyed on whether a piece of data or an artifact exists has two states, and the one that breaks is almost never the one being built. New work is exercised against fresh or sample data, which has the thing. Records created before the work existed do not, and they are every record a real client already owns. The rule covers the same shape at any scale: a new artifact, a new field, a new placement, a new output type. Before pushing, render the feature twice, once against the sample or a newly created record and once against a record that predates the change, and confirm both. Spreading a missing key produces an object that is truthy and empty, which passes every presence check written as a truthiness test and fails at the first property access.
+
+### Reference incidents
+
+Two instances of the same failure shape, four days apart.
+
+On 2026-08-15, the ADR 0016 step 2 read path added a fourth Brand Brain artifact tab built by spreading `result.artifacts.visualGrammar` into a tab entry. Brains synthesized before the artifact existed carry no such key, so the spread produced a husk tab that rendered, threw on missing header fields when clicked, and killed the render loop until refresh. The implementing session render-tested the sample, which has the artifact, and the review passed it. Neither exercised a saved brain from before the schema, which is what every real client had. Fixed in `ae392e9` by gating the tab on artifact presence and guarding the shared reader header.
+
+The screen orientation template regression is the same shape across placements rather than across records: logic correct for the placement it was written against, applied to placements that had never been exercised. The fix was scoping, and the invariant now sits in the image pipeline contract. In both cases the code was right for the state the author had in front of them and wrong for the state everyone else was in.
 
 On 2026-08-09, the initial ADR 0012 step 5 implementation put `void loadProducts()` inside `renderWorkspace`, `renderChooser`, and `renderSalesSetup` to keep product-version drift cards populated. Combined with a guard that treated empty results as unloaded and no concurrent-call protection, this created a runaway render/fetch loop on any client with no products yet. Every existing client fit that description. The tab pegged 100% CPU, hydrateClients never got room to complete its render, the client switcher stayed empty, and hard refresh timed out. Full chain and fix in `docs/incidents/2026-08-09-loadproducts-render-loop.md`.
 

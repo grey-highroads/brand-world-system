@@ -3781,6 +3781,42 @@ select {
   line-height: 1.55;
 }
 
+.brain-grammar-absent {
+  margin-top: var(--space-3);
+  padding: 18px;
+}
+
+.brain-grammar-absent h3 {
+  margin: 4px 0 0;
+  font-size: 13px;
+}
+
+.brain-grammar-absent p {
+  margin: 8px 0 14px;
+  max-width: 62ch;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.brain-grammar-sample-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+  padding: 14px 18px;
+  border-color: rgb(230 199 101 / 0.35);
+}
+
+.brain-grammar-sample-banner p {
+  flex: 1 1 22rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
 .artifact-grammar-empty {
   margin: 16px 0 0;
   color: var(--muted);
