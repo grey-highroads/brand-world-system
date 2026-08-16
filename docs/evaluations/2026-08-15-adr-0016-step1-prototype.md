@@ -199,6 +199,32 @@ The asymmetry is the point. Mycopop has a declared outside inspiration with stro
 
 **Not yet performed.** Filled after the captures arrive.
 
+### 6.0 Pre-registered rubric
+
+Written and pushed before any capture exists, so the judgment standard cannot be shaped by the results. The commit carrying this section predates every capture; verify by commit order.
+
+**Mycopop clauses, pass and fail conditions:**
+
+- *Territory reached as the brand's own version.* Pass: in each of the three sets, at least one option situates the scene in the physical retro-gaming-derived world the grammar declares, traceable to a named grammar entry (a places, objects, or light entry). Fail: any set where zero options reach it, or where reaching it depends on content no grammar entry supports.
+- *No readable third-party identity.* Pass: zero occurrences across all three sets of named games, consoles, characters, publishers, or trademarked hardware, and no descriptions specific enough to identify one. Fail: a single occurrence.
+- *Composition carries stated settings.* Pass: every option's composition line uses concrete spatial and framing terms traceable to the grammar's camera entries. Fail: any option whose composition rests on register adjectives (cinematic, epic, moody, dynamic) without a stated setting.
+- *Lighting carries stated settings.* Same conditions as composition, against the grammar's light entries.
+- *Holds across three consecutive sets.* Pass: all clauses above hold on all three sets with no set discarded or rerun. A rerun for infrastructure failure is permitted and disclosed; a rerun because the output was disliked fails the clause.
+
+**Dialog Health clauses, pass and fail conditions:**
+
+- *Sets stay evidenced.* Pass: every scene element in every option traces to the brain's evidence or a grammar entry derived from it. Fail: any invented setting, wardrobe, or object with no evidential basis.
+- *Sets stay unsurprising.* Pass: a reader of the Dialog Health brain would find no option novel in kind relative to the baseline sets. Fail: any option introducing a scene category absent from both the brain and the baselines.
+- *No louder or more stylized than the materials support.* Operationalized: count unevidenced aesthetic descriptors per option (style adjectives with no brain or grammar source). Pass: the grammar-fed mean does not exceed the baseline mean. Fail: it does.
+- *Holds across three consecutive sets.* Same conditions as the Mycopop clause.
+
+**Stated limitations, named before judgment:**
+
+- The drewOn asymmetry: the Mycopop product record carries an image, the Dialog Health record does not, so `Product image on the record` appears only in Mycopop's drewOn. Any clause reading grounding from drewOn is affected; the clauses above therefore cite scene content, not drewOn membership.
+- Prompt-size differential: grammar mode enlarges Mycopop's prompt by roughly 44 percent and Dialog Health's by 21 percent. Output differences may partly reflect context volume rather than grammar content; the rubric does not attempt to separate these, and step 3 should.
+- Temperature 0.9 across all runs means set-to-set variance is expected; three sets per condition is the mitigation, not a cure.
+- Capture mechanics: baselines run the live path; grammar sets run the live path with the step 1 override parameter substituting grammar for identity and creative guidance, the same swap the harness performs, echoed as harnessMode in every affected response. The override is temporary and removed when captures close.
+
 ### 6.1 Baseline sets, verbatim
 
 Mycopop baseline, sets 1 to 3, captured at commit `_____`:
