@@ -466,5 +466,5 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   }
   if (!options.length) throw new Error("No suggestions came back. Try again.");
 
-  sendJson(response, 200, { options, drewOn, model: "gpt-4o" });
+  sendJson(response, 200, { options, drewOn, model: "gpt-4o", harnessMode: Boolean(body.harness_grammar) || undefined });
 }
