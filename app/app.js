@@ -3306,9 +3306,9 @@ function renderBrainArtifactReader() {
     <article class="card brain-artifact-reader artifact-${artifact.id}">
       <header class="brain-artifact-reader-header">
         <span><span class="section-label">Artifact ${artifact.number}</span><h2>${escapeHtml(artifact.name)}</h2><p>${escapeHtml(artifact.description)}</p></span>
-        <dl><div><dt>Built from</dt><dd>${artifact.sourceCount} sources</dd></div><div><dt>Guidance used</dt><dd>${artifact.categories.length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div></dl>
+        <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div></dl>
       </header>
-      <div class="brain-artifact-category-trail"><strong>Built across</strong>${artifact.categories.map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+      <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
       <div class="brain-artifact-body">${body}</div>
     </article>
   `;
@@ -6962,7 +6962,11 @@ function applySynthesisResult(result, options = {}) {
     { id: "dossier", number: "01", name: "Brand Dossier", short: "The strategic read", ...result.artifacts.dossier },
     { id: "lived", number: "02", name: "Lived World", short: "The person and their life", ...result.artifacts.livedWorld },
     { id: "story", number: "03", name: "Story Architecture", short: "The moments production can build", ...result.artifacts.storyArchitecture },
-    { id: "grammar", number: "04", name: "Visual Grammar", short: "What the camera can see", ...result.artifacts.visualGrammar },
+    // Brains synthesized before the visual grammar existed have no artifact to
+    // show, so they get no tab. A husk entry here renders a tab whose reader
+    // throws on missing fields and freezes navigation. The tab appears when
+    // the brain is re-synthesized under step 3 instructions, not before.
+    ...(result.artifacts.visualGrammar ? [{ id: "grammar", number: "04", name: "Visual Grammar", short: "What the camera can see", ...result.artifacts.visualGrammar }] : []),
   ];
   brainExceptions = result.reviewQuestions.map((question, index) => ({
     ...question,
