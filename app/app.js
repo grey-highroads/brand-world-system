@@ -782,6 +782,149 @@ let brainArtifacts = [
     why: "The sequence gives production one emotional arc across multiple outputs. The product appears only when the behavior earns it, exact artwork stays protected, and the final moment proves the brand is about returning to life rather than escaping it.",
     continuity: ["One late-afternoon light direction", "Warm neutral materials with Yuzu color as recognition", "The same lived-in kitchen across the sequence", "A gradual move from wide pressure to tactile detail and shared warmth"],
   },
+  {
+    id: "grammar",
+    number: "04",
+    name: "Visual Grammar",
+    short: "What the camera can see",
+    description: "The physical world of a SLAKE picture: who is in it, what the room is made of, how the light behaves, and what the camera is set to.",
+    sourceCount: 44,
+    categories: ["Identity", "Creative direction", "Creative rules", "World and story"],
+    sections: {
+      people: [
+        {
+          id: "people-1",
+          label: "One person, mid-pause",
+          statement: "A single adult already partway through something, turning away from it rather than posing for the frame. Hands occupied, attention elsewhere.",
+          basis: { origin: "evidence", derivedFrom: "The story architecture moments, which place one person inside an unfinished task before the product appears.", confidence: "High" },
+        },
+        {
+          id: "people-2",
+          label: "Clothes worn since morning",
+          statement: "Everyday clothing with the day already in it. Soft cotton, rolled sleeves, nothing pressed or styled for the shot.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the after-work exhale in the cultural codes and the lived-in kitchen. No wardrobe direction is documented in the sources.", confidence: "Medium" },
+        },
+        {
+          id: "people-3",
+          label: "Two people, no performance",
+          statement: "When a second person appears they are doing their own task in the same room, moving around each other without arranging themselves for the camera.",
+          basis: { origin: "evidence", derivedFrom: "The final story moment, where two people prepare something simple in the same kitchen.", confidence: "High" },
+        },
+      ],
+      objects: [
+        {
+          id: "objects-1",
+          label: "One cold can",
+          statement: "A single chilled aluminum can carrying condensation, set down or held where someone actually put it.",
+          basis: { origin: "evidence", derivedFrom: "The dossier materials, which name cold aluminum, and the product truth of a sparkling drink marking a transition.", confidence: "High" },
+        },
+        {
+          id: "objects-2",
+          label: "Work left mid-task",
+          statement: "An open laptop, a notebook face down, a bag not yet unpacked. The task is paused rather than finished.",
+          basis: { origin: "evidence", derivedFrom: "The story moments, which show a laptop still open and an unfinished task beside the can.", confidence: "High" },
+        },
+        {
+          id: "objects-3",
+          label: "Older wood and hand-thrown ceramic",
+          statement: "Tableware with visible making in it: uneven glaze, a thumbprint in a handle, a wooden board worn pale where it gets used.",
+          basis: { origin: "ambition", derivedFrom: "The Nordic tableware reference supplied at intake as a direction to reach for, with supporting influence." },
+        },
+      ],
+      places: [
+        {
+          id: "places-1",
+          label: "A kitchen that gets used",
+          statement: "A working kitchen with counters that carry today on them. Not staged, not empty, not recently cleared for a photograph.",
+          basis: { origin: "evidence", derivedFrom: "The cultural codes, which name the kitchen counter as the place the reset happens.", confidence: "High" },
+        },
+        {
+          id: "places-2",
+          label: "Pale stone and washed linen",
+          statement: "Surfaces run to matte stone, unbleached linen, and warm neutral paint. Nothing high gloss and nothing reflective enough to throw the room back at the camera.",
+          basis: { origin: "evidence", derivedFrom: "The dossier materials list: cold aluminum, washed linen, pale stone.", confidence: "High" },
+        },
+        {
+          id: "places-3",
+          label: "A window with afternoon behind it",
+          statement: "One window doing the work, with enough of the outside visible to place the hour without leaving the room.",
+          basis: { origin: "evidence", derivedFrom: "The continuity rule holding one late-afternoon light direction across the sequence.", confidence: "High" },
+        },
+      ],
+      light: [
+        {
+          id: "light-1",
+          label: "One window, from the side",
+          statement: "Low afternoon light entering from frame left or right, falling off across the room. Shadows run long and stay soft at the edge.",
+          basis: { origin: "evidence", derivedFrom: "The continuity rule naming one late-afternoon light direction, and the soft window light in the materials.", confidence: "High" },
+        },
+        {
+          id: "light-2",
+          label: "Shadows keep their detail",
+          statement: "Contrast sits high enough to shape the room and low enough that nothing goes to black. Highlights on aluminum hold texture rather than clipping.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the guardrail against over-styling, which fails if the frame is crushed or blown out.", confidence: "Medium" },
+        },
+        {
+          id: "light-3",
+          label: "Cooler shadow, warmer light",
+          statement: "The shadow side sits perceptibly cooler than the window side, so the warm hour reads against a cool room rather than washing the whole frame one temperature.",
+          basis: { origin: "ambition", derivedFrom: "The Nordic tableware reference, which holds cool shadow against warm daylight. Marked at intake as a direction to reach for." },
+        },
+      ],
+      camera: [
+        {
+          id: "camera-1",
+          label: "35mm, room legible",
+          statement: "A 35mm lens for room frames and 50mm for a single person with the can. Never wider than 28mm and never longer than 85mm.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the requirement that the place stay readable behind the person. No focal length is documented in the sources.", confidence: "Medium" },
+        },
+        {
+          id: "camera-2",
+          label: "f/4, the place stays readable",
+          statement: "Aperture between f/2.8 and f/4 on a person, f/5.6 or narrower when the room carries the story. No isolation that erases the setting.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the world guidance, where the pause belongs to a room the viewer can still see.", confidence: "Medium" },
+        },
+        {
+          id: "camera-3",
+          label: "Eye level, seated height",
+          statement: "Camera at the subject's eye level, standing or seated with them. Medium to medium wide distance. No overhead flat lay and no low angle on the can.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the guardrail against over-styling. Angle is the fastest way to make an ordinary moment look staged.", confidence: "Medium" },
+        },
+        {
+          id: "camera-4",
+          label: "Mood words resolve here",
+          statement: "A register word only stands if it resolves to settings above in the same breath. Quiet resolves to 35mm at f/4, eye level, one window, no added fill, subject off center. A word that resolves to nothing does not get used.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the creative rules, which ask for specificity over atmosphere. Recorded as a setting so the rule reaches the work rather than sitting in a document.", confidence: "Medium" },
+        },
+      ],
+      rejects: [
+        {
+          id: "rejects-1",
+          label: "Clinical staging",
+          statement: "White seamless backdrops, treatment room surfaces, dosage arrangements, anything shot like a pharmacy.",
+          basis: { origin: "evidence", derivedFrom: "The guardrail never clinical, which states that medical settings turn a human pause into a health claim.", confidence: "High" },
+        },
+        {
+          id: "rejects-2",
+          label: "Optimization cues",
+          statement: "Timers, tracked metrics on screens, gym interiors, a desk arranged as a productivity system.",
+          basis: { origin: "evidence", derivedFrom: "The guardrail never optimized, which states that performance rituals contradict the permission at the center of the brand.", confidence: "High" },
+        },
+        {
+          id: "rejects-3",
+          label: "Wellness gloss",
+          statement: "Spotless counters, decorative haze, exaggerated rim light, fresh-cut flowers placed for the frame, a room nobody has used.",
+          basis: { origin: "evidence", derivedFrom: "The guardrail never over-styled, which states that glossy perfection removes the ordinary credibility the world depends on.", confidence: "High" },
+        },
+        {
+          id: "rejects-4",
+          label: "The floating can",
+          statement: "A can centered on a plain surface facing the camera with no person and no room around it.",
+          basis: { origin: "inference", derivedFrom: "Reasoned from the story architecture, where the product appears only once a behavior has earned it.", confidence: "Medium" },
+        },
+      ],
+    },
+  },
 ];
 
 let brainExceptions = [
@@ -978,7 +1121,7 @@ const sampleBrainArtifacts = JSON.parse(JSON.stringify(brainArtifacts));
 const sampleBrainExceptions = JSON.parse(JSON.stringify(brainExceptions));
 
 function sampleResultSnapshot() {
-  const [dossier, livedWorld, storyArchitecture] = sampleBrainArtifacts.map(({ id: _id, number: _number, name: _name, short: _short, ...artifact }) => artifact);
+  const [dossier, livedWorld, storyArchitecture, visualGrammar] = sampleBrainArtifacts.map(({ id: _id, number: _number, name: _name, short: _short, ...artifact }) => artifact);
   return {
     brandName: "SLAKE",
     brandDescription: "Adaptogen sparkling water",
@@ -989,7 +1132,7 @@ function sampleResultSnapshot() {
       ...JSON.parse(JSON.stringify(question)),
       scope: (question.scope ?? []).map(([label, value]) => ({ label, value })),
     })),
-    artifacts: { dossier, livedWorld, storyArchitecture },
+    artifacts: { dossier, livedWorld, storyArchitecture, visualGrammar },
   };
 }
 
@@ -3037,8 +3180,20 @@ function basisNote(item) {
   const basis = item && item.basis;
   if (!basis || !basis.origin) return "";
   const reasoned = basis.origin === "inference";
-  const label = reasoned ? "Reasoned" : "From your sources";
-  const cls = reasoned ? "pill-info" : "pill-success";
+  const ambition = basis.origin === "ambition";
+  // The wording matches the intake form, where a source is marked as a direction
+  // we are reaching for. Same concept, same words, so the person who set it at
+  // intake meets the identical sentence when its descendants surface.
+  const evidenced = basis.origin === "evidence";
+  // An origin outside the three known values renders no note at all. Falling
+  // through to "From your sources" would let an unrecognized value claim the
+  // strongest provenance the interface can state, which is the failure this
+  // function was just fixed to stop making.
+  if (!evidenced && !reasoned && !ambition) return "";
+  const label = ambition ? "A direction you're reaching for" : reasoned ? "Reasoned" : "From your sources";
+  const cls = ambition ? "pill-governed" : reasoned ? "pill-info" : "pill-success";
+  // No confidence on an ambition. Confidence measures how sure the system is
+  // about an inference; an ambition is a declared aim, not a guess.
   const confidence = reasoned && basis.confidence ? ` \u00b7 ${escapeHtml(basis.confidence)} confidence` : "";
   const from = basis.derivedFrom ? `<span class="artifact-basis-from">${escapeHtml(basis.derivedFrom)}</span>` : "";
   return `<p class="artifact-basis"><span class="${cls}">${label}${confidence}</span>${from}</p>`;
@@ -3107,9 +3262,43 @@ function renderStoryArtifact(artifact) {
   `;
 }
 
+const grammarSectionMeta = [
+  ["people", "People", "Who appears, and how they carry themselves"],
+  ["objects", "Objects", "The era and condition of things in frame"],
+  ["places", "Places", "Rooms, surfaces, and materials"],
+  ["light", "Light", "Where it comes from and how it behaves"],
+  ["camera", "Camera", "Settings, not moods"],
+  ["rejects", "Refused", "Territory this brand stays out of"],
+];
+
+function renderGrammarArtifact(artifact) {
+  const sections = artifact.sections || {};
+  return grammarSectionMeta
+    .map(([id, label, title]) => {
+      const entries = Array.isArray(sections[id]) ? sections[id] : [];
+      const body = entries.length
+        ? `<div class="artifact-grammar-entries">${entries.map((item) => `<article><strong>${escapeHtml(item.label || "")}</strong><p>${escapeHtml(item.statement || "")}</p>${basisNote(item)}</article>`).join("")}</div>`
+        : `<p class="artifact-grammar-empty">Nothing here yet. The sources did not give the Brand Brain enough to write this without inventing it.</p>`;
+      return `
+    <section class="artifact-module">
+      ${artifactSectionHeading(artifact, label, title, id)}
+      ${body}
+    </section>`;
+    })
+    .join("");
+}
+
+const artifactBodyRenderers = {
+  dossier: renderDossierArtifact,
+  lived: renderLivedArtifact,
+  story: renderStoryArtifact,
+  grammar: renderGrammarArtifact,
+};
+
 function renderBrainArtifactReader() {
   const artifact = brainArtifacts.find((item) => item.id === state.brain.selectedBrainArtifactId) ?? brainArtifacts[0];
-  const body = artifact.id === "dossier" ? renderDossierArtifact(artifact) : artifact.id === "lived" ? renderLivedArtifact(artifact) : renderStoryArtifact(artifact);
+  const renderBody = artifactBodyRenderers[artifact.id];
+  const body = renderBody ? renderBody(artifact) : `<p class="artifact-grammar-empty">This artifact does not have a reader yet.</p>`;
   return `
     <nav class="brain-artifact-tabs" role="tablist" aria-label="Brand Brain artifacts">
       ${brainArtifacts.map((item) => `<button class="artifact-${item.id} ${item.id === artifact.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === artifact.id}" data-action="select-brain-artifact" data-id="${item.id}"><span>${item.number}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.short)}</small></button>`).join("")}
@@ -6773,6 +6962,7 @@ function applySynthesisResult(result, options = {}) {
     { id: "dossier", number: "01", name: "Brand Dossier", short: "The strategic read", ...result.artifacts.dossier },
     { id: "lived", number: "02", name: "Lived World", short: "The person and their life", ...result.artifacts.livedWorld },
     { id: "story", number: "03", name: "Story Architecture", short: "The moments production can build", ...result.artifacts.storyArchitecture },
+    { id: "grammar", number: "04", name: "Visual Grammar", short: "What the camera can see", ...result.artifacts.visualGrammar },
   ];
   brainExceptions = result.reviewQuestions.map((question, index) => ({
     ...question,
