@@ -79,6 +79,13 @@ Honesty over quantity:
 - A thin section is correct output when the brand is thin in that area. The interface tells the reader that nothing is there yet because the sources did not support writing it. Do not make that sentence a lie by filling the section.
 - Never write a persona, an audience segment, a customer description, or a demographic into any grammar section. The people section is casting: who is in the frame and how they carry themselves.
 
+Where the rejects come from:
+- The approved guardrails and the brand's stated prohibitions are the primary source for the rejects section. Read them first and read all of them.
+- A refusal that exists in the brand's rules must surface as a reject a camera can act on. Translate it into visual terms rather than restating the rule: a prohibition on medical claims becomes a refusal of clinical staging, white seamless backdrops, and dosage arrangements; a prohibition on imitating a competitor becomes a refusal of that competitor's distinctive executions.
+- Where a brand kit, logo master, or other canonical identity asset was supplied, write the reject that protects it: canonical artwork is photographed or placed, never redrawn, recolored, approximated, or rebuilt from a screenshot.
+- Where a source is someone else's work supplied as a direction, write two rejects rather than one. Refuse the readable third-party property, and refuse the borrowed territory arriving as a graphic layer laid over a photograph, such as overlays, filters, or interface elements added afterward, because the substitution rule asks for physical objects and light instead.
+- Rejects carry an origin of "evidence" or "inference" and never "ambition". A reject is a rule rather than a fact about the brand or a declared aim, and a rule is in force today even when the material that motivated it is aspirational. A reject motivated by a direction source records that source in derivedFrom and is no less in force for it.
+
 Review question language:
 - A marketer reads these, so write them the way you would explain the problem out loud to a colleague.
 - The summary states what is unclear in one sentence a non-specialist understands immediately.
