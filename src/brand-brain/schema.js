@@ -37,9 +37,71 @@ const evidenceArray = objectArray(
 );
 
 const basis = strictObject({
-  origin: { type: "string", enum: ["evidence", "inference"] },
+  origin: { type: "string", enum: ["evidence", "inference", "ambition"] },
   derivedFrom: { type: "string" },
   confidence: { type: "string", enum: ["High", "Medium", "Low"] },
+});
+
+function grammarSection(description, minItems, maxItems) {
+  return {
+    type: "array",
+    description,
+    items: strictObject({
+      id: {
+        type: "string",
+        description: "A stable identifier for this entry, unique within the artifact, such as light-2. Evaluation findings cite it, so it must survive edits to the list and must never be a position.",
+      },
+      label: {
+        type: "string",
+        description: "A short handle of two to five words for the review screen to scan by, such as Practical screen light. Display only: the statement carries the direction, and no consumer of this schema reads meaning from the label.",
+      },
+      statement: {
+        type: "string",
+        description: "The direction itself, written as something a camera could record. One or two plain sentences.",
+      },
+      basis,
+    }),
+    minItems,
+    maxItems,
+  };
+}
+
+const visualGrammar = strictObject({
+  description: { type: "string" },
+  sourceCount: { type: "integer", minimum: 1 },
+  categories: stringArray(2, 6),
+  sections: strictObject({
+    people: grammarSection(
+      "Who appears in the frame, what they look like, what they wear, how they carry themselves on camera. Casting logic, never audience strategy: no personas, no segments, no customer descriptions.",
+      1,
+      8,
+    ),
+    objects: grammarSection(
+      "The era and condition of things in frame: technology period, wear state, and the prop territory the brand owns. Physical objects, never graphic treatments applied afterward.",
+      1,
+      8,
+    ),
+    places: grammarSection(
+      "Rooms, surfaces, and materials in physical space. Not content categories and not a copy of the Lived World environments, which are journey moments rather than rooms. An environment is an input to a place entry; the room it happens in has to be written.",
+      1,
+      8,
+    ),
+    light: grammarSection(
+      "Sources, direction, behavior, color condition, and contrast character. Where the brand documents no lighting direction, write fewer entries rather than inventing them.",
+      1,
+      6,
+    ),
+    camera: grammarSection(
+      "Objective settings, never adjectives: camera and format type, lens focal length, aperture and depth of field, exposure character, film stock or its emulation, and composition construction including framing distance, height, and symmetry discipline. A register word such as documentary or editorial may appear only as shorthand that resolves to stated settings in the same entry, and never stands alone.",
+      3,
+      8,
+    ),
+    rejects: grammarSection(
+      "Visual territory the brand refuses, stated in terms a camera can see. A refusal that names a claim, a tone, or a promise rather than something visible belongs elsewhere.",
+      1,
+      8,
+    ),
+  }),
 });
 
 const guidanceArtifactArray = objectArray(
@@ -47,7 +109,7 @@ const guidanceArtifactArray = objectArray(
     name: { type: "string" },
     type: { type: "string" },
     description: { type: "string" },
-    readerId: { type: "string", enum: ["dossier", "lived", "story", "none"] },
+    readerId: { type: "string", enum: ["dossier", "lived", "story", "grammar", "none"] },
   },
   2,
   4,
@@ -227,5 +289,6 @@ export const brandBrainSchema = strictObject({
     dossier,
     livedWorld,
     storyArchitecture,
+    visualGrammar,
   }),
 });
