@@ -24,6 +24,13 @@ function sourcesPrefix(clientId) {
   return `${clientRoot(clientId)}/sources/`;
 }
 
+// A backup path is derived from the moment it is taken and is never reused.
+// Colons and dots are stripped because the timestamp becomes part of a URL.
+function brainBackupPathname(clientId, takenAt = new Date()) {
+  const stamp = takenAt.toISOString().replace(/[:.]/g, "-");
+  return `${clientRoot(clientId)}/state/backups/brand-brain-backup-${stamp}.json`;
+}
+
 export function createFileBrandBrainStore(storePath) {
   return {
     async read() {
@@ -37,6 +44,12 @@ export function createFileBrandBrainStore(storePath) {
     async write(value) {
       await fs.mkdir(path.dirname(storePath), { recursive: true });
       await fs.writeFile(storePath, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
+    },
+    async writeBackup(value) {
+      const backupPath = path.join(path.dirname(storePath), "backups", `brand-brain-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+      await fs.mkdir(path.dirname(backupPath), { recursive: true });
+      await fs.writeFile(backupPath, `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600, flag: "wx" });
+      return backupPath;
     },
     async readSourceFile() {
       throw new Error("Hosted source storage is not configured for this local server.");
@@ -72,6 +85,21 @@ export function createVercelBlobBrandBrainStore(options = {}) {
         contentType: "application/json",
         cacheControlMaxAge: 60,
       });
+    },
+    // Written before a synthesis that would replace the stored payload rather
+    // than add a candidate beside it. Overwrite is refused: a backup that can
+    // be overwritten is not a backup. See the failure states in stage 1 of the
+    // image pipeline contract.
+    async writeBackup(value) {
+      const backupPath = brainBackupPathname(clientId);
+      await put(backupPath, JSON.stringify(value), {
+        access: "private",
+        ...credentials,
+        allowOverwrite: false,
+        addRandomSuffix: false,
+        contentType: "application/json",
+      });
+      return backupPath;
     },
     async readSourceFile(pathname) {
       const namespaced = sourcesPrefix(clientId);
