@@ -338,11 +338,28 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     context.push(`WORLD: ${world.summary}. ${(world.principles || []).join(". ")}`);
     drewOn.push("Brand world guidance");
   }
-  if (identity) {
+  // ADR 0016 step 1 prototype override, temporary. When a grammar payload is
+  // explicitly sent, its sections stand in for identity and creative guidance,
+  // the same swap the step 1 harness performs. Off unless sent, removed when
+  // step 1 captures close. The response echoes how many grammar sections were
+  // injected so captures can verify the substitution itself, not a flag.
+  const harnessGrammarSections = body.harness_grammar && typeof body.harness_grammar === "object" && body.harness_grammar.sections && typeof body.harness_grammar.sections === "object" ? body.harness_grammar.sections : null;
+  let harnessSectionCount = 0;
+  if (harnessGrammarSections) {
+    for (const key of ["people", "objects", "places", "light", "camera", "rejects"]) {
+      const entries = Array.isArray(harnessGrammarSections[key]) ? harnessGrammarSections[key] : [];
+      if (entries.length) {
+        context.push(`GRAMMAR ${key.toUpperCase()}: ${entries.map((e) => typeof e === "string" ? e : `${e.statement || ""}${e.origin === "ambition" ? " [ambition]" : ""}`).filter(Boolean).join("; ")}`);
+        harnessSectionCount += 1;
+      }
+    }
+    drewOn.push("Visual grammar (step 1 prototype)");
+  }
+  if (identity && !harnessGrammarSections) {
     context.push(`IDENTITY: ${identity.summary}. ${(identity.principles || []).join(". ")}`);
     drewOn.push("Identity guidance");
   }
-  if (creative) {
+  if (creative && !harnessGrammarSections) {
     context.push(`CREATIVE DIRECTION: ${creative.summary}. ${(creative.principles || []).join(". ")}`);
     drewOn.push("Creative direction");
   }
@@ -466,5 +483,5 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   }
   if (!options.length) throw new Error("No suggestions came back. Try again.");
 
-  sendJson(response, 200, { options, drewOn, model: "gpt-4o", harnessMode: Boolean(body.harness_grammar) || undefined });
+  sendJson(response, 200, { options, drewOn, model: "gpt-4o", harnessMode: Boolean(body.harness_grammar) || undefined, harnessSections: typeof harnessSectionCount !== "undefined" && harnessSectionCount ? harnessSectionCount : undefined });
 }
