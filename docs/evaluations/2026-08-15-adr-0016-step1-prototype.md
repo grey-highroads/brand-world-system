@@ -83,8 +83,8 @@ Placement is a 1:1 social post with the same composition craft string, no campai
 
 Products selected, to be confirmed by the owner at capture time:
 
-- **Mycopop: Mycopop Original.** The flagship beverage and the product the 8-bit ambition would actually be applied to. The alternative in the brain's source list is a T-shirt, which is merchandise and would not exercise the beverage grammar.
-- **Dialog Health: Analytics Pro.** Chosen over RCS deliberately. The brain flags the RCS experience as emerging rather than established, and its supporting deck is the most stylized material Dialog Health has. Running the restraint gate against it would confound the grammar's effect with the product's own caveat. Any escalation in the Analytics Pro sets is unambiguously the grammar's doing.
+- **Mycopop: `mycopop-hibiscus-ginger-lemon-4-pack-4ea59ecc`.** Corrected on 2026-08-15. This document first named the product "Mycopop Original," which is the name carried on the intake source's `productMeta`, not the name of any product record. No record exists under that name. The owner substituted the beverage record above, which is approved and complete. The reasoning is unchanged: this is the flagship beverage and the product the 8-bit ambition would actually be applied to, where the alternative in the source list is a T-shirt that would not exercise the beverage grammar. **Recorded as a correction rather than an edit,** because the original name came from a source field rather than from a verified record and that is the kind of slip worth leaving visible.
+- **Dialog Health: Analytics Pro** (`analytics-pro-25915ba9`), which carries no images. **Verified** by dry run that the harness accepts an empty image list: `product.images` is read in exactly one place, to decide whether `Product image on the record` joins `drewOn`, and an empty array resolves that to false. No patch was needed. One consequence to hold when reading the captures: the Mycopop sets carry `Product image on the record` in `drewOn` and the Dialog Health sets do not. That difference is the product records, not the grammar. Chosen over RCS deliberately. The brain flags the RCS experience as emerging rather than established, and its supporting deck is the most stylized material Dialog Health has. Running the restraint gate against it would confound the grammar's effect with the product's own caveat. Any escalation in the Analytics Pro sets is unambiguously the grammar's doing.
 
 ---
 
@@ -117,6 +117,14 @@ node fixtures/adr-0016-step1-harness.mjs --client dialog-health --mode grammar  
 ```
 
 `GITHUB_TOKEN` is required. Without it the tripwire cannot verify the harness against the live path and the run is refused.
+
+Before spending a call, confirm file placement and the assembled context with a dry run. It runs the tripwire, assembles the prompts, prints them with the `drewOn` list and the product image count, and stops before the model:
+
+```
+node fixtures/adr-0016-step1-harness.mjs --client mycopop --mode grammar --dry-run
+```
+
+`--dry-run` needs no `OPENAI_API_KEY`.
 
 Before the first command, place four local files. **All four are gitignored and none of them belong in the repo,** per the ADR 0004 separation of shared platform and private brand data.
 
@@ -275,6 +283,21 @@ Step 1 is meant to settle whether `ambition` is a third origin value or a flag o
 **Finding: the Dialog Health brain predates the ADR 0015 basis field.** **Verified.** Saved 2026-08-09 at approved version 2, its six Lived World environments carry `earned` justifications and no `basis` object. Mycopop, saved 2026-08-14 at version 1, carries basis on all four. Assigning origins while authoring the Dialog Health fixture therefore meant reading intent out of `earned` prose, and that reading is itself an inference. Consequence for step 3: grammar synthesis on a pre-basis brain has less to inherit than on a post-basis one, and the regression check should not assume parity between the two clients.
 
 **Finding: the scene writer is not independently testable.** Recorded in section 2. It is a consequence of the function ceiling rather than a defect in the scene writer, and step 4 resolves it incidentally. Recorded so the cost is visible when the ceiling is next discussed.
+
+**Finding: grammar mode enlarges the prompt by more than it replaces. Verified** by dry run at the pinned commit.
+
+| Cell | System prompt |
+| --- | --- |
+| Mycopop baseline | 9,911 chars |
+| Mycopop grammar | 14,250 chars |
+| Dialog Health baseline | 9,656 chars |
+| Dialog Health grammar | 11,728 chars |
+
+The grammar sections are longer than the identity and creative lines they displace, by roughly 44 percent on Mycopop and 21 percent on Dialog Health. Step 1 does not care, since `max_tokens` governs output rather than input and nothing here approaches a context limit. **Reasoned:** step 4 does care. ADR 0015 rebalanced the prompt budget, and a fourth artifact that adds several thousand characters to every scene job is a budget change that should be measured rather than absorbed. The gap between the two clients also tracks fixture richness, so a brand with more evidence will pay more.
+
+**Finding: two channels describe light in the same prompt.** The grammar's `LIGHT:` section and the dossier's `MATERIALS AND LIGHT:` line both reach the scene writer, because the step 1 swap replaces identity and creative only. On Dialog Health the dossier line is not about light at all: it lists message threads, console views, forms, workflow diagrams, and canonical asset files. **Verified** in the assembled prompt. Recorded for step 4, which decides what the grammar displaces. If the grammar owns light, the dossier line either narrows to materials or stops being sent.
+
+**Finding: brain synthesis is writing em dashes into stored brain content.** Dialog Health's palette carries three, in the names of the White and Black entries and once in a role string. They flow straight into the assembled prompt. **Verified:** the three come from the brain payload, and both fixtures contain zero. This predates the session and belongs to synthesis rather than to ADR 0016, but the house prose rule reaches stored model output as much as interface copy, and palette names are user-visible.
 
 **Finding: brain export and import does not exist.** This session needed both brains in a working context and the only route was a manual copy. Added to `docs/deferred-work.md` under Incomplete paths, with export framed as near-term and import framed as carrying a governance decision that imported content arrives as candidate rather than approved.
 

@@ -20,6 +20,11 @@
 //                                         the IDENTITY and CREATIVE lines)
 //   --sets     integer, default 3        (consecutive suggestion sets)
 //   --out      directory, default fixtures/adr-0016-step1-captures
+//   --dry-run                            (assemble and print the prompts, then
+//                                         stop before the model call. Use it to
+//                                         confirm file placement and the
+//                                         assembled context without spending a
+//                                         call. Still runs the tripwire.)
 //
 // Inputs it reads:
 //   fixtures/adr-0016-step1-brains/<client>.json     the pasted approved brain
@@ -169,7 +174,7 @@ function grammarContextLines(grammar) {
   ].filter(Boolean);
 }
 
-async function runSceneBrief({ body, brain, product, apiKey, grammar, mode }) {
+function assembleSceneBrief({ body, brain, product, grammar, mode }) {
   const dossier = brain.artifacts?.dossier || {};
   const lived = brain.artifacts?.livedWorld || brain.artifacts?.lived_world || {};
   const section = (id) => brain.guidanceSections?.find((s) => s.id === id);
@@ -276,6 +281,12 @@ async function runSceneBrief({ body, brain, product, apiKey, grammar, mode }) {
     body.hint ? `The user has started describing it: ${body.hint}` : "Propose three directions the brand could credibly take.",
   ].filter(Boolean).join("\n");
 
+  return { systemPrompt, userPrompt, drewOn, body };
+}
+
+async function runSceneBrief({ body, brain, product, apiKey, grammar, mode }) {
+  const { systemPrompt, userPrompt, drewOn } = assembleSceneBrief({ body, brain, product, grammar, mode });
+
   const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
@@ -330,9 +341,11 @@ if (!["baseline", "grammar"].includes(mode)) {
   process.exit(1);
 }
 
+const dryRun = process.argv.includes("--dry-run");
+
 const apiKey = process.env.OPENAI_API_KEY;
-if (!apiKey) {
-  console.error("Set OPENAI_API_KEY before running.");
+if (!apiKey && !dryRun) {
+  console.error("Set OPENAI_API_KEY before running, or pass --dry-run to assemble without calling the model.");
   process.exit(1);
 }
 
@@ -387,6 +400,17 @@ const run = async () => {
     console.log(
       `  note: main has moved to ${tw.headSha.slice(0, 12)} since the harness was pinned, but the scene writer itself is unchanged.`
     );
+  }
+
+  if (dryRun) {
+    const { systemPrompt, userPrompt, drewOn } = assembleSceneBrief({ body, brain, product, grammar, mode });
+    console.log(`\nDry run. ${client} / ${mode}. Product: ${product.product_name}.`);
+    console.log(`Product images on record: ${(Array.isArray(product.images) ? product.images : []).length}`);
+    console.log(`drewOn: ${drewOn.join(" | ")}`);
+    console.log(`\n--- SYSTEM PROMPT (${systemPrompt.length} chars) ---\n${systemPrompt}`);
+    console.log(`\n--- USER PROMPT ---\n${userPrompt}`);
+    console.log("\nNo model call was made.");
+    return;
   }
 
   const capture = {
