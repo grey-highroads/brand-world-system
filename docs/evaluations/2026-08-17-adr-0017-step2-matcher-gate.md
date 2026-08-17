@@ -164,6 +164,38 @@ Step 1 named four multi-prohibition items across both brands. The finer cut foun
 
 Sizes are worth stating before the runs: the S1 through S3 prohibitions will be matched against 6 and 5 entries rather than 24 and 19. **A smaller candidate set makes over-merge harder and under-merge easier**, which pushes Condition B toward passing M1 and failing M2. That direction is stated now so it is read as a property of the condition rather than discovered as a result.
 
+## The fourth channel, measured
+
+The guidance principles for both brands arrived as an owner paste on 2026-08-17 and are held gitignored under the standing pattern. The channel step 1 finding 3 named is now cut and assigned alongside the other three, so this gate measures it rather than reporting it unmeasured.
+
+| | MycoPop | Dialog Health |
+| --- | --- | --- |
+| Guidance principles carrying a prohibition | 21 | 21 |
+| Prohibitions after the cut | 23 | 22 |
+| Prohibitions marked genuinely new | 5 | 6 |
+| Prohibitions across all four channels | 102 | 91 |
+| Genuinely new across all four channels | 6 | 8 |
+
+Principles carrying no prohibition are listed by key in the decomposition artifact, so the exclusion is auditable rather than trusted. MycoPop's required FDA disclaimer is excluded and named as the reason: a disclosure requirement is not a refusal, and folding it in would put a thing that must appear into a store of things that must not.
+
+**This channel makes M1 measurable, which it was not before.** Over-merge is a rate over genuinely-new prohibitions. Across the three channels the fixtures were built from, that denominator was 1 on MycoPop and **0 on Dialog Health**. A rate over zero cases is not a loose measurement, it is no measurement, and the gate would have reported a clean M1 on Dialog Health while testing nothing. With the fourth channel the denominators are 6 and 8. Small, and stated as small, and real.
+
+**Eleven concerns reach the brands only through this channel.** MycoPop: the floating product, identity specifications inferred from screenshots, generic lifestyle aspiration standing in for real routines, a single spokesperson as the only format, and mushrooms presented in isolation. Dialog Health: undocumented identity attributes invented rather than left undocumented, RCS Template.png altered, website and deck patterns promoted to approved rules, slogans and superlatives stacked, forced informality, and conditional capabilities presented without accurate labelling. That is roughly a quarter again on top of the 43 concerns the first three channels produced.
+
+Three of them settle open questions rather than adding volume.
+
+**The floating product is confirmed from a second direction.** The per-prohibition cut recovered it from MycoPop's artificial-forests grammar reject. The creative guidance principle states it outright: start with a recognizable human need, not a floating product. Two independent channels, one refusal, no fixture entry holding it.
+
+**The RCS Template role is reached independently after all.** The step 1 assignment folded it into the artwork entry with a note saying it was arguably its own concern and was not split because no capture reached it alone. A guidance principle reaches it alone. The note is answered: it is its own concern.
+
+**The fear concern gains a third home.** Dialog Health's world guidance directs against sensationalized clinical scenarios. Clause S6 established the refusal lives in the approved lived-world rejects and partly in a guardrail; it also lives here. A refusal absent from every regenerated channel across three runs is present in three separate places in the approved brain.
+
+### What this does not change, and one ruling it needs
+
+The step 1 gate's numbers stand. Its population was pre-registered and its clauses were scored against it, and a gate is not re-scored because later material arrived.
+
+The ruling: **the step 1 fixture documents are not amended to hold the eleven new concerns.** They stay as judged, and the new concerns stay marked genuinely new in the assignment. The alternative, growing the documents, would make Condition A's candidate set include entries authored from the very channel being matched against it, which is the leak Condition B exists to remove, reintroduced on the other side. The cost is that Condition A's document is known incomplete, and a matcher that proposes those eleven is scored correct for doing so.
+
 ## Judgment
 
 To be written after the mechanics are ruled and the runs exist, appended below rather than folded into the clauses above.

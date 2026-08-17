@@ -230,6 +230,71 @@
       ],
       "approved-lwr:5": [
         "approved-lwr:5#a"
+      ],
+      "guidance:foundation:0": [
+        "guidance:foundation:0#a"
+      ],
+      "guidance:foundation:3": [
+        "guidance:foundation:3#a"
+      ],
+      "guidance:foundation:4": [
+        "guidance:foundation:4#a"
+      ],
+      "guidance:identity:0": [
+        "guidance:identity:0#a"
+      ],
+      "guidance:identity:2": [
+        "guidance:identity:2#a"
+      ],
+      "guidance:identity:4": [
+        "guidance:identity:4#a"
+      ],
+      "guidance:identity:5": [
+        "guidance:identity:5#a"
+      ],
+      "guidance:world:0": [
+        "guidance:world:0#a"
+      ],
+      "guidance:world:2": [
+        "guidance:world:2#a"
+      ],
+      "guidance:voice:4": [
+        "guidance:voice:4#a"
+      ],
+      "guidance:voice:3": [
+        "guidance:voice:3#a"
+      ],
+      "guidance:creative:0": [
+        "guidance:creative:0#a",
+        "guidance:creative:0#b"
+      ],
+      "guidance:creative:1": [
+        "guidance:creative:1#a"
+      ],
+      "guidance:creative:2": [
+        "guidance:creative:2#a"
+      ],
+      "guidance:creative:4": [
+        "guidance:creative:4#a"
+      ],
+      "guidance:creative:5": [
+        "guidance:creative:5#a"
+      ],
+      "guidance:rules:0": [
+        "guidance:rules:0#a"
+      ],
+      "guidance:rules:2": [
+        "guidance:rules:2#a"
+      ],
+      "guidance:rules:3": [
+        "guidance:rules:3#a"
+      ],
+      "guidance:rules:4": [
+        "guidance:rules:4#a",
+        "guidance:rules:4#b"
+      ],
+      "guidance:rules:5": [
+        "guidance:rules:5#a"
       ]
     },
     "dialog-health": {
@@ -427,7 +492,103 @@
       ],
       "approved-lwr:5": [
         "approved-lwr:5#a"
+      ],
+      "guidance:foundation:2": [
+        "guidance:foundation:2#a"
+      ],
+      "guidance:foundation:3": [
+        "guidance:foundation:3#a"
+      ],
+      "guidance:identity:0": [
+        "guidance:identity:0#a"
+      ],
+      "guidance:identity:1": [
+        "guidance:identity:1#a"
+      ],
+      "guidance:identity:2": [
+        "guidance:identity:2#a"
+      ],
+      "guidance:identity:3": [
+        "guidance:identity:3#a"
+      ],
+      "guidance:identity:4": [
+        "guidance:identity:4#a"
+      ],
+      "guidance:world:1": [
+        "guidance:world:1#a"
+      ],
+      "guidance:world:2": [
+        "guidance:world:2#a"
+      ],
+      "guidance:world:4": [
+        "guidance:world:4#a",
+        "guidance:world:4#b"
+      ],
+      "guidance:voice:2": [
+        "guidance:voice:2#a"
+      ],
+      "guidance:voice:3": [
+        "guidance:voice:3#a"
+      ],
+      "guidance:voice:5": [
+        "guidance:voice:5#a"
+      ],
+      "guidance:creative:3": [
+        "guidance:creative:3#a"
+      ],
+      "guidance:creative:4": [
+        "guidance:creative:4#a"
+      ],
+      "guidance:rules:0": [
+        "guidance:rules:0#a"
+      ],
+      "guidance:rules:1": [
+        "guidance:rules:1#a"
+      ],
+      "guidance:rules:2": [
+        "guidance:rules:2#a"
+      ],
+      "guidance:rules:3": [
+        "guidance:rules:3#a"
+      ],
+      "guidance:rules:4": [
+        "guidance:rules:4#a"
+      ],
+      "guidance:rules:5": [
+        "guidance:rules:5#a"
       ]
     }
+  },
+  "excluded_guidance_principles": {
+    "note": "Guidance principles carrying no prohibition, listed so the exclusion is auditable rather than trusted, per the step 1 Rule B precedent.",
+    "mycopop": [
+      "foundation:1",
+      "foundation:2",
+      "identity:1",
+      "identity:3",
+      "world:1",
+      "world:3",
+      "world:4",
+      "voice:0",
+      "voice:1",
+      "voice:2",
+      "voice:5",
+      "creative:3",
+      "rules:1 (a disclosure requirement, not a prohibition)"
+    ],
+    "dialog-health": [
+      "foundation:0",
+      "foundation:1",
+      "identity: none",
+      "world:0",
+      "world:3",
+      "voice:0",
+      "voice:1",
+      "voice:4",
+      "creative:0",
+      "creative:1",
+      "creative:2",
+      "creative:5"
+    ]
   }
 }
