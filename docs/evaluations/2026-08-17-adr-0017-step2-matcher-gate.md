@@ -80,6 +80,65 @@ Computed per brand, per condition, over prohibitions rather than items.
 
 The ADR specifies concern matching as a model call at synthesis time. **This session stops at the mechanics proposal, before any run**, per house precedent: the mechanism, its input contract, its confidence bands, and its fail-safe branch are proposed and ruled before a single call is made. Fixture construction, decomposition, and the reduced Condition B documents need no model calls and proceed.
 
+## Mechanics proposal, for ruling before any run
+
+Proposed, not built. The stop rule above holds: nothing runs until this is ruled.
+
+### Where it sits
+
+Inside the existing synthesis path in `src/brand-brain/service.js`, after `#parseSynthesisCompletion` returns a schema-valid brain and before persistence. No new `api/` file; the 12-function ceiling is unchanged. On `dryRun`, the matcher runs and its result rides along in the response without writing, which is what makes the gate's runs possible without touching a client's document.
+
+### What it receives
+
+Two arguments and nothing else.
+
+**The fresh material**, drawn from the four channels in the input contract: `visualGrammar.sections.rejects`, `dossier.guardrails`, `livedWorld.rejects`, and the guidance principles once the channel is testable. Each arrives as an item with its channel named, because a guardrail and a grammar reject are different shapes and the decomposition step needs to know which it is holding.
+
+**The client's concern list**, read from `refusals.json`: for every entry regardless of status, its id, concern, statement, and status. **Declined and retired entries are included.** Excluding them would mean a declined concern returns as a fresh proposal every rebuild, which is the exact behavior the ADR's persistence rule exists to prevent.
+
+### What it returns
+
+For each input item, a set of results rather than one. This is step 1 finding 1, accepted into the design by the owner's ruling of 2026-08-17: guardrails carry two or three prohibitions and a one-in one-out matcher drops the second silently.
+
+Each result carries the prohibition as the matcher read it, a matched entry id or null, and a confidence band of high, medium, or low. Nothing else. **The matcher does not rewrite statements, does not rule, does not retire, and does not propose removals.** Its whole authority is to say whether it has seen this concern before.
+
+### Decomposition and matching, one call or two
+
+Proposed as one call, with the alternative stated because it is a real fork.
+
+**One call.** The model receives the items and the concern list together and returns prohibition-level results directly. Cheaper, and the decomposition is informed by the concern list, which helps: a guardrail naming both borrowed property and competitor copying decomposes more cleanly when the reader already knows both concepts exist as separate concerns.
+
+**Two calls.** Decompose first with no knowledge of the client's document, then match. More expensive and slower, and it removes a bias the one-call version carries: a decomposer that can see the concern list will tend to cut prohibitions along the lines the list already draws, which inflates match rates and hides genuinely new refusals inside familiar shapes.
+
+**The recommendation is two calls,** on the reasoning that the bias runs toward over-merge, and over-merge is the harmful direction under M1. The cost is one extra call per synthesis, on a path that already makes one very expensive call. **This is the ruling most worth making before the runs**, because the gate cannot fairly measure over-merge on a mechanism whose decomposition step was primed by the answer key.
+
+### Confidence and the fail-safe branch
+
+Three bands, with the ADR's uncertainty posture enforced by the mechanics rather than by the prompt:
+
+- High and medium: the match stands, a re-observation is appended to the entry, nothing surfaces.
+- Low: **the mechanics discard the match and record a proposal**, whatever the model said. This is the M5 clause made structural. A posture that lives only in prompt text is a posture the sampling ignores when it feels like it.
+
+Every failure mode collapses the same way: a non-2xx response, a timeout, a parse failure, a returned entry id that is not in the document, or a malformed result all cause every item in that synthesis to be recorded as a proposal. **Synthesis never fails because matching failed, and matching never suppresses because it broke.** The worst outcome is a person ruling on a slate they have mostly seen before.
+
+Temperature 0, for the same reason the claim auditor runs at 0: this is a judgment about identity, not a generation.
+
+### What it writes
+
+Proposals enter the document as `proposed` through `proposeEntry`, carrying `ruling.proposed_by_run`. Matches append through `recordObservation` with the run id and the fresh wording, so an entry absorbing many observations is visible to a reader, which is the ADR's stated mitigation against a concern quietly swallowing everything.
+
+Nothing else in the document is touched. Status changes stay human-initiated.
+
+### Open questions the owner should settle with the ruling
+
+1. **One call or two.** Recommended above as two. Everything else here holds either way.
+2. **Does the matcher see statements or concerns alone?** Proposed: both, because the concern is a short name and two different refusals can share a short name. The risk is that statement wording drives the match and the concern key stops doing the work step 1 measured it doing.
+3. **What happens on the first synthesis after this ships,** when a client has no `refusals.json`. Proposed: every prohibition is a proposal, the person rules the full initial slate once, exactly as the ADR describes. Worth confirming, because it is also the moment the matcher is least useful and most expensive.
+
+### What remains before the runs
+
+The prohibition-level decomposition and its assignment, and the Condition B reduced documents. Neither needs a model call and neither is blocked by this ruling.
+
 ## Judgment
 
 To be written after the mechanics are ruled and the runs exist, appended below rather than folded into the clauses above.
