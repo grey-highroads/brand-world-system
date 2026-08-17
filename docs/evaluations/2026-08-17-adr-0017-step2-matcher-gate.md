@@ -139,6 +139,31 @@ Nothing else in the document is touched. Status changes stay human-initiated.
 
 The prohibition-level decomposition and its assignment, and the Condition B reduced documents. Neither needs a model call and neither is blocked by this ruling.
 
+## Decomposition record, authored before any matcher exists
+
+The hand judgment is cut and committed. Two artifacts, deliberately separate: `fixtures/adr-0017-refusals/prohibition-decomposition.json` holds the cut, and `prohibition-assignment.json` holds the answer key. A reader can reject one without disturbing the other.
+
+| | MycoPop | Dialog Health |
+| --- | --- | --- |
+| Captured items | 75 | 63 |
+| Prohibitions after the cut | 79 | 69 |
+| Items carrying more than one | 4 | 5 |
+| Prohibitions marked genuinely new | 1 | 0 |
+
+Step 1 named four multi-prohibition items across both brands. The finer cut found nine, and the five it added are the reason the re-cut was worth doing rather than a threshold change.
+
+**The cut recovered the floating product.** MycoPop's cycle 1 reject against artificial forests carries two independent prohibitions: unreal forest staging, and a can placed without weight or contact. A product can float in a photographically ordinary room, so the second does not follow from the first. Step 1 finding 3 recorded the floating-product territory as living in a creative guidance principle and therefore outside the fixture population. It was also sitting in the grammar channel the whole time, hidden inside a staging reject that the per-item cut read as one refusal. It is the only prohibition on either brand marked genuinely new, and no fixture entry holds it.
+
+**One step 1 reading is reversed, recorded rather than made quietly.** Boundary case 5 read MycoPop's regenerated reject against aggressive stimulation, jitters, and a crash as a single concern. The per-prohibition cut splits it, because the approved lived-world rejects hold stimulant signaling and the crash arc as separate entries, and the cut follows the material rather than the earlier call.
+
+**Two fixture entries are themselves compound**, which the cut can expose and cannot fix. `ref-dh-sender` carries both an unidentified sender and a missing next action in one concern name; three Dialog Health items decompose into halves that land on it separately. `ref-dh-logo-rebuild` absorbs the RCS Template asset's fixed role alongside artwork reconstruction, because no capture reaches the template role independently. Both are flagged in the assignment notes. A compound concern is a place where the matcher can be right and the answer key still coarse, and M4's stability reading should be read with that in mind.
+
+### Condition B, built
+
+`fixtures/adr-0017-refusals/condition-b/` holds the reduced documents: six entries for MycoPop, five for Dialog Health, being the step 1 entries whose concern is reached by at least one cycle 2 grammar-reject prohibition, carried over unchanged in wording and ruled active. Nothing was rewritten for this condition, because rewriting would reintroduce the leak the condition exists to remove.
+
+Sizes are worth stating before the runs: the S1 through S3 prohibitions will be matched against 6 and 5 entries rather than 24 and 19. **A smaller candidate set makes over-merge harder and under-merge easier**, which pushes Condition B toward passing M1 and failing M2. That direction is stated now so it is read as a property of the condition rather than discovered as a result.
+
 ## Judgment
 
 To be written after the mechanics are ruled and the runs exist, appended below rather than folded into the clauses above.

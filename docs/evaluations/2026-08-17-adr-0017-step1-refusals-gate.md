@@ -74,11 +74,13 @@ Run 2026-08-17 against `fixtures/adr-0017-refusals/` and `src/refusals/store.js`
 | --- | --- | --- |
 | Grammar rejects, five captures | 30 | 23 |
 | Regenerated guardrails, three captures | 17 | 15 |
-| Regenerated lived-world rejects, three captures | 16 | 13 |
+| Regenerated lived-world rejects, three captures | 16 | 14 |
 | Approved guardrails, from the paste | 6 | 5 |
 | Approved lived-world rejects, from the paste | 6 | 6 |
 | **Total captured items** | **75** | **63** |
 | **Concern entries authored** | **24** | **19** |
+
+**Corrected 2026-08-17.** The Dialog Health regenerated lived-world rejects row read 13 and the channel holds 14. The row was typed by hand while the totals came from the harness, so the total of 63 was right and the row beneath it did not sum to it. Recounted against the captures and corrected in place. No clause outcome depends on the row: every measure in this document is computed over the mapping, which covered all 14, and the harness confirmed zero unmapped items at the time of the run.
 
 **Rule B, the auditable exclusion: the list is empty on both brands.** Every guardrail in every capture and in both pastes carried a prohibition, so none was excluded for lacking one. Guardrails whose title reads as positive direction still carry a refusal in the body. Dialog Health's `Keep people in the process` directs that automation not be shown replacing human judgment; MycoPop's `Own refreshment` directs that the competitor's system not be copied. A reader scanning titles alone would have excluded several of these wrongly.
 

@@ -15,3 +15,8 @@ fixtures/adr-0016-step1-captures/
 # lived-world rejects are client state, held here for the fixture gate and never
 # committed, per ADR 0004 and the ADR 0016 step 1 precedent.
 fixtures/adr-0017-approved-refusals/
+
+# ADR 0017 finding 2 investigation inputs and step 2 guidance-principle inputs.
+# Both brands' approved claims documents and approved guidance principles are
+# client state, held for the gate work and never committed.
+fixtures/adr-0017-claims-inputs/
