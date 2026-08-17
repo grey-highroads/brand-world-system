@@ -31,4 +31,4 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 - [`0014-produce-governed-copy-alongside-imagery.md`](0014-produce-governed-copy-alongside-imagery.md), Part one accepted and shipped 2026-08-10; part two revised 2026-08-11
 - [`0015-build-render-quality-on-people-scene-and-rejects.md`](0015-build-render-quality-on-people-scene-and-rejects.md), Proposed; steps 1, 2, 4, and 5 shipped 2026-08-14, visual grammar rejection corrected by session findings
 - [`0016-articulate-visual-grammar-and-evaluate-renders-against-it.md`](0016-articulate-visual-grammar-and-evaluate-renders-against-it.md), Proposed
-- [`0017-govern-refusals-as-durable-records.md`](0017-govern-refusals-as-durable-records.md), Proposed; step 1 store and fixtures pushed 2026-08-17, gate judged and awaiting the owner's ruling
+- [`0017-govern-refusals-as-durable-records.md`](0017-govern-refusals-as-durable-records.md), Proposed; step 1 judged and ruled 2026-08-17, step 2 pre-registered and parked, step 3 bootstrap shipped and confirmed on real client storage 2026-08-17
