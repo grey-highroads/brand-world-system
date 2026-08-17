@@ -10,3 +10,8 @@ dist/
 fixtures/adr-0016-step1-brains/
 fixtures/adr-0016-step1-products/
 fixtures/adr-0016-step1-captures/
+
+# ADR 0017 step 1 gate inputs. The two brands' currently approved guardrails and
+# lived-world rejects are client state, held here for the fixture gate and never
+# committed, per ADR 0004 and the ADR 0016 step 1 precedent.
+fixtures/adr-0017-approved-refusals/
