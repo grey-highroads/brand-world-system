@@ -938,6 +938,10 @@ let protections = {
   seedAvailable: false,
   error: "",
   busyId: "",
+  // Client-scoped state carries the client it was loaded for, matching the
+  // segments and products pattern. Without it a slate loaded for one brand
+  // renders as the current brand's, which is what happened here.
+  loadedForClient: "",
 };
 
 let brainExceptions = [
@@ -7194,17 +7198,42 @@ function applyProtections(data) {
   protections.status = "ready";
   protections.error = "";
   protections.busyId = "";
+  protections.loadedForClient = state.activeClientId;
 }
 
-async function hydrateProtections() {
-  if (typeof fetch !== "function") return;
+// Reset first, then fetch. The previous client's slate must never be on screen
+// while the current client's is in flight, because a stale slate reads as
+// current and there is nothing on it that says otherwise.
+function resetProtections() {
   protections.status = "loading";
+  protections.document = null;
+  protections.proposed = [];
+  protections.active = [];
+  protections.seedAvailable = false;
+  protections.error = "";
+  protections.busyId = "";
+  protections.loadedForClient = "";
+}
+
+async function hydrateProtections(force = false) {
+  if (typeof fetch !== "function") return;
+  if (!force && protections.loadedForClient === state.activeClientId) return;
+  const attemptingClientId = state.activeClientId;
+  resetProtections();
+  render();
   try {
-    applyProtections(await callProtectionsApi({ action: "read_refusals" }));
+    const data = await callProtectionsApi({ action: "read_refusals" });
+    // The active client can change while a read is in flight. A response for a
+    // brand nobody is looking at is discarded rather than rendered.
+    if (state.activeClientId !== attemptingClientId) return;
+    applyProtections(data);
+    protections.loadedForClient = attemptingClientId;
   } catch (error) {
+    if (state.activeClientId !== attemptingClientId) return;
     protections.status = "error";
     protections.error = error.message;
     protections.busyId = "";
+    protections.loadedForClient = attemptingClientId;
   }
   render();
 }
@@ -9577,7 +9606,7 @@ root.addEventListener("click", (event) => {
     void ruleProtection(target.dataset.id, target.dataset.decision);
   }
   if (action === "seed-protections" && !protections.busyId) void seedProtections();
-  if (action === "retry-protections") void hydrateProtections();
+  if (action === "retry-protections") void hydrateProtections(true);
   if (action === "start-brain-synthesis") startBrainSynthesis();
   if (action === "retry-brain-synthesis") startBrainSynthesis();
   if (action === "select-brain-exception") {
@@ -9984,6 +10013,9 @@ async function hydrateClients() {
         state.clients = payload.clients;
         if (!payload.clients.some((client) => client.id === state.activeClientId)) {
           state.activeClientId = payload.clients[0].id;
+          // The active client just changed under us. Client-scoped state that
+          // already loaded belongs to the previous one.
+          void hydrateProtections(true);
         }
       }
     }
@@ -10628,6 +10660,11 @@ function switchClient(id) {
     return;
   }
   setActiveClientCookie(id);
+  // The switch reloads, so hydration re-runs from module load. The reset is
+  // still here because correctness should not depend on the reload staying in
+  // this function: a later soft switch would inherit the previous client's
+  // protections silently.
+  resetProtections();
   window.location.reload();
 }
 

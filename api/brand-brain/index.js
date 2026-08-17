@@ -1,7 +1,7 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
 import { createVercelBlobRefusalsStore } from "../../src/refusals/store.js";
-import { bootstrapSlateFor } from "../../src/refusals/bootstrap.js";
+import { resolveBootstrapSlate } from "../../src/refusals/bootstrap.js";
 import { auditCopyAgainstClaims } from "../../src/claims/copy-audit.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
@@ -98,7 +98,7 @@ export default async function handler(request, response) {
         refusals: doc,
         proposed: refusals.proposedEntries(doc),
         active: refusals.activeEntries(doc),
-        seedAvailable: doc.entries.length === 0 && Boolean(bootstrapSlateFor(clientId)),
+        seedAvailable: doc.entries.length === 0 && Boolean(resolveBootstrapSlate(clientId)),
       });
       return;
     }
@@ -125,7 +125,7 @@ export default async function handler(request, response) {
     }
 
     if (action === "seed_refusals") {
-      const slate = bootstrapSlateFor(clientId);
+      const slate = resolveBootstrapSlate(clientId);
       if (!slate) {
         sendJson(response, 400, {
           error: "No prepared protections exist for this client. Protections arrive from synthesis once the matcher ships.",
@@ -133,10 +133,11 @@ export default async function handler(request, response) {
         return;
       }
       const refusals = createVercelBlobRefusalsStore({ clientId });
-      const result = await refusals.seed(slate);
+      const result = await refusals.seed(slate.entries);
       sendJson(response, 200, {
         refusals: result.document,
         seeded: result.seeded,
+        slate: slate.key,
         proposed: refusals.proposedEntries(result.document),
         active: refusals.activeEntries(result.document),
       });
