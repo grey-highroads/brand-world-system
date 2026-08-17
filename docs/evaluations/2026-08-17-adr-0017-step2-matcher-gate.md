@@ -196,6 +196,57 @@ The step 1 gate's numbers stand. Its population was pre-registered and its claus
 
 The ruling: **the step 1 fixture documents are not amended to hold the eleven new concerns.** They stay as judged, and the new concerns stay marked genuinely new in the assignment. The alternative, growing the documents, would make Condition A's candidate set include entries authored from the very channel being matched against it, which is the leak Condition B exists to remove, reintroduced on the other side. The cost is that Condition A's document is known incomplete, and a matcher that proposes those eleven is scored correct for doing so.
 
+## Run harness proposal, for ruling before the action is pushed
+
+Proposed, not built. Follows the ADR 0013 precedent: a clearly named test action on an existing handler, callable from the owner's authenticated browser, using the server's own key, adding no serverless function. The container has no egress to the model, so the runs happen server-side and their payloads come back by paste, the same cost every prior gate carried.
+
+### The action
+
+`POST /api/brand-brain` with `action: "run_matcher_gate"`, dispatched from `api/brand-brain/index.js` alongside `run_audit_test`. The dispatch comment gains its line. Function count is unchanged at twelve.
+
+**Request body**
+
+| Field | Meaning |
+| --- | --- |
+| `action` | `run_matcher_gate` |
+| `fixture` | `mycopop` or `dialog-health`. A fixture id, not a client id. |
+| `condition` | `A` or `B`. Selects which refusals document the matcher is given. |
+| `channels` | Which channels to run in this call, so a run can be chunked rather than sent whole. |
+| `privateItems` | Captured items whose text is not in the repository, sent inline by the browser. Approved guardrails, approved lived-world rejects, and guidance principles. |
+
+**Response**: one result per item, carrying the item key, the prohibitions the decomposer cut, and for each one a matched entry id or null, a confidence band, and the outcome after the low-confidence override. Plus the model id, the temperature, and both call counts. Nothing is persisted and nothing is written anywhere.
+
+### Guards
+
+1. **The action never touches a client namespace.** It constructs no store. Refusals documents come from the imported fixtures under `fixtures/adr-0017-refusals/`, selected by the `fixture` field, which is validated against the two known fixture ids and rejects anything else. There is no code path in this action that reaches a blob.
+2. **The action never sees the answer key.** `prohibition-assignment.json` is not imported. Scoring runs offline against the returned payload. A handler that held both the input and the key could produce a scored result nobody could check.
+3. **Private material is never persisted and never logged.** `privateItems` is read from the body, passed to the model, and dropped. It does not enter the response except as the prohibitions the decomposer cut from it, which is the measurement.
+4. **Two calls, decomposer blind.** The decomposer receives items and nothing else. The matcher receives the decomposer's prohibitions plus the concern list. The handler cannot pass the concern list to the decomposer, because the decomposer function does not take it as an argument.
+5. **Temperature 0 on both calls**, model reported in the payload so a later reader knows what produced the numbers.
+6. **Chunking cap.** A request over a stated item count is refused with a message naming the cap, so a run cannot silently truncate.
+7. **Naming and disposition.** `run_matcher_gate` says what it is. Retained or removed after the gate per the owner's call, with the ADR 0013 precedent being that `run_audit_test` was retained and recorded as a known ambient state.
+
+### One new committed fixture this needs
+
+`fixtures/adr-0017-refusals/captured-items.json`, holding the item text for the three channels already public in the step 3 parity document: grammar rejects, regenerated guardrails, regenerated lived-world rejects. Extracted mechanically from that document rather than retyped. It exists so the action can import its input instead of the browser pasting 106 items that are already in the repository. The approved and guidance channels stay out and arrive as `privateItems`.
+
+### The thing the precedent forced, stated plainly
+
+The pre-registered measures are defined over prohibitions. **A blind decomposer produces its own cut, which will not align one to one with the hand cut, so a prohibition-level score cannot be computed by matching prohibition ids.** That is a consequence of the blind-decomposer ruling and it is correct: a decomposer that produced the hand cut exactly would be a decomposer that had seen it.
+
+The operational form proposed, specified now while no results exist:
+
+- **Scoring is per item, over concern sets.** The hand judgment gives each item a set of concerns, possibly including `new`. The matcher gives each item a set. The two sets are compared.
+- **Over-merge**: the hand set contains `new` and the matcher's set contains no proposal. A protection that should have surfaced did not.
+- **Under-merge**: the hand set contains concern C and the matcher proposed new instead. A redundant question.
+- **Decomposition quality is reported separately**, as prohibition count per item against the hand count, and it is a report rather than a measure. It is the number that tells a later reader whether a bad match was a bad cut wearing a match's clothes.
+
+This specifies how the pre-registered measures are computed. It does not move a threshold and it is written before any run, which is the only time such a specification is legitimate. If the owner reads it as changing what M1 and M2 measure rather than how they are computed, it should be ruled as an amendment to the pre-registration and dated as one, not absorbed quietly.
+
+### What the owner does
+
+Approve or amend this shape. Then, per run: open the deployed app authenticated, send the action with the private items pasted for that brand and channel, and return the payload. Two brands, two conditions, chunked by channel. Scoring, judgment, and findings happen offline against those payloads.
+
 ## Judgment
 
 To be written after the mechanics are ruled and the runs exist, appended below rather than folded into the clauses above.
