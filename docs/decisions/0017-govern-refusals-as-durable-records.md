@@ -58,7 +58,11 @@ Retirement is human-initiated only, from the same surface where active protectio
 
 ### Consumption
 
-The compile path reads active entries from the refusals document as the avoid-clause source for image prompts. This retires both unstable channels: `livedWorld.rejects` and grammar rejects both stop compiling once a client's refusals document exists, with the same per-client transition rule as ADR 0016's amendment: clients without a refusals document keep the current behavior until they have one. Grammar rejects remain in the grammar artifact as synthesis output feeding the proposal diff; they stop being a compile source.
+The compile path reads active entries from the refusals document as the avoid-clause source for image prompts. This retires both unstable channels: `livedWorld.rejects` and grammar rejects both stop compiling once a client's refusals document exists, with the same per-client transition rule as ADR 0016's amendment: clients without a refusals document keep the current behavior until they have one.
+
+**Amended 2026-08-17.** The switch is on the document holding at least one active entry, rather than on the document existing. A client with a document and nothing yet accepted keeps compiling `livedWorld.rejects`, so a transition never dips protection: the old channel holds until the first acceptance lands and the new one is ready to carry the job.
+
+The edge, stated here rather than discovered later: a client who declines every proposed entry also keeps `livedWorld.rejects` compiling, despite having ruled. That client's compiled prompt carries refusals they declined. This is over-blocking, which is the accepted error direction under the posture this decision record already takes, where a redundant constraint costs a worse image and a missing one costs a protection. It resolves the moment any entry is accepted, and a client who genuinely wants the old channel gone with nothing in its place needs a deliberate retirement rather than a side effect of declining. Grammar rejects remain in the grammar artifact as synthesis output feeding the proposal diff; they stop being a compile source.
 
 ADR 0016 step 4 is unblocked by this decision and re-scoped: the scene writer and compiler consume the grammar's descriptive sections (people, objects, places, light, camera) per the original plan, and consume refusals from the governed document instead of from either regenerated channel.
 
