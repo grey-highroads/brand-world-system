@@ -225,6 +225,13 @@ export function createVercelBlobRefusalsStore(options = {}) {
     return import("@vercel/blob");
   }
 
+  // A missing document and an unreadable one are different facts and this
+  // module keeps them apart. The claims store collapses both into an empty
+  // document, which is safe there because nothing decides anything on the
+  // strength of emptiness. Here it would not be: the bootstrap path seeds only
+  // when a client has no protections, so a transient read failure reported as
+  // "no protections" could seed over a slate a person had already ruled.
+  // Absence returns empty; failure throws.
   async function readOrCreate() {
     const { get } = await blob();
     const result = await get(refusalsPathname(clientId), {
@@ -232,8 +239,10 @@ export function createVercelBlobRefusalsStore(options = {}) {
       ...credentials,
       useCache: false,
     });
-    if (!result || result.statusCode !== 200 || !result.stream) {
-      return emptyDocument();
+    if (!result) return emptyDocument();
+    if (result.statusCode === 404) return emptyDocument();
+    if (result.statusCode !== 200 || !result.stream) {
+      throw new Error("The stored protections could not be read.");
     }
     return JSON.parse(await new Response(result.stream).text());
   }
@@ -265,6 +274,24 @@ export function createVercelBlobRefusalsStore(options = {}) {
     },
     async propose(input) {
       return mutate((doc) => proposeEntry(doc, input));
+    },
+
+    // Bootstrap only. Writes an initial slate into a client that has none.
+    // Refuses when any entry already exists, so this can never overwrite a
+    // ruled protection, and refuses rather than merging, because a partial
+    // slate arriving beside ruled entries is a state nobody designed.
+    async seed(entries) {
+      const doc = await readOrCreate();
+      if (doc.entries.length) {
+        throw new Error(
+          `This client already has ${doc.entries.length} protections. Seeding is for a client that has none.`
+        );
+      }
+      for (const entry of entries) {
+        proposeEntry(doc, entry);
+      }
+      await persist(doc);
+      return { document: doc, seeded: doc.entries.length };
     },
     async accept(entryId, opts) {
       return mutate((doc) => acceptEntry(doc, entryId, opts));

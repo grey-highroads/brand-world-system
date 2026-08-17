@@ -927,6 +927,19 @@ let brainArtifacts = [
   },
 ];
 
+// ADR 0017 step 3: the client's protections, read from the server rather than
+// seeded into the demo state, because these are real ruled records rather than
+// fixture content.
+let protections = {
+  status: "idle",
+  document: null,
+  proposed: [],
+  active: [],
+  seedAvailable: false,
+  error: "",
+  busyId: "",
+};
+
 let brainExceptions = [
   {
     id: "audience-alignment-conflict",
@@ -1810,12 +1823,106 @@ function brainStatusBar() {
   `;
 }
 
+function protectionDerivation(entry) {
+  const note = basisNote(entry);
+  const derived = entry.basis && entry.basis.derivedFrom;
+  if (!note && !derived) return "";
+  return `
+    <div class="brain-detail-section">
+      <span class="section-label">Where this came from</span>
+      ${note ? `<p>${escapeHtml(note)}</p>` : ""}
+      ${derived ? `<p class="brain-reasoning-prose">${escapeHtml(derived)}</p>` : ""}
+    </div>
+  `;
+}
+
+function protectionCard(entry) {
+  const busy = protections.busyId === entry.id;
+  return `
+    <article class="card">
+      <div class="card-header">
+        <h3>${escapeHtml(entry.concern)}</h3>
+        <span class="mini-pill">Needs your decision</span>
+      </div>
+      <p>${escapeHtml(entry.statement)}</p>
+      ${protectionDerivation(entry)}
+      <div class="actions">
+        <button class="button primary" type="button" data-action="rule-protection" data-id="${escapeHtml(entry.id)}" data-decision="accepted"${busy ? " disabled" : ""}>Keep this protection</button>
+        <button class="button secondary" type="button" data-action="rule-protection" data-id="${escapeHtml(entry.id)}" data-decision="declined"${busy ? " disabled" : ""}>Not for this brand</button>
+      </div>
+    </article>
+  `;
+}
+
+// Both presence states render. A brand with protections sees them; a brand
+// with none is told so in plain words rather than shown nothing, because an
+// empty region reads as a loading failure and a person cannot tell the two
+// apart.
+function protectionsBlock() {
+  if (protections.status === "loading" || protections.status === "idle") {
+    return `
+      <section class="card">
+        <div class="card-header"><h2>Protections</h2></div>
+        <p>Checking what this brand already protects against.</p>
+      </section>
+    `;
+  }
+
+  if (protections.status === "error") {
+    return `
+      <section class="card">
+        <div class="card-header"><h2>Protections</h2><span class="mini-pill">Not loaded</span></div>
+        <p>${escapeHtml(protections.error || "The protections could not be read.")}</p>
+        <p>Nothing was changed. Reading again is safe.</p>
+        <div class="actions"><button class="button secondary" type="button" data-action="retry-protections">Try again</button></div>
+      </section>
+    `;
+  }
+
+  const activeCount = protections.active.length;
+  const activeLine = activeCount
+    ? `<p>${activeCount} ${activeCount === 1 ? "protection is" : "protections are"} in force for ${escapeHtml(state.brandName)}.</p>`
+    : "";
+
+  if (!protections.proposed.length) {
+    if (protections.seedAvailable) {
+      return `
+        <section class="card">
+          <div class="card-header"><h2>Protections</h2><span class="mini-pill">Prepared</span></div>
+          <p>A prepared set of protections exists for this brand, drawn from its approved guidance and from what synthesis has surfaced across earlier runs. Bringing them in puts each one in front of you to keep or decline. Nothing is applied until you decide.</p>
+          <div class="actions"><button class="button primary" type="button" data-action="seed-protections"${protections.busyId === "seed" ? " disabled" : ""}>Bring in the prepared protections</button></div>
+        </section>
+      `;
+    }
+    return `
+      <section class="card">
+        <div class="card-header"><h2>Protections</h2><span class="mini-pill">Nothing pending</span></div>
+        ${activeLine || `<p>${escapeHtml(state.brandName)} has no protections recorded yet. They arrive as proposals when a build surfaces something worth protecting against.</p>`}
+        ${activeCount ? "<p>Nothing new is waiting on you.</p>" : ""}
+      </section>
+    `;
+  }
+
+  return `
+    <section class="brain-detail-section">
+      <div class="card-header">
+        <h2>New protections proposed</h2>
+        <span class="attention-count">${protections.proposed.length}</span>
+      </div>
+      <p>Each one is a thing this brand's work should avoid. Keeping it means it travels into every piece of work from here. Declining it is remembered, so the same suggestion does not come back.</p>
+      ${activeLine}
+      ${protections.proposed.map(protectionCard).join("")}
+    </section>
+  `;
+}
+
 function brainWorkspace(title, description, content, className = "") {
   return shell(`
     <section class="workspace brain-workspace ${className}">
       ${pageHeader(title, description)}
       ${brainStatusBar()}
       ${brainSectionNav()}
+      ${state.screen === "brain" ? protectionsBlock() : ""}
       ${content}
     </section>
   `);
@@ -7068,6 +7175,70 @@ function applySynthesisResult(result, options = {}) {
   state.brain.selectedBrainArtifactId = "dossier";
 }
 
+async function callProtectionsApi(payload) {
+  const response = await fetch("/api/brand-brain", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const data = await readApiJson(response);
+  if (!response.ok) throw new Error(data?.error || "The protections could not be read.");
+  return data;
+}
+
+function applyProtections(data) {
+  protections.document = data.refusals || null;
+  protections.proposed = data.proposed || [];
+  protections.active = data.active || [];
+  protections.seedAvailable = Boolean(data.seedAvailable);
+  protections.status = "ready";
+  protections.error = "";
+  protections.busyId = "";
+}
+
+async function hydrateProtections() {
+  if (typeof fetch !== "function") return;
+  protections.status = "loading";
+  try {
+    applyProtections(await callProtectionsApi({ action: "read_refusals" }));
+  } catch (error) {
+    protections.status = "error";
+    protections.error = error.message;
+    protections.busyId = "";
+  }
+  render();
+}
+
+// A ruling is a write and the interface waits for it rather than assuming it
+// landed. Nothing is applied locally first, so a failed write leaves the
+// person looking at the true state instead of an optimistic one.
+async function ruleProtection(entryId, decision) {
+  protections.busyId = entryId;
+  render();
+  try {
+    applyProtections(await callProtectionsApi({ action: "rule_refusal", entryId, decision }));
+    setToast(decision === "accepted" ? "Protection kept" : "Protection declined and remembered");
+  } catch (error) {
+    protections.busyId = "";
+    setToast(error.message);
+  }
+  render();
+}
+
+async function seedProtections() {
+  protections.busyId = "seed";
+  render();
+  try {
+    const data = await callProtectionsApi({ action: "seed_refusals" });
+    applyProtections(data);
+    setToast(`${data.seeded} protections are ready for your decision`);
+  } catch (error) {
+    protections.busyId = "";
+    setToast(error.message);
+  }
+  render();
+}
+
 async function hydrateStoredBrain() {
   if (typeof fetch !== "function") return;
   try {
@@ -9402,6 +9573,11 @@ root.addEventListener("click", (event) => {
     state.brain.selectedSourceId = state.brain.selectedSourceId === target.dataset.id ? "" : target.dataset.id;
     render();
   }
+  if (action === "rule-protection" && !protections.busyId) {
+    void ruleProtection(target.dataset.id, target.dataset.decision);
+  }
+  if (action === "seed-protections" && !protections.busyId) void seedProtections();
+  if (action === "retry-protections") void hydrateProtections();
   if (action === "start-brain-synthesis") startBrainSynthesis();
   if (action === "retry-brain-synthesis") startBrainSynthesis();
   if (action === "select-brain-exception") {
@@ -10488,6 +10664,7 @@ async function createClient() {
 render();
 void hydrateClients();
 void hydrateStoredBrain();
+void hydrateProtections();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
 void hydrateOutputs().then(() => hydrateProductionJob());

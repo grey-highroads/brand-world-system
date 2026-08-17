@@ -1,5 +1,7 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
+import { createVercelBlobRefusalsStore } from "../../src/refusals/store.js";
+import { bootstrapSlateFor } from "../../src/refusals/bootstrap.js";
 import { auditCopyAgainstClaims } from "../../src/claims/copy-audit.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
@@ -11,6 +13,9 @@ import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendP
 // POST { action: "edit_claim" }      -> edit an existing claims entry
 // POST { action: "remove_claim" }    -> remove a claims entry
 // POST { action: "run_audit_test" }  -> run the ADR 0013 mechanism test
+// POST { action: "read_refusals" }   -> read the client's protections document
+// POST { action: "rule_refusal" }    -> accept or decline one proposed protection
+// POST { action: "seed_refusals" }   -> bootstrap an initial slate, ADR 0017 step 3
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -83,6 +88,61 @@ export default async function handler(request, response) {
       return;
     }
 
+    // ADR 0017: the client's protections. Reading is always safe; ruling and
+    // seeding write. Seeding exists for the two clients whose protections were
+    // authored ahead of the matcher and refuses on a client that has any.
+    if (action === "read_refusals") {
+      const refusals = createVercelBlobRefusalsStore({ clientId });
+      const doc = await refusals.read();
+      sendJson(response, 200, {
+        refusals: doc,
+        proposed: refusals.proposedEntries(doc),
+        active: refusals.activeEntries(doc),
+        seedAvailable: doc.entries.length === 0 && Boolean(bootstrapSlateFor(clientId)),
+      });
+      return;
+    }
+
+    if (action === "rule_refusal") {
+      const entryId = String(body.entryId || "").trim();
+      const decision = String(body.decision || "").trim();
+      if (!["accepted", "declined"].includes(decision)) {
+        sendJson(response, 400, { error: 'A ruling is either "accepted" or "declined".' });
+        return;
+      }
+      const refusals = createVercelBlobRefusalsStore({ clientId });
+      const result =
+        decision === "accepted"
+          ? await refusals.accept(entryId, { by: body.ruledBy || null })
+          : await refusals.decline(entryId, { by: body.ruledBy || null });
+      sendJson(response, 200, {
+        refusals: result.document,
+        ruled: result.result,
+        proposed: refusals.proposedEntries(result.document),
+        active: refusals.activeEntries(result.document),
+      });
+      return;
+    }
+
+    if (action === "seed_refusals") {
+      const slate = bootstrapSlateFor(clientId);
+      if (!slate) {
+        sendJson(response, 400, {
+          error: "No prepared protections exist for this client. Protections arrive from synthesis once the matcher ships.",
+        });
+        return;
+      }
+      const refusals = createVercelBlobRefusalsStore({ clientId });
+      const result = await refusals.seed(slate);
+      sendJson(response, 200, {
+        refusals: result.document,
+        seeded: result.seeded,
+        proposed: refusals.proposedEntries(result.document),
+        active: refusals.activeEntries(result.document),
+      });
+      return;
+    }
+
     if (action === "run_audit_test") {
       const apiKey = process.env.OPENAI_API_KEY;
       if (!apiKey) throw new Error("OpenAI API key is not configured.");
@@ -92,7 +152,7 @@ export default async function handler(request, response) {
     }
 
     sendJson(response, 400, {
-      error: `Unknown action "${action}". Supported: read_claims, add_claim, edit_claim, remove_claim, run_audit_test.`,
+      error: `Unknown action "${action}". Supported: read_claims, add_claim, edit_claim, remove_claim, read_refusals, rule_refusal, seed_refusals, run_audit_test.`,
     });
   } catch (error) {
     sendPublicError(response, error);
