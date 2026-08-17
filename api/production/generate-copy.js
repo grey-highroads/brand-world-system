@@ -338,11 +338,58 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     context.push(`WORLD: ${world.summary}. ${(world.principles || []).join(". ")}`);
     drewOn.push("Brand world guidance");
   }
-  if (identity) {
+  // ADR 0016 step 4. A brain carrying a visual grammar briefs the scene writer
+  // from the grammar's descriptive sections instead of the identity and
+  // creative summaries. Per client on artifact presence, per the ADR's
+  // transition rule: a brain without the artifact keeps today's assembly
+  // exactly, and gets it byte-identical, proven by the parity fixture.
+  //
+  // The interim identity-principles fix from 1a9357e is superseded on this
+  // path and retained on the legacy path below, which is the supersession the
+  // ADR's corrected finding anticipated.
+  //
+  // Rejects are deliberately absent. ADR 0017 made the governed refusals
+  // document the only refusal source for the image path, and grammar rejects
+  // are never a compile source. The step 1 harness carried a rejects line
+  // because it predates that decision; carrying it here would put a second,
+  // ungoverned refusal channel back into the prompt.
+  const grammarSections = brain.artifacts?.visualGrammar?.sections;
+  const grammarMode = Boolean(grammarSections && typeof grammarSections === "object");
+  const grammarEntries = [];
+  if (grammarMode) {
+    // The ambition label travels into the prompt because ADR 0016 requires it
+    // to reach the compiled prompt and the result screen rather than stopping
+    // at the brain interface. Origin never dampens the direction: an ambition
+    // entry compiles at full strength and carries its label.
+    const labelled = [
+      ["people", "PEOPLE ON CAMERA"],
+      ["objects", "OBJECTS AND ERA"],
+      ["places", "PLACES AND MATERIALS"],
+      ["light", "LIGHT"],
+      ["camera", "CAMERA"],
+    ];
+    for (const [key, label] of labelled) {
+      const entries = Array.isArray(grammarSections[key]) ? grammarSections[key] : [];
+      if (!entries.length) continue;
+      const body = entries
+        .map((entry) => {
+          const statement = typeof entry === "string" ? entry : entry?.statement || "";
+          if (!statement) return "";
+          const origin = typeof entry === "string" ? null : entry?.basis?.origin || null;
+          grammarEntries.push({ id: (typeof entry === "string" ? null : entry?.id) || null, section: key, statement, origin });
+          return origin === "ambition" ? `${statement} (declared ambition for this brand)` : statement;
+        })
+        .filter(Boolean)
+        .join(" ");
+      if (body) context.push(`${label}: ${body}`);
+    }
+    drewOn.push("Visual grammar");
+  }
+  if (identity && !grammarMode) {
     context.push(`IDENTITY: ${identity.summary}. ${(identity.principles || []).join(". ")}`);
     drewOn.push("Identity guidance");
   }
-  if (creative) {
+  if (creative && !grammarMode) {
     context.push(`CREATIVE DIRECTION: ${creative.summary}. ${(creative.principles || []).join(". ")}`);
     drewOn.push("Creative direction");
   }
@@ -356,7 +403,12 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     drewOn.push("Lived World person");
   }
   if (dossier.desiredFeeling) context.push(`DESIRED FEELING: ${dossier.desiredFeeling}`);
-  if (dossier.materials?.length) context.push(`MATERIALS AND LIGHT: ${dossier.materials.join(", ")}`);
+  // Step 1 finding: two channels describe light in the same prompt. When the
+  // grammar owns light, the dossier line stops being sent rather than being
+  // narrowed, because on Dialog Health it is not about light at all: it lists
+  // message threads, console views, forms, and canonical asset files. Keeping
+  // it beside the grammar's LIGHT section sends the writer two answers.
+  if (dossier.materials?.length && !grammarMode) context.push(`MATERIALS AND LIGHT: ${dossier.materials.join(", ")}`);
   if (dossier.palette?.length) context.push(`PALETTE: ${dossier.palette.map((c) => `${c.name} (${c.role})`).join(", ")}`);
   if (rules) {
     context.push(`RULES AND GUARDRAILS: ${rules.summary}. ${(dossier.guardrails || []).map((g) => `${g.title}: ${g.body}`).join(" ")}`);
@@ -466,5 +518,13 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   }
   if (!options.length) throw new Error("No suggestions came back. Try again.");
 
-  sendJson(response, 200, { options, drewOn, model: "gpt-4o" });
+  // The grammar entries that fed the writer travel back with the suggestions, so
+  // the job can record which statements shaped the scene and an ambition entry
+  // keeps its label all the way to the result screen.
+  sendJson(response, 200, {
+    options,
+    drewOn,
+    model: "gpt-4o",
+    grammarEntries: grammarEntries.length ? grammarEntries : undefined,
+  });
 }
