@@ -1,3 +1,12 @@
+// Pinned copy of src/production/package.js at commit 1c00ac3, the compiler
+// immediately before ADR 0017 step 4. It exists so the parity check compares
+// against real prior behavior rather than against a description of it. Do not
+// edit this file to make a check pass; if the compiler legitimately changes,
+// repin it in the same commit and say why.
+//
+// Only its import paths differ from the original, rewritten to reach the
+// shared modules from fixtures/ rather than from src/production/.
+
 import {
   protectionBlock,
   inferPackageFormat,
@@ -8,9 +17,9 @@ import {
   neutralizeScreenOrientation,
   auditConstraints,
   displayCopyBlock,
-} from "./prompt-craft.js";
-import { getZone } from "../copy/display-budget.js";
-import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
+} from "../src/production/prompt-craft.js";
+import { getZone } from "../src/copy/display-budget.js";
+import { buildJobScope, arrayScopeAppliesToJob } from "../src/scope/resolver.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
@@ -300,18 +309,7 @@ function sectionDirection(section, { compact = false } = {}) {
 // rest of the space open, which is the opposite of prescriptive guidance. The
 // renderer takes one prompt string and has no negative channel, so these
 // compile as avoid-clauses inside the positive prompt.
-// ADR 0017 step 4, amended 2026-08-17: the governed protections take over as
-// the avoid-clause source once a client has at least one accepted entry, not
-// once a document exists. A client mid-ruling keeps the old channel, so the
-// transition never dips protection. A client with no protections argument at
-// all compiles exactly as it did before this existed.
-function rejectsDirection(approvedBrain, activeRefusals = null) {
-  const governed = Array.isArray(activeRefusals)
-    ? activeRefusals.map((entry) => cleanText(entry?.statement)).filter(Boolean)
-    : [];
-  if (governed.length) {
-    return `This brand is not these things, and none of them belong in the frame: ${governed.join(" ")}`;
-  }
+function rejectsDirection(approvedBrain) {
   const lived = approvedBrain?.artifacts?.livedWorld || approvedBrain?.artifacts?.lived_world;
   const rejects = Array.isArray(lived?.rejects) ? lived.rejects.map((item) => cleanText(item)).filter(Boolean) : [];
   if (!rejects.length) return "";
@@ -342,7 +340,7 @@ export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -501,9 +499,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         (isTemplate || isSalesEnablement) ? "" : (dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : ""),
       ].filter(Boolean).join(" "),
     },
-    (isTemplate || isSalesEnablement) ? null : (rejectsDirection(approvedBrain, refusals) ? {
+    (isTemplate || isSalesEnablement) ? null : (rejectsDirection(approvedBrain) ? {
       title: "What this brand is not",
-      body: rejectsDirection(approvedBrain, refusals),
+      body: rejectsDirection(approvedBrain),
     } : null),
     {
       title: "Creative references",

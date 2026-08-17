@@ -209,6 +209,18 @@ export async function prepareProductionPackage(body, options) {
   // reused: it steers generation and it is recorded in the package as the
   // governing set. A job that declares no copy output does no claims work and
   // compiles exactly as it did before this existed.
+  // ADR 0017 step 4. Read once, per client, and hand the compiler the accepted
+  // entries only. Proposed entries have not been ruled and declined ones were
+  // ruled against, so neither reaches a prompt. A client with no protections
+  // store injected, or none accepted, compiles from livedWorld.rejects exactly
+  // as before.
+  let refusals = null;
+  if (options.refusalsStore) {
+    const refusalsDocument = await options.refusalsStore.read();
+    const active = options.refusalsStore.activeEntries(refusalsDocument);
+    if (active.length) refusals = active;
+  }
+
   const copyOutputs = resolveCopyOutputs(body.copyOutputs);
   let claimsSet = null;
   if (copyOutputs.length > 0 && options.claimsStore) {
@@ -313,6 +325,7 @@ export async function prepareProductionPackage(body, options) {
     copyOutputs,
     claimsSet,
     displayCopy,
+    refusals,
   });
   if (generationPackage.copy) {
     generationPackage.copy.displayCopyError = displayCopyError;
