@@ -112,6 +112,26 @@ A timestamped backup blob is now written under the client's own namespace before
 
 Bring it back when: it gets its own decision record. This is a product decision about what rebuild means, not an implementation detail, and it touches the brain state model, the version numbering, and what the interface promises before the confirm. The backup mitigation holds the line meanwhile.
 
+**Update 2026-08-17.** ADR 0017 absorbs this item as its sequencing step 5, on the reading that candidate-not-erase and durable refusals are the same insight: a rebuild produces a reviewable candidate against persistent state rather than a fresh reality. The ADR is Proposed, so this entry stands until it is accepted and step 5 ships. The backup mitigation is unchanged.
+
+### Refusals that govern language have no durable home
+
+ADR 0017 makes refusals a governed record and specifies the entry's statement in visual terms, terms a camera can see, with consumption as the avoid-clause source for image prompts. Both are right for the image path. The step 1 fixture gate found that seven of 43 hand-authored entries across the two test brands govern language rather than what a lens records: health benefits stated as promises, product specifics stated without records, current practice promoted to approved guidance, a declared direction presented as established identity, customer testimony used as substantiation, dense scientific language, and feature inventories with no consequence attached.
+
+That matters because the instability finding behind ADR 0017 was measured on dossier guardrails, and guardrails carry both halves. They compile into the protection block of image prompts and they carry the brand's claim discipline, which governs copy. Under the ADR as written, six of MycoPop's approved protections stay regenerated from scratch on every rebuild, with exactly the silent churn the ADR was written to end.
+
+Three answers are open and none was taken in step 1: widen the document to hold verbal refusals alongside visual ones, add a second governed record for claim language, or establish that the claims document already covers this ground and state the seam between the two. The third is the cheapest if it turns out to be true.
+
+Bring it back when: before ADR 0017 step 3 builds the ruling surface, because the surface's copy depends on whether a person is ruling over visual protections or over all of a brand's protections. It does not block step 2.
+
+### Refusal sources reach past guardrails and lived-world rejects
+
+The step 1 gate's inclusion rule drew its population from grammar rejects, dossier guardrails, and lived-world rejects, which is where the ADR expects refusals to live. Clause S6 of the step 3 parity evaluation had already recorded a refusal that lives in none of them: MycoPop's floating-product rule rests on a creative guidance principle, start with a recognizable human need rather than a floating product. It governs today and it is absent from the step 1 fixtures because the inclusion rule could not see it.
+
+This is the same class of error as the rejects-source instruction scope that clause S6 diagnosed, arriving one layer up. A refusals document populated the way the ADR describes inherits the blind spot: whatever refusals live in the guidance sections never become proposals, so they are never ruled and never persist.
+
+Bring it back when: ADR 0017 step 2 pre-registers its matcher gate, since the matcher's input set is the same question. Establishing which fields can hold a refusal is a read of the schema and the approved brains rather than new design.
+
 ### Brain export and import
 
 There is no way to get a brain out of the system or back into it. Both halves came up during ADR 0016 step 1, when the prototype needed the Mycopop and Dialog Health brains in a working session and the only route was a manual copy of the stored state.
