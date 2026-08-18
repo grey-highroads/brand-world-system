@@ -62,12 +62,20 @@ const deliverables = [
 // ADR 0018 makes contingent on the looks proving themselves first.
 const lookOptions = [
   { id: "", label: "No look" },
-  { id: "film_noir", label: "Film noir" },
-  { id: "drugstore_flash", label: "Drugstore flash print" },
+  { id: "studio_seamless_flash", label: "Studio seamless, direct strobe" },
+  { id: "overcast_editorial", label: "Overcast daylight editorial" },
+  { id: "daylight_street_documentary", label: "Daylight street documentary" },
+  { id: "available_light_interior", label: "Available light interior" },
+  { id: "large_format_daylight", label: "Large format daylight" },
+  { id: "saturated_daylight_adventure", label: "Saturated daylight, outdoors" },
+  { id: "anamorphic_widescreen", label: "Anamorphic widescreen film" },
   { id: "color_slide_1975", label: "Color slide, mid seventies" },
   { id: "consumer_negative_dusk", label: "Consumer negative at dusk" },
-  { id: "large_format_daylight", label: "Large format daylight" },
-  { id: "available_light_interior", label: "Available light interior" },
+  { id: "drugstore_flash", label: "Drugstore flash print" },
+  { id: "flash_night_street", label: "Flash on a night street" },
+  { id: "bleach_bypass_90s", label: "Bleach bypass, nineties" },
+  { id: "pushed_bw_reportage", label: "Pushed black and white reportage" },
+  { id: "film_noir", label: "Film noir" },
 ];
 
 const placementFormats = {
