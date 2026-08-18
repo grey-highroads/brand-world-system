@@ -228,6 +228,24 @@ function main() {
     const refusals = loadRefusals(args.inputs, scene.client);
     const product = loadProduct(args.inputs, scene.client, scene.productId || null);
 
+    // Mirror src/production/service.js#prepareProductionPackage: a product's
+    // isolated image is promoted to the locked asset when nothing else is
+    // locked. Without this the capture would compile the world-only protection
+    // path while production compiles the preserve-exactly path, and the
+    // baseline would measure the wrong prompt.
+    let lockedAsset = null;
+    const productImages = Array.isArray(product?.images) ? product.images : [];
+    const isolated = productImages.find((image) => image.kind === "isolated" && image.blob_pathname);
+    if (isolated) {
+      lockedAsset = {
+        source: { id: `product:${product.product_id}`, name: `${product.product_name} product image` },
+        file: { name: isolated.file_name, type: isolated.content_type, blobPathname: isolated.blob_pathname },
+        name: `${product.product_name} product image`,
+        assetType: "product",
+        fileName: isolated.file_name,
+      };
+    }
+
     let capture;
     try {
       const pkg = compileBrandWorldImagePackage({
@@ -235,7 +253,7 @@ function main() {
         brainVersion,
         brief: scene.brief,
         references: [],
-        lockedAsset: null,
+        lockedAsset,
         templateAsset: null,
         campaign: null,
         product,
@@ -250,7 +268,8 @@ function main() {
         attribution: attributed,
         refusalsChannel: refusals ? "governed" : "livedWorld",
         productId: scene.productId || null,
-        metrics: measure(pkg, scene, null),
+        lockedAssetChannel: lockedAsset ? "product isolated image" : "none",
+        metrics: measure(pkg, scene, lockedAsset),
         package: pkg,
       };
     } catch (error) {
