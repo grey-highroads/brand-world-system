@@ -178,6 +178,17 @@ Configured workflow + request
 
 The job pins its request and workflow version. Each executable stage pins its context selection, entity versions, policy snapshot, and execution plan. A later workflow or brand-brain revision does not alter an in-flight or historical job invisibly.
 
+### What the image prompt is made of
+
+Established 2026-08-18 under ADR 0018. The compiled image prompt carries four authorities, and separating them is what keeps them from arguing with each other in prose order.
+
+- **The scene** owns content: place, subject, moment, and what is happening. It compiles first, as the assignment.
+- **The look** owns capture character: light quality, contrast, falloff, grain, tonal response, and what the medium cannot do. It compiles second, because finish has to be settled before the brand material arrives. Looks live in code as a library, are chosen before the scene is written, and brief the scene writer so the scene is authored for the medium rather than handed to it. The human texture floor compiles alongside, describing what a person is made of rather than how the photograph was taken.
+- **The world** owns what belongs in the frame: the brand's people, objects, era, places, materials, and which light sources are present and what color they emit. It compiles third from the visual grammar. Declared ambitions compile at full strength.
+- **The reference** owns artwork and geometry of a protected asset. It does not own that asset's light, which comes from the scene.
+
+The governing rule behind all of it: this renderer obeys concrete physical facts and ignores abstract description, and an early strong statement defeats a later qualifier. Instructions that cannot change pixels do not belong in the prompt, and two instructions making competing claims about the same property is a design fault rather than something the renderer should arbitrate.
+
 ## Durable contracts
 
 The initial contract set is defined in [`../specs/workflow-contracts.md`](../specs/workflow-contracts.md):

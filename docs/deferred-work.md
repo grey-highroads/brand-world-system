@@ -266,3 +266,27 @@ The diagnosis is structural rather than a wording problem. The whole compiled pr
 Studio and packshot looks are a real need for fashion, ecommerce, and product photography, and they would require the compile path to know that some looks suppress world building rather than style it: no earned environments in the scene brief, a different assignment line, and a protection block written for a studio rather than a location. That is its own unit of work and probably its own decision record. Revisit when a client needs product photography rather than brand world imagery.
 
 The clean and professional need that studio seamless was partly serving is met instead by the `clean_digital` look, which supplies optical consequence without a studio and without a color personality.
+
+## Retire AESTHETIC_MODES
+
+ADR 0018 Decision 2 rules that the look library absorbs and retires the aesthetic modes system: the mode opener's role passes to the selected look's compiled paragraph, `AESTHETIC_MODES` and `selectAestheticMode` are removed, and the package's `aestheticMode` field is replaced by the look id and version. Not done. The modes still supply the assignment opening line, though their finish claims were stripped on 2026-08-18 so they now state register only.
+
+Two findings recorded against the current implementation. Selection reads creative direction text only and cannot see the scene, which put a cinematic opener on an observed outdoor scene. And across both real clients all four fixture scenes selected the same mode, because neither brand's creative text contains the keywords that reach the other three, so the other modes are effectively unreachable.
+
+## The brand slate layer does not exist
+
+ADR 0018 Decision 2 describes three layers: library in code, a governed per brand slate of two to four looks, and per asset selection drawing from the slate. Layers one and three exist. The slate does not, so the picker currently exposes the whole library to every client. The slate is the mechanism that keeps per asset choice from averaging back toward consensus, since it means every available option is one the brand deliberately approved. Revisit before a client uses the picker in anger.
+
+## Products do several jobs badly
+
+Flagged by the owner 2026-08-18. A product record is simultaneously a synthesis artifact built from a scraped page or uploaded brief, a governance object carrying claims and exclusions, and an asset container for reference imagery. Those have different lifecycles and different owners and they share one screen.
+
+Concrete symptoms observed. The imagery card is collapsed by default when a record has no images, so a required input hides itself, and three MycoPop records reached production with empty image arrays and nobody noticed until renders were traced. Only the first isolated image is ever used by `service.js`, while the bucket accepts many. The product detail route is a long way from the studio, where the absence is actually felt. Isolated and in context are set by which bucket a file is dropped into, which works but is undiscoverable.
+
+Worth a proper look rather than patching the upload affordance.
+
+## A replacement for the phase 1 word count gate
+
+The pre-registered phase 1 gate required compiled prompts between 500 and 900 words. It is recorded as failed and as wrong in `docs/evaluations/2026-08-17-adr-0018-phase0-baseline.md`: prompts run near 2,200 and the added words are the only changes that improved renders.
+
+A replacement should measure whether every compiled statement is a physical fact that can change pixels, and whether any two statements make competing claims about the same property. Both are mechanically checkable against a captured package, and both would have caught the overlay bug and the golden coating bug without a render.

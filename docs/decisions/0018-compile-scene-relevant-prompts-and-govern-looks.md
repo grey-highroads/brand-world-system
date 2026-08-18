@@ -91,6 +91,16 @@ Classification of existing entries into these classes is presented for ruling be
 
 ## Amendment log
 
+**Outcome note, 2026-08-18 end of day.** The record's central bet was addition by subtraction: that compile reduction rather than more governance would fix render quality. Half of that proved right and half proved wrong, and both halves are recorded rather than one being edited away.
+
+Right: the diagnosis. Competing and abstract instruction was suppressing quality, and the audit's reverse engineering result held across roughly thirty renders. This renderer obeys concrete physical facts and ignores abstract description, and an early strong statement defeats a later qualifier.
+
+Wrong: the remedy's emphasis. Subtraction was not what moved the image. Every intervention that visibly improved renders added concrete language in a strong early position, roughly 900 words across capture character, the look library, the world block, and the human texture floor. Genuine subtraction of roughly 250 words was individually invisible. The phase 1 word count gate is recorded as failed and as mis specified in `docs/evaluations/2026-08-17-adr-0018-phase0-baseline.md`.
+
+The corrected principle, for whoever writes the next record: the failure was silence, not volume. Four of the five axes fixed today were absences rather than errors, and the renderer filled each silence with consensus. When quality plateaus, ask which axis nobody has written to yet.
+
+Handoffs: `docs/handoff-2026-08-18-architect.md` and `docs/handoff-2026-08-18-builder-look-library.md`.
+
 **Amended 2026-08-18.** Decision 1 said no user facing look choice ships yet, with any picker contingent on the looks proving themselves headless first. The owner has ruled that looks become a user facing feature now. The contingency was satisfied faster than the decision anticipated: on 2026-08-18 the film noir and drugstore flash looks both reached the render unmistakably on MycoPop, which established that look language moves finish and that the library is worth choosing from. The ruling also adds two requirements the original decision did not contemplate.
 
 First, the picker is visual. A list of look names asks a marketer to imagine a photographic medium from its title, which is the same failure as naming a schema field in the interface. The picker is a grid of tone cards, each carrying its look's actual contrast, saturation, and color behavior, shipped as an interim stand in for real sample renders.
