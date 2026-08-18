@@ -253,6 +253,33 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
 // When the look library lands it supplies this block per look; until then one
 // shared floor applies to every image, which is still an improvement over
 // silence.
+// The human texture floor.
+//
+// Faces kept reading as plastic even in frames where the scene, the light, and
+// the product had all landed. The looks each said something about skin, but
+// they said it as a category: pore texture, uneven color, specular sheen.
+// A category is not a fact, and this renderer obeys facts.
+//
+// What actually separates rendered skin from photographed skin is that real
+// skin is zoned. It is red at the nose, ears, cheeks and knuckles, blue or
+// green under the eyes, and yellower across the forehead, and those zones do
+// not blend evenly into each other. Its sheen is patchy rather than an even
+// glow. It carries fine hair that catches light along the jaw and the edge of
+// the cheek. Nothing on a face matches its other side.
+//
+// This compiles for every look rather than living inside each one, because it
+// describes what a human being is made of rather than how the photograph was
+// taken. Clauses are written to hold in monochrome as well as color: where
+// color is absent the zones read as tonal differences instead.
+export const HUMAN_TEXTURE = [
+  "Skin is not one surface with one color. It runs red at the nostrils, the ears, the cheeks, the knuckles, and anywhere the skin is thin, cooler and slightly blue or green under the eyes and around the jaw, and yellower across the forehead and the bridge of the nose. Those zones meet unevenly and are visible as differences in tone rather than blending into a single even complexion.",
+  "Sheen on skin is patchy rather than an even glow: it sits on the forehead, the nose, the tops of the cheeks, and the point of the chin, and it is absent everywhere else.",
+  "Fine hair catches the light along the jaw, the edge of the cheek, the upper lip, and the hairline, and individual hairs sit out of place rather than lying together.",
+  "The two sides of a face do not match. One eye sits slightly differently from the other, the eyebrows are not the same shape, the mouth rests uneven, and the hairline is irregular.",
+  "Eyes carry visible moisture at the lower lid, faint vessels in the white, and an iris with visible fibers rather than a flat disc. Lips are cracked or dry in places and their edge is not a clean line.",
+  "Hands and necks show their age before faces do: tendons, veins, knuckle creases, and loose skin at the throat are all present and are not smoothed.",
+].join(" ");
+
 export const CAPTURE_CHARACTER = [
   "This is one exposure made by a physical camera, carrying the losses that come with that.",
   "Grain is present and visible at normal viewing size. It is fine in the bright areas and coarse in the shadows and anywhere underexposed.",

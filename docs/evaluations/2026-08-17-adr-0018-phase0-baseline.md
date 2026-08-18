@@ -32,6 +32,10 @@ Clause 2 amended 2026-08-18, before any phase 1 work: impossible invariant means
 
 Clause 6 added 2026-08-18, from the same evidence: no protection instruction compiles a unit count the supplied asset itself violates. A four pack cannot be governed by a rule permitting one readable unit.
 
+Clause 1 recorded as failed and superseded, 2026-08-18, end of day. The gate required every compiled prompt to land between 500 and 900 words. Compiled prompts currently run near 2,200. The clause is not merely unmet, it was wrong: it was written on the assumption that render quality was being suppressed by prompt length, and the day's evidence says the opposite. Every intervention that visibly improved renders added words in a strong early position. The capture block, the look library, the world block, and the human texture floor together account for roughly 900 words and are the only changes all day that moved the image. Meanwhile real subtraction did happen, roughly 250 words of abstract guidance, palette provenance, and duplicate material vocabulary, and none of it was individually visible in a render.
+
+The corrected understanding, recorded for whatever gate replaces this one: what suppressed quality was not length but competing and abstract instruction. Concrete physical facts positioned early beat abstract description positioned anywhere, and word count is a poor proxy for either. A replacement gate should measure whether every compiled statement is a physical fact that can change pixels, and whether any two statements make competing claims about the same property, rather than counting words. This entry is recorded as a fail rather than edited away, per the standing rule that failed gates stay failed.
+
 Gate discipline, per the owner's ruling recorded in ADR 0018: a failed gate halts stacking, not work. Problems found are tweaked within phase 1 against these same scenes until the gate passes. Phase 2 and phase 3 do not start on a failing gate. A mis specified gate clause is a recorded fail, corrected here with a dated amendment, never silently rewritten.
 
 ## Baseline expectations, stated before capture

@@ -9,6 +9,7 @@ import {
   auditConstraints,
   displayCopyBlock,
   CAPTURE_CHARACTER,
+  HUMAN_TEXTURE,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
 import { resolveLook } from "./looks.js";
@@ -576,7 +577,11 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // clipped speculars on a gradient backdrop would be a defect.
     (isTemplate || isSalesEnablement) ? null : {
       title: "Capture",
-      body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
+      // The look describes the photograph. The human texture floor describes
+      // what a person is made of, so it compiles under every look rather than
+      // being restated inside each one. It follows the look so a look's own
+      // tonal rules are already established when it arrives.
+      body: `${selectedLook ? selectedLook.line : CAPTURE_CHARACTER} ${HUMAN_TEXTURE}`,
     },
     // Third by design, immediately after Capture and before the brand prose.
     // Templates and sales elements are excluded: neither is a scene, and a
