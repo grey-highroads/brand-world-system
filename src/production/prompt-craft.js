@@ -97,7 +97,7 @@ export function integrationSentence(format) {
     : format === "pouch" ? " and minor natural pouch crinkle at contact points"
     : format === "bottle" ? " and physically motivated condensation or edge reflection where the scene supports them"
     : "";
-  return `Integrate it physically with ${base}${formatExtra}, so it feels photographed in the scene, never pasted on.`;
+  return `Place it physically in the scene with ${base}${formatExtra}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -183,7 +183,24 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
   // Case 3: locked product/packaging asset
   const noun = FORMAT_NOUN[format] || "package";
   const lines = [
-    `Preserve the supplied ${noun} exactly as pictured: logo, label hierarchy, typography, colors, proportions, silhouette, and open or closed state unchanged, fully readable.`,
+    // What the reference governs and what the scene governs, split explicitly.
+    //
+    // This sentence used to read "preserve the supplied package exactly as
+    // pictured: logo, label hierarchy, typography, colors, proportions,
+    // silhouette, and open or closed state unchanged, fully readable", with the
+    // integration line arriving afterward. Colors unchanged and fully readable
+    // are absolutes, and the 2026-08-17 audit established that a strong early
+    // positive defeats a later qualifier, so the prompt asked for an overlay
+    // and then requested integration. Renders came back with the product
+    // sitting on the scene at its own exposure, sharper and cleaner than
+    // everything around it.
+    //
+    // The reference governs the artwork and the geometry. The scene governs the
+    // light. Saying so is what lets the object be preserved and photographed at
+    // the same time.
+    `The supplied ${noun} governs artwork and geometry only: the logo, wordmark, typography, label hierarchy, the relationships between its colors, its proportions, and its silhouette are reproduced from the reference and nothing about the design is redrawn or reinterpreted.`,
+    `Its exposure, brightness, contrast, and specular highlights are not taken from the reference. They come from this scene. The ${noun} is lit by the same source as everything else in the frame, so the side turned away from that source falls into shadow by the same amount as every other surface at that distance, it picks up color from what is next to it, it casts a contact shadow where it meets the surface it sits on, and it carries the same focus, grain, and tonal response as the rest of the picture rather than being sharper or cleaner than what surrounds it.`,
+    `The wordmark stays identifiable. It does not have to be evenly lit or fully legible across its whole surface, and part of it falling into shadow or turning past the light is correct rather than a fault.`,
     // The protected asset is one physical object and the reference covers one
     // instance of it. A scene with people in it invites more, and every extra
     // unit is drawn from memory rather than from the reference, which is where
