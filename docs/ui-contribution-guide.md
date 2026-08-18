@@ -138,3 +138,10 @@ The rule: when an element's type changes, move its handler to match. A `select` 
 This is the second entry in this guide about a control that rendered but could not be used, after the look field first shipping on the legacy brief screen rather than the studio screens the same day. Both share a shape: the markup was verified and the path a person takes to reach and operate it was not. Rendering is not working.
 
 A third instance the same day, same shape, different symptom: the look field was given `studio-setup-field` alone while every sibling field carries `field full studio-setup-field`. `.field.full` sets `grid-column: 1 / -1`, so without it the field occupied one column of a two column form grid and the picker rendered at half width with a large empty area beside it. Copying the class from a neighboring field is not a style choice, it is how a field declares its span. When adding a field to an existing form, read the classes on the field next to it and match them before writing any new CSS.
+
+
+## A prompt change can break a control
+
+Found 2026-08-18. Scene suggestion cards rendered a heading with no body, and clicking one returned the person to the generate button with no message. No markup had changed. The cause was a prompt edit: new rules referred to the world field repeatedly while the requested JSON shape named that key `brief`, so the model emitted `world` and the body was never there to render.
+
+Two lessons. When rules and an output shape name the same thing differently, the model resolves the inconsistency however it likes, so name the key in the shape instruction and accept both on parse. And a card built from model output needs a state for the field being absent, because the model is not a schema. A control whose body is empty should say so and refuse to be selected rather than applying nothing and looking broken.

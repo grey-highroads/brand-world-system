@@ -4524,9 +4524,9 @@ function sceneSuggestionPanel(config = {}) {
       </div>
       <div class="scene-suggest-list">
         ${options.map((option, index) => `
-          <button class="scene-suggest-card" type="button" data-action="use-scene-suggestion" data-index="${index}">
+          <button class="scene-suggest-card" type="button" data-action="use-scene-suggestion" data-index="${index}" ${String(option.brief || "").trim() ? "" : "disabled"}>
             <strong>${escapeHtml(option.label || "Option")}</strong>
-            <span>${escapeHtml(option.brief || "")}</span>
+            <span>${escapeHtml(String(option.brief || "").trim() || "This one came back empty. Try again for three new ones.")}</span>
           </button>
         `).join("")}
       </div>
@@ -9140,6 +9140,13 @@ root.addEventListener("click", (event) => {
   }
   if (action === "use-scene-suggestion") {
     const option = state.studio.sceneSuggestions[Number(target.dataset.index)];
+    // A body-less option would write an empty brief, clear the panel, and drop
+    // the person back at the generate button with nothing said. Say it instead.
+    if (option && !String(option.brief || "").trim()) {
+      setToast("That direction came back empty. Try again for three new ones.");
+      render();
+      return;
+    }
     if (option) {
       state.studio[state.studio.sceneField || "brief"] = option.brief || "";
       // The visible field stays plain prose the user can edit. Camera and light

@@ -548,7 +548,7 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     "",
     "OUTPUT FORMAT:",
     String(body.kind || "scene") === "scene"
-      ? 'Return only JSON: {"options":[{"label":"three or four words","brief":"the world","composition":"the composition","lighting":"the lighting","props":"comma separated objects"}]} with exactly three options. No markdown fences, no preamble.'
+      ? 'Return only JSON: {"options":[{"label":"three or four words","brief":"the world field","composition":"the composition field","lighting":"the lighting field","props":"comma separated objects"}]} with exactly three options. The world field is the key named brief; there is no key named world. No markdown fences, no preamble.'
       : 'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
 
@@ -581,9 +581,20 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   try {
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
     options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
+    // The rules speak of a world field and the shape calls that key brief, so a
+    // model following the rules literally emits world, and the card then
+    // renders a heading with no body. Accept either rather than relying on the
+    // model to resolve our own naming inconsistency.
+    options = options.map((option) => (
+      option && !option.brief && option.world ? { ...option, brief: option.world } : option
+    ));
   } catch {
     throw new Error("The suggestions came back in an unexpected shape. Try again.");
   }
+  // An option with no body cannot be selected: the card would show a heading
+  // only, and choosing it would write an empty brief, clear the panel, and
+  // leave the person back at the generate button with no explanation.
+  options = options.filter((option) => option && String(option.brief || "").trim());
   if (!options.length) throw new Error("No suggestions came back. Try again.");
 
   // The grammar entries that fed the writer travel back with the suggestions, so
