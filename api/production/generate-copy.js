@@ -493,6 +493,34 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   // daylight street documentary returned a night campfire. Precedence is
   // stated rather than implied, and the earned-environments rule is narrowed
   // to a choice among the environments this medium can photograph.
+  // ADR 0018. The grammar reached the writer as context and the writer treated
+  // it as background reading, so across more than twenty renders the brand's
+  // world arrived thinly or not at all. Context describes; rules oblige. These
+  // put the world's content in the RULES block and say plainly that the world
+  // is what is in the frame, which is the same precedence fix that repaired
+  // looks whose medium required a specific setting.
+  const worldSections = grammarMode ? (brain.artifacts?.visualGrammar?.sections || {}) : {};
+  const worldHas = (key) => Array.isArray(worldSections[key]) && worldSections[key].length > 0;
+  const worldRules = grammarMode
+    ? [
+        "The sections above headed PEOPLE ON CAMERA, OBJECTS AND ERA, and PLACES AND MATERIALS describe the world this brand's photographs take place in. That world is required content, not background reading. A direction that could have been written for any brand in this category has failed even if it is a good photograph.",
+        worldHas("places")
+          ? "Build the setting out of the surfaces, rooms, and landscapes named under PLACES AND MATERIALS. Name those materials in the world field. Do not substitute a more familiar room that the brand has no particular claim on."
+          : "",
+        worldHas("objects")
+          ? "Name at least two specific objects from OBJECTS AND ERA in the props field and put at least one of them in the world field where it is doing something in the scene. These are physical objects present in the room, not decoration and not a style applied afterward."
+          : "",
+        worldHas("people")
+          ? "Carry the wardrobe, posture, and era cues from PEOPLE ON CAMERA into how you describe the person."
+          : "",
+        worldHas("light")
+          ? "The sources named under LIGHT are the sources in this scene: name them and their color in the lighting field. Where the look and this world disagree about color, the world decides which sources are present and what color they emit, and the look decides how the film or sensor renders them."
+          : "",
+        "An entry marked as a declared ambition is a direction the brand is reaching for and it belongs in the frame at full strength. Do not soften it, do not reduce it to a single small prop, and do not leave it out because the scene reads fine without it.",
+        "The world decides what is in the frame. The look decides how it was photographed. Neither replaces the other, and a direction that satisfies the look while dropping the world has answered half the brief.",
+      ].filter(Boolean)
+    : [];
+
   const lookRules = lookBrief
     ? [
         `This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${lookBrief.line}`,
@@ -509,6 +537,7 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     context.join("\n"),
     "",
     "RULES:",
+    ...worldRules.map((rule) => `- ${rule}`),
     ...lookRules.map((rule) => `- ${rule}`),
     ...kind.rules.map((rule) => `- ${rule}`),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",

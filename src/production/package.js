@@ -358,7 +358,11 @@ function worldDirection(approvedBrain) {
       .filter(Boolean);
     if (statements.length) blocks.push(`${label}: ${statements.join(" ")}`);
   }
-  return blocks.join(" ");
+  if (!blocks.length) return "";
+  // The block led with its labels and read as description, which is how the
+  // world arrived at position three and still lost to a scene at position one.
+  // The lead sentence states what it is for.
+  return `This is the world this brand's photographs take place in, and it is content that belongs in the frame rather than background. Build the setting, the objects, and the person from what follows. ${blocks.join(" ")}`;
 }
 
 // What the brand is not. Instruction that closes off wrong answers leaves the
