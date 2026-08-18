@@ -3989,7 +3989,7 @@ function studioActiveFormatCount() {
 function studioLookField() {
   const selected = state.brief.look || "";
   return `
-            <div class="studio-setup-field look-field">
+            <div class="field full studio-setup-field look-field">
               <label>Look</label>
               <span class="field-note">How the photograph is made: the light, the film, the grain, and what that medium cannot do. Chosen first, so the scene direction is written for it.</span>
               <div class="look-grid" role="radiogroup" aria-label="Look">
