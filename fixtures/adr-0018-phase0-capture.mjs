@@ -24,6 +24,18 @@
 //   --scene    filter to one scene id
 //   --allow-dirty   run on a dirty tree anyway; the capture is marked
 //                   unattributable and must not be used as the baseline
+//   --baseline      directory of an earlier capture set. Every section except
+//                   Assignment must come back byte identical against it, which
+//                   is how a scene writer test proves it changed only the scene
+//                   rather than assuming it. Three couplings in the compile
+//                   path key off scene text (a screen keyword regex that adds a
+//                   protection rule, state neutralization, and screen
+//                   orientation neutralization), so isolation is a claim that
+//                   can fail and has to be checked rather than argued.
+//   --briefs        JSON file of replacement briefs keyed by scene id, merged
+//                   over the frozen scene brief. This is how new scene writer
+//                   output is tested against frozen fixtures without editing
+//                   the frozen scenes.
 //
 // Inputs it reads, all gitignored per ADR 0004:
 //   fixtures/adr-0018-phase0-inputs/<client>-brain.json
@@ -38,7 +50,7 @@
 // Output: one JSON capture per scene in the out directory, plus summary.md
 // with the metrics table for the evaluations document.
 
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync } from "fs";
 import { execSync } from "child_process";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
@@ -59,6 +71,8 @@ function parseArgs(argv) {
     client: null,
     scene: null,
     allowDirty: false,
+    baseline: null,
+    briefs: null,
   };
   for (let i = 2; i < argv.length; i += 1) {
     const flag = argv[i];
@@ -69,6 +83,8 @@ function parseArgs(argv) {
     else if (flag === "--out") { args.out = value; i += 1; }
     else if (flag === "--client") { args.client = value; i += 1; }
     else if (flag === "--scene") { args.scene = value; i += 1; }
+    else if (flag === "--baseline") { args.baseline = value; i += 1; }
+    else if (flag === "--briefs") { args.briefs = value; i += 1; }
     else throw new Error(`Unknown flag: ${flag}`);
   }
   return args;
@@ -168,6 +184,66 @@ function measure(pkg, scene, lockedAsset) {
 }
 
 // ---------------------------------------------------------------------------
+// Isolation check
+// ---------------------------------------------------------------------------
+
+// A scene writer test changes the Assignment block and nothing else. That is a
+// claim about the compiler, not a fact: three branches key off scene text, so
+// new scene wording can move the protection block or have its own words
+// rewritten underneath it. This compares every section against an earlier
+// capture and reports any section other than Assignment that moved. A moved
+// section is a recorded finding, and any attribution of a render difference to
+// the scene writer alone is void for that fixture.
+function compareToBaseline(baselineDir, sceneId, pkg) {
+  if (!existsSync(baselineDir)) {
+    throw new Error(`Baseline directory not found: ${baselineDir}`);
+  }
+  const match = readdirSync(baselineDir).filter((name) => name.endsWith(`-${sceneId}.json`)).sort();
+  if (!match.length) return { compared: false, reason: `no baseline capture for ${sceneId}` };
+
+  const baseline = JSON.parse(readFileSync(join(baselineDir, match[match.length - 1]), "utf8"));
+  if (baseline.error || !baseline.package) return { compared: false, reason: "baseline capture holds no package" };
+
+  const baseSections = new Map(baseline.package.sections.map((section) => [section.title, section.body]));
+  const newSections = new Map(pkg.sections.map((section) => [section.title, section.body]));
+  const titles = [...new Set([...baseSections.keys(), ...newSections.keys()])];
+
+  const moved = [];
+  for (const title of titles) {
+    if (title === "Assignment") continue;
+    const before = baseSections.get(title);
+    const after = newSections.get(title);
+    if (before === after) continue;
+    moved.push({
+      section: title,
+      change: before === undefined ? "added" : after === undefined ? "removed" : "changed",
+      baselineWords: before === undefined ? 0 : wordCount(before),
+      newWords: after === undefined ? 0 : wordCount(after),
+    });
+  }
+  // Section equality is not the whole isolation question. Two compile branches
+  // rewrite the scene's own words before compiling them, so the Assignment can
+  // hold text the scene writer did not write. Those edits land inside the one
+  // section this check permits to change, which is exactly where they would go
+  // unnoticed. Reported separately: a silent edit is a finding even when every
+  // section outside Assignment held still.
+  const rewrites = [
+    ...(pkg.stateNeutralizations || []).map((entry) => ({ kind: "state", entry })),
+    ...(pkg.orientationAdjustments || []).map((entry) => ({ kind: "orientation", entry })),
+  ];
+
+  return {
+    compared: true,
+    baselineFile: match[match.length - 1],
+    baselineCommit: baseline.attribution?.commit || null,
+    isolated: moved.length === 0,
+    moved,
+    sceneRewritten: rewrites.length > 0,
+    rewrites,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Input loading
 // ---------------------------------------------------------------------------
 
@@ -222,6 +298,9 @@ function main() {
 
   mkdirSync(args.out, { recursive: true });
 
+  const briefOverrides = args.briefs ? readJson(args.briefs, "briefs file") : null;
+
+  let isolationFailures = 0;
   const summaryRows = [];
   for (const scene of scenes) {
     const { approvedBrain, brainVersion } = loadBrain(args.inputs, scene.client);
@@ -251,7 +330,7 @@ function main() {
       const pkg = compileBrandWorldImagePackage({
         approvedBrain,
         brainVersion,
-        brief: scene.brief,
+        brief: briefOverrides?.[scene.id] ? { ...scene.brief, ...briefOverrides[scene.id] } : scene.brief,
         references: [],
         lockedAsset,
         templateAsset: null,
@@ -269,6 +348,8 @@ function main() {
         refusalsChannel: refusals ? "governed" : "livedWorld",
         productId: scene.productId || null,
         lockedAssetChannel: lockedAsset ? "product isolated image" : "none",
+        briefOverridden: Boolean(briefOverrides?.[scene.id]),
+        isolation: args.baseline ? compareToBaseline(args.baseline, scene.id, pkg) : null,
         metrics: measure(pkg, scene, lockedAsset),
         package: pkg,
       };
@@ -289,12 +370,19 @@ function main() {
       console.log(`${scene.id}: COMPILE FAILED: ${capture.error}`);
     } else {
       const m = capture.metrics;
+      const iso = capture.isolation;
+      const isoCell = !iso ? "not checked"
+        : !iso.compared ? iso.reason
+        : !iso.isolated ? `NOT ISOLATED: ${iso.moved.map((entry) => `${entry.section} ${entry.change}`).join(", ")}`
+        : iso.sceneRewritten ? `isolated, but the compiler rewrote the scene text (${iso.rewrites.length} edit(s))`
+        : "isolated";
       summaryRows.push(
-        `| ${scene.id} | ${m.totalWords} | ${m.prohibitionSectionShare}% | ${m.prohibitionTotal} | ${m.impossibleInvariant ? "YES" : "no"} | ${m.leakedMarkers.join(", ") || "none"} |`
+        `| ${scene.id} | ${m.totalWords} | ${m.prohibitionSectionShare}% | ${m.prohibitionTotal} | ${m.impossibleInvariant ? "YES" : "no"} | ${m.leakedMarkers.join(", ") || "none"} | ${isoCell} |`
       );
       console.log(
-        `${scene.id}: ${m.totalWords} words, prohibition sections ${m.prohibitionSectionShare}%, ${m.prohibitionTotal} prohibition phrases, impossible invariant ${m.impossibleInvariant ? "YES" : "no"}, leaked markers: ${m.leakedMarkers.join(", ") || "none"}, mode ${m.aestheticMode?.id}`
+        `${scene.id}: ${m.totalWords} words, prohibition sections ${m.prohibitionSectionShare}%, ${m.prohibitionTotal} prohibition phrases, impossible invariant ${m.impossibleInvariant ? "YES" : "no"}, leaked markers: ${m.leakedMarkers.join(", ") || "none"}, mode ${m.aestheticMode?.id}${iso ? `, isolation: ${isoCell}` : ""}`
       );
+      if (iso && iso.compared && (!iso.isolated || iso.sceneRewritten)) isolationFailures += 1;
     }
   }
 
@@ -305,13 +393,18 @@ function main() {
     `- Attributable: ${attributed.attributable}`,
     `- Captured: ${attributed.capturedAt}`,
     ``,
-    `| Scene | Total words | Prohibition section share | Prohibition phrases | Impossible invariant | Leaked markers |`,
-    `|---|---|---|---|---|---|`,
+    `| Scene | Total words | Prohibition section share | Prohibition phrases | Impossible invariant | Leaked markers | Isolation |`,
+    `|---|---|---|---|---|---|---|`,
     ...summaryRows,
     ``,
   ].join("\n");
   writeFileSync(join(args.out, "summary.md"), summary);
   console.log(`\nWrote ${scenes.length} capture(s) and summary.md to ${args.out}`);
+  if (isolationFailures) {
+    console.log(
+      `\nISOLATION FLAGGED on ${isolationFailures} scene(s): a section other than Assignment moved, or the compiler rewrote the scene writer's own words. Either way a render difference on those fixtures cannot be attributed to the scene writer alone. Record it as a finding before reading any render.`
+    );
+  }
 }
 
 main();
