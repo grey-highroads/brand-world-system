@@ -3927,6 +3927,23 @@ function studioActiveFormatCount() {
   return state.studio.activeFormats.length;
 }
 
+// ADR 0018 phase 1 look test. One field, rendered into every studio setup
+// screen, because a look applies to any photograph regardless of where it will
+// be placed. This is a test affordance for learning whether look language
+// reaches the render at all. ADR 0018 Decision 1 keeps a product picker
+// contingent on the looks proving themselves headless first, and that ruling
+// stands.
+function studioLookField() {
+  return `
+            <div class="studio-setup-field">
+              <label for="studio-look">Look</label>
+              <select id="studio-look" data-action="look-change">
+                ${lookOptions.map((entry) => `<option value="${entry.id}"${state.brief.look === entry.id ? " selected" : ""}>${escapeHtml(entry.label)}</option>`).join("")}
+              </select>
+              <span class="field-note">How the photograph was made: the light, the film, the grain, and what that medium cannot do. No look keeps the shared default.</span>
+            </div>`;
+}
+
 function renderStudioSetup() {
   const approved = approvedBrainForProduction();
   const cat = studioCategories.find((c) => c.id === state.studio.category);
@@ -4123,6 +4140,8 @@ function renderStudioSetup() {
               </div>
             ` : ""}
 
+            ${studioLookField()}
+
             <div class="studio-additive-links">
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
               ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
@@ -4283,6 +4302,8 @@ function renderTemplateSetup(cat) {
                 <textarea data-action="studio-direction-input" placeholder="Moody, atmospheric. Inspired by the studio lighting in our spring campaign photography.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
+
+            ${studioLookField()}
 
             <div class="studio-additive-links">
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
@@ -4550,6 +4571,8 @@ function renderWebsiteSetup(cat) {
               </div>
             ` : ""}
 
+            ${studioLookField()}
+
             <div class="studio-additive-links">
               ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
             </div>
@@ -4725,6 +4748,8 @@ function renderSalesSetup(cat) {
                 <textarea data-action="studio-direction-input" placeholder="High-end product photography feel. Studio lighting, subtle reflections on the screen.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
+
+            ${studioLookField()}
 
             <div class="studio-additive-links">
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
