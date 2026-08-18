@@ -1,7 +1,7 @@
 # ADR 0018 phase 0: prompt baseline and pre-registered phase 1 gate
 
 - Date: 2026-08-17
-- Status: Gate registered (commit 34f3e51, before any capture existed). Scenes frozen (commit 167e74a). MycoPop baseline captured at the freeze commit; Dialog Health captures pending inputs; baseline renders pending. Commit order holds: gate, then freeze, then captures.
+- Status: Gate registered (commit 34f3e51, before any capture existed). Scenes frozen (commit 167e74a). All four scenes captured; baseline renders pending. Commit order holds: gate, then freeze, then captures.
 - Decision record: docs/decisions/0018-compile-scene-relevant-prompts-and-govern-looks.md
 - Harness: fixtures/adr-0018-phase0-capture.mjs
 - Scenes: fixtures/adr-0018-phase0-scenes.json
@@ -58,6 +58,25 @@ The harness was exercised end to end on stub inputs before this commit: the dirt
 **Dialog Health, honestly.** No DH capture exists yet. The DH brain payload entered a prior session as an uploaded file and lives in Blob storage this environment cannot reach. The moment the file lands in a session, the capture is one command against the same freeze commit. No audit exists for DH, so its numbers remain genuinely unknown, per the expectation registered above.
 
 **Renders.** Baseline renders remain to be generated through the deployed app, one per captured scene, with the owner's three second read recorded here.
+
+### 2026-08-18: Dialog Health baseline captured
+
+**Input provenance.** The owner supplied the saved brain payload (approved v2, saved 2026-08-09). It is the approved brain verbatim, not a reconstruction, so no fidelity proof is needed. It predates the visual grammar artifact and carries a voice guidance section that the image compile path does not consume by design (guidanceOrder). No accepted protections document was available, so the rejects compiled from livedWorld, matching production only if Dialog Health has zero accepted protection entries. If production carries accepted entries, this capture is one command to redo with the protections file added; recorded as a limitation, not assumed away.
+
+**Capture, at commit 167e74a on a clean tree:**
+
+| Scene | Total words | Prohibition section share | Prohibition phrases | Impossible invariant | Leaked markers |
+|---|---|---|---|---|---|
+| dialog-health-office-interior | 1454 | 25.8% | 12 | no | none |
+| dialog-health-patient-message | 1452 | 25.8% | 11 | no | none |
+
+**Finding: the bloat is substantially brand specific.** Dialog Health's baseline is 44 percent leaner than MycoPop's (roughly 1,450 words against 2,610) with prohibition share at 25.8 percent against 44.4. The registered expectation anticipated this possibility and it is now fact: a large share of MycoPop's mass comes from its governed refusal statement, six guardrails, and compiled product record, none of which Dialog Health's baseline carries. Phase 1's subtraction targets are partly universal (structure, dead sections, scene invariant mass) and partly per brand (what governance compiled).
+
+**Finding: the brand mass is scene invariant.** Between the two Dialog Health scenes, every section except Assignment is word identical: roughly 1,290 of 1,450 words do not change when the scene changes. The same holds for MycoPop. This is the dilution mechanism stated plainly: for any given render, close to nine tenths of the prompt is fixed brand payload that competes with the two hundred words describing the actual frame.
+
+**Finding: the cinematic opener is universal in practice.** All four fixture scenes across both brands compile with the cinematic film still opener, because neither brand's creative direction text contains the keyword patterns that select any other mode. The mode library's other three modes are unreachable for both real clients. This hardens the ADR 0018 phase 0 work item 7 finding: mode selection is not just scene blind, it is effectively a constant.
+
+**Finding, against this document's own scene fixtures.** The Dialog Health leakage marker lists were authored on the MycoPop pattern (8-bit, arcade, pixel) and probe vocabulary Dialog Health's brain does not contain, so the clean result is weak evidence. Markers probing Dialog Health's own inactive directions belong in the scenes file; that change is a dated scene amendment to make during phase 1 preparation, not a silent edit now.
 
 ## Amendment log
 
