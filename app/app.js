@@ -66,8 +66,8 @@ const lookOptions = [
     swatch: "linear-gradient(150deg, #8f9299 0%, #b9bcc2 45%, #6f727a 100%)", filter: "none",
   },
   {
-    id: "studio_seamless_flash", label: "Studio seamless", note: "One soft strobe, plain backdrop",
-    swatch: "linear-gradient(150deg, #f2f0ec 0%, #d8d4cd 55%, #a9a49b 100%)", filter: "contrast(1.05)",
+    id: "clean_digital", label: "Clean digital", note: "Modern, neutral, still a photograph",
+    swatch: "linear-gradient(150deg, #eceff1 0%, #b6bcc1 50%, #5e666d 100%)", filter: "contrast(1.05)",
   },
   {
     id: "overcast_editorial", label: "Overcast editorial", note: "Soft daylight, cool and quiet",

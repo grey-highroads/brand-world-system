@@ -65,17 +65,24 @@ export const LOOKS = {
       "A single large sheet of film exposed on a view camera, on a tripod, at a small aperture. Resolution is extreme and even: individual fibers in fabric, pores in skin, grain in wood, and lettering far into the background are all legible, and grain is nearly invisible. Tonality is long and smooth, holding detail in the brightest windows and the deepest shadows at once, with gradations that step gently rather than snapping. Light is whatever daylight is present, directional and unmodified, with soft edged shadows. Color is accurate and restrained rather than saturated. The subject is still, because the exposure was long enough to require it, and anything that moved has smeared into a soft transparent trace. Perspective lines are corrected and vertical. Handheld immediacy, shallow separation, and a caught unrepeatable moment are all outside what this medium does.",
   },
 
-  // The two professional looks. Both are commercially clean and neither reads
-  // as generated, because in each the medium is legible: a strobe leaves
-  // evidence, and overcast daylight has a direction and a color. Clean is not
-  // the problem. Clean with no medium behind it is the problem.
-  studio_seamless_flash: {
-    id: "studio_seamless_flash",
-    label: "Studio seamless, direct strobe",
-    environment: "binding",
-    requires: "a photographic studio against seamless paper, with no room, window, furniture, or location visible anywhere in the frame",
+  // The professional looks. Both are commercially clean and neither reads as
+  // generated, because in each the medium is legible. Clean is not the
+  // problem. Clean with no medium behind it is the problem.
+  //
+  // `clean_digital` is the one that answers a B2B request for something clean
+  // and professional. It carries no era, no film stock, and no color
+  // personality, so it never reads as a filter over the work. It wins on
+  // optical consequence instead, because the generated look is not a color, it
+  // is an absence of consequence: everything sharp at every distance, shadows
+  // recovered, contrast lifted globally, skin evened, highlights that never
+  // clip, mixed sources silently agreeing with each other, and no lens
+  // character anywhere. Every clause here restores one of those.
+  clean_digital: {
+    id: "clean_digital",
+    label: "Clean digital",
+    environment: "agnostic",
     line:
-      "A single studio strobe fired through a large modifier close to the subject and slightly above the lens axis, against a seamless paper backdrop in white or a flat neutral tone with no texture, corner, or horizon. Catchlights sit high and round in both eyes. The shadow under the nose and chin is short and its edge is soft but definite. The falloff is fast: the subject is correctly exposed and the backdrop behind reads a stop or more down, going grey rather than white toward the edges of the frame. Skin holds its own texture, pores and fine lines and any unevenness in color, because the light is soft rather than because it was retouched away. Color is accurate and restrained, with the subject's clothing carrying the only strong hues in the frame. The image is sharp from the front of the face to the ears and falls off immediately behind. Grain is nearly absent. The subject looks into the lens and holds still. Environment, ambient light, and any sense of a moment happening on its own are all outside what this setup does.",
+      "A full frame digital camera with a fast prime lens, exposed once and not corrected afterward. One source is clearly the key and its direction is legible on every surface: the side of the face and body turned toward it is correctly exposed and the side turned away sits one to two stops down and stays there, with a soft but definite shadow edge along the nose, the jaw, and every fold of fabric. Depth is real. One plane, the eyes, is sharp, and everything nearer and further softens progressively, so the far side of a room or a background figure is smooth and undifferentiated rather than merely smaller. Skin holds pore texture, fine lines, uneven color across the cheeks and nose, and a specular sheen on the forehead, nose, and cheekbone where the skin is oily. Small speculars on skin, glass, and metal go to white and hold nothing. Shadows keep some detail but are not lifted, and fine luminance noise sits in them and nowhere else. Brightness falls off slightly at the corners, and out of focus high contrast edges carry a faint green or magenta fringe. White balance is set once for the key source, so any second source of a different color stays that color rather than being corrected into agreement. Color is accurate and restrained, and the palette is whatever the scene contains rather than a set of hues chosen to match. Global sharpening, recovered shadow detail, evened skin, and uniform clarity across the frame are all outside what a single honest exposure produces.",
   },
 
   overcast_editorial: {

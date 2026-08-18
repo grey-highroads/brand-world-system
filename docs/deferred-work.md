@@ -256,3 +256,13 @@ Found 2026-08-18 during ADR 0018 phase 0 baseline capture, by the owner noticing
 `app/app.js` carries two format catalogs. `placementFormats` (line 59) lists Website feature as 16:9 landscape or 4:3 landscape. `websiteOutputFormats.feature` (line 83) gives 1200 x 800 at 3:2. The website studio flow reads the second and submits the pixel dimensions; the older brief flow reads the first. Every other website placement the two tables share agrees on ratio, so this is the only genuine contradiction.
 
 Not fixed now because the correct resolution is a product question rather than a typo: whether Website feature is a 3:2 shape with the first table wrong, or a 16:9 shape with the studio catalog wrong, depends on what the placement is for. The output type catalog is the authority and should settle it. Revisit when the format catalogs are next touched, or sooner if a client receives a shape they did not choose.
+
+## Studio and product photography looks need world building suppressed
+
+Removed 2026-08-18 after the studio seamless look failed twice. It asks for a photographic studio against seamless paper with no room, window, furniture, or location in frame, and returned a co-working space with a window, a plant, a poster wall, and a second person. Moving the look into the system rules ahead of the earned environments rule did not fix it.
+
+The diagnosis is structural rather than a wording problem. The whole compiled prompt is built to place a product in a lived setting: the assignment calls for a brand world image, the protection block speaks about environmental objects, and the scene writer is briefed with earned environments, a lived world person, and guardrails that all describe places. A studio portrait on seamless paper is the absence of a world, so one paragraph asking for seamless paper argues with roughly two thousand words asking for a place, and loses.
+
+Studio and packshot looks are a real need for fashion, ecommerce, and product photography, and they would require the compile path to know that some looks suppress world building rather than style it: no earned environments in the scene brief, a different assignment line, and a protection block written for a studio rather than a location. That is its own unit of work and probably its own decision record. Revisit when a client needs product photography rather than brand world imagery.
+
+The clean and professional need that studio seamless was partly serving is met instead by the `clean_digital` look, which supplies optical consequence without a studio and without a color personality.
