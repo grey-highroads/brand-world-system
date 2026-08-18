@@ -61,21 +61,66 @@ const deliverables = [
 // look language reaches the render at all, not the product picker, which
 // ADR 0018 makes contingent on the looks proving themselves first.
 const lookOptions = [
-  { id: "", label: "No look" },
-  { id: "studio_seamless_flash", label: "Studio seamless, direct strobe" },
-  { id: "overcast_editorial", label: "Overcast daylight editorial" },
-  { id: "daylight_street_documentary", label: "Daylight street documentary" },
-  { id: "available_light_interior", label: "Available light interior" },
-  { id: "large_format_daylight", label: "Large format daylight" },
-  { id: "saturated_daylight_adventure", label: "Saturated daylight, outdoors" },
-  { id: "anamorphic_widescreen", label: "Anamorphic widescreen film" },
-  { id: "color_slide_1975", label: "Color slide, mid seventies" },
-  { id: "consumer_negative_dusk", label: "Consumer negative at dusk" },
-  { id: "drugstore_flash", label: "Drugstore flash print" },
-  { id: "flash_night_street", label: "Flash on a night street" },
-  { id: "bleach_bypass_90s", label: "Bleach bypass, nineties" },
-  { id: "pushed_bw_reportage", label: "Pushed black and white reportage" },
-  { id: "film_noir", label: "Film noir" },
+  {
+    id: "", label: "No look", note: "System default",
+    swatch: "linear-gradient(150deg, #8f9299 0%, #b9bcc2 45%, #6f727a 100%)", filter: "none",
+  },
+  {
+    id: "studio_seamless_flash", label: "Studio seamless", note: "One soft strobe, plain backdrop",
+    swatch: "linear-gradient(150deg, #f2f0ec 0%, #d8d4cd 55%, #a9a49b 100%)", filter: "contrast(1.05)",
+  },
+  {
+    id: "overcast_editorial", label: "Overcast editorial", note: "Soft daylight, cool and quiet",
+    swatch: "linear-gradient(150deg, #cfd6da 0%, #aeb8bf 55%, #8e979f 100%)", filter: "saturate(0.75) contrast(0.9)",
+  },
+  {
+    id: "daylight_street_documentary", label: "Street documentary", note: "Real daylight, unmanaged",
+    swatch: "linear-gradient(140deg, #e8dcc6 0%, #9c8f7c 40%, #45403a 100%)", filter: "contrast(1.15)",
+  },
+  {
+    id: "available_light_interior", label: "Available light", note: "One window, everything falls away",
+    swatch: "linear-gradient(135deg, #e6dccb 0%, #7d6f5e 45%, #211d19 100%)", filter: "contrast(1.2)",
+  },
+  {
+    id: "large_format_daylight", label: "Large format", note: "Enormous detail, long tonality",
+    swatch: "linear-gradient(150deg, #e4e1d8 0%, #b0aca1 50%, #6b6862 100%)", filter: "contrast(0.95) saturate(0.9)",
+  },
+  {
+    id: "saturated_daylight_adventure", label: "Saturated daylight", note: "Hard sun, dense sky",
+    swatch: "linear-gradient(160deg, #1d6fc4 0%, #74b7e6 45%, #f0f4f7 100%)", filter: "saturate(1.5) contrast(1.2)",
+  },
+  {
+    id: "anamorphic_widescreen", label: "Anamorphic film", note: "Wide, warm, streaked flare",
+    swatch: "linear-gradient(120deg, #2b3b52 0%, #a4653c 55%, #f0c07a 100%)", filter: "saturate(1.15) contrast(1.1)",
+  },
+  {
+    id: "color_slide_1975", label: "Color slide, 1975", note: "Dense color, clipped highlights",
+    swatch: "linear-gradient(150deg, #f0c256 0%, #c2472e 50%, #2f4a2a 100%)", filter: "saturate(1.6) contrast(1.3)",
+  },
+  {
+    id: "consumer_negative_dusk", label: "Negative at dusk", note: "Orange cast, coarse grain",
+    swatch: "linear-gradient(150deg, #e0a061 0%, #a86b3e 50%, #4a3a2c 100%)", filter: "saturate(0.85) contrast(0.85)",
+  },
+  {
+    id: "drugstore_flash", label: "Drugstore flash", note: "Blast the front, lose the back",
+    swatch: "linear-gradient(150deg, #f6ece2 0%, #c9a693 45%, #3b3330 100%)", filter: "saturate(0.9) contrast(1.1)",
+  },
+  {
+    id: "flash_night_street", label: "Flash at night", note: "Lit subject, black everywhere else",
+    swatch: "linear-gradient(150deg, #dfe4ea 0%, #4c5361 35%, #07080b 100%)", filter: "contrast(1.4)",
+  },
+  {
+    id: "bleach_bypass_90s", label: "Bleach bypass", note: "Color nearly gone, blacks crushed",
+    swatch: "linear-gradient(150deg, #d5d8d2 0%, #7d857f 45%, #14181a 100%)", filter: "saturate(0.35) contrast(1.5)",
+  },
+  {
+    id: "pushed_bw_reportage", label: "Pushed black and white", note: "Big grain, thin midtones",
+    swatch: "linear-gradient(150deg, #ececec 0%, #8a8a8a 45%, #101010 100%)", filter: "grayscale(1) contrast(1.45)",
+  },
+  {
+    id: "film_noir", label: "Film noir", note: "One hard light, solid black",
+    swatch: "linear-gradient(140deg, #ffffff 0%, #6d6d6d 22%, #050505 60%)", filter: "grayscale(1) contrast(1.7)",
+  },
 ];
 
 const placementFormats = {
@@ -3942,13 +3987,26 @@ function studioActiveFormatCount() {
 // contingent on the looks proving themselves headless first, and that ruling
 // stands.
 function studioLookField() {
+  const selected = state.brief.look || "";
   return `
-            <div class="studio-setup-field">
-              <label for="studio-look">Look</label>
-              <select id="studio-look" data-action="look-change">
-                ${lookOptions.map((entry) => `<option value="${entry.id}"${state.brief.look === entry.id ? " selected" : ""}>${escapeHtml(entry.label)}</option>`).join("")}
-              </select>
-              <span class="field-note">How the photograph was made: the light, the film, the grain, and what that medium cannot do. No look keeps the shared default.</span>
+            <div class="studio-setup-field look-field">
+              <label>Look</label>
+              <span class="field-note">How the photograph is made: the light, the film, the grain, and what that medium cannot do. Chosen first, so the scene direction is written for it.</span>
+              <div class="look-grid" role="radiogroup" aria-label="Look">
+                ${lookOptions.map((entry) => `
+                  <button
+                    class="look-card ${selected === entry.id ? "selected" : ""}"
+                    type="button"
+                    role="radio"
+                    aria-checked="${selected === entry.id ? "true" : "false"}"
+                    data-action="look-select"
+                    data-id="${entry.id}"
+                  >
+                    <span class="look-swatch" style="background:${entry.swatch};filter:${entry.filter};"></span>
+                    <span class="look-card-label">${escapeHtml(entry.label)}</span>
+                    <span class="look-card-note">${escapeHtml(entry.note)}</span>
+                  </button>`).join("")}
+              </div>
             </div>`;
 }
 
@@ -4058,6 +4116,8 @@ function renderStudioSetup() {
 
               ${renderCopyField()}
 
+              ${studioLookField()}
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
@@ -4147,8 +4207,6 @@ function renderStudioSetup() {
                 <textarea data-action="studio-direction-input" placeholder="Mood, lighting, composition preferences.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
-
-            ${studioLookField()}
 
             <div class="studio-additive-links">
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
@@ -4240,6 +4298,8 @@ function renderTemplateSetup(cat) {
             <div class="card-header"><h2>Your brief</h2></div>
 
             <div class="field-grid">
+              ${studioLookField()}
+
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
@@ -4310,8 +4370,6 @@ function renderTemplateSetup(cat) {
                 <textarea data-action="studio-direction-input" placeholder="Moody, atmospheric. Inspired by the studio lighting in our spring campaign photography.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
-
-            ${studioLookField()}
 
             <div class="studio-additive-links">
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
@@ -4556,6 +4614,8 @@ function renderWebsiteSetup(cat) {
 
               ${renderCopyField()}
 
+              ${studioLookField()}
+
               ${sceneSuggestField({
                 id: "website-brief",
                 field: "brief",
@@ -4578,8 +4638,6 @@ function renderWebsiteSetup(cat) {
                 <textarea data-action="studio-direction-input" placeholder="Warmer than our usual palette. Shallow depth of field.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
-
-            ${studioLookField()}
 
             <div class="studio-additive-links">
               ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
@@ -4721,6 +4779,8 @@ function renderSalesSetup(cat) {
 
               ${renderCopyField()}
 
+              ${studioLookField()}
+
               ${sceneSuggestField({
                 id: "sales-element",
                 field: "salesElement",
@@ -4756,8 +4816,6 @@ function renderSalesSetup(cat) {
                 <textarea data-action="studio-direction-input" placeholder="High-end product photography feel. Studio lighting, subtle reflections on the screen.">${escapeHtml(state.studio.direction)}</textarea>
               </div>
             ` : ""}
-
-            ${studioLookField()}
 
             <div class="studio-additive-links">
               ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
@@ -8756,6 +8814,10 @@ root.addEventListener("change", async (event) => {
   }
   if (action === "format-change") state.brief.format = event.target.value;
   if (action === "look-change") state.brief.look = event.target.value;
+  if (action === "look-select") {
+    state.brief.look = event.target.closest("[data-id]")?.dataset.id || "";
+    render();
+  }
   if (action === "banner-text-side-change") state.brief.bannerTextSide = event.target.value;
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
@@ -10281,6 +10343,10 @@ async function suggestSceneBriefs(kind = "scene", field = "brief") {
         placementLabel: fmt?.label,
         placementRatio: fmt?.ratio,
         placementCraft: fmt?.craft,
+        // The look is chosen before the scene is written so the scene can be
+        // written for the medium. A noir look and a golden dusk scene are a
+        // conflict the compiler would otherwise be asked to resolve at the end.
+        look: state.brief.look || undefined,
         hint: (state.studio[field] || "").trim() || undefined,
       }),
     });

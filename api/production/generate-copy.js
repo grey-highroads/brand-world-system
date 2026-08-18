@@ -6,6 +6,7 @@ import { buildJobScope } from "../../src/scope/resolver.js";
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../../src/claims/copy-audit.js";
 import { produceCopy, auditProducedCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
+import { resolveLook } from "../../src/production/looks.js";
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -498,9 +499,18 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
       : 'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
 
+  // ADR 0018: the look is chosen before the scene is written, so the scene is
+  // authored for the medium rather than handed to it afterward. The look owns
+  // capture character and the scene owns content; this tells the writer which
+  // constraints the medium imposes on what it can credibly ask for.
+  const lookBrief = resolveLook(body.look);
+
   const userPrompt = [
     body.placementLabel ? `The output is a ${body.placementLabel}${body.placementRatio ? ` at ${body.placementRatio}` : ""}.` : "",
     body.placementCraft ? `Composition for this shape: ${body.placementCraft}` : "",
+    lookBrief
+      ? `This image will be made with a specific photographic medium and the direction has to be something that medium can actually produce. ${lookBrief.line} Write the world, the composition, the lighting, and the props so they belong to that medium. Do not describe the medium itself in your fields, because the capture character is handled separately and repeating it would put the same instruction in twice. Ask for light this medium renders well, surfaces it resolves, and a moment it could hold.`
+      : "",
     body.hint ? `The user has started describing it: ${body.hint}` : "Propose three directions the brand could credibly take.",
   ].filter(Boolean).join("\n");
 
