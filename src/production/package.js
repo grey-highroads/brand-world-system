@@ -286,6 +286,17 @@ function optionalText(value, label, maximumLength) {
 // principles are the actionable direction. The prose paragraphs argue the case
 // and the production-use note is briefing advice for a marketer, so neither
 // reaches an image model as instruction.
+// Palette roles are authored with their evidence attached, which is written
+// for a person reading the brain and not for a renderer. "Observed on the lower
+// portion of the current can and across product-led social imagery; approximate
+// only, not an approved production value" told the renderer nothing it could
+// draw and was roughly two thirds of the visual materials section.
+function firstClause(text) {
+  const clean = cleanText(text);
+  if (!clean) return "";
+  return clean.split(/[;(]/)[0].replace(/[.,\s]+$/, "").trim();
+}
+
 function sectionDirection(section, { compact = false } = {}) {
   const pieces = compact
     ? [section.summary, ...(section.principles || []).map((principle) => `${principle}`)]
@@ -296,6 +307,58 @@ function sectionDirection(section, { compact = false } = {}) {
         section.productionUse,
       ];
   return pieces.map((piece) => cleanText(piece)).filter(Boolean).join(" ");
+}
+
+// The world, compiled from the visual grammar.
+//
+// ADR 0016 built the grammar to carry a brand's visual world, including
+// declared creative ambitions, as concrete visible facts rather than as
+// description. Until this commit it reached only the scene writer and never
+// the compiled image prompt, so across more than twenty renders the brand
+// world arrived thinly or not at all, which is the exact failure ADR 0016
+// exists to prevent: the retro gaming ambition surfacing only as a
+// prohibition.
+//
+// It compiles third, immediately after Capture, on the same reasoning that put
+// Capture second: an early block of physical facts beats a later one, and the
+// world has to be settled before the brand prose arrives.
+//
+// Authority against the look, owner delegated 2026-08-18: the look owns light
+// quality, meaning contrast, falloff, grain, and tonal response, and the
+// grammar owns light content, meaning source, color, and time of day. Grammar
+// camera entries stay at settings level and never describe character, which is
+// the look's. Two systems describing the same property in one prompt is the
+// conflict shape this work removes.
+const GRAMMAR_SECTION_LABELS = [
+  ["people", "People on camera"],
+  ["objects", "Objects and era"],
+  ["places", "Places and materials"],
+  ["light", "Light in this world"],
+  ["camera", "Camera"],
+];
+
+function worldDirection(approvedBrain) {
+  const grammar = approvedBrain?.artifacts?.visualGrammar?.sections;
+  if (!grammar || typeof grammar !== "object") return "";
+
+  const blocks = [];
+  for (const [key, label] of GRAMMAR_SECTION_LABELS) {
+    const entries = Array.isArray(grammar[key]) ? grammar[key] : [];
+    const statements = entries
+      .map((entry) => {
+        const statement = cleanText(typeof entry === "string" ? entry : entry?.statement);
+        if (!statement) return "";
+        // An ambition compiles at full strength and carries its label, per
+        // ADR 0016. Origin never dampens the direction.
+        const origin = typeof entry === "string" ? null : entry?.basis?.origin || null;
+        return origin === "ambition"
+          ? `${statement} This is a direction this brand is reaching for, and it belongs in the frame.`
+          : statement;
+      })
+      .filter(Boolean);
+    if (statements.length) blocks.push(`${label}: ${statements.join(" ")}`);
+  }
+  return blocks.join(" ");
 }
 
 // What the brand is not. Instruction that closes off wrong answers leaves the
@@ -368,7 +431,19 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const isTemplate = placement === "Brand template";
   const isSalesEnablement = placement === "Sales enablement";
   const hasTemplate = !!templateAsset;
-  const activeGuidanceOrder = (isTemplate || isSalesEnablement) ? templateGuidanceOrder : guidanceOrder;
+  // ADR 0016 step 4 established that when a brain carries the grammar, the
+  // scene writer takes the grammar's descriptive sections in place of the
+  // identity and creative summaries, because the grammar says the same things
+  // as visible facts rather than as description. This mirrors that ruling in
+  // the compile path: once the world block compiles, the world and creative
+  // guidance summaries are a second, vaguer answer to a question already
+  // answered, and they stop. Foundation, identity, and rules stay, because
+  // they carry positioning and governance rather than visual content.
+  const grammarPresent = Boolean(approvedBrain?.artifacts?.visualGrammar?.sections);
+  const sceneGuidanceOrder = grammarPresent
+    ? guidanceOrder.filter((id) => id !== "world" && id !== "creative")
+    : guidanceOrder;
+  const activeGuidanceOrder = (isTemplate || isSalesEnablement) ? templateGuidanceOrder : sceneGuidanceOrder;
   const guidance = activeGuidanceOrder.map((id) => selected.get(id)).filter(Boolean);
   const dossier = approvedBrain.artifacts?.dossier || {};
 
@@ -468,6 +543,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // exists to remove; the floor applies when no look has been chosen.
   const selectedLook = resolveLook(look);
 
+  // The grammar's places and materials section answers the same question the
+  // dossier materials list answers, with scene-bound facts instead of a global
+  // vocabulary. When the world compiles, the dossier list stops, because a
+  // global material vocabulary in the prompt is where the unexplained wet and
+  // glossy surfaces in the 2026-08-17 audit came from.
+  const world = worldDirection(approvedBrain);
+
   const sections = [
     {
       title: "Assignment",
@@ -492,6 +574,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "Capture",
       body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
     },
+    // Third by design, immediately after Capture and before the brand prose.
+    // Templates and sales elements are excluded: neither is a scene, and a
+    // world of people, objects, and places has nothing to say to a gradient.
+    (isTemplate || isSalesEnablement) ? null : (world ? {
+      title: "The world this brand lives in",
+      body: world,
+    } : null),
     {
       title: "Brand foundation",
       body: `${brandOpener(approvedBrain)} ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
@@ -513,8 +602,8 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     {
       title: "Visual materials",
       body: [
-        dossier.palette?.length ? `Palette: ${dossier.palette.map((color) => `${color.name} (${color.role}, ${color.color})`).join(", ")}.` : "",
-        (isTemplate || isSalesEnablement) ? "" : (dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : ""),
+        dossier.palette?.length ? `Palette: ${dossier.palette.map((color) => `${cleanText(color.name)} (${firstClause(color.role)}, ${cleanText(color.color)})`).join(", ")}.` : "",
+        (isTemplate || isSalesEnablement || world) ? "" : (dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : ""),
       ].filter(Boolean).join(" "),
     },
     (isTemplate || isSalesEnablement) ? null : (rejectsDirection(approvedBrain, refusals) ? {
