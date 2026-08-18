@@ -248,3 +248,11 @@ Recorded for completeness. These are not this workstream's to fix.
 - **`resolveClientId` is a security placeholder.** Every API route resolves the client from a cookie with no session validation. ADR 0011 names the shared-password gate as a known deficiency with a planned replacement. Jim's authentication slice.
 - **Deterministic composition is specified and not implemented.** The glossary states that a locked asset should never be regenerated when it can be composed deterministically. The live path sends protected assets through the OpenAI edits endpoint, which is model-based placement. This one matters commercially, because "your logo is placed, never redrawn" is the natural thing to say and the implementation does not currently guarantee it.
 - **The 12-function Vercel Hobby ceiling.** Held so far by dispatching new operations through existing handlers. A new serverless function requires freeing a slot or moving to Pro.
+
+## Two format tables disagree for Website feature
+
+Found 2026-08-18 during ADR 0018 phase 0 baseline capture, by the owner noticing a render came back at a shape the frozen scene did not name.
+
+`app/app.js` carries two format catalogs. `placementFormats` (line 59) lists Website feature as 16:9 landscape or 4:3 landscape. `websiteOutputFormats.feature` (line 83) gives 1200 x 800 at 3:2. The website studio flow reads the second and submits the pixel dimensions; the older brief flow reads the first. Every other website placement the two tables share agrees on ratio, so this is the only genuine contradiction.
+
+Not fixed now because the correct resolution is a product question rather than a typo: whether Website feature is a 3:2 shape with the first table wrong, or a 16:9 shape with the studio catalog wrong, depends on what the placement is for. The output type catalog is the authority and should settle it. Revisit when the format catalogs are next touched, or sooner if a client receives a shape they did not choose.

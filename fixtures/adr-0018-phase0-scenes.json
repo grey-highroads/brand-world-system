@@ -74,9 +74,10 @@
         "sceneLighting": "Daylight through the entrance glass is the single source, raking across the desk. The room behind the desk falls a step darker. No overhead fluorescent wash.",
         "sceneProps": "front desk, desktop computer, coffee cup, waiting chairs, potted plant",
         "placement": "Website feature",
-        "format": "16:9 landscape",
+        "format": "1200x800",
         "assetType": "scene"
-      }
+      },
+      "formatNote": "Amended 2026-08-18. The scene originally read 16:9 landscape, taken from the placementFormats table in app/app.js. The website flow that actually renders Website feature uses the websiteOutputFormats table and submits the pixel dimensions, so production sends 1200x800 at 3:2. Amended so the capture matches the render path."
     },
     {
       "id": "dialog-health-patient-message",
@@ -95,9 +96,10 @@
         "sceneLighting": "Window light from camera left is the only source. The phone side of the face is lit by the room, not by the screen. Shadows stay soft and ordinary.",
         "sceneProps": "smartphone, coffee mug, kitchen table, breakfast dishes",
         "placement": "Website feature",
-        "format": "16:9 landscape",
+        "format": "1200x800",
         "assetType": "scene"
-      }
+      },
+      "formatNote": "Amended 2026-08-18. The scene originally read 16:9 landscape, taken from the placementFormats table in app/app.js. The website flow that actually renders Website feature uses the websiteOutputFormats table and submits the pixel dimensions, so production sends 1200x800 at 3:2. Amended so the capture matches the render path."
     }
   ]
 }
