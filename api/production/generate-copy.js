@@ -434,7 +434,7 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
       task: "You art direct brand image production. For each direction you write four separate fields: the world, the composition, the lighting, and the props. This is direction for a photographer on set, not marketing copy. Write it the way a director of photography would be briefed.",
       rules: [
         "Describe only what a camera could see. No slogans, no statistics, no claims about the product's performance.",
-        "Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in.",
+        "Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in. When a look above requires a specific condition, choose among the earned environments that can provide it rather than treating the most familiar one as fixed.",
         "The world field carries the place, the person, the moment, and what is happening. Name the hour and the specific physical evidence that the place is used by real people.",
         "When anyone appears behind the subject, give an exact number and make each one different: a different distance from camera, a different direction of travel or facing, and at least one partly hidden behind something. Three people at the same scale walking the same way is a procession, and it is the clearest sign that nobody was actually there.",
         "Each person performs one action, and that action is already underway or just finished. Two simultaneous actions cannot be photographed in one frame: a person cannot stretch and drink at the same time.",
@@ -480,12 +480,36 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   };
   const kind = kinds[String(body.kind || "scene")] || kinds.scene;
 
+  // The look is chosen before the scene is written, so the scene is authored
+  // for the medium rather than handed to it afterward. The look owns capture
+  // character; the scene owns content.
+  const lookBrief = resolveLook(body.look);
+
+  // ADR 0018. A look that requires a condition to exist has to decide the
+  // setting, and it was losing to the earned-environments rule below because
+  // that rule sits in the system prompt and the look was only in the user
+  // prompt. Three looks failed exactly this way on 2026-08-18: studio seamless
+  // returned a living room, overcast editorial returned a dark interior, and
+  // daylight street documentary returned a night campfire. Precedence is
+  // stated rather than implied, and the earned-environments rule is narrowed
+  // to a choice among the environments this medium can photograph.
+  const lookRules = lookBrief
+    ? [
+        `This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${lookBrief.line}`,
+        lookBrief.environment === "binding"
+          ? `That medium requires ${lookBrief.requires}. Set the scene somewhere that condition holds. Choose the brand's earned environment that can be photographed this way, or the moment in an earned environment when that condition is true, and if no earned environment can carry it, say so in the label rather than setting the scene somewhere the medium would not work. This requirement outranks the preference for a familiar setting.`
+          : "That medium works in any setting, so the environment stays governed by the brand's earned environments.",
+        "Do not describe the medium itself in your fields. Capture character compiles separately and repeating it would send the same instruction twice. Write the world, the composition, the lighting, and the props so they belong to that medium: light it renders well, surfaces it resolves, and a moment it can hold.",
+      ]
+    : [];
+
   const systemPrompt = [
     kind.task,
     "",
     context.join("\n"),
     "",
     "RULES:",
+    ...lookRules.map((rule) => `- ${rule}`),
     ...kind.rules.map((rule) => `- ${rule}`),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",
     "- Write physical facts, not perceptual targets. A camera can be told where a light sits, which surfaces it strikes, how many people are present and which way they face, what is cropped, and what is dry or worn and why. It cannot be told to make something feel authentic, cinematic, elevated, atmospheric, or unposed. Every sentence that does not change what is in front of the lens is a sentence the frame will ignore.",
@@ -499,18 +523,9 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
       : 'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
 
-  // ADR 0018: the look is chosen before the scene is written, so the scene is
-  // authored for the medium rather than handed to it afterward. The look owns
-  // capture character and the scene owns content; this tells the writer which
-  // constraints the medium imposes on what it can credibly ask for.
-  const lookBrief = resolveLook(body.look);
-
   const userPrompt = [
     body.placementLabel ? `The output is a ${body.placementLabel}${body.placementRatio ? ` at ${body.placementRatio}` : ""}.` : "",
     body.placementCraft ? `Composition for this shape: ${body.placementCraft}` : "",
-    lookBrief
-      ? `This image will be made with a specific photographic medium and the direction has to be something that medium can actually produce. ${lookBrief.line} Write the world, the composition, the lighting, and the props so they belong to that medium. Do not describe the medium itself in your fields, because the capture character is handled separately and repeating it would put the same instruction in twice. Ask for light this medium renders well, surfaces it resolves, and a moment it could hold.`
-      : "",
     body.hint ? `The user has started describing it: ${body.hint}` : "Propose three directions the brand could credibly take.",
   ].filter(Boolean).join("\n");
 
