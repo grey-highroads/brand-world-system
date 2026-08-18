@@ -1,7 +1,7 @@
 # ADR 0018 phase 0: prompt baseline and pre-registered phase 1 gate
 
 - Date: 2026-08-17
-- Status: Gate registered, scenes drafted, captures not yet run. This document is committed before any capture exists, so commit order proves the gate was set before the results were seen.
+- Status: Gate registered (commit 34f3e51, before any capture existed). Scenes frozen (commit 167e74a). MycoPop baseline captured at the freeze commit; Dialog Health captures pending inputs; baseline renders pending. Commit order holds: gate, then freeze, then captures.
 - Decision record: docs/decisions/0018-compile-scene-relevant-prompts-and-govern-looks.md
 - Harness: fixtures/adr-0018-phase0-capture.mjs
 - Scenes: fixtures/adr-0018-phase0-scenes.json
@@ -40,7 +40,24 @@ The harness was exercised end to end on stub inputs before this commit: the dirt
 
 ## Findings
 
-(Empty until captures run. Each entry cites the capture commit and attaches the summary table.)
+### 2026-08-17: MycoPop baseline captured, inputs reconstructed and proven
+
+**Input provenance.** The approved MycoPop brain, product record, and accepted protections live in Blob storage as client state, outside this session's reach. They were reconstructed from the 2026-08-17 external audit's v1 test prompt, which is a near complete serialization of the compiled inputs. The reconstruction is proven rather than trusted: compiled through the live path at the freeze commit, it produces the audit prompt byte identical, zero diff, 2,610 words. The reconstruction is therefore compile equivalent to production state at the audit date, which is exactly what a baseline needs. The guidance section split between summary and principles inside each section is not recoverable from the compiled prompt and does not need to be: compact compilation joins them, so any split producing the same concatenation compiles identically.
+
+**Capture, at commit 167e74a on a clean tree:**
+
+| Scene | Total words | Prohibition section share | Prohibition phrases | Impossible invariant | Leaked markers |
+|---|---|---|---|---|---|
+| mycopop-park-lifestyle | 2610 | 44.4% | 55 | no | 8-bit, arcade, pixel, scan lines, controllers, moss, condensation |
+| mycopop-fourpack-product | 2515 | 45.6% | 55 | no | 8-bit, arcade, pixel, scan lines, controllers |
+
+**Reading the numbers.** The park scene corroborates the external audit independently: 2,610 words exact. The prohibition section share here (44.4 percent) is the word share of the What This Brand Is Not and Protection sections; the audit's 49 percent used a broader hand classification, and the two agree in substance. The prohibition phrase count (55) covers do not, never, avoid, and sentence initial no, against the audit's 44 for do not alone. The retro gaming vocabulary leaks into both scenes from brain sections neither scene requested, confirming the inactive direction leakage mechanism on real inputs. Two flagged markers need interpretation rather than alarm: moss and condensation flag in the park scene because no scene text requests them, yet condensation on a cold can is brand appropriate. The leakage metric records what compiled unrequested; phase 1 decides per marker whether unrequested means wrong.
+
+**On the impossible invariant reading no.** The preserve exactly instruction compiles with the product's isolated image promoted to the locked asset, matching the production path, so by this document's definition no invariant is impossible at baseline. The audit called the same instruction impossible because the render invented the label anyway. Both are true: the record exists at compile time, and whether its bytes reach the renderer is a pipeline stage question, not a compile question. The phase 1 asset fidelity states resolve this by making the distinction explicit.
+
+**Dialog Health, honestly.** No DH capture exists yet. The DH brain payload entered a prior session as an uploaded file and lives in Blob storage this environment cannot reach. The moment the file lands in a session, the capture is one command against the same freeze commit. No audit exists for DH, so its numbers remain genuinely unknown, per the expectation registered above.
+
+**Renders.** Baseline renders remain to be generated through the deployed app, one per captured scene, with the owner's three second read recorded here.
 
 ## Amendment log
 
