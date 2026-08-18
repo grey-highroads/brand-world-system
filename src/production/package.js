@@ -11,6 +11,7 @@ import {
   CAPTURE_CHARACTER,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
+import { resolveLook } from "./looks.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
@@ -343,7 +344,7 @@ export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null, look = null }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -462,6 +463,11 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     body: `The supplied product image is the subject of this frame. Build the surrounding scene so the product sits naturally within it at a believable scale, lit by the same light as the rest of the environment. Do not crop, rotate, restyle, or reinterpret the product itself.`,
   } : null;
 
+  // A selected look replaces the shared capture floor rather than stacking on
+  // it. Two finish descriptions in one prompt is the conflict shape this work
+  // exists to remove; the floor applies when no look has been chosen.
+  const selectedLook = resolveLook(look);
+
   const sections = [
     {
       title: "Assignment",
@@ -484,7 +490,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // clipped speculars on a gradient backdrop would be a defect.
     (isTemplate || isSalesEnablement) ? null : {
       title: "Capture",
-      body: CAPTURE_CHARACTER,
+      body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
     },
     {
       title: "Brand foundation",

@@ -56,6 +56,20 @@ const deliverables = [
   },
 ];
 
+// ADR 0018 phase 1 look test. Labels only; the looks themselves are code in
+// src/production/looks.js. This is a test affordance for finding out whether
+// look language reaches the render at all, not the product picker, which
+// ADR 0018 makes contingent on the looks proving themselves first.
+const lookOptions = [
+  { id: "", label: "No look" },
+  { id: "film_noir", label: "Film noir" },
+  { id: "drugstore_flash", label: "Drugstore flash print" },
+  { id: "color_slide_1975", label: "Color slide, mid seventies" },
+  { id: "consumer_negative_dusk", label: "Consumer negative at dusk" },
+  { id: "large_format_daylight", label: "Large format daylight" },
+  { id: "available_light_interior", label: "Available light interior" },
+];
+
 const placementFormats = {
   "Instagram feed": ["4:5 portrait", "1:1 square"],
   "Instagram story": ["9:16 portrait"],
@@ -1240,6 +1254,7 @@ const state = {
     sceneProps: "",
     placement: "Instagram feed",
     format: "4:5 portrait",
+    look: "",
     assetType: "scene",
     bannerHeadline: "",
     bannerTextSide: "Left third",
@@ -6038,6 +6053,13 @@ function renderBrief() {
                 ${formats.map((format) => option(format, state.brief.format)).join("")}
               </select>
             </div>
+            <div class="field">
+              <label for="look">Look</label>
+              <select id="look" data-action="look-change">
+                ${lookOptions.map((entry) => `<option value="${entry.id}"${state.brief.look === entry.id ? " selected" : ""}>${entry.label}</option>`).join("")}
+              </select>
+              <span class="field-note">Sets how the photograph was made: the light, the film, the grain, and what the medium cannot do. Leave on No look to keep the shared default.</span>
+            </div>
           </div>
 
           <div class="reference-section">
@@ -8700,6 +8722,7 @@ root.addEventListener("change", async (event) => {
     render();
   }
   if (action === "format-change") state.brief.format = event.target.value;
+  if (action === "look-change") state.brief.look = event.target.value;
   if (action === "banner-text-side-change") state.brief.bannerTextSide = event.target.value;
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }

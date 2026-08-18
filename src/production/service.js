@@ -326,6 +326,10 @@ export async function prepareProductionPackage(body, options) {
     claimsSet,
     displayCopy,
     refusals,
+    // ADR 0018 phase 1 look test. Carried on the brief so it travels with the
+    // job through both preflight and generate without a new request field, and
+    // so a package records which look produced it.
+    look: body.brief?.look || null,
   });
   if (generationPackage.copy) {
     generationPackage.copy.displayCopyError = displayCopyError;
