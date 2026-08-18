@@ -70,6 +70,10 @@ const lookOptions = [
     swatch: "linear-gradient(150deg, #eceff1 0%, #b6bcc1 50%, #5e666d 100%)", filter: "contrast(1.05)",
   },
   {
+    id: "lit_location_portrait", label: "Lit on location", note: "Strobe in a real room, set left alone",
+    swatch: "linear-gradient(145deg, #d8cec2 0%, #7a6656 42%, #1b1512 100%)", filter: "contrast(1.15)",
+  },
+  {
     id: "overcast_editorial", label: "Overcast editorial", note: "Soft daylight, cool and quiet",
     swatch: "linear-gradient(150deg, #cfd6da 0%, #aeb8bf 55%, #8e979f 100%)", filter: "saturate(0.75) contrast(0.9)",
   },
@@ -1301,7 +1305,7 @@ const state = {
   productAssetUploading: false,
   brief: {
     scene: "Show a believable moment that could only belong in this brand world. Include a person mid-action, an inhabited setting, and enough environmental detail to make the story feel lived rather than staged.",
-    exclusions: "Generic stock-photo polish, staged smiles, visual clutter, or added copy.",
+    exclusions: "Generic stock-photo polish, staged smiles, or added copy.",
     sceneComposition: "",
     sceneLighting: "",
     sceneProps: "",
