@@ -215,23 +215,55 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
 // composition consequences, so an opening line asserting landscape contradicted
 // a 4:5 portrait job in three other places. The wide-shot intent is kept as a
 // framing distance, which is what actually works against a tabletop composition.
+// ---------------------------------------------------------------------------
+// Capture character
+// ---------------------------------------------------------------------------
+
+// Every prompt this system has ever compiled described content and never
+// described finish, so the renderer supplied its own: clean tone everywhere,
+// recovered shadows, lifted micro-contrast, smoothed skin, harmonized color,
+// nothing clipped and nothing lost. That finish is what reads as generated
+// regardless of how good the scene underneath it is, and no amount of scene
+// direction reaches it.
+//
+// This block is the finish. It is written as visible consequences rather than
+// as settings or as mood, because the reverse-engineering result from the
+// 2026-08-17 external audit is that this renderer obeys concrete physical
+// facts and ignores perceptual targets. Grain in the shadows is a fact.
+// Authentic is not.
+//
+// It is code, not configuration, per ADR 0018: render capabilities are code.
+// When the look library lands it supplies this block per look; until then one
+// shared floor applies to every image, which is still an improvement over
+// silence.
+export const CAPTURE_CHARACTER = [
+  "This is one exposure made by a physical camera, carrying the losses that come with that.",
+  "Grain is present and visible at normal viewing size. It is fine in the bright areas and coarse in the shadows and anywhere underexposed.",
+  "The brightest speculars clip to paper white and hold no detail inside them. The deepest shadows fall to near black and keep nothing recoverable. The frame does not hold detail everywhere at once.",
+  "One plane is sharp. Everything in front of it and behind it loses edge definition progressively with distance, and faces further back are unresolved rather than merely smaller. Anything moving carries motion softness rather than being frozen.",
+  "Skin carries pore texture, uneven color across the cheeks and nose, and specular sheen wherever the face is oily. Stray hair sits out of place. Fabric holds wrinkles and settled creases at the elbows and waist.",
+  "Brightness falls off toward the corners. High contrast edges carry faint color fringing. The far edges of the frame are softer than the center.",
+  "White balance is imperfect. The frame carries one cast from its dominant source rather than colors corrected into agreement with each other.",
+  "This is the file as it came off the card, not a corrected and finished image.",
+].join(" ");
+
 export const AESTHETIC_MODES = {
   cinematic_film_still: {
     id: "cinematic_film_still",
     name: "Cinematic film still",
-    openingLine: "A cinematic campaign-film still in a real environment with depth and atmosphere, framed wide enough to show the place, not a tabletop product photo.",
+    openingLine: "A photograph made in a real environment, framed wide enough to show the place, not a tabletop product photo.",
     bestWhen: "premium, ritual, cinematic, heritage, design-led, or elevated ceremony",
   },
   documentary_lifestyle: {
     id: "documentary_lifestyle",
     name: "Documentary lifestyle",
-    openingLine: "An eye-level documentary photograph in the tradition of outdoor and lifestyle editorial, real and observed rather than staged.",
+    openingLine: "An eye-level documentary photograph, observed rather than staged.",
     bestWhen: "documentary, vernacular, casual, observed, people-centric, outdoor, or activity-driven",
   },
   editorial_commercial: {
     id: "editorial_commercial",
     name: "Editorial commercial",
-    openingLine: "A composed editorial photograph in the tradition of magazine-cover lifestyle work, considered light and considered framing without cinematic drama.",
+    openingLine: "A composed editorial photograph with considered light and considered framing.",
     bestWhen: "fashion, beauty, considered, magazine, studio, or product-forward without being a packshot",
   },
   vernacular_ugc: {

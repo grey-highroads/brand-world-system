@@ -8,6 +8,7 @@ import {
   neutralizeScreenOrientation,
   auditConstraints,
   displayCopyBlock,
+  CAPTURE_CHARACTER,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
@@ -475,6 +476,15 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
             sceneLighting ? `Lighting: ${sceneLighting}` : "",
             sceneProps ? `Present in the scene: ${sceneProps}.` : "",
           ].filter(Boolean).join(" "),
+    },
+    // Second by design. The 2026-08-17 audit found that a strong early
+    // instruction defeats a later one, and finish has to be settled before
+    // roughly two thousand words of brand material arrive. Template surfaces
+    // and sales elements are excluded: neither is a photograph, and grain and
+    // clipped speculars on a gradient backdrop would be a defect.
+    (isTemplate || isSalesEnablement) ? null : {
+      title: "Capture",
+      body: CAPTURE_CHARACTER,
     },
     {
       title: "Brand foundation",
