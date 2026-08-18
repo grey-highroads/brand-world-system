@@ -65,43 +65,30 @@ export const LOOKS = {
       "A single large sheet of film exposed on a view camera, on a tripod, at a small aperture. Resolution is extreme and even: individual fibers in fabric, pores in skin, grain in wood, and lettering far into the background are all legible, and grain is nearly invisible. Tonality is long and smooth, holding detail in the brightest windows and the deepest shadows at once, with gradations that step gently rather than snapping. Light is whatever daylight is present, directional and unmodified, with soft edged shadows. Color is accurate and restrained rather than saturated. The subject is still, because the exposure was long enough to require it, and anything that moved has smeared into a soft transparent trace. Perspective lines are corrected and vertical. Handheld immediacy, shallow separation, and a caught unrepeatable moment are all outside what this medium does.",
   },
 
-  // The professional looks. Both are commercially clean and neither reads as
-  // generated, because in each the medium is legible. Clean is not the
-  // problem. Clean with no medium behind it is the problem.
+  // Neutral is the default and the only entry with no era, no stock, and no
+  // color personality, so it never reads as a filter over the work. It is what
+  // a person means when they ask for something clean and professional.
   //
-  // `clean_digital` is the one that answers a B2B request for something clean
-  // and professional. It carries no era, no film stock, and no color
-  // personality, so it never reads as a filter over the work. It wins on
-  // optical consequence instead, because the generated look is not a color, it
-  // is an absence of consequence: everything sharp at every distance, shadows
-  // recovered, contrast lifted globally, skin evened, highlights that never
-  // clip, mixed sources silently agreeing with each other, and no lens
-  // character anywhere. Every clause here restores one of those.
-  // Lit on location. The reference set that drove this is high end commercial
-  // portraiture: strobe in a real interior, background two to three stops
-  // under the subject, falloff engineered rather than found. The library had
-  // conflated professional with natural light and had no entry for a
-  // photograph that is deliberately lit and still in a real place, which is
-  // what most commercial portraiture actually is.
+  // It replaced two earlier entries on 2026-08-18. `studio_seamless_flash` was
+  // removed because it fought world building rather than styling it, and
+  // `clean_digital` was absorbed after losing to this look on both an interior
+  // with a hard source and an exterior with none. Two entries whose only
+  // difference is that one is weaker is not a spectrum, it is a worse option
+  // sitting on the menu.
   //
-  // Three clauses exist because the references had them and no look did: the
-  // light has a position in the room rather than only on the face, the person
-  // carries age and asymmetry rather than only texture, and nobody tidied the
-  // set.
-  lit_location_portrait: {
-    id: "lit_location_portrait",
-    label: "Lit on location",
+  // The reference set was high end commercial portraiture. Three of its
+  // clauses existed in no earlier look: the light has a position in the room
+  // rather than only on the face, the person carries age and asymmetry rather
+  // than only texture, and nobody tidied the set. The strobe language proved
+  // to describe behavior rather than demand equipment: on an exterior with no
+  // hard source it produced found dappled light with correct falloff rather
+  // than inventing a light stand.
+  neutral: {
+    id: "neutral",
+    label: "Neutral",
     environment: "agnostic",
     line:
       "One strobe through a large modifier, placed off the lens axis and close enough that its falloff is visible, in a real room that was not built for photography. The light has a position in the room and the frame lets you find it: surfaces nearest it are correctly exposed, surfaces a few feet further are darker, and one side of the room goes nearly black while the other holds detail. The background sits two to three stops under the subject and gets there by distance from the light rather than by blur. A soft but definite shadow edge runs along the nose, under the chin, and down every fold of fabric, and nothing fills the shadow side except what the room itself returns. The person is a specific age and the frame says so: lines at the eyes and forehead, uneven grey in the hair and beard, sun and weather in the skin, veins and tendons visible on the hands. Nothing about the face or body is symmetrical, and hair, collar, lapel, and cuff each sit differently on the left and the right. Each material answers the light in its own way: leather returns broad soft speculars that wrap and show the roll of the surface, polished wood carries a directional sheen along the grain, wool and tweed show their weave and the break over an elbow, denim shows whiskering at the hip and stacking at the ankle, and cotton holds the creases of having been worn. The room is not tidied for the camera, so an outlet, a cable along the baseboard, worn carpet, or a scuffed leg stays in frame where it actually is. A long lens compresses the space, so nothing widens or stretches at the edges even when the whole body is in frame. The subject holds the camera without smiling. Even room illumination, a cleaned set, a flawless ageless face, and wide angle proximity are all outside what this way of working produces.",
-  },
-
-  clean_digital: {
-    id: "clean_digital",
-    label: "Clean digital",
-    environment: "agnostic",
-    line:
-      "A full frame digital camera with a fast prime lens, exposed once and not corrected afterward. One source is clearly the key and its direction is legible on every surface: the side of the face and body turned toward it is correctly exposed and the side turned away sits one to two stops down and stays there, with a soft but definite shadow edge along the nose, the jaw, and every fold of fabric. Depth is real. One plane, the eyes, is sharp, and everything nearer and further softens progressively, so the far side of a room or a background figure is smooth and undifferentiated rather than merely smaller. The person is a specific age and the frame says so: lines at the eyes and forehead, uneven color and sun in the skin, veins and tendons visible on the hands. Nothing about the face is symmetrical, and hair, collar, and cuff sit differently on the left and the right. Skin holds pore texture, uneven color across the cheeks and nose, and a specular sheen on the forehead, nose, and cheekbone where the skin is oily. Each material answers the light in its own way rather than sharing one finish: leather returns broad soft speculars, polished wood a directional sheen along the grain, wool its weave and the break over an elbow, denim its whiskering and stacking, and cotton the creases of having been worn. Small speculars on skin, glass, and metal go to white and hold nothing. Shadows keep some detail but are not lifted, and fine luminance noise sits in them and nowhere else. Brightness falls off slightly at the corners, and out of focus high contrast edges carry a faint green or magenta fringe. White balance is set once for the key source, so any second source of a different color stays that color rather than being corrected into agreement. Color is accurate and restrained, and the palette is whatever the scene contains rather than a set of hues chosen to match. The room is not tidied for the camera, so an outlet, a cable, a worn edge, or a scuffed leg stays in frame where it actually is. Global sharpening, recovered shadow detail, evened skin, a symmetrical ageless face, a cleaned set, and uniform clarity across the frame are all outside what a single honest exposure produces.",
   },
 
   overcast_editorial: {

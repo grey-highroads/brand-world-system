@@ -61,16 +61,9 @@ const deliverables = [
 // look language reaches the render at all, not the product picker, which
 // ADR 0018 makes contingent on the looks proving themselves first.
 const lookOptions = [
+
   {
-    id: "", label: "No look", note: "System default",
-    swatch: "linear-gradient(150deg, #8f9299 0%, #b9bcc2 45%, #6f727a 100%)", filter: "none",
-  },
-  {
-    id: "clean_digital", label: "Clean digital", note: "Modern, neutral, still a photograph",
-    swatch: "linear-gradient(150deg, #eceff1 0%, #b6bcc1 50%, #5e666d 100%)", filter: "contrast(1.05)",
-  },
-  {
-    id: "lit_location_portrait", label: "Lit on location", note: "Strobe in a real room, set left alone",
+    id: "neutral", label: "Neutral", note: "No filter, still a photograph",
     swatch: "linear-gradient(145deg, #d8cec2 0%, #7a6656 42%, #1b1512 100%)", filter: "contrast(1.15)",
   },
   {
@@ -1311,7 +1304,7 @@ const state = {
     sceneProps: "",
     placement: "Instagram feed",
     format: "4:5 portrait",
-    look: "",
+    look: "neutral",
     assetType: "scene",
     bannerHeadline: "",
     bannerTextSide: "Left third",
@@ -8859,7 +8852,7 @@ root.addEventListener("click", (event) => {
   const action = target.dataset.action;
 
   if (action === "look-select") {
-    const nextLook = target.dataset.id || "";
+    const nextLook = target.dataset.id || "neutral";
     if (state.brief.look !== nextLook) {
       state.brief.look = nextLook;
       // The scene writer is briefed with the look, so directions drafted under
