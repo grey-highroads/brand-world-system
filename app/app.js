@@ -8814,10 +8814,6 @@ root.addEventListener("change", async (event) => {
   }
   if (action === "format-change") state.brief.format = event.target.value;
   if (action === "look-change") state.brief.look = event.target.value;
-  if (action === "look-select") {
-    state.brief.look = event.target.closest("[data-id]")?.dataset.id || "";
-    render();
-  }
   if (action === "banner-text-side-change") state.brief.bannerTextSide = event.target.value;
   if (action === "post-type-change") { state.brief.postType = event.target.value; render(); }
   if (action === "toggle-include-image") { state.brief.includeImage = event.target.checked; render(); }
@@ -8857,6 +8853,18 @@ root.addEventListener("click", (event) => {
     return;
   }
   const action = target.dataset.action;
+
+  if (action === "look-select") {
+    const nextLook = target.dataset.id || "";
+    if (state.brief.look !== nextLook) {
+      state.brief.look = nextLook;
+      // The scene writer is briefed with the look, so directions drafted under
+      // the previous one describe a photograph this medium would not make.
+      clearSceneSuggestions();
+    }
+    render();
+    return;
+  }
 
   if (action === "toggle-client-switcher") { state.clientSwitcherOpen = !state.clientSwitcherOpen; render(); return; }
   if (action === "switch-client") { switchClient(target.dataset.id); return; }

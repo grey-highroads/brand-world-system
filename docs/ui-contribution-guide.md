@@ -128,3 +128,11 @@ Fetch-fresh was not enough; see the 2026-08-14 incident. Before committing, comp
 ## The image pipeline contract, before any image-path work
 
 `docs/image-pipeline-contract.md` is the authoritative account of the twelve stages between a source entering intake and an image appearing on the result screen. It is mandatory reading before any session touches the image path, and it carries the second mechanical ritual of the push workflow: any commit that changes a module listed in the contract updates the contract in the same commit, or states in the commit message why no update is needed. The contract header's verified-against commit moves with every update. A contract more than ten commits behind the modules it covers is stale and must say so in its header until re-verified.
+
+## A control's handler goes on the event its element actually fires
+
+Found 2026-08-18 on the look grid. The look picker began as a `select` with its handler in the `change` listener. When it became a grid of buttons, the markup changed and the handler did not move, so every card was inert and the picker was stuck on its default. Nothing threw and nothing logged; the control simply did nothing, which is the failure mode hardest to catch by reading the diff.
+
+The rule: when an element's type changes, move its handler to match. A `select` fires `change` and reports through `event.target.value`. A `button` fires `click` and reports through the `data-action` element's own dataset. The two listeners in `app/app.js` are separate, and an action registered in the wrong one is dead code that looks correct.
+
+This is the second entry in this guide about a control that rendered but could not be used, after the look field first shipping on the legacy brief screen rather than the studio screens the same day. Both share a shape: the markup was verified and the path a person takes to reach and operate it was not. Rendering is not working.
