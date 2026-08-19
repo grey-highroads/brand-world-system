@@ -9,10 +9,10 @@ import {
   auditConstraints,
   displayCopyBlock,
   CAPTURE_CHARACTER,
-  HUMAN_TEXTURE,
+  humanTexture,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
-import { resolveLook } from "./looks.js";
+import { resolveLook, lookResolvesFineDetail } from "./looks.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
@@ -408,6 +408,43 @@ function referenceDirection(reference) {
   return `${reference.source.name}. ${reference.influence} influence for ${reference.role}. ${instruction}${exclusions ? ` Do not carry over: ${exclusions}` : ""}`;
 }
 
+// Is a person in this frame.
+//
+// The human texture floor describes what a human being is made of, so it has
+// nothing to say to a frame with nobody in it. Until this commit it compiled
+// under every look on every scene, which spent roughly a hundred and thirty
+// words of a budget this phase exists to reduce on a can sitting on a counter,
+// and stated as fact that a face in the frame is asymmetric and zoned when the
+// assignment named no face at all.
+//
+// Three fields are read: the scene, the composition, and the props. The scene
+// writer authors people explicitly when the frame has them, and a hand written
+// brief names them in the same three places. Lighting is not read, because a
+// lighting note describes the source rather than what it falls on.
+//
+// The word list is deliberately generous and the check is deliberately one
+// directional. A false positive costs a texture paragraph on a frame that did
+// not need it, which is the behavior at head. A false negative costs a
+// slightly plastic face. "human" is deliberately absent from the list: it
+// matches "human resources", which is ordinary B2B scene vocabulary, and every
+// scene that has an actual person in it names them some other way. Neither failure countermands the brief, which is why
+// the same check does not compile an exclusion; see the note on
+// `protectionBlock` in prompt-craft.js.
+const PERSON_WORDS = new RegExp(
+  "\\b(?:person|persons|people|man|men|woman|women|boy|boys|girl|girls|child|children|kid|kids"
+    + "|adult|adults|teenager|teenagers|someone|somebody|figure|figures|portrait"
+    + "|hand|hands|arm|arms|shoulder|shoulders|face|faces|skin"
+    + "|customer|customers|shopper|shoppers|worker|workers|employee|employees|staff|colleague|colleagues"
+    + "|barista|bartender|clerk|cashier|guest|guests|crowd|couple|passerby|passersby|bystander|bystanders"
+    + "|patient|patients|nurse|nurses|doctor|doctors|clinician|clinicians|athlete|athletes|runner|runners"
+    + ")\\b",
+  "i",
+);
+
+function frameCarriesPeople({ scene, sceneComposition, sceneProps }) {
+  return PERSON_WORDS.test([scene, sceneComposition, sceneProps].filter(Boolean).join(" "));
+}
+
 export function imageSizeForFormat(format) {
   return formatSizes[format] || "1024x1024";
 }
@@ -481,7 +518,6 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const protection = protectionBlock({
     lockedAsset,
     format: packageFormat,
-    peopleExcluded: false,
     screenBearing,
     displayCopy,
   });
@@ -548,6 +584,15 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // exists to remove; the floor applies when no look has been chosen.
   const selectedLook = resolveLook(look);
 
+  // The human texture floor compiles only when the frame has a person in it,
+  // and only at the resolution the selected medium can deliver. Both gates
+  // serve one constraint: no two statements inside Capture may make competing
+  // claims about the same property.
+  const peopleInFrame = frameCarriesPeople({ scene, sceneComposition, sceneProps });
+  const humanTextureFloor = peopleInFrame
+    ? humanTexture({ resolvesFineDetail: lookResolvesFineDetail(selectedLook) })
+    : "";
+
   // The grammar's places and materials section answers the same question the
   // dossier materials list answers, with scene-bound facts instead of a global
   // vocabulary. When the world compiles, the dossier list stops, because a
@@ -578,10 +623,11 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     (isTemplate || isSalesEnablement) ? null : {
       title: "Capture",
       // The look describes the photograph. The human texture floor describes
-      // what a person is made of, so it compiles under every look rather than
-      // being restated inside each one. It follows the look so a look's own
-      // tonal rules are already established when it arrives.
-      body: `${selectedLook ? selectedLook.line : CAPTURE_CHARACTER} ${HUMAN_TEXTURE}`,
+      // what a person is made of, so it lives here rather than being restated
+      // inside each look. It follows the look so a look's own tonal rules are
+      // already established when it arrives, and it is absent entirely when
+      // the frame carries nobody.
+      body: [selectedLook ? selectedLook.line : CAPTURE_CHARACTER, humanTextureFloor].filter(Boolean).join(" "),
     },
     // Third by design, immediately after Capture and before the brand prose.
     // Templates and sales elements are excluded: neither is a scene, and a

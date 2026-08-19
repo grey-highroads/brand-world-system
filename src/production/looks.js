@@ -20,6 +20,22 @@
 //
 // Every look states what the medium cannot do, because that is what separates
 // a medium from a mood. A frame that can do everything is the default render.
+//
+// `resolvesFineDetail`, added 2026-08-18. Some media cannot render a hair, a
+// thread, or a fiber in an iris, and three looks here say so in their own
+// lines. The human texture floor asks for exactly those things, so a look that
+// cannot deliver them and a floor that demands them are two statements in the
+// Capture section making competing claims about the same property. A look
+// declares `resolvesFineDetail: false` and the floor compiles without its
+// fine-detail clauses. Absent, the field reads as true, because resolving fine
+// detail is what most media do.
+//
+// Recorded for owner ruling rather than decided here: `consumer_negative_dusk`
+// carries coarse grain across the whole frame and approximate focus, and names
+// precise focus as outside what it does, so it has a claim to the same flag.
+// It was not named in the instruction that produced this change and it is not
+// flagged, because widening the set is a look-quality judgment and belongs to
+// the owner. See the finding in the image pipeline contract.
 
 export const LOOKS = {
   film_noir: {
@@ -34,6 +50,7 @@ export const LOOKS = {
     id: "drugstore_flash",
     label: "Drugstore flash print",
     environment: "agnostic",
+    resolvesFineDetail: false,
     line:
       "A direct on camera flash fired straight at the subject from the camera position, the only meaningful light in the frame. Faces are flat and evenly blasted with no shaping, the nearest surfaces are overexposed toward white, and everything beyond about eight feet falls off into underexposed murk. A hard shadow sits on the wall directly behind each subject, low and offset. The lens is a fixed wide angle and mildly distorts anything near the edges. Color is a machine print from a consumer lab: skin runs warm and slightly orange, whites carry a magenta or yellow cast, blacks are milky rather than deep, and the whole frame sits in a narrow contrast range. Grain is fine but the resolution is soft, so hair and fabric edges never fully resolve and small background detail turns to mush. Subjects face the camera and know they are being photographed. Shallow depth of field, shaped light, and a clean neutral white balance are all outside what this medium does.",
   },
@@ -112,6 +129,7 @@ export const LOOKS = {
     id: "bleach_bypass_90s",
     label: "Bleach bypass, nineties",
     environment: "agnostic",
+    resolvesFineDetail: false,
     line:
       "Color film processed with the silver left in, which lays a hard black and white image over a weakened color one. The frame reads as black and white at first glance, and only on looking does any color appear at all: a single strong red or an orange package holds a trace of hue and every other surface, including skin, foliage, denim, and sky, is grey. Skin is grey with only the faintest warmth. Contrast is severe: bright surfaces go to blank white and shadows go to black, both holding nothing, and the darker midtones carry a distinct cold cyan or green tint that is visible as a color cast on grey. Grain is coarse and everywhere, heaviest in flat areas. Faces look pale and hard, with blemishes, stubble, and veins reading clearly. Light is whatever the room has, usually overhead, and nothing is filled. Recognizable color, gentle tonal transitions, and clean shadows are all outside what this process does.",
   },
@@ -129,6 +147,7 @@ export const LOOKS = {
     id: "pushed_bw_reportage",
     label: "Pushed black and white reportage",
     environment: "agnostic",
+    resolvesFineDetail: false,
     line:
       "Black and white, no color anywhere in the frame. Fast film rated three stops past its speed and developed long to compensate, and the grain is the first thing anyone notices about the picture. Grain reads as distinct visible specks across every surface, coarse enough that individual hairs, fabric threads, and small background detail do not resolve into anything but texture. Flat areas like skin, sky, and painted walls are the grainiest parts of the frame, not the cleanest. Contrast is severe and the midtones are nearly gone: skin is either bright or dark with little between, highlights go to blank white with no detail, and shadows go to black with no detail. Edges look slightly rough rather than crisp. The light is whatever the room or street provided from a single direction, and nothing is filled. Smooth tonality, clean skin, resolved fine detail, and any grey that sits comfortably in the middle are all outside what this treatment does.",
   },
@@ -170,4 +189,13 @@ export const LOOK_IDS = Object.keys(LOOKS);
 export function resolveLook(id) {
   if (!id) return null;
   return LOOKS[String(id)] || null;
+}
+
+/**
+ * Whether the selected medium can render a hair, a thread, or a fiber in an
+ * iris. No look means the shared capture floor, which claims no such limit.
+ */
+export function lookResolvesFineDetail(look) {
+  if (!look) return true;
+  return look.resolvesFineDetail !== false;
 }

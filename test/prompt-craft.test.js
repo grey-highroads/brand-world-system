@@ -59,9 +59,20 @@ test("world-only protection block prevents invented products and text", () => {
   assert.doesNotMatch(block, /No people/);
 });
 
-test("world-only protection block adds people exclusion when requested", () => {
-  const block = protectionBlock({ lockedAsset: null, format: null, peopleExcluded: true });
-  assert.match(block, /No people or hands/);
+// `peopleExcluded` was removed on 2026-08-18. It was hardcoded false at its
+// only call site and never changed a compiled prompt. A person who wants
+// nobody in the frame writes it in the brief's exclusions field, which
+// compiles verbatim into this same section. The replacement assertion holds
+// the removal: no path through this function may assert an absence of people
+// on its own authority.
+test("protection block never asserts an absence of people on its own", () => {
+  for (const block of [
+    protectionBlock({ lockedAsset: null, format: null }),
+    protectionBlock({ lockedAsset: { name: "SLAKE wordmark", assetType: "logo" }, format: "package" }),
+    protectionBlock({ lockedAsset: { name: "SLAKE Yuzu Can", assetType: "packaging" }, format: "can" }),
+  ]) {
+    assert.doesNotMatch(block, /No (?:additional )?people or hands/);
+  }
 });
 
 test("non-product locked asset gets identity preservation", () => {

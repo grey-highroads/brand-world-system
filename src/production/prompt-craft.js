@@ -148,7 +148,20 @@ const SCREEN_ORIENTATION_LINES = [
   "Never render the device held in a viewing grip with the screen rotated toward the camera, and never show the back of the device to the camera.",
 ];
 
-export function protectionBlock({ lockedAsset, format, peopleExcluded = false, screenBearing = false, displayCopy = null }) {
+// `peopleExcluded` was removed on 2026-08-18. It had been hardcoded false at
+// its only call site since the parameter was written, so it never once changed
+// a compiled prompt, and it was the last thing in this file that looked like a
+// switch and was not one.
+//
+// It was not rewired to the person check that now gates the human texture
+// floor. The two directions fail differently. Omitting a texture paragraph
+// from a frame the check missed costs a slightly plastic face. Asserting "no
+// people or hands appear in the frame" into a frame the check missed
+// countermands a person the brief asked for, and a regex is not a good enough
+// witness to give an order that strong. A person who wants nobody in the frame
+// has an authored channel already: the brief's exclusions field, which
+// compiles verbatim into this same section.
+export function protectionBlock({ lockedAsset, format, screenBearing = false, displayCopy = null }) {
   const textSafety = displayCopy ? TEXT_SAFETY_WITH_DISPLAY_COPY : TEXT_SAFETY;
   // Case 1: world-only, no locked asset
   if (!lockedAsset) {
@@ -157,7 +170,6 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
       textSafety,
       SCREEN_CONTENT_RULE,
     ];
-    if (peopleExcluded) lines.push("No people or hands appear in the frame.");
     return lines.join(" ");
   }
 
@@ -176,7 +188,6 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
       screenContentRule(lockedAsset),
     ];
     if (screenBearing) lines.splice(2, 0, ...SCREEN_ORIENTATION_LINES);
-    if (peopleExcluded) lines.push("No additional people or hands appear in the frame.");
     return lines.join(" ");
   }
 
@@ -218,7 +229,6 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
   lines.push(integrationSentence(format));
   lines.push(textSafety);
   lines.push(screenContentRule(lockedAsset));
-  if (peopleExcluded) lines.push("No people or hands appear in the frame.");
   return lines.join(" ");
 }
 
@@ -271,14 +281,46 @@ export function protectionBlock({ lockedAsset, format, peopleExcluded = false, s
 // describes what a human being is made of rather than how the photograph was
 // taken. Clauses are written to hold in monochrome as well as color: where
 // color is absent the zones read as tonal differences instead.
-export const HUMAN_TEXTURE = [
-  "Skin is not one surface with one color. It runs red at the nostrils, the ears, the cheeks, the knuckles, and anywhere the skin is thin, cooler and slightly blue or green under the eyes and around the jaw, and yellower across the forehead and the bridge of the nose. Those zones meet unevenly and are visible as differences in tone rather than blending into a single even complexion.",
-  "Sheen on skin is patchy rather than an even glow: it sits on the forehead, the nose, the tops of the cheeks, and the point of the chin, and it is absent everywhere else.",
-  "Fine hair catches the light along the jaw, the edge of the cheek, the upper lip, and the hairline, and individual hairs sit out of place rather than lying together.",
-  "The two sides of a face do not match. One eye sits slightly differently from the other, the eyebrows are not the same shape, the mouth rests uneven, and the hairline is irregular.",
-  "Eyes carry visible moisture at the lower lid, faint vessels in the white, and an iris with visible fibers rather than a flat disc. Lips are cracked or dry in places and their edge is not a clean line.",
-  "Hands and necks show their age before faces do: tendons, veins, knuckle creases, and loose skin at the throat are all present and are not smoothed.",
-].join(" ");
+//
+// Two changes on 2026-08-18.
+//
+// It no longer compiles under every look on every scene. It compiles when a
+// person is in the frame, which the caller determines. A paragraph about
+// pores, iris fibers, and asymmetric eyebrows spent on a product on a table
+// is prompt budget taken from the scene, and it invites a face into a frame
+// that was never asked to have one.
+//
+// And each clause now declares whether it needs the medium to resolve fine
+// detail. Three looks state plainly that theirs does not: pushed black and
+// white reportage says hairs and threads do not resolve into anything but
+// texture, drugstore flash says hair and fabric edges never fully resolve,
+// and bleach bypass lays coarse grain over everything. Asking those media for
+// individual fine hairs, iris fibers, and vessels in the white of an eye is
+// asking for two things at once, and a prompt that makes competing claims
+// about the same property leaves the renderer to arbitrate. The zoning, the
+// sheen, the asymmetry, and the age carried in hands and necks are all
+// structural rather than small, and they hold at any resolution, so they
+// compile under every look.
+const HUMAN_TEXTURE_CLAUSES = [
+  { needsFineDetail: false, text: "Skin is not one surface with one color. It runs red at the nostrils, the ears, the cheeks, the knuckles, and anywhere the skin is thin, cooler and slightly blue or green under the eyes and around the jaw, and yellower across the forehead and the bridge of the nose. Those zones meet unevenly and are visible as differences in tone rather than blending into a single even complexion." },
+  { needsFineDetail: false, text: "Sheen on skin is patchy rather than an even glow: it sits on the forehead, the nose, the tops of the cheeks, and the point of the chin, and it is absent everywhere else." },
+  { needsFineDetail: true, text: "Fine hair catches the light along the jaw, the edge of the cheek, the upper lip, and the hairline, and individual hairs sit out of place rather than lying together." },
+  { needsFineDetail: false, text: "The two sides of a face do not match. One eye sits slightly differently from the other, the eyebrows are not the same shape, the mouth rests uneven, and the hairline is irregular." },
+  { needsFineDetail: true, text: "Eyes carry visible moisture at the lower lid, faint vessels in the white, and an iris with visible fibers rather than a flat disc. Lips are cracked or dry in places and their edge is not a clean line." },
+  { needsFineDetail: false, text: "Hands and necks show their age before faces do: tendons, veins, knuckle creases, and loose skin at the throat are all present and are not smoothed." },
+];
+
+/**
+ * The human texture floor, compiled for the resolution the selected medium
+ * can actually deliver. `resolvesFineDetail` false drops the clauses that ask
+ * for individual hairs, iris fibers, and vessels, and keeps everything that
+ * survives coarse grain and soft resolution.
+ */
+export function humanTexture({ resolvesFineDetail = true } = {}) {
+  return HUMAN_TEXTURE_CLAUSES.filter((clause) => resolvesFineDetail || !clause.needsFineDetail)
+    .map((clause) => clause.text)
+    .join(" ");
+}
 
 export const CAPTURE_CHARACTER = [
   "This is one exposure made by a physical camera, carrying the losses that come with that.",
