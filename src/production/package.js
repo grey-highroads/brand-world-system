@@ -12,6 +12,7 @@ import {
 import { getZone } from "../copy/display-budget.js";
 import { resolveLook, lookResolvesFineDetail } from "./looks.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
+import { ownEntry } from "../lookup.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
@@ -444,7 +445,10 @@ function frameCarriesPeople({ scene, sceneComposition, sceneProps }) {
 }
 
 export function imageSizeForFormat(format) {
-  return formatSizes[format] || "1024x1024";
+  // Own entries only. The format string arrives from the brief and reaches
+  // here unvalidated, and a bare formatSizes[format] would resolve inherited
+  // properties and hand a function to the renderer as an image size.
+  return ownEntry(formatSizes, format, "1024x1024");
 }
 
 export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null, look = null }) {
@@ -515,6 +519,9 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 
   const sourceCount = approvedBrain.sourceCount || null;
 
+  // Both this map and textSideCopy below are keyed by values that arrive from
+  // a stored campaign record and from the brief, so both are read through
+  // ownEntry rather than through a bare lookup with a truthiness fallback.
   const roleInstructions = {
     "continue-direction": "Continue the visual direction of this prior output. Match the overall feeling, light quality, and palette choices while creating a distinct new image.",
     "match-composition": "Match the composition and layout approach of this prior output. The new image should feel structurally similar but with different content.",
@@ -545,7 +552,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     body: [
       `This campaign has ${campaign.priorOutputs.length} existing ${campaign.priorOutputs.length === 1 ? "output" : "outputs"}. The new image should feel like it belongs in the same campaign without repeating what already exists.`,
       ...campaign.priorOutputs.map((prior) =>
-        `Prior output "${cleanText(prior.label)}" (${cleanText(prior.channel)} ${cleanText(prior.format)}): ${cleanText(prior.scene)}. ${roleInstructions[prior.role] || roleInstructions["reference-only"]}`
+        `Prior output "${cleanText(prior.label)}" (${cleanText(prior.channel)} ${cleanText(prior.format)}): ${cleanText(prior.scene)}. ${ownEntry(roleInstructions, prior.role, roleInstructions["reference-only"])}`
       ),
     ].join(" "),
   } : null;
@@ -561,7 +568,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     title: "Banner composition",
     body: [
       `This image is a banner. It will be viewed wide and may be cropped tighter on smaller screens, so keep the subject away from the outer edges.`,
-      textSideCopy[bannerTextSide] || textSideCopy["No text area"],
+      ownEntry(textSideCopy, bannerTextSide, textSideCopy["No text area"]),
       bannerHeadline ? `A headline reading "${bannerHeadline}" will be placed over this image by the layout, so do not render any text into the image itself.` : "",
       `The image should read clearly at a glance rather than rewarding close inspection.`,
     ].filter(Boolean).join(" "),

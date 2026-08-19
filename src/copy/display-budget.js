@@ -1,3 +1,5 @@
+import { ownEntry } from "../lookup.js";
+
 // Display copy budgets (ADR 0014 part two, first slice).
 //
 // Copy written to be read in a feed and copy written to be rendered into an
@@ -112,7 +114,11 @@ export function isUltraWide(format) {
 }
 
 export function getZone(zoneId) {
-  return zones[zoneId] || zones.lower_third;
+  // Own entries only. The zone id arrives on the display copy request and is
+  // not checked against this map anywhere upstream, so a bare zones[zoneId]
+  // would resolve inherited properties and return something with no width
+  // fractions, no label, and no description to the budget and prompt paths.
+  return ownEntry(zones, zoneId, zones.lower_third);
 }
 
 export function listZones() {
