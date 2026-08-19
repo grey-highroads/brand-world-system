@@ -120,6 +120,28 @@ Kitchen patient message. More staged than the front desk. Window light from came
 
 **Finding, against this document's own scene fixtures.** The Dialog Health leakage marker lists were authored on the MycoPop pattern (8-bit, arcade, pixel) and probe vocabulary Dialog Health's brain does not contain, so the clean result is weak evidence. Markers probing Dialog Health's own inactive directions belong in the scenes file; that change is a dated scene amendment to make during phase 1 preparation, not a silent edit now.
 
+### 2026-08-19: baseline renders complete, Dialog Health scenes approved, phase 0 closed
+
+**The four baseline renders ran.** All four were generated on 2026-08-19 through the deployed app under their correct clients and received the owner's three second read: mycopop-park-lifestyle and mycopop-fourpack-product under MycoPop, dialog-health-office-interior and dialog-health-patient-message under Dialog Health. This closes the last mechanical item the pre-registration left open.
+
+**Owner read, Dialog Health.** Both frames are the realism baseline. Plain as directed and correct as a starting point. This read doubles as owner approval of both scenes, which converts them from draft to frozen. Their provenance fields in `fixtures/adr-0018-phase0-scenes.json` move from pending to approved with today's date in the same commit as this section, and the file's status note now records that all four scenes carry owner approval. A change from here is a dated amendment.
+
+**Owner read, MycoPop.** Both frames read as carrying residual AI house style. Both causes were traced in the compiled packages rather than assumed, and neither is a compile defect.
+
+The park scene's residual look traces to its own frozen input. The scene's lighting field orders uniform warm dusk with rim lighting, which is the wording the physical register rewrite postdates. The frozen field is doing exactly what it says, and the render is obeying it. The field is retained frozen rather than corrected, because comparability across phases is what the fixture is for and a corrected input would make the phase 1 capture incomparable to this baseline. Recorded here so a later session does not read this as a compile finding.
+
+The four pack's product dimension drift traces to the product record, which lacks a discrete single can cutout. The compile has no isolated single unit to promote, so nothing in the package constrains the proportions of an individual can. This is an open content item for the owner rather than a code item, and it sits alongside the unit count finding already recorded above from 2026-08-17.
+
+**Unplanned finding with evidentiary value: the world block reaches the image.** A client selection error ran both Dialog Health scenes under MycoPop before the correct runs. The error produced something the planned matrix could not: a same scene cross client pair on the clinic desk scene, identical scene text, different declared world.
+
+The Dialog Health run returned the plain clinic. The MycoPop run returned the full declared world: boxy screens, restricted pink and magenta screen light falling on surfaces, laminate, smoked glass, and the can placed as an ordinary object rather than as a hero. This is the first render evidence that the compiled world block reaches the image at all. Until now the world block was verified present in the prompt and unverified in the output.
+
+**The same error also bounds the claim.** The companion error render, the patient kitchen scene under MycoPop, carried the identical world block in its package and showed none of it. World delivery is therefore confirmed and its reliability is scene dependent. That stands as an open observation, not a ruling. The hypothesis, labeled as a hypothesis, is that the world lands when the scene offers furniture compatible with it and does not when the scene's fixtures give the world nothing to attach to. One render exists per condition, which is enough to raise the question and not enough to answer it. No ruling is made and no design change follows from it here.
+
+**Phase 0 is closed as of this section.** Every claim above is Verified from the compiled packages and the renders, except the scene dependence hypothesis, which is labeled as a hypothesis and rests on one render per condition.
+
+**Held, not executed: the aesthetic modes retirement.** Checked before this commit at the owner's instruction. The retirement never shipped. `AESTHETIC_MODES` and its opening lines have been in `src/production/prompt-craft.js` continuously since commit `d87a3b6`, which ported the PWP craft layer into the production compiler, and no later commit removes or replaces them. Verified by compile at head: every package opens with the cinematic film still line regardless of which look is selected, because `resolveAestheticMode` falls back to that mode and the look library sits downstream of it in the Capture section rather than replacing it in Assignment. ADR 0018 ruling five, which replaces the aesthetic modes system with the look library, is therefore unexecuted in code. It is recorded here and held for its own instruction rather than executed inside a documentation commit.
+
 ## Amendment log
 
 (Empty. Errors correct in place with dated blocks citing the fix commit.)

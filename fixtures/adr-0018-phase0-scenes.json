@@ -2,7 +2,7 @@
   "adr": "0018",
   "purpose": "Frozen fixture scenes for the phase 0 prompt baseline and every later phase gate. A scene changes only by owner ruling recorded in the evaluations document, because the baseline is only comparable to later captures while the inputs hold still.",
   "status": "frozen",
-  "statusNote": "Frozen 2026-08-17 by the chief architect under the owner's build-then-refine delegation of this session; the owner rules on the output and can amend any scene by ruling, recorded in the evaluations document. The two MycoPop scenes reproduce the 2026-08-17 external audit inputs, proven by a zero-diff compile against the audit prompt. The two Dialog Health scenes are hand authored and freeze as written; a correction by the owner is an amendment, not a re-litigation.",
+  "statusNote": "Frozen 2026-08-17 by the chief architect under the owner's build-then-refine delegation of this session; the owner rules on the output and can amend any scene by ruling, recorded in the evaluations document. The two MycoPop scenes reproduce the 2026-08-17 external audit inputs, proven by a zero-diff compile against the audit prompt. The two Dialog Health scenes are hand authored and freeze as written; a correction by the owner is an amendment, not a re-litigation. Both were approved by the owner on 2026-08-19 on the strength of their baseline renders, so all four scenes now carry owner approval.",
   "scenes": [
     {
       "id": "mycopop-park-lifestyle",
@@ -61,7 +61,7 @@
       "id": "dialog-health-office-interior",
       "client": "dialog-health",
       "register": "interior",
-      "provenance": "DRAFT, hand authored for phase 0. Pending owner approval before freeze. The author has no verified knowledge of Dialog Health's approved scene vocabulary; the owner corrects anything off brand before freezing.",
+      "provenance": "APPROVED AND FROZEN 2026-08-19 by owner ruling on the phase 0 baseline render, recorded in the close-out section of docs/evaluations/2026-08-17-adr-0018-phase0-baseline.md. Hand authored for phase 0. It was drafted without verified knowledge of Dialog Health's approved scene vocabulary and carried a pending flag until the owner read the render and called the frame plain as directed and correct as a starting point. A change from here is a dated amendment, not a re-litigation.",
       "productId": null,
       "leakageMarkers": [
         "8-bit",
@@ -83,7 +83,7 @@
       "id": "dialog-health-patient-message",
       "client": "dialog-health",
       "register": "clinical register with device",
-      "provenance": "DRAFT, hand authored for phase 0. Pending owner approval before freeze. Chosen deliberately to exercise the screen bearing path: the scene contains a phone, so the screen abstraction rules compile.",
+      "provenance": "APPROVED AND FROZEN 2026-08-19 by owner ruling on the phase 0 baseline render, recorded in the close-out section of docs/evaluations/2026-08-17-adr-0018-phase0-baseline.md. Hand authored for phase 0 and chosen deliberately to exercise the screen bearing path: the scene contains a phone, so the screen abstraction rules compile. It carried a pending flag until the owner read the render and called the frame plain as directed and correct as a starting point. A change from here is a dated amendment, not a re-litigation.",
       "productId": null,
       "leakageMarkers": [
         "8-bit",
