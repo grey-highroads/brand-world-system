@@ -8512,12 +8512,7 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="scene-input"]')) {
     state.brief.scene = event.target.value;
-    // Composition and lighting were authored for the direction that was
-    // applied. Once the scene is rewritten by hand they describe a different
-    // picture, so they are retired rather than carried onto a new one.
-    state.brief.sceneComposition = "";
-    state.brief.sceneLighting = "";
-    state.brief.sceneProps = "";
+    retireSceneDetail();
   }
   if (event.target.matches('[data-action="exclusions-input"]')) {
     state.brief.exclusions = event.target.value;
@@ -8546,6 +8541,12 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="studio-brief-input"]')) {
     state.studio.brief = event.target.value;
+    // The studio screens write the brief here rather than through
+    // scene-input, and until 2026-08-19 this path cleared nothing, so an
+    // applied suggestion's composition, lighting, and props survived every
+    // later hand-written brief and compiled into prompts they no longer
+    // described.
+    retireSceneDetail();
     // Typing does not re-render, because a re-render would take focus out of
     // the textarea mid-sentence. Any control whose enabled state depends on
     // the brief therefore has to be synced here instead.
@@ -8969,6 +8970,7 @@ root.addEventListener("click", (event) => {
     // Website and sales both offer the product picker, so both need the list.
     if (["sales", "website", "social"].includes(target.dataset.id)) { void loadProducts(); void loadSegments(); }
     state.studio.brief = "";
+    retireSceneDetail();
     state.studio.sceneSuggestions = [];
     state.studio.sceneSuggestionsDrewOn = [];
     state.studio.sceneSuggestError = "";
@@ -9408,6 +9410,10 @@ root.addEventListener("click", (event) => {
     // record of intent, not a guarantee of an identical image.
     state.brief.assetType = source.assetType || "scene";
     state.brief.scene = source.package?.brief?.scene || source.scene || "";
+    // The stored package records brief.scene and brief.exclusions only, so
+    // there is no composition, lighting, or props to restore alongside it.
+    // Whatever is in state belongs to a different brief.
+    retireSceneDetail();
     state.brief.exclusions = source.package?.brief?.exclusions || state.brief.exclusions;
     if (source.placement && placementFormats[source.placement]) state.brief.placement = source.placement;
     if (source.format) state.brief.format = source.format;
@@ -9431,6 +9437,9 @@ root.addEventListener("click", (event) => {
   if (action === "use-scene-starter") {
     const text = target.dataset.text || "";
     state.brief.scene = state.brief.scene.trim() ? `${state.brief.scene.trim()} ${text}` : text;
+    // Appending a starter changes the picture, which is the same trigger as
+    // rewriting the scene by hand.
+    retireSceneDetail();
     render();
   }
   if (action === "toggle-campaign-ref") {
@@ -10795,6 +10804,26 @@ async function synthesizeProductFromSource(sourceId) {
   }
 }
 
+// Retire the scene detail fields.
+//
+// sceneComposition, sceneLighting, and sceneProps are written only when a
+// scene suggestion is applied. They describe the picture that suggestion
+// described. Any other change to the scene leaves them describing a different
+// picture, and they compile invisibly into the Assignment section after the
+// scene text, where they can contradict what the person actually wrote.
+//
+// The rule was stated on the legacy scene-input handler when those fields were
+// added and was not carried over when the studio screens were built, so every
+// studio path was leaking them. One named function now, called from every
+// path that changes the scene by means other than applying a suggestion.
+// Applying a suggestion overwrites all three and is the one path that must not
+// call this.
+function retireSceneDetail() {
+  state.brief.sceneComposition = "";
+  state.brief.sceneLighting = "";
+  state.brief.sceneProps = "";
+}
+
 function switchClient(id) {
   if (!id || id === state.activeClientId) {
     state.clientSwitcherOpen = false;
@@ -10807,6 +10836,11 @@ function switchClient(id) {
   // this function: a later soft switch would inherit the previous client's
   // protections silently.
   resetProtections();
+  // Same reason as resetProtections above: the switch reloads today, so this
+  // is not load-bearing, and correctness should not depend on the reload
+  // staying in this function. A later soft switch would otherwise carry one
+  // client's scene detail into another client's first brief.
+  retireSceneDetail();
   window.location.reload();
 }
 
