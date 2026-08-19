@@ -179,7 +179,7 @@ function measure(pkg, scene, lockedAsset) {
     impossibleInvariant,
     leakage,
     leakedMarkers: leakage.filter((entry) => entry.leaked).map((entry) => entry.marker),
-    aestheticMode: pkg.aestheticMode,
+    look: pkg.look,
   };
 }
 
@@ -380,7 +380,7 @@ function main() {
         `| ${scene.id} | ${m.totalWords} | ${m.prohibitionSectionShare}% | ${m.prohibitionTotal} | ${m.impossibleInvariant ? "YES" : "no"} | ${m.leakedMarkers.join(", ") || "none"} | ${isoCell} |`
       );
       console.log(
-        `${scene.id}: ${m.totalWords} words, prohibition sections ${m.prohibitionSectionShare}%, ${m.prohibitionTotal} prohibition phrases, impossible invariant ${m.impossibleInvariant ? "YES" : "no"}, leaked markers: ${m.leakedMarkers.join(", ") || "none"}, mode ${m.aestheticMode?.id}${iso ? `, isolation: ${isoCell}` : ""}`
+        `${scene.id}: ${m.totalWords} words, prohibition sections ${m.prohibitionSectionShare}%, ${m.prohibitionTotal} prohibition phrases, impossible invariant ${m.impossibleInvariant ? "YES" : "no"}, leaked markers: ${m.leakedMarkers.join(", ") || "none"}, look ${m.look?.id || "none"}${iso ? `, isolation: ${isoCell}` : ""}`
       );
       if (iso && iso.compared && (!iso.isolated || iso.sceneRewritten)) isolationFailures += 1;
     }

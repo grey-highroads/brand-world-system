@@ -4,11 +4,8 @@ import {
   inferPackageFormat,
   integrationSentence,
   protectionBlock,
-  selectAestheticMode,
-  openingLine,
   neutralizeStateLanguage,
   auditConstraints,
-  AESTHETIC_MODES,
 } from "../src/production/prompt-craft.js";
 
 // ---------------------------------------------------------------------------
@@ -109,34 +106,11 @@ test("non-stateful product format skips the state-lock sentence", () => {
 // Aesthetic modes
 // ---------------------------------------------------------------------------
 
-test("selectAestheticMode detects documentary and editorial signals", () => {
-  assert.equal(selectAestheticMode("An observed, documentary feel").id, "documentary_lifestyle");
-  assert.equal(selectAestheticMode("Editorial, magazine-quality composition").id, "editorial_commercial");
-  assert.equal(selectAestheticMode("Phone-camera vernacular").id, "vernacular_ugc");
-  assert.equal(selectAestheticMode("Premium and cinematic").id, "cinematic_film_still");
-  assert.equal(selectAestheticMode("").id, "cinematic_film_still");
-  assert.equal(selectAestheticMode(null).id, "cinematic_film_still");
-});
-
-test("openingLine strips tabletop clause for world-only images", () => {
-  const worldOnly = openingLine(AESTHETIC_MODES.cinematic_film_still, false);
-  assert.doesNotMatch(worldOnly, /tabletop/);
-
-  const withProduct = openingLine(AESTHETIC_MODES.cinematic_film_still, true);
-  assert.match(withProduct, /not a tabletop product photo\.$/);
-  assert.equal(worldOnly, withProduct.replace(/,\s*not a tabletop product photo\.$/, "."));
-});
-
-test("no aesthetic mode asserts a fixed output shape", () => {
-  for (const mode of Object.values(AESTHETIC_MODES)) {
-    assert.doesNotMatch(mode.openingLine, /\b(landscape|portrait|square)\b/i);
-  }
-});
-
-// ---------------------------------------------------------------------------
-// State-lock neutralization
-// ---------------------------------------------------------------------------
-
+// The aesthetic modes tests were removed on 2026-08-19 with the system they
+// covered. Three of them exercised selectAestheticMode signal matching and
+// openingLine's tabletop clause; the fourth asserted that no opening line
+// hardcoded an aspect ratio word. ADR 0018 ruling five retired the system, so
+// there is nothing left for them to hold.
 test("neutralizeStateLanguage rewrites contradictory state language", () => {
   const result = neutralizeStateLanguage("A jar opened on the counter, lid off, contents spilling out");
   assert.match(result.text, /jar closed and sealed/);

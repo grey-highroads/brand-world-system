@@ -6530,13 +6530,13 @@ function renderPreflight() {
           <details class="card collapsible-card">
             <summary class="card-header collapsible-header">
               <h2>Production contract</h2>
-              <span class="collapsible-meta"><span class="mini-pill pill-neutral">${escapeHtml(generationPackage.aestheticMode?.name || "Compiled")}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+              <span class="collapsible-meta"><span class="mini-pill pill-neutral">${escapeHtml(generationPackage.look?.label || "Compiled")}</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
             </summary>
             <ul class="contract-list">
               <li><strong>Grounded in:</strong> ${escapeHtml(generationPackage.policy.groundedIn)}</li>
               ${generationPackage.lockedAsset ? `<li><strong>Protected asset:</strong> ${escapeHtml(generationPackage.lockedAsset.name)} (${escapeHtml(generationPackage.lockedAsset.format)})</li>` : ""}
               ${generationPackage.product ? `<li><strong>Product record:</strong> ${escapeHtml(generationPackage.product.product_name)} v${escapeHtml(generationPackage.product.version)}</li>` : ""}
-              ${generationPackage.aestheticMode ? `<li><strong>Visual register:</strong> ${escapeHtml(generationPackage.aestheticMode.name)}</li>` : ""}
+              ${generationPackage.look ? `<li><strong>Look:</strong> ${escapeHtml(generationPackage.look.label)}</li>` : ""}
               <li><strong>Flexible:</strong> ${escapeHtml(generationPackage.policy.flexible.join(", "))}</li>
               <li><strong>Excluded:</strong> ${escapeHtml(generationPackage.policy.excluded.join("; "))}</li>
             </ul>
@@ -7122,7 +7122,7 @@ function renderResult() {
             <div class="card-header"><h2>Production record</h2></div>
             <div class="rule-card">
               <div class="rule"><span class="mini-pill">Brain</span><span>v${job.generationPackage.brainVersion} · ${job.generationPackage.sourceCount || 0} sources</span></div>
-              <div class="rule"><span class="mini-pill">Mode</span><span>${escapeHtml(job.generationPackage.aestheticMode?.name || "Standard")}</span></div>
+              <div class="rule"><span class="mini-pill">Look</span><span>${escapeHtml(job.generationPackage.look?.label || "No look selected")}</span></div>
               <div class="rule"><span class="mini-pill">Output</span><span>${escapeHtml(job.generationPackage.output?.placement || "")} · ${escapeHtml(job.generationPackage.output?.format || "")}</span></div>
               <div class="rule"><span class="mini-pill">Render</span><span>${escapeHtml(job.model || "OpenAI")} · ${escapeHtml(generationMethod)}</span></div>
               ${job.generationPackage.lockedAsset ? `<div class="rule"><span class="mini-pill">Locked</span><span>${escapeHtml(job.generationPackage.lockedAsset.name)}</span></div>` : ""}
@@ -9959,7 +9959,7 @@ root.addEventListener("click", (event) => {
         brainVersion: pkg.brainVersion,
         sourceCount: pkg.sourceCount || 0,
         guidanceSections: (pkg.compiledComponents || []).map((c) => c),
-        aestheticMode: pkg.aestheticMode?.id || null,
+        look: pkg.look?.id || null,
         output: { placement: pkg.output?.placement, format: pkg.output?.format },
         lockedAsset: pkg.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
         references: (pkg.references || []).map((r) => ({ name: r.name, role: r.role, influence: r.influence })),

@@ -6,12 +6,78 @@
 //
 // Only its import paths differ from the original, rewritten to reach the
 // shared modules from fixtures/ rather than from src/production/.
+//
+// Amended 2026-08-19. The aesthetic modes system was retired from
+// src/production/prompt-craft.js by ADR 0018 ruling five, so the two functions
+// this file imported from there no longer exist. They are inlined below,
+// copied verbatim from prompt-craft.js at commit 601853d, which is the last
+// commit carrying them and is behavior-identical to the pin at 1c00ac3 since
+// neither function changed in between. This is not an edit made to pass a
+// check; it removes a dependency a pinned baseline should never have had on a
+// module that moves, and the compiled output is unchanged.
+
+const AESTHETIC_MODES = {
+  cinematic_film_still: {
+    id: "cinematic_film_still",
+    name: "Cinematic film still",
+    openingLine: "A photograph made in a real environment, framed wide enough to show the place, not a tabletop product photo.",
+    bestWhen: "premium, ritual, cinematic, heritage, design-led, or elevated ceremony",
+  },
+  documentary_lifestyle: {
+    id: "documentary_lifestyle",
+    name: "Documentary lifestyle",
+    openingLine: "An eye-level documentary photograph, observed rather than staged.",
+    bestWhen: "documentary, vernacular, casual, observed, people-centric, outdoor, or activity-driven",
+  },
+  editorial_commercial: {
+    id: "editorial_commercial",
+    name: "Editorial commercial",
+    openingLine: "A composed editorial photograph with considered light and considered framing.",
+    bestWhen: "fashion, beauty, considered, magazine, studio, or product-forward without being a packshot",
+  },
+  vernacular_ugc: {
+    id: "vernacular_ugc",
+    name: "Vernacular",
+    openingLine: "A vernacular photograph in the register of a phone camera in daily life, incidental and immediate, not a commercial frame.",
+    bestWhen: "casual, social, phone-camera, daily life, unpolished, or community-driven",
+  },
+};
+
+const MODE_SIGNAL_PATTERNS = [
+  { mode: "documentary_lifestyle", patterns: [/\bdocumentary\b/i, /\bobserved\b/i, /\blifestyle editorial\b/i, /\beye[- ]level\b/i] },
+  { mode: "editorial_commercial", patterns: [/\beditorial\b/i, /\bmagazine\b/i, /\bfashion\b/i, /\bconsidered\b/i] },
+  { mode: "vernacular_ugc", patterns: [/\bvernacular\b/i, /\bugc\b/i, /\bphone[- ]camera\b/i, /\bincidental\b/i, /\bcasual\b/i] },
+];
+
+/**
+ * Select an aesthetic mode from creative direction text in the approved brain.
+ * Returns cinematic as the fallback, matching PWP's evidence-first default.
+ */
+function selectAestheticMode(creativeDirectionText) {
+  const text = clean(creativeDirectionText);
+  if (!text) return AESTHETIC_MODES.cinematic_film_still;
+
+  for (const { mode, patterns } of MODE_SIGNAL_PATTERNS) {
+    if (patterns.some((pattern) => pattern.test(text))) {
+      return AESTHETIC_MODES[mode];
+    }
+  }
+  return AESTHETIC_MODES.cinematic_film_still;
+}
+
+/**
+ * Return the opening framing line for the selected mode.
+ * For world-only images (no product), strips the "not a tabletop" clause.
+ */
+function openingLine(mode, hasProduct = false) {
+  const line = (mode && mode.openingLine) || AESTHETIC_MODES.cinematic_film_still.openingLine;
+  if (hasProduct) return line;
+  return line.replace(/,\s*not a tabletop product photo\.?$/i, ".");
+}
 
 import {
   protectionBlock,
   inferPackageFormat,
-  selectAestheticMode,
-  openingLine,
   neutralizeStateLanguage,
   inferScreenBearing,
   neutralizeScreenOrientation,

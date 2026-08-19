@@ -1,8 +1,6 @@
 import {
   protectionBlock,
   inferPackageFormat,
-  selectAestheticMode,
-  openingLine,
   neutralizeStateLanguage,
   inferScreenBearing,
   neutralizeScreenOrientation,
@@ -489,13 +487,6 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const guidance = activeGuidanceOrder.map((id) => selected.get(id)).filter(Boolean);
   const dossier = approvedBrain.artifacts?.dossier || {};
 
-  // Aesthetic mode from creative direction evidence
-  const creativeSection = selected.get("creative");
-  const creativeText = creativeSection ? sectionDirection(creativeSection) : "";
-  const mode = selectAestheticMode(creativeText);
-  const hasProduct = !!lockedAsset;
-  const modeOpeningLine = openingLine(mode, hasProduct);
-
   // Package format inference and state-lock neutralization
   const packageFormat = lockedAsset ? inferPackageFormat(lockedAsset) : null;
   const screenBearing = !isSalesEnablement && !isTemplate && !templateAsset && inferScreenBearing(lockedAsset);
@@ -608,7 +599,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         : isSalesEnablement
         ? `Create one ${format} polished content element for ${cleanText(approvedBrain.brandName)} sales materials. ${scene}`
         : [
-            `${modeOpeningLine} Create one ${format} brand world image for ${placement}.`,
+            // Position one, which the 2026-08-17 audit established outranks
+            // everything after it. Until 2026-08-19 an aesthetic mode opening
+            // line sat ahead of this sentence and made a framing claim there,
+            // above both the look and the scene. ADR 0018 ruling five retired
+            // that system, so the section now opens with the assignment itself
+            // and the scene follows immediately.
+            `Create one ${format} brand world image for ${placement}.`,
             scene,
             sceneComposition ? `Composition: ${sceneComposition}` : "",
             sceneLighting ? `Lighting: ${sceneLighting}` : "",
@@ -735,7 +732,11 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     sourceCount,
     output: { placement, format, size: imageSizeForFormat(format), quantity: 1 },
     brief: { scene, exclusions },
-    aestheticMode: { id: mode.id, name: mode.name },
+    // The look, carried so the production record can say which medium made
+    // this image. It replaces the aestheticMode field, retired with the modes
+    // system on 2026-08-19. A record naming a register that no longer compiles
+    // is worse than one naming nothing.
+    look: selectedLook ? { id: selectedLook.id, label: selectedLook.label } : null,
     lockedAsset: lockedAsset ? { name: lockedAsset.name, format: packageFormat } : null,
     templateAsset: templateAsset ? { name: templateAsset.name, ratio: templateAsset.ratio } : null,
     stateNeutralizations,
@@ -825,7 +826,7 @@ export function buildConsumptionRecord(job) {
     brainVersion: pkg.brainVersion,
     sourceCount: pkg.sourceCount || 0,
     guidanceSections: (pkg.compiledComponents || []).map((c) => c),
-    aestheticMode: pkg.aestheticMode?.id || null,
+    look: pkg.look?.id || null,
     output: { placement: pkg.output?.placement, format: pkg.output?.format },
     lockedAsset: pkg.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
     references: (pkg.references || []).map((r) => ({ name: r.name, role: r.role, influence: r.influence })),
