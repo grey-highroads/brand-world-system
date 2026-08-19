@@ -30,12 +30,11 @@
 // fine-detail clauses. Absent, the field reads as true, because resolving fine
 // detail is what most media do.
 //
-// Recorded for owner ruling rather than decided here: `consumer_negative_dusk`
-// carries coarse grain across the whole frame and approximate focus, and names
-// precise focus as outside what it does, so it has a claim to the same flag.
-// It was not named in the instruction that produced this change and it is not
-// flagged, because widening the set is a look-quality judgment and belongs to
-// the owner. See the finding in the image pipeline contract.
+// `consumer_negative_dusk` was raised as a finding when the field was added and
+// flagged by owner ruling of 2026-08-18 on the same evidence as the other
+// three: its own line states coarse grain across the entire frame, approximate
+// focus rather than exact focus, and precise focus as outside what the medium
+// does. Four looks now carry the flag.
 
 export const LOOKS = {
   film_noir: {
@@ -69,6 +68,7 @@ export const LOOKS = {
     label: "Consumer negative at dusk",
     environment: "binding",
     requires: "failing daylight outdoors or a space open to it, at dusk",
+    resolvesFineDetail: false,
     line:
       "Fast consumer color negative film shot in failing light, pushed a stop past where it wanted to be. The whole frame carries a single warm orange cast that is never corrected, and the shadows lift into a muddy brown rather than reaching black. Grain is coarse and obvious across the entire frame, heaviest in the sky and in flat skin, and it is part of the surface rather than an overlay. Color saturation is low and the palette collapses toward amber, so a red and a brown read as neighbors. Highlights from any small bright source bloom into soft halos with visible fringing at their edges. Focus is approximate: the subject is close to sharp rather than exactly sharp, and anything moving smears. Detail in dark clothing and dark foliage is simply absent. Contrast is low and the image feels slightly flat and slightly veiled, as though a thin fog sits over it. Clean color, tight grain, and precise focus are all outside what this medium does.",
   },
