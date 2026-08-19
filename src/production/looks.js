@@ -213,7 +213,21 @@ export const LOOK_IDS = Object.keys(LOOKS);
  */
 export function resolveLook(id) {
   if (!id) return null;
-  return LOOKS[String(id)] || null;
+  const key = String(id);
+  // Own properties only. A plain object inherits from Object.prototype, so a
+  // bare LOOKS[key] lookup resolves ids like constructor, hasOwnProperty,
+  // toString, and __proto__ to functions and objects that are not looks. They
+  // are truthy, so they passed the fallback and reached the compile path,
+  // where the Capture section took the "a look was selected" branch and read
+  // .line off something that has no .line. The result was that the entire
+  // capture character block, look line and shared floor both, silently left
+  // the prompt. Nothing validates brief.look against this library and the
+  // field is reachable through the API with any string, so the guard belongs
+  // here rather than at the call sites. Do not simplify this back to a bare
+  // lookup: an unknown id must fall back to the shared floor exactly as an
+  // absent id does.
+  if (!Object.prototype.hasOwnProperty.call(LOOKS, key)) return null;
+  return LOOKS[key] || null;
 }
 
 /**
