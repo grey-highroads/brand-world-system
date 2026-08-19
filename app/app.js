@@ -71,6 +71,10 @@ const lookOptions = [
     swatch: "linear-gradient(150deg, #cfd6da 0%, #aeb8bf 55%, #8e979f 100%)", filter: "saturate(0.75) contrast(0.9)",
   },
   {
+    id: "color_negative_daylight", label: "Handheld negative", note: "Everyday film, loose and warm",
+    swatch: "linear-gradient(145deg, #efe4d0 0%, #a8a184 45%, #4b4a3c 100%)", filter: "saturate(0.95) contrast(1.05)",
+  },
+  {
     id: "daylight_street_documentary", label: "Street documentary", note: "Real daylight, unmanaged",
     swatch: "linear-gradient(140deg, #e8dcc6 0%, #9c8f7c 40%, #45403a 100%)", filter: "contrast(1.15)",
   },
@@ -81,6 +85,10 @@ const lookOptions = [
   {
     id: "large_format_daylight", label: "Large format", note: "Enormous detail, long tonality",
     swatch: "linear-gradient(150deg, #e4e1d8 0%, #b0aca1 50%, #6b6862 100%)", filter: "contrast(0.95) saturate(0.9)",
+  },
+  {
+    id: "long_lens_distance", label: "Long lens", note: "Stacked planes, muted and hazy",
+    swatch: "linear-gradient(150deg, #d8cfae 0%, #a1946d 45%, #6d7259 100%)", filter: "saturate(0.8) contrast(0.9)",
   },
   {
     id: "saturated_daylight_adventure", label: "Saturated daylight", note: "Hard sun, dense sky",

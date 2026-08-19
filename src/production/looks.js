@@ -170,6 +170,27 @@ export const LOOKS = {
       "Ordinary daylight on a city street, sun somewhere off to one side and not managed in any way. Some surfaces are in hard sun and others are in the shade of buildings within the same frame, and the exposure favors the subject so the sunlit areas run bright and the shaded areas run dark. Color is accurate rather than graded, and the frame carries whatever colors the street contains: signage, painted walls, car paint, all competing rather than harmonized. Depth is moderate, so the subject is sharp and the traffic and passersby behind them are soft but still identifiable. People in the background are caught mid stride, mid gesture, or looking somewhere other than at the camera, and at least one is partly cut by a pole, a car, or the frame edge. Grain is fine and present. The subject is walking and is photographed from the front at a distance. Controlled light, a clean background, and a harmonized palette are all outside what a street provides.",
   },
 
+  // Added 2026-08-18 from the photographic character layer brief r2, which
+  // proposed these two among its capture profiles. They arrive as looks rather
+  // than as a parallel profile system, because the library already is the
+  // place a medium is described and a second system describing the same
+  // property is the conflict shape ADR 0018 removes.
+  color_negative_daylight: {
+    id: "color_negative_daylight",
+    label: "Color negative, handheld",
+    environment: "agnostic",
+    line:
+      "Handheld 35mm color negative film in whatever light the day provides. Fine organic grain is visible in the shadows and the sky and rises anywhere underexposed. Highlights roll off softly rather than clipping, and may blow gently on bright metal or pale skin. Color responds like film: greens lean toward olive, skin sits warm, whites go cream rather than pure. Exposure favors the subject and lets the rest of the frame fall where the light puts it, so some of the frame runs dark or bright without correction. The horizon may sit a degree or two off level and the framing is loose rather than measured. One element of the frame may be imperfect: a soft foreground edge, a small flare from the light source, a background detail smeared by motion. Even illumination, corrected color, level measured framing, and a noiseless file are all outside what this medium does.",
+  },
+
+  long_lens_distance: {
+    id: "long_lens_distance",
+    label: "Long lens, from a distance",
+    environment: "agnostic",
+    line:
+      "A 135 to 200mm lens from well back, so perspective is compressed and the background planes stack close behind the subject rather than receding. Focus is one thin plane; everything before and behind it falls away quickly, and a foreground element may cross the frame soft and unexplained. On exteriors, atmospheric haze reads between the stacked planes, lightening and cooling each one further back. The palette is muted and earthy in the register of 1970s color negative: ochres, browns, sage greens, low contrast, soft highlight falloff. Organic grain sits throughout and is heavier in the sky. Wide framing, edge-to-edge sharpness, punchy saturation, and an intimate close camera are all outside what this way of working does.",
+  },
+
   available_light_interior: {
     id: "available_light_interior",
     label: "Available light interior",
@@ -180,6 +201,10 @@ export const LOOKS = {
   },
 };
 
+// Derived, so a new entry in LOOKS reaches this list by being written above.
+// The picker order in app/app.js is curated separately and runs from the
+// cleanest options to the most extreme; nothing validates that the two files
+// carry the same ids, so both are checked by hand when a look is added.
 export const LOOK_IDS = Object.keys(LOOKS);
 
 /**
