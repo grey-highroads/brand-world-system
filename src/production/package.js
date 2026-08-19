@@ -633,31 +633,44 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "The world this brand lives in",
       body: world,
     } : null),
-    {
+    // The scene-invariant middle cut, owner ruling of 2026-08-19. Four sections
+    // stop compiling on the scene path: this one, the guidance sections below,
+    // Audience and feeling, and Visual materials. The phase 0 baseline measured
+    // that roughly nine tenths of a compiled prompt is fixed brand payload that
+    // does not change when the scene changes, competing with the two hundred
+    // words describing the actual frame, and that the abstract half of that
+    // payload has never been visible in a render. The record of what the brand
+    // asserts is untouched: treatments, compiledComponents, and the requirement
+    // checks all still read the brain exactly as before. Only the prompt stops
+    // reciting it. Template and sales-enablement paths are unchanged, since
+    // they were not part of the ruling and lean on the identity prose
+    // differently. Reversal is one revert commit.
+    (isTemplate || isSalesEnablement) ? {
       title: "Brand foundation",
       body: `${brandOpener(approvedBrain)} ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
-    },
+    } : null,
     product ? {
       title: "Product knowledge",
       body: compileProductSectionForImage(product),
     } : null,
-    ...guidance.map((section) => ({ title: section.name, body: sectionDirection(section, { compact: true }) })),
+    ...((isTemplate || isSalesEnablement)
+      ? guidance.map((section) => ({ title: section.name, body: sectionDirection(section, { compact: true }) }))
+      : []),
     isTemplate ? templateProductionInstructions : null,
     isSalesEnablement ? buildSalesElementInstructions(hasTemplate) : null,
     campaignSection,
     priorOutputs,
     compositionSection,
-    (isTemplate || isSalesEnablement) ? null : {
-      title: "Audience and feeling",
-      body: `${cleanText(dossier.audience)} ${cleanText(dossier.desiredFeeling)}`,
-    },
-    {
+    // Palette only, and template and sales paths only. The materials line was
+    // already suppressed on both paths before this cut, for template and sales
+    // because neither is a scene and for the scene path because the world block
+    // answers the same question with scene-bound facts.
+    (isTemplate || isSalesEnablement) ? {
       title: "Visual materials",
-      body: [
-        dossier.palette?.length ? `Palette: ${dossier.palette.map((color) => `${cleanText(color.name)} (${firstClause(color.role)}, ${cleanText(color.color)})`).join(", ")}.` : "",
-        (isTemplate || isSalesEnablement || world) ? "" : (dossier.materials?.length ? `Materials and light: ${dossier.materials.join(", ")}.` : ""),
-      ].filter(Boolean).join(" "),
-    },
+      body: dossier.palette?.length
+        ? `Palette: ${dossier.palette.map((color) => `${cleanText(color.name)} (${firstClause(color.role)}, ${cleanText(color.color)})`).join(", ")}.`
+        : "",
+    } : null,
     (isTemplate || isSalesEnablement) ? null : (rejectsDirection(approvedBrain, refusals) ? {
       title: "What this brand is not",
       body: rejectsDirection(approvedBrain, refusals),
