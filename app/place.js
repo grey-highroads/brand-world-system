@@ -88,7 +88,13 @@ async function loadEverything() {
       fetch("/api/production/outputs", { headers: { Accept: "application/json" } }).then(readJson),
       fetch("/api/products", { headers: { Accept: "application/json" } }).then(readJson),
     ]);
-    state.backgrounds = (outputsPayload.outputs || []).filter((output) => output.id && output.hadImage);
+    // Newest first, the same ordering the app's recent work list uses. The
+    // stored log is oldest first, because the app appends to it, so without
+    // this a render you just made lands at the bottom of a short scrolling box
+    // and looks like it never arrived.
+    state.backgrounds = (outputsPayload.outputs || [])
+      .filter((output) => output.id && output.hadImage)
+      .sort((left, right) => String(right.createdAt).localeCompare(String(left.createdAt)));
     state.products = productsPayload.products || [];
   } catch (error) {
     state.loadError = error.message || "Your finished work could not be loaded.";
@@ -455,6 +461,7 @@ function render() {
       <div class="place-column">
         <section class="card">
           <div class="card-header"><h2>Background</h2></div>
+          ${state.backgrounds.length ? `<p class="field-note place-note">${state.backgrounds.length} available, newest first.</p>` : ""}
           ${state.backgrounds.length
             ? `<div class="place-picker">${pickerMarkup(state.backgrounds.map((output) => ({
                 id: output.id,
