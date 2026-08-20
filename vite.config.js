@@ -10,6 +10,7 @@ export default defineConfig({
       input: {
         main: resolve(__dirname, "app/index.html"),
         landing: resolve(__dirname, "app/landing.html"),
+        place: resolve(__dirname, "app/place.html"),
       },
     },
   },

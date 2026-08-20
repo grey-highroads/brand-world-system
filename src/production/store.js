@@ -178,6 +178,21 @@ export function createVercelBlobProductionStore(options = {}) {
         del(outputPackagePathname(clientId, jobId), { ...credentials }).catch(() => {}),
       ]);
     },
+    // Reads an output's picture back as bytes. Added for the place on
+    // background page, which draws a finished output onto a canvas. A canvas
+    // that has been given a picture from another domain refuses to hand its
+    // pixels back, and every image the browser sees today arrives through a
+    // signed link on the storage domain, so the pixels have to come through
+    // our own origin instead. Nothing on the render path calls this.
+    async readOutputImageBytes(jobId) {
+      const pathname = productionImagePathname(clientId, jobId, "png");
+      const result = await get(pathname, { access: "private", ...credentials, useCache: false });
+      if (!result || result.statusCode !== 200 || !result.stream) return null;
+      return {
+        bytes: Buffer.from(await new Response(result.stream).arrayBuffer()),
+        contentType: result.blob?.contentType || "image/png",
+      };
+    },
     async readOutputs() {
       return readJsonBlobOrNull(outputsPathname(clientId));
     },

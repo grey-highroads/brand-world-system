@@ -47,6 +47,32 @@ export default async function handler(request, response) {
         return;
       }
 
+      // The same picture as the route above, sent through our own origin as
+      // image data instead of as a redirect to storage. Only the place on
+      // background page asks for this, because a canvas will not give back
+      // pixels it was handed from another domain. Every other reader keeps
+      // using the redirect, which stays cheaper.
+      if (params.get("action") === "imageData") {
+        const imageId = String(params.get("outputId") || "");
+        if (!imageId || !store.readOutputImageBytes) {
+          sendJson(response, 404, { error: "That image is not available." });
+          return;
+        }
+        try {
+          const stored = await store.readOutputImageBytes(imageId);
+          if (!stored) {
+            sendJson(response, 404, { error: "That image is not available." });
+            return;
+          }
+          sendJson(response, 200, {
+            dataUrl: `data:${stored.contentType};base64,${stored.bytes.toString("base64")}`,
+          });
+        } catch {
+          sendJson(response, 404, { error: "That image is not available." });
+        }
+        return;
+      }
+
       const requestedId = params.get("outputId");
       if (requestedId) {
         const log = await store.readOutputs();

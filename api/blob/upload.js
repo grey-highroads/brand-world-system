@@ -1,4 +1,5 @@
 import { issueSignedToken, presignUrl } from "@vercel/blob";
+import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { hasBrandWorldAccess, readJsonBody, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 // Combined upload + read presign endpoint. Hobby-plan function limits pushed
@@ -48,6 +49,21 @@ export default async function handler(request, response) {
 
     const token = process.env.BLOB_READ_WRITE_TOKEN;
     const credentials = token ? { token } : {};
+
+    // Sends a stored source file back as image data through our own origin.
+    // Only the place on background page asks for this, for the same reason the
+    // outputs handler grew its own version: a canvas will not give back pixels
+    // it was handed from another domain. Thumbnails everywhere else keep using
+    // the signed link below, which stays cheaper. The path check above already
+    // confined this to the caller's own client.
+    if (String(body.mode || "") === "data") {
+      const stored = await createVercelBlobBrandBrainStore({ clientId }).readSourceFile(pathname);
+      sendJson(response, 200, {
+        pathname,
+        dataUrl: `data:${stored.mimeType || "image/png"};base64,${stored.bytes.toString("base64")}`,
+      });
+      return;
+    }
 
     if (String(body.mode || "") === "read") {
       const validUntil = Date.now() + 15 * 60 * 1000;
