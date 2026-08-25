@@ -18,6 +18,18 @@ What does not commoditize is a structured, governed, portable account of what a 
 
 So this system is built the other way around from most tools in the category. The brand model is the product. Generation is a replaceable consumer of it.
 
+## The brand world
+
+A brand model that only describes the brand is not enough to make anything worth looking at.
+
+The trap is specific and easy to fall into. Ask a system to learn a brand from the brand's own published material and it will faithfully describe the brand's marketing: its posting cadence, its content categories, its product photography conventions. Every statement will be true and traceable. Then production composes from it and returns work about the brand's marketing, which is the definition of generic.
+
+So the brand world is a first-class artifact here, and its subject is not the brand. It is the person the brand serves, living their life, with the product in tow. Where they are, what time it is, what the room is made of, what they are in the middle of doing, what they want, what they refuse. Their environments and their rejects, not the brand's.
+
+This is the part that carries emotional weight, and the weight is the point. A brand becomes something people advocate for when it shows them a version of themselves they want to be. Correct color, correct logo placement, and correct tone will produce work that is compliant and forgettable. Recognition is what makes someone an evangelist, and recognition requires a person in a real situation rather than a product on a surface.
+
+It is also the ceiling on everything downstream. A world that describes a content calendar produces renders of a content calendar, no matter how good the governance around it is. Which is why the world is synthesized deliberately rather than inherited, why entries carry whether they were observed or reasoned toward and with what confidence, and why thin evidence surfaces as a question to the client instead of getting quietly filled in.
+
 ## Aspiration, and why it is the durable part
 
 Governance is the practical half of this system and it is not the defensible half. Locking approved assets is table stakes. Enforcing prohibitions is risk work every serious operator will eventually do. Both are necessary. Neither is hard to copy.
@@ -44,18 +56,6 @@ A hosted studio with two client brands onboarded, one B2B and one emerging consu
 - **Governed copy,** derived from scoped brand claims and audited against them before it ships.
 - **Refusals.** Brand prohibitions decomposed, assigned, and compiled into the generation as things to avoid.
 
-## What building it proved
-
-Three findings changed the design rather than illustrating it. All three are in the decision record with the evidence attached.
-
-**Synthesis is a sampler, so anything consequential has to be a governed record.** The same brand run through synthesis three times, from identical sources under identical instructions, produced three different sets of brand guardrails. No guardrail was shared across all three runs on either test brand. Not one currently approved refusal survived, including a healthcare client's approved rule against fear-based depictions of patients.
-
-That is the dangerous kind of failure. A wrong rule gets caught in review. A missing rule doesn't, because nobody reviews an absence. The fix was to change what a rule is: the model proposes, a person rules, and the rule stays until a person retires it. The model keeps the thing it's good at, which is surfacing concerns nobody thought of, and loses the thing it was bad at, which is quietly dropping a protection.
-
-**The renderer obeys physical facts and ignores description.** Across roughly thirty renders, concrete topology was obeyed and abstract perceptual targets were not. Counts, positions, one action per subject, surface states with a stated cause, named light positions. Words like natural or unperformed did nothing. Governance language written for a marketer to read compiles badly into an instruction for an image model.
-
-**The failure was silence, not volume.** One compiled prompt ran 2,610 words and was 49 percent prohibitions. The obvious diagnosis was bloat and the obvious fix was subtraction, so a gate was registered in advance around word count. It failed, and it was mis-specified. Cutting 250 words was invisible. Every intervention that visibly improved output added concrete language in a strong early position. Four of the five things fixed that session were absences rather than errors, and the model had been filling each silence with consensus. Both halves of that bet are in the record. The corrected principle: when quality plateaus, ask which axis nobody has written to yet.
-
 ## What this is not
 
 Not a prompt builder. Not a general creative platform. Not a replacement for a DAM or a project tool. It does not publish without human approval, and it does not promise pixel-perfect reproduction through prompt instructions, which is exactly why exact assets are composited rather than generated.
@@ -77,7 +77,7 @@ New here, read [`docs/product-primer.md`](docs/product-primer.md). It is the pla
 - [`roadmap.md`](roadmap.md) — staged path and current status appendix
 
 **Decisions and evidence**
-- [`docs/decisions/`](docs/decisions/) — eighteen decision records, with supersessions preserved rather than edited away
+- [`docs/decisions/`](docs/decisions/) — eighteen decision records, with supersessions preserved rather than edited away. What building the system corrected about the thesis is recorded in [`docs/product-thesis.md`](docs/product-thesis.md#what-building-it-taught-us)
 - [`docs/evaluations/`](docs/evaluations/) — gate rubrics registered before each run, and the judged findings
 - [`docs/incidents/`](docs/incidents/) — production defects and what they changed
 - [`docs/deferred-work.md`](docs/deferred-work.md) — the open register
