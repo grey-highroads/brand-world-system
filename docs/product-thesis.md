@@ -1,5 +1,7 @@
 # Persistent Brand Intelligence and Production Systems
 
+> This thesis was written before the system was built. It has been revised against what building it proved, on 2026-08-24. The argument held. Three things it did not anticipate are recorded in [What building it taught us](#what-building-it-taught-us), and the sections below carry the corrections.
+
 ## Executive thesis
 
 Most AI tools for brand and marketing work treat the brand as temporary prompt context. A user uploads a guide, pastes a brief, adds references, and asks a model to produce something. The context disappears when the task ends. Approved assets are mixed with inferred ideas. Corrections are trapped in chat history. The next request begins with another attempt to explain the brand.
@@ -16,6 +18,8 @@ The product must separate two workflows:
 This separation resolves a tension exposed by Product World Preview (PWP) and Riggg. PWP is strongest when it interprets incomplete evidence, constructs a point of view, and describes a lived brand world. It becomes overloaded when it must also render, protect every asset, and judge every output in the same pass. Riggg is strongest when it inherits explicit canon and produces within narrow rules. Without canonical assets and relationships, however, it has nothing reliable to preserve.
 
 Together, the two systems reveal a larger commercial opportunity: a reusable foundation for private brand production systems that can support both creative synthesis and controlled execution without confusing the two.
+
+The strategic case rests on where value accrues. Rendering quality is commoditizing. Each new model closes the distance on fidelity, and any advantage built on being good at prompting a particular model expires when that model is replaced. A structured, governed, portable representation of what a brand is and what it is permitted to do does not commoditize. It appreciates as approved work accumulates, and it survives the model underneath it being swapped out. The brand model is therefore the product, and generation is a replaceable consumer of it.
 
 ## The problem with prompt-only brand systems
 
@@ -96,6 +100,20 @@ Production contains channel and execution rules: formats, templates, technical c
 
 Memory contains job history, prompts, generated assets, approvals, rejections, corrections, performance signals, repeated preferences, token and cost records, and failure cases. Memory allows the system to improve while keeping historical behavior auditable.
 
+### Visual grammar as a first-class artifact
+
+This thesis originally listed visual grammar as an output of the world-building workflow without saying what kind of object it was. Building the system established that it has to be an artifact rather than a scattering of principles, and ADR 0016 makes it one.
+
+Visual grammar is a durable, versioned, editable account of how the brand looks, restricted to what a camera can see. It covers the people who appear and how they are cast, the era and condition of objects, the physical character of places, how light behaves, the camera settings that produce the brand's finish, and the visual territory the brand refuses. Register words such as documentary or editorial are permitted only as shorthand that resolves to stated settings in the same entry, never on their own.
+
+The reason it must be an artifact is a lesson recorded in the decision trail. Without one, per-job craft is invented from a summary every time, and instructions tightened three separate times were each satisfied at their weakest available reading, because nothing specific existed for them to reach.
+
+### Governed records alongside the domains
+
+Some knowledge is too consequential to live inside regenerated prose. Claims are one class. Refusals are another. Both are stored as governed records with stable identity, human rulings, supersession rather than deletion, and an audit trail, and both survive every re-synthesis of the brain.
+
+This is not an implementation detail. It follows from a measured property of the synthesis step, recorded below.
+
 Every entity belongs to one primary domain and carries only the metadata required by its entity type and applicable governance dimensions. Governance role distinguishes canonical from contextual entities; lifecycle records review state; epistemic origin and provenance record where knowledge came from. Confidence is required for inferred knowledge and model-generated assertions, while generated artifacts receive evaluation results. Production effects belong to scoped rules or entity-policy relationships rather than indiscriminately to every entity. Nothing becomes canonical without approval, and approval does not automatically make an entity canonical.
 
 ## Production policy belongs to configured workflow stages
@@ -135,6 +153,36 @@ The lesson is that Riggg represents an effective production layer, but that laye
 ### The combined lesson
 
 PWP taught us how to construct a brand world from evidence. Riggg taught us how to maintain a brand world through production. A unified system needs both creation and control, with an explicit boundary between them.
+
+## What building it taught us
+
+Three findings from implementation revised this thesis rather than illustrating it.
+
+### Synthesis is a sampler, so anything consequential must be a governed record
+
+Running the same brand through full synthesis three times, from identical sources under identical instructions, produced three different sets of brand guardrails. No guardrail was shared across all three runs on either test brand. Almost none were shared between any two. Not one currently approved refusal survived in any form, including a client's approved refusal of fear-based patient depictions that compiles into production prompts today.
+
+This is not a model defect. Synthesis samples at temperature from a distribution of legitimate refusals, and each run spends a small budget on whichever defensible concerns that draw surfaced. Every individual output reads as reasonable.
+
+The failure mode it creates is the dangerous kind. A bad refusal would be caught in review. A good refusal missing is an absence, and an approval surface with no diff and no memory cannot show an absence. A client who rebuilds their brain gets different protections, in different words, covering partly different ground, and approval governs whether the new brain is adopted rather than what changed inside it.
+
+The correction, ADR 0017: synthesis proposes and never authors. Refusals became a governed record per client. Fresh synthesis output is diffed against that record by concern rather than by wording, unmatched proposals surface for a ruling, and absence in a run means nothing and triggers nothing. The model's real strength, that across runs it collectively surfaces more good refusals than any single author, becomes an asset. Every rebuild is a scouting run instead of a coin flip.
+
+The general principle is broader than refusals. Any knowledge whose absence would be silent belongs in a governed record, not in regenerated prose.
+
+### The renderer obeys physical facts and ignores description
+
+Across roughly thirty renders, one property held. Concrete topology is obeyed: counts, positions, a single action per subject, surface states with a stated cause, named light source positions. Abstract perceptual targets are partially obeyed or ignored: words like natural or unperformed, numeric ratios, adjectives about mood. A strong early positive statement also defeats a later qualifier that contradicts it.
+
+This has a direct consequence for the whole system. Governance language written for a marketer to read compiles badly into an instruction for an image model. Everything that reaches the render has to be rewritten in the physical register or it does not survive the trip.
+
+### The failure was silence, not volume
+
+One compiled prompt ran roughly 2,610 words and was 49 percent prohibitions, with scene content at 10 percent. The obvious diagnosis was bloat, and the obvious remedy was subtraction. A phase of work was planned around it, with a word count gate registered in advance.
+
+The gate failed, and it was mis-specified. Subtraction of roughly 250 words was individually invisible in the output. Every intervention that visibly improved renders added concrete language in a strong early position, roughly 900 words of it. Four of the five axes fixed in that session were absences rather than errors, and the renderer had been filling each silence with consensus.
+
+Both halves of that bet are recorded in the decision trail rather than the wrong half being edited away. The corrected principle: when quality plateaus, ask which axis nobody has written to yet.
 
 ## System boundaries
 
@@ -241,3 +289,13 @@ The product is a persistent brand intelligence system with configurable producti
 Workflow one constructs and governs the brand brain and its canon. Workflow two produces from that brain through configured client workflows. Stage-level policy determines how tightly each part of production follows canon; constrained, editorial, and hybrid presets make repeated configuration easier without becoming the user experience. PWP supplies the pattern for inference and world-building; Riggg supplies the pattern for controlled execution. The brand brain connects them and becomes more valuable as approved work, corrections, and evidence accumulate.
 
 The immediate objective is not to build a universal SaaS product. It is to define a coherent implementation kit, prove it with contrasting fixtures, and deploy one valuable workflow at a time. If the schema, policy, evaluation, and learning loop hold across those cases, the system can turn bespoke brand work into a repeatable and profitable product capability.
+
+## Where the argument stands
+
+The system is deployed and two client brands run through it, one B2B and one emerging consumer packaged goods, chosen to be unalike. The schema held across both. Policy compiles into real generation. Governance survived contact with production deadlines.
+
+The engineering is not enterprise hardened and does not claim to be. There is no role-based access control, no single sign-on, no formal service commitment, and test coverage is fixture-driven rather than exhaustive. Those gaps are tracked rather than discovered.
+
+What remains genuinely unproven is narrower than it was and worth stating plainly. Inference quality has not been measured against no inference. The render evaluation is an unmeasured judge and stays advisory until a real reviewer's agreement rate says otherwise. Whether a governed brand model produces better work than a well-prompted one at comparable cost is not yet established on volume.
+
+Hardening a validated model is ordinary work. Discovering the model was wrong after hardening it is not. That is the risk this sequence was chosen to avoid.
