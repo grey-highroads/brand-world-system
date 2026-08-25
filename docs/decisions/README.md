@@ -15,6 +15,9 @@ Use sequential filenames such as `0001-persist-brand-canon.md`. Superseded decis
 
 ## Decision index
 
+Status reflects where a decision sits in this repository's practice, not whether the work shipped. Accepted means the decision is settled and its consequences are absorbed. Proposed means the decision is made and being built against while its evidence is still being gathered, so a proposed record may already have shipped steps. Each entry notes what has been ruled, shipped, or parked.
+
+
 - [`0001-separate-world-building-and-production.md`](0001-separate-world-building-and-production.md), Accepted
 - [`0002-model-canon-as-a-governed-view.md`](0002-model-canon-as-a-governed-view.md), Accepted
 - [`0003-compile-and-snapshot-production-policy.md`](0003-compile-and-snapshot-production-policy.md), Superseded in part by ADR 0005
