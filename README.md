@@ -1,38 +1,58 @@
 # Brand World System
 
-Persistent brand intelligence and governed production infrastructure.
+Persistent brand intelligence and governed production infrastructure. Deployed, with two client brands running through it.
 
-Brand World System builds a durable brand brain and runs controlled creative production on top of it. Evidence goes in, a governed brand model comes out, and every generated asset is compiled from that model under an explicit policy rather than from a prompt someone typed. It grows from two prior efforts: Product World Preview (PWP) showed how to infer and articulate a brand world from incomplete evidence, and Riggg showed how to produce consistently when canonical rules and assets are explicit.
+## The problem
 
-The system is running. Two client brands are onboarded and producing governed imagery and copy through a hosted installation.
+Most AI tools treat a brand as something you explain again every time you want something made. You upload the guidelines, paste the brief, attach a few references, describe what you want. The tool makes it. Then the context disappears.
 
-## Core model
+Next week you do it again. The approved logo and somebody's guess about the brand's tone went into the same box, so the tool had no way to know which one it was allowed to change. The correction you gave it Tuesday is buried in a chat nobody can find.
 
-The system separates two jobs that are often collapsed into one prompt or application:
+That is the actual cost. Not that the output is bad, because often it isn't. It's that the work of explaining the brand never compounds, and nobody can answer why a given asset came out the way it did.
 
-1. **Build the brand brain.** Ingest evidence, resolve contradictions, register canonical assets, model the brand world, record approvals, and preserve what the organization learns.
-2. **Produce from the brand brain.** Interpret a request, retrieve relevant canon, apply a production policy, compile a generation package, render it, evaluate the result, and route feedback back as candidate rules.
+## The bet
 
-Configured workflow stages may use three reusable creative-control presets:
+Rendering quality is commoditizing. Every model release closes the distance on fidelity, and any advantage built on being good at prompting a particular model expires when that model is replaced.
 
-- **Constrained:** fidelity to approved assets and rules outranks novelty.
-- **Editorial:** the system may synthesize broadly while expressing the brand's point of view.
-- **Hybrid:** canonical elements remain locked inside a newly generated context.
+What does not commoditize is a structured, governed, portable account of what a brand is and what it is permitted to do. That asset appreciates as approved work accumulates, and it survives the model underneath being swapped out.
 
-These are internal configuration presets, not global brand types or user-facing switches. Ordinary users choose workflows built around real jobs, and one workflow may use different presets at different stages.
+So this system is built the other way around from most tools in the category. The brand model is the product. Generation is a replaceable consumer of it.
 
-## What is built
+## What runs today
 
-- **Brand brain.** Source intake from URLs, text, and uploads, with a Firecrawl fallback for bot-protected pages. OpenAI synthesis into a structured brand model covering identity, lived world, visual grammar, aspiration, and provenance. Review, approval, versioning, and incremental update from an approved baseline.
-- **Products as governed records.** Per-product synthesis with evidence-fidelity discipline, candidate and approved lifecycle, re-synthesis, review questions, and an approved-but-incomplete production warning.
-- **Production compiler.** A deterministic, framework-independent library that resolves canon, scope, and policy into a portable generation package. Fixture-driven tests and versioned JSON Schema contracts.
-- **Renderer.** OpenAI images behind an adapter, with deterministic composition of protected assets onto generated backgrounds.
-- **Look library.** Fourteen named looks compiled into the prompt as a governed world block, with a stated photorealistic ban and a human texture floor under every look.
-- **Governed copy.** Copy derived from scoped brand claims and audited against them before it reaches an image or a caption.
-- **Refusals.** Brand prohibitions decomposed, assigned, and compiled into avoid-clauses at generation time, stored as durable records per client.
-- **Studio application.** Deployed on Vercel with per-client isolation, blob storage, campaign workspaces, an output log, evaluation, and approval.
+A hosted studio with two client brands onboarded, one B2B and one emerging consumer packaged goods, chosen to be unalike so the schema would have to hold across both.
 
-## Repository map
+- **Brand brain.** Source intake, synthesis into a structured brand model, review, approval, versioning, and incremental update from an approved baseline. Every statement carries where it came from and whether a person approved it.
+- **Products as governed records,** with a candidate and approved lifecycle and evidence-fidelity discipline.
+- **Production compiler.** A deterministic library that resolves canon, scope, and policy into a portable generation package, under versioned schema contracts.
+- **Renderer,** with deterministic composition of protected assets onto generated backgrounds.
+- **Look library.** Fourteen named looks compiled as a governed world block, with a stated photorealistic ban and a human texture floor.
+- **Governed copy,** derived from scoped brand claims and audited against them before it ships.
+- **Refusals.** Brand prohibitions decomposed, assigned, and compiled into the generation as things to avoid.
+
+## What building it proved
+
+Three findings changed the design rather than illustrating it. All three are in the decision record with the evidence attached.
+
+**Synthesis is a sampler, so anything consequential has to be a governed record.** The same brand run through synthesis three times, from identical sources under identical instructions, produced three different sets of brand guardrails. No guardrail was shared across all three runs on either test brand. Not one currently approved refusal survived, including a healthcare client's approved rule against fear-based depictions of patients.
+
+That is the dangerous kind of failure. A wrong rule gets caught in review. A missing rule doesn't, because nobody reviews an absence. The fix was to change what a rule is: the model proposes, a person rules, and the rule stays until a person retires it. The model keeps the thing it's good at, which is surfacing concerns nobody thought of, and loses the thing it was bad at, which is quietly dropping a protection.
+
+**The renderer obeys physical facts and ignores description.** Across roughly thirty renders, concrete topology was obeyed and abstract perceptual targets were not. Counts, positions, one action per subject, surface states with a stated cause, named light positions. Words like natural or unperformed did nothing. Governance language written for a marketer to read compiles badly into an instruction for an image model.
+
+**The failure was silence, not volume.** One compiled prompt ran 2,610 words and was 49 percent prohibitions. The obvious diagnosis was bloat and the obvious fix was subtraction, so a gate was registered in advance around word count. It failed, and it was mis-specified. Cutting 250 words was invisible. Every intervention that visibly improved output added concrete language in a strong early position. Four of the five things fixed that session were absences rather than errors, and the model had been filling each silence with consensus. Both halves of that bet are in the record. The corrected principle: when quality plateaus, ask which axis nobody has written to yet.
+
+## What this is not
+
+Not a prompt builder. Not a general creative platform. Not a replacement for a DAM or a project tool. It does not publish without human approval, and it does not promise pixel-perfect reproduction through prompt instructions, which is exactly why exact assets are composited rather than generated.
+
+The engineering is not enterprise hardened and does not claim to be. No role-based access control, no single sign-on, no formal service commitment, and test coverage is fixture-driven rather than exhaustive. Those gaps are tracked, not discovered.
+
+What is proven is the harder part. The schema held across two unrelated brands. Policy compiles into real generation. Governance survived contact with production deadlines. Hardening a validated model is ordinary work. Discovering the model was wrong after hardening it is not.
+
+## Where to start
+
+New here, read [`docs/product-primer.md`](docs/product-primer.md). It is the plain-language walkthrough and assumes nothing.
 
 **Product and rationale**
 - [`docs/product-thesis.md`](docs/product-thesis.md) — rationale, product model, boundaries, and commercial opportunity
@@ -43,8 +63,8 @@ These are internal configuration presets, not global brand types or user-facing 
 - [`roadmap.md`](roadmap.md) — staged path and current status appendix
 
 **Decisions and evidence**
-- [`docs/decisions/`](docs/decisions/) — eighteen architectural and product decision records, with supersessions preserved
-- [`docs/evaluations/`](docs/evaluations/) — gate rubrics pre-registered before each run, and the judged findings
+- [`docs/decisions/`](docs/decisions/) — eighteen decision records, with supersessions preserved rather than edited away
+- [`docs/evaluations/`](docs/evaluations/) — gate rubrics registered before each run, and the judged findings
 - [`docs/incidents/`](docs/incidents/) — production defects and what they changed
 - [`docs/deferred-work.md`](docs/deferred-work.md) — the open register
 
@@ -61,26 +81,13 @@ These are internal configuration presets, not global brand types or user-facing 
 - [`api/`](api/) — serverless routes for brain, production, products, clients, and storage
 - [`src/`](src/) — brand brain, claims, compiler, production, refusals, renderers, and scope resolution
 - [`test/`](test/) — compiler, contract, and behavior tests
-- [`fixtures/`](fixtures/) — reference cases and the ADR gate harnesses
+- [`fixtures/`](fixtures/) — reference cases and the decision gate harnesses
 - [`docs/vercel-deployment.md`](docs/vercel-deployment.md) — hosted installation, private storage, and environment setup
 - [`docs/ui-contribution-guide.md`](docs/ui-contribution-guide.md) — working inside the design system
 
-## Working principles
+## Current work
 
-- Canon is a governed view of approved, identity-defining entities across every domain.
-- Creative freedom is a policy decision, not an accidental property of a prompt.
-- Brand knowledge stays readable. Nothing that governs an output is hidden inside model weights.
-- Architecture supports user jobs. Implementation concepts do not automatically become product features.
-- Generation is downstream of brand intelligence.
-- Approved outputs, corrections, and failures improve future work without silently rewriting foundational canon.
-- Shared infrastructure stays separate from private client data and brand-specific configuration.
-- Gates are pre-registered before the run, and a failed gate is recorded as failed.
-
-## Status
-
-The system is deployed and in use with two client brands. Brand brain synthesis, product records, governed copy, the production compiler, the look library, and the refusals bootstrap are all shipped and running against real client storage.
-
-Current work is ADR 0018, compiling scene-relevant prompts and governing looks as a brand slate. ADR 0016 remains proposed after its parity runs returned partial, with people and guardrails both judged unstable. ADR 0017 step 2 is pre-registered and parked. Open items are tracked in [`docs/deferred-work.md`](docs/deferred-work.md).
+ADR 0018, compiling scene-relevant prompts and governing looks as a brand slate. ADR 0016 remains proposed after its parity runs came back partial, with people and guardrails both judged unstable. ADR 0017 step 2 is registered and parked. Open items are in [`docs/deferred-work.md`](docs/deferred-work.md).
 
 Run it from the repository root:
 
