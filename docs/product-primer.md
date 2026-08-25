@@ -76,6 +76,18 @@ Three mechanisms, and all three are readable.
 
 This is the deliberate divergence from the obvious approach. The common way to hold a brand steady in generated output is to fine-tune a model on brand imagery. That works, and it has a ceiling. The knowledge exists only as weights nobody can read, it cannot represent an aspiration the brand has not yet achieved because it learned from pictures of what the brand already is, and changing it means re-curating a corpus and retraining. Here the knowledge is written down. Changing it means changing the sentence. The trade is real and it runs the other way too, since declared rules require someone to author them and fine-tuning skips that meeting. The bet is that the meeting is worth it once you are running more than one brand and someone has to answer for why an asset came out the way it did.
 
+## Aspiration
+
+Everything above describes holding a brand steady. This section is about letting it move, and it is the part of the system with no equivalent elsewhere.
+
+Every other way of keeping generated work on-brand learns from what the brand already is. Train on the brand's images, pull from its asset library, follow its style guide. Each of those reproduces the past well and offers nothing for a brand trying to become something. The brand that wants to evolve has to step outside the system to do it, which is the moment consistency falls apart.
+
+Here, a direction the brand is reaching toward is its own kind of knowledge. When a source is brought in as a direction rather than a description, what it implies about people, era, materials, and light is written into the brand's visual grammar and marked as aspiration. It is never presented as a fact about the brand today. Once a person approves it, it carries full weight in production, because the model needs direction and the person needs the label. The brand moves deliberately without anyone pretending it has already arrived.
+
+The clearest case is a reference a brand admires and cannot use. Most systems turn that into a prohibition and stop, which means a declared ambition reaches production only as a rule about what not to do. This system authors the brand's own version of that territory instead, with original forms carrying no borrowed identity, and keeps the prohibition at the edge of it. The grammar opens the ground and the guardrail marks where it ends.
+
+This is also why the system gets better as models do. What limited a brand from reaching a territory it had not yet earned was always the rendering. Better models make declared aspirations more achievable. Governance does not improve when the model improves. Aspiration does.
+
 ## Review, revision, and learning
 
 Every job retains its inputs, retrieved context, compiled instructions, model and version, output, evaluation, and cost. When something looks wrong you can find out why, which is a governance requirement before it is a debugging convenience.

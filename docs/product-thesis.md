@@ -108,6 +108,20 @@ Visual grammar is a durable, versioned, editable account of how the brand looks,
 
 The reason it must be an artifact is a lesson recorded in the decision trail. Without one, per-job craft is invented from a summary every time, and instructions tightened three separate times were each satisfied at their weakest available reading, because nothing specific existed for them to reach.
 
+### Aspiration as a first-class kind of knowledge
+
+Governance is the practical half of the system. It is not the defensible half. Locking approved assets is table stakes and enforcing prohibitions is risk work that every serious operator eventually does.
+
+The defensible position is that a brand can be governed and still move.
+
+Every evidence-based approach to brand consistency is structurally backward-looking, because each one learns from what the brand already is. A declared direction the brand has not yet earned cannot be represented at all in a system whose only inputs are descriptions of the present. The brand that wants to evolve leaves the system to do it, and consistency breaks at exactly the moment it matters most.
+
+This system records aspiration with its own origin, distinct from what is observed and what is inferred, and never labels it as a fact about the brand today. Once approved it compiles at full strength with no epistemic hedging, because the renderer needs direction and the human needs the label. Origin never sets compile weight. If an aspiration should steer more softly, a person edits the brain rather than the compiler dampening by origin.
+
+The operating rule is substitution rather than suppression. When a source is supplied as a direction the brand is reaching toward, synthesis authors the brand's own physical version of that territory into the relevant grammar sections: what the people wear in that world, what era the objects belong to, what the rooms are made of, how the light behaves. Original forms carrying no readable third-party identity. The prohibition derived from the same source remains and continues to compile. The two are a pair with different jobs, the grammar opening the territory and the guardrail marking its edge, and the failure this corrects is a system where only the line existed.
+
+This is also where model progress works for the system rather than against it. What prevented a brand from reaching an unearned territory was always the rendering. Every capability gain makes a declared aspiration more executable. Governance does not improve when the model improves; it only becomes more necessary. Aspiration compounds with the capability everyone else is competing on.
+
 ### Governed records alongside the domains
 
 Some knowledge is too consequential to live inside regenerated prose. Claims are one class. Refusals are another. Both are stored as governed records with stable identity, human rulings, supersession rather than deletion, and an audit trail, and both survive every re-synthesis of the brain.
