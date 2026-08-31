@@ -79,6 +79,65 @@ test("the festival scene that beat the person gate now compiles the face rule", 
   assert.match(pkg.prompt, /No centered, close, frontal face looking into the lens/);
 });
 
+// Restored later on 2026-08-31: authored brief and product exclusions compile
+// as one avoid sentence at the end of the compact Protection block. The four
+// tests below pin the sentence shapes and the byte-identical no-exclusions case.
+test("a brief exclusions value compiles verbatim into the Protection section and audits as carried", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: { ...brief(), exclusions: "No showroom polish or readable copy." },
+    references: [],
+  });
+  const protection = pkg.sections.find((section) => section.title === "Protection");
+  assert.match(protection.body, /Avoid the following, per the brief: No showroom polish or readable copy\./);
+  assert.doesNotMatch(protection.body, /per the product record/);
+  const audited = pkg.constraintAudit.find((entry) => entry.source === "Brief exclusion");
+  assert.equal(audited.status, "carried");
+});
+
+test("product record exclusions compile their avoid clause in Protection", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: { ...brief(), exclusions: "" },
+    references: [],
+    product: { product_id: "p1", product_name: "Fallow Jar", one_true_thing: "Quiet.", visual_direction: "Plain.", exclusions: ["No droplets", "No stacked jars"], review_questions: [] },
+  });
+  const protection = pkg.sections.find((section) => section.title === "Protection");
+  assert.match(protection.body, /Avoid the following, per the product record: No droplets; No stacked jars\./);
+  assert.doesNotMatch(protection.body, /per the brief/);
+});
+
+test("brief and product exclusions together compile as one sentence, brief first", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: { ...brief(), exclusions: "No showroom polish" },
+    references: [],
+    product: { product_id: "p1", product_name: "Fallow Jar", one_true_thing: "Quiet.", visual_direction: "Plain.", exclusions: ["No droplets"], review_questions: [] },
+  });
+  const protection = pkg.sections.find((section) => section.title === "Protection");
+  assert.match(protection.body, /Avoid the following, per the brief and the product record: No showroom polish; No droplets\./);
+});
+
+test("with no exclusions anywhere the Protection block is byte identical to head", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: { ...brief(), exclusions: "" },
+    references: [],
+  });
+  const protection = pkg.sections.find((section) => section.title === "Protection");
+  // The exact head output for a scene with no locked asset and no display
+  // copy, frozen here as a literal so a drift in the always-on sentences
+  // fails loudly.
+  assert.equal(
+    protection.body,
+    "Any surface that would carry writing, including signs, screens, menus, and posters, is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text anywhere. Do not render any text into the image beyond what appears on the supplied product.",
+  );
+});
+
 test("template and sales-enablement paths compile no People section", () => {
   for (const placement of ["Brand template", "Sales enablement"]) {
     const pkg = compileBrandWorldImagePackage({

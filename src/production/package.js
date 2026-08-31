@@ -399,6 +399,7 @@ function compileProductSectionForImage(product) {
     parts.push(`This output is for the product "${product.product_name}."`);
   }
   if (product.visual_direction) parts.push(`Visual direction: ${cleanText(product.visual_direction)}`);
+  // Product exclusions compile in the Protection block beside the other depiction rules, not here.
   return parts.join(" ");
 }
 
@@ -652,11 +653,14 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     {
       title: "Protection",
       // Since 2026-08-31 the scene path compiles the compact block from
-      // prompt-craft.js in place of the long form. Guardrails, product rules,
-      // and brief exclusions stay fully recorded in treatments, the constraint
-      // audit, and storage; the scene prompt stops reciting them, and the
-      // audit honestly reports them as not carried. Template and sales paths
-      // are unchanged. See docs/findings-2026-08-31-prompt-reset.md.
+      // prompt-craft.js in place of the long form. Guardrails stay fully
+      // recorded in treatments, the constraint audit, and storage; the scene
+      // prompt stops reciting them, and the audit honestly reports them as
+      // not carried. The brief's authored exclusions and the product record's
+      // exclusions were restored later the same day as one avoid sentence
+      // inside the compact block, so the audit reports them as carried again.
+      // Template and sales paths are unchanged.
+      // See docs/findings-2026-08-31-prompt-reset.md.
       body: (isTemplate || isSalesEnablement)
         ? [
             protection,
@@ -667,7 +671,12 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
             product?.exclusions?.length ? product.exclusions.map((ex) => `Product rule: ${ex}`).join(" ") : "",
             exclusions ? `Also avoid: ${exclusions}` : "",
           ].filter(Boolean).join(" ")
-        : sceneProtectionBlock({ lockedAsset, displayCopyCompiles }),
+        : sceneProtectionBlock({
+            lockedAsset,
+            displayCopyCompiles,
+            briefExclusions: exclusions,
+            productExclusions: (product?.exclusions || []).map((entry) => cleanText(entry)).filter(Boolean).join("; "),
+          }),
     },
     displayCopyCompiles
       ? {

@@ -250,16 +250,35 @@ export function protectionBlock({ lockedAsset, format, screenBearing = false, di
 // When authored display copy compiles, the second always-on sentence would
 // forbid the very text being asked for, so it is dropped and the display copy
 // block's own instruction governs rendered text.
+//
+// Restored later on 2026-08-31: the brief's authored exclusions and the
+// product record's exclusions compile as one final avoid sentence. They are
+// authored depiction intent, the same class of content as the scene text,
+// not the governed prohibition recital the reset removed, which stays cut.
+// The authored values compile byte verbatim inside the sentence, never
+// summarized, expanded, or reordered, because the constraint audit verifies
+// carriage by exact substring and a reworded value would audit as not
+// carried. A terminal period is added only when the assembled text does not
+// already end in terminal punctuation, so the verbatim substring survives.
 const SCENE_TEXT_SAFETY = "Any surface that would carry writing, including signs, screens, menus, and posters, is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text anywhere.";
 const SCENE_NO_RENDERED_TEXT = "Do not render any text into the image beyond what appears on the supplied product.";
 const SCENE_ASSET_FIDELITY = "The supplied product image governs artwork and geometry: reproduce its logo, typography, colors, proportions, and silhouette exactly, and do not redraw or reinterpret any of it. Light it from this scene, with a contact shadow where it rests, color picked up from what sits beside it, and the same focus and grain as the rest of the frame.";
 const SCENE_SINGLE_READABLE_UNIT = "Exactly one unit of the product in the frame carries readable branding. Any other unit is turned away, occluded, cropped, or defocused so no lettering is legible on it.";
 const SCENE_STATE_LOCK = "The product is closed and sealed exactly as supplied. Do not render it opened, tipped, or with contents visible.";
 
-export function sceneProtectionBlock({ lockedAsset = null, displayCopyCompiles = false } = {}) {
+function terminal(text) {
+  return /[.!?]$/.test(text) ? text : `${text}.`;
+}
+
+export function sceneProtectionBlock({ lockedAsset = null, displayCopyCompiles = false, briefExclusions = "", productExclusions = "" } = {}) {
   const lines = [SCENE_TEXT_SAFETY];
   if (!displayCopyCompiles) lines.push(SCENE_NO_RENDERED_TEXT);
   if (lockedAsset) lines.push(SCENE_ASSET_FIDELITY, SCENE_SINGLE_READABLE_UNIT, SCENE_STATE_LOCK);
+  const brief = clean(briefExclusions);
+  const product = clean(productExclusions);
+  if (brief && product) lines.push(terminal(`Avoid the following, per the brief and the product record: ${brief}; ${product}`));
+  else if (brief) lines.push(terminal(`Avoid the following, per the brief: ${brief}`));
+  else if (product) lines.push(terminal(`Avoid the following, per the product record: ${product}`));
   return lines.join(" ");
 }
 
