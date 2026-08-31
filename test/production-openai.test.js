@@ -61,6 +61,37 @@ test("the brand world package is deterministic and preserves the approved Brain 
   assert.doesNotMatch(first.prompt, /SLAKE|Yuzu Ginger|4pm Reset/);
 });
 
+// Second 2026-08-31 ruling: the word-list person gate is retired and the face
+// framing rule compiles on every scene render. The rule opens with "When a
+// person appears," so it is self-conditional. This scene is the recorded miss
+// that forced the change: it names no person, the retired gate returned false,
+// and a person appeared in the render with no framing rule.
+test("the festival scene that beat the person gate now compiles the face rule", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: { scene: "At a music festival like bonaroo or cochella.", placement: "Instagram feed", format: "4:5 portrait" },
+    references: [],
+  });
+  const people = pkg.sections.find((section) => section.title === "People");
+  assert.ok(people, "the People section compiles on a scene that names no person");
+  assert.match(people.body, /When a person appears at primary scale/);
+  assert.match(pkg.prompt, /No centered, close, frontal face looking into the lens/);
+});
+
+test("template and sales-enablement paths compile no People section", () => {
+  for (const placement of ["Brand template", "Sales enablement"]) {
+    const pkg = compileBrandWorldImagePackage({
+      approvedBrain: approvedBrain(),
+      brainVersion: 1,
+      brief: { scene: "A soft gradient surface with open space at the left.", placement, format: "16:9 landscape" },
+      references: [],
+    });
+    assert.equal(pkg.sections.some((section) => section.title === "People"), false, `${placement} compiled a People section`);
+    assert.doesNotMatch(pkg.prompt, /three-quarter turn/);
+  }
+});
+
 test("production uses Images edits for selected source images and saves a recoverable job", async () => {
   let savedJob = null;
   let renderCalls = 0;

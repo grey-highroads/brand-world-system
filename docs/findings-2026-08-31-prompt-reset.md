@@ -54,3 +54,7 @@ The range is a report, not a blocker. The owner judges renders, not counts.
 ## Reversal path
 
 One revert of this commit restores the previous prompt shape. Nothing was deleted: the human texture clauses, `worldDirection`, `rejectsDirection`, and the long-form protection compilation all remain in the tree, uncalled on the scene path.
+
+## Amendment, later on 2026-08-31: the person gate is retired
+
+The word-list person gate (`PERSON_WORDS` and `frameCarriesPeople`) is deleted and the face framing rule now compiles on every scene render. The festival assignment, "At a music festival like bonaroo or cochella," is the recorded miss that forced the change: it names no person, the gate returned false, and a person appeared in the render with no framing rule. (Verified from the render review.) The rule opens with "When a person appears," so it is self-conditional, and the roughly 57 word cost on personless scenes is accepted because the clause constrains a person only if one appears. The invitation risk, that a paragraph about faces coaxes a person into a frame that was never asked to have one, is Assumed low, and the owner's fixture renders are the check. Template and sales-enablement paths stay excluded from the People section exactly as they are from Capture. The festival scene is held as a regression test.

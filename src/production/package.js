@@ -408,43 +408,6 @@ function referenceDirection(reference) {
   return `${reference.source.name}. ${reference.influence} influence for ${reference.role}. ${instruction}${exclusions ? ` Do not carry over: ${exclusions}` : ""}`;
 }
 
-// Is a person in this frame.
-//
-// The human texture floor describes what a human being is made of, so it has
-// nothing to say to a frame with nobody in it. Until this commit it compiled
-// under every look on every scene, which spent roughly a hundred and thirty
-// words of a budget this phase exists to reduce on a can sitting on a counter,
-// and stated as fact that a face in the frame is asymmetric and zoned when the
-// assignment named no face at all.
-//
-// Three fields are read: the scene, the composition, and the props. The scene
-// writer authors people explicitly when the frame has them, and a hand written
-// brief names them in the same three places. Lighting is not read, because a
-// lighting note describes the source rather than what it falls on.
-//
-// The word list is deliberately generous and the check is deliberately one
-// directional. A false positive costs a texture paragraph on a frame that did
-// not need it, which is the behavior at head. A false negative costs a
-// slightly plastic face. "human" is deliberately absent from the list: it
-// matches "human resources", which is ordinary B2B scene vocabulary, and every
-// scene that has an actual person in it names them some other way. Neither failure countermands the brief, which is why
-// the same check does not compile an exclusion; see the note on
-// `protectionBlock` in prompt-craft.js.
-const PERSON_WORDS = new RegExp(
-  "\\b(?:person|persons|people|man|men|woman|women|boy|boys|girl|girls|child|children|kid|kids"
-    + "|adult|adults|teenager|teenagers|someone|somebody|figure|figures|portrait"
-    + "|hand|hands|arm|arms|shoulder|shoulders|face|faces|skin"
-    + "|customer|customers|shopper|shoppers|worker|workers|employee|employees|staff|colleague|colleagues"
-    + "|barista|bartender|clerk|cashier|guest|guests|crowd|couple|passerby|passersby|bystander|bystanders"
-    + "|patient|patients|nurse|nurses|doctor|doctors|clinician|clinicians|athlete|athletes|runner|runners"
-    + ")\\b",
-  "i",
-);
-
-function frameCarriesPeople({ scene, sceneComposition, sceneProps }) {
-  return PERSON_WORDS.test([scene, sceneComposition, sceneProps].filter(Boolean).join(" "));
-}
-
 export function imageSizeForFormat(format) {
   // Own entries only. The format string arrives from the brief and reaches
   // here unvalidated, and a bare formatSizes[format] would resolve inherited
@@ -583,14 +546,6 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // exists to remove; the floor applies when no look has been chosen.
   const selectedLook = resolveLook(look);
 
-  // The person check gates the People section below. The human texture floor
-  // it used to gate stopped compiling on 2026-08-31: the clauses describe
-  // portrait distance anatomy, most frames are near to mid distance, and the
-  // 2026-08-31 review found the frontal framing, not missing anatomy language,
-  // was the plastic-face cause. The clauses stay in prompt-craft.js so
-  // reversal is one revert. See docs/findings-2026-08-31-prompt-reset.md.
-  const peopleInFrame = frameCarriesPeople({ scene, sceneComposition, sceneProps });
-
   // The world block stopped compiling into the scene-path prompt on
   // 2026-08-31. The scene writer stays briefed by the visual grammar per
   // ADR 0016 step 4, and the grammar still lives in the brain and in every
@@ -633,14 +588,18 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       // check above and docs/findings-2026-08-31-prompt-reset.md.
       body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
     },
-    // Immediately after Capture, only when the frame carries a person: one
-    // clause on how faces meet the camera. Added 2026-08-31. Known gate limit,
-    // recorded in the finding: a scene that implies people without naming them
-    // misses the word-list check and gets no face rule.
-    (isTemplate || isSalesEnablement) ? null : (peopleInFrame ? {
+    // Immediately after Capture, on every scene render since 2026-08-31 (same
+    // day, second ruling). The rule opens with "When a person appears," so it
+    // is self-conditional and safe on a personless frame. The word-list gate
+    // that used to sit here missed scenes that imply people without naming
+    // them; the festival fixture, "At a music festival like bonaroo or
+    // cochella," is the recorded miss. Template and sales elements stay
+    // excluded, as they are from Capture: neither is a photograph of a person.
+    // See docs/findings-2026-08-31-prompt-reset.md.
+    (isTemplate || isSalesEnablement) ? null : {
       title: "People",
       body: FACE_FRAMING_RULE,
-    } : null),
+    },
     // The scene-invariant middle cut, owner ruling of 2026-08-19. Four sections
     // stop compiling on the scene path: this one, the guidance sections below,
     // Audience and feeling, and Visual materials. The phase 0 baseline measured
