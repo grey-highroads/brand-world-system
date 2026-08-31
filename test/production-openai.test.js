@@ -53,9 +53,11 @@ test("the brand world package is deterministic and preserves the approved Brain 
   assert.deepEqual(first, second);
   assert.equal(first.brainVersion, 4);
   assert.equal(first.output.size, "1024x1280");
-  assert.match(first.prompt, /Fallow finds character in useful, lived-in rooms/);
+  // Updated 2026-08-31 with the compiled prompt reset: the scene path no longer recites brand prose or brief exclusions, and a person in the scene compiles the face rule.
+  assert.doesNotMatch(first.prompt, /Fallow finds character in useful, lived-in rooms/);
   assert.match(first.prompt, /A person arranging flowers/);
-  assert.match(first.prompt, /No showroom polish/);
+  assert.match(first.prompt, /three-quarter turn/);
+  assert.equal(first.brief.exclusions, "No showroom polish or readable copy.");
   assert.doesNotMatch(first.prompt, /SLAKE|Yuzu Ginger|4pm Reset/);
 });
 
@@ -211,10 +213,11 @@ test("a locked asset uses the edits endpoint with format-aware protection", asyn
   assert.equal(job.status, "complete");
   assert.equal(job.endpoint, OPENAI_IMAGE_EDITS_ENDPOINT);
   assert.equal(renderRefCount, 1);
-  // The prompt must contain the protection block, not the world-only block
-  assert.match(renderPrompt, /Preserve the supplied can exactly as pictured/);
-  assert.match(renderPrompt, /closed and sealed/);
-  assert.match(renderPrompt, /condensation/);
+  // The prompt must contain the locked-asset protection, not the world-only block.
+  // Updated 2026-08-31 with the compiled prompt reset: the scene path compiles the compact protection block.
+  assert.match(renderPrompt, /The supplied product image governs artwork and geometry/);
+  assert.match(renderPrompt, /closed and sealed exactly as supplied/);
+  assert.match(renderPrompt, /Exactly one unit of the product/);
   // The prompt must NOT contain the world-only "invented logos" language
   assert.doesNotMatch(renderPrompt, /no additional focal object/i);
   // The package should record the locked asset
@@ -282,8 +285,9 @@ test("a locked asset with creative references sends all images with the asset fi
   assert.equal(referenceOrder[1], "mood.jpg");
   assert.equal(referenceOrder.length, 2);
   // Non-product asset gets identity preservation, not packaging protection
-  assert.match(savedJob.generationPackage.prompt, /identity source of truth/);
-  assert.doesNotMatch(savedJob.generationPackage.prompt, /closed and sealed/);
+  // Updated 2026-08-31 with the compiled prompt reset: the scene path compiles the compact protection block for every locked asset kind.
+  assert.match(savedJob.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
+  assert.match(savedJob.generationPackage.prompt, /closed and sealed exactly as supplied/);
 });
 
 test("state-lock neutralization rewrites scene prose when a locked asset is present", async () => {

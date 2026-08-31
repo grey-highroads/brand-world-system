@@ -31,7 +31,8 @@ test("inferPackageFormat recognizes common CPG formats from asset metadata", () 
 test("integrationSentence adds format-specific physical behaviors", () => {
   const canResult = integrationSentence("can");
   assert.match(canResult, /condensation/);
-  assert.match(canResult, /photographed in the scene/);
+  // Updated 2026-08-31 with the compiled prompt reset: stale assertion brought current to the shipped sentence.
+  assert.match(canResult, /Place it physically in the scene/);
 
   const pouchResult = integrationSentence("pouch");
   assert.match(pouchResult, /crinkle/);
@@ -87,7 +88,9 @@ test("locked product asset gets format-aware protection with state lock", () => 
     lockedAsset: { name: "SLAKE Yuzu Can", assetType: "packaging" },
     format: "can",
   });
-  assert.match(block, /logo, label hierarchy, typography, colors, proportions/);
+  // Updated 2026-08-31 with the compiled prompt reset: stale assertion brought current to the shipped fidelity sentence.
+  assert.match(block, /governs artwork and geometry only/);
+  assert.match(block, /logo, wordmark, typography, label hierarchy/);
   assert.match(block, /closed and sealed/);
   assert.match(block, /condensation/);
   assert.match(block, /pseudo-text/);
@@ -98,7 +101,8 @@ test("non-stateful product format skips the state-lock sentence", () => {
     lockedAsset: { name: "Hero card", assetType: "packaging" },
     format: "package",
   });
-  assert.match(block, /Preserve the supplied package/);
+  // Updated 2026-08-31 with the compiled prompt reset: stale assertion brought current to the shipped fidelity sentence.
+  assert.match(block, /The supplied package governs artwork and geometry only/);
   assert.doesNotMatch(block, /closed and sealed/);
 });
 

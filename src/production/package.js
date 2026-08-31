@@ -7,10 +7,11 @@ import {
   auditConstraints,
   displayCopyBlock,
   CAPTURE_CHARACTER,
-  humanTexture,
+  FACE_FRAMING_RULE,
+  sceneProtectionBlock,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
-import { resolveLook, lookResolvesFineDetail } from "./looks.js";
+import { resolveLook } from "./looks.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 import { ownEntry } from "../lookup.js";
 
@@ -582,21 +583,22 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // exists to remove; the floor applies when no look has been chosen.
   const selectedLook = resolveLook(look);
 
-  // The human texture floor compiles only when the frame has a person in it,
-  // and only at the resolution the selected medium can deliver. Both gates
-  // serve one constraint: no two statements inside Capture may make competing
-  // claims about the same property.
+  // The person check gates the People section below. The human texture floor
+  // it used to gate stopped compiling on 2026-08-31: the clauses describe
+  // portrait distance anatomy, most frames are near to mid distance, and the
+  // 2026-08-31 review found the frontal framing, not missing anatomy language,
+  // was the plastic-face cause. The clauses stay in prompt-craft.js so
+  // reversal is one revert. See docs/findings-2026-08-31-prompt-reset.md.
   const peopleInFrame = frameCarriesPeople({ scene, sceneComposition, sceneProps });
-  const humanTextureFloor = peopleInFrame
-    ? humanTexture({ resolvesFineDetail: lookResolvesFineDetail(selectedLook) })
-    : "";
 
-  // The grammar's places and materials section answers the same question the
-  // dossier materials list answers, with scene-bound facts instead of a global
-  // vocabulary. When the world compiles, the dossier list stops, because a
-  // global material vocabulary in the prompt is where the unexplained wet and
-  // glossy surfaces in the 2026-08-17 audit came from.
-  const world = worldDirection(approvedBrain);
+  // The world block stopped compiling into the scene-path prompt on
+  // 2026-08-31. The scene writer stays briefed by the visual grammar per
+  // ADR 0016 step 4, and the grammar still lives in the brain and in every
+  // governed record; only the render prompt stops reciting it as a block.
+  // worldDirection above is kept, uncalled, so reversal is one revert.
+  // See docs/findings-2026-08-31-prompt-reset.md.
+
+  const displayCopyCompiles = Boolean(displayCopy && displayCopy.lines?.some((line) => line.text));
 
   const sections = [
     {
@@ -626,19 +628,18 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // clipped speculars on a gradient backdrop would be a defect.
     (isTemplate || isSalesEnablement) ? null : {
       title: "Capture",
-      // The look describes the photograph. The human texture floor describes
-      // what a person is made of, so it lives here rather than being restated
-      // inside each look. It follows the look so a look's own tonal rules are
-      // already established when it arrives, and it is absent entirely when
-      // the frame carries nobody.
-      body: [selectedLook ? selectedLook.line : CAPTURE_CHARACTER, humanTextureFloor].filter(Boolean).join(" "),
+      // The look's line alone since 2026-08-31. The human texture floor that
+      // used to join it here stopped compiling; see the note at the person
+      // check above and docs/findings-2026-08-31-prompt-reset.md.
+      body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
     },
-    // Third by design, immediately after Capture and before the brand prose.
-    // Templates and sales elements are excluded: neither is a scene, and a
-    // world of people, objects, and places has nothing to say to a gradient.
-    (isTemplate || isSalesEnablement) ? null : (world ? {
-      title: "The world this brand lives in",
-      body: world,
+    // Immediately after Capture, only when the frame carries a person: one
+    // clause on how faces meet the camera. Added 2026-08-31. Known gate limit,
+    // recorded in the finding: a scene that implies people without naming them
+    // misses the word-list check and gets no face rule.
+    (isTemplate || isSalesEnablement) ? null : (peopleInFrame ? {
+      title: "People",
+      body: FACE_FRAMING_RULE,
     } : null),
     // The scene-invariant middle cut, owner ruling of 2026-08-19. Four sections
     // stop compiling on the scene path: this one, the guidance sections below,
@@ -678,10 +679,11 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         ? `Palette: ${dossier.palette.map((color) => `${cleanText(color.name)} (${firstClause(color.role)}, ${cleanText(color.color)})`).join(", ")}.`
         : "",
     } : null,
-    (isTemplate || isSalesEnablement) ? null : (rejectsDirection(approvedBrain, refusals) ? {
-      title: "What this brand is not",
-      body: rejectsDirection(approvedBrain, refusals),
-    } : null),
+    // The "What this brand is not" recital stopped compiling on the scene
+    // path on 2026-08-31. Refusals remain governed records per ADR 0017 and
+    // keep reaching treatments and every stored record; the prompt stops
+    // reciting them. rejectsDirection above is kept, uncalled, so reversal is
+    // one revert. See docs/findings-2026-08-31-prompt-reset.md.
     {
       title: "Creative references",
       body: references.length
@@ -690,17 +692,25 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     },
     {
       title: "Protection",
-      body: [
-        protection,
-        isTemplate ? "Do not include any people, faces, hands, devices, screens, product packaging, or identifiable objects. The surface must work as a background layer." : "",
-        isSalesEnablement && !hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. The element is the subject, rendered cleanly for placement onto a branded background." : "",
-        isSalesEnablement && hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. Preserve the supplied template background exactly and place the element onto it." : "",
-        dossier.guardrails?.length ? dossier.guardrails.map((rule) => `${rule.title}: ${rule.body}`).join(" ") : "",
-        product?.exclusions?.length ? product.exclusions.map((ex) => `Product rule: ${ex}`).join(" ") : "",
-        exclusions ? `Also avoid: ${exclusions}` : "",
-      ].filter(Boolean).join(" "),
+      // Since 2026-08-31 the scene path compiles the compact block from
+      // prompt-craft.js in place of the long form. Guardrails, product rules,
+      // and brief exclusions stay fully recorded in treatments, the constraint
+      // audit, and storage; the scene prompt stops reciting them, and the
+      // audit honestly reports them as not carried. Template and sales paths
+      // are unchanged. See docs/findings-2026-08-31-prompt-reset.md.
+      body: (isTemplate || isSalesEnablement)
+        ? [
+            protection,
+            isTemplate ? "Do not include any people, faces, hands, devices, screens, product packaging, or identifiable objects. The surface must work as a background layer." : "",
+            isSalesEnablement && !hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. The element is the subject, rendered cleanly for placement onto a branded background." : "",
+            isSalesEnablement && hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. Preserve the supplied template background exactly and place the element onto it." : "",
+            dossier.guardrails?.length ? dossier.guardrails.map((rule) => `${rule.title}: ${rule.body}`).join(" ") : "",
+            product?.exclusions?.length ? product.exclusions.map((ex) => `Product rule: ${ex}`).join(" ") : "",
+            exclusions ? `Also avoid: ${exclusions}` : "",
+          ].filter(Boolean).join(" ")
+        : sceneProtectionBlock({ lockedAsset, displayCopyCompiles }),
     },
-    displayCopy && displayCopy.lines?.some((line) => line.text)
+    displayCopyCompiles
       ? {
           title: "Display copy",
           body: displayCopyBlock({ lines: displayCopy.lines, zone: getZone(displayCopy.zoneId), format }),

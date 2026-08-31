@@ -233,6 +233,37 @@ export function protectionBlock({ lockedAsset, format, screenBearing = false, di
 }
 
 // ---------------------------------------------------------------------------
+// Scene-path protection, reset 2026-08-31
+// ---------------------------------------------------------------------------
+
+// The compact protection block for the scene path. It replaces the long form
+// protectionBlock output and the accepted-refusals recital on that path only;
+// template and sales-enablement paths keep protectionBlock unchanged. Refusal
+// records, brand prohibitions, and claims language stay fully recorded and
+// governed in storage and stop being recited into the render prompt.
+// See docs/findings-2026-08-31-prompt-reset.md.
+//
+// The state lock sentence compiles whenever a locked asset is present, which
+// is the same condition that drives neutralizeStateLanguage in package.js. It
+// is deliberately not gated on STATEFUL_FORMATS here.
+//
+// When authored display copy compiles, the second always-on sentence would
+// forbid the very text being asked for, so it is dropped and the display copy
+// block's own instruction governs rendered text.
+const SCENE_TEXT_SAFETY = "Any surface that would carry writing, including signs, screens, menus, and posters, is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text anywhere.";
+const SCENE_NO_RENDERED_TEXT = "Do not render any text into the image beyond what appears on the supplied product.";
+const SCENE_ASSET_FIDELITY = "The supplied product image governs artwork and geometry: reproduce its logo, typography, colors, proportions, and silhouette exactly, and do not redraw or reinterpret any of it. Light it from this scene, with a contact shadow where it rests, color picked up from what sits beside it, and the same focus and grain as the rest of the frame.";
+const SCENE_SINGLE_READABLE_UNIT = "Exactly one unit of the product in the frame carries readable branding. Any other unit is turned away, occluded, cropped, or defocused so no lettering is legible on it.";
+const SCENE_STATE_LOCK = "The product is closed and sealed exactly as supplied. Do not render it opened, tipped, or with contents visible.";
+
+export function sceneProtectionBlock({ lockedAsset = null, displayCopyCompiles = false } = {}) {
+  const lines = [SCENE_TEXT_SAFETY];
+  if (!displayCopyCompiles) lines.push(SCENE_NO_RENDERED_TEXT);
+  if (lockedAsset) lines.push(SCENE_ASSET_FIDELITY, SCENE_SINGLE_READABLE_UNIT, SCENE_STATE_LOCK);
+  return lines.join(" ");
+}
+
+// ---------------------------------------------------------------------------
 // Aesthetic mode library
 // ---------------------------------------------------------------------------
 
@@ -301,6 +332,13 @@ export function protectionBlock({ lockedAsset, format, screenBearing = false, di
 // sheen, the asymmetry, and the age carried in hands and necks are all
 // structural rather than small, and they hold at any resolution, so they
 // compile under every look.
+//
+// 2026-08-31: these clauses no longer compile at all. They describe portrait
+// distance anatomy, most frames are near to mid distance, and the 2026-08-31
+// review found the frontal framing, not missing anatomy language, was the
+// plastic-face cause. The code stays so reversal is one revert. The person
+// check that gated this floor now gates the face framing rule below instead.
+// See docs/findings-2026-08-31-prompt-reset.md.
 const HUMAN_TEXTURE_CLAUSES = [
   { needsFineDetail: false, text: "Skin is not one surface with one color. It runs red at the nostrils, the ears, the cheeks, the knuckles, and anywhere the skin is thin, cooler and slightly blue or green under the eyes and around the jaw, and yellower across the forehead and the bridge of the nose. Those zones meet unevenly and are visible as differences in tone rather than blending into a single even complexion." },
   { needsFineDetail: false, text: "Sheen on skin is patchy rather than an even glow: it sits on the forehead, the nose, the tops of the cheeks, and the point of the chin, and it is absent everywhere else." },
@@ -321,6 +359,16 @@ export function humanTexture({ resolvesFineDetail = true } = {}) {
     .map((clause) => clause.text)
     .join(" ");
 }
+
+// ---------------------------------------------------------------------------
+// Face framing rule
+// ---------------------------------------------------------------------------
+
+// Added 2026-08-31. The 2026-08-31 review found the plastic-face failure came
+// from centered frontal faces presenting to the lens, not from missing anatomy
+// language, so the fix is a framing instruction rather than a texture recital.
+// Compiled as its own People section, only when the frame carries a person.
+export const FACE_FRAMING_RULE = "When a person appears at primary scale, they are engaged with a task or the scene rather than presenting to the camera. Frame faces at a three-quarter turn, shaded by a brim or hair, softened by motion or partial defocus, or turned toward what the person is doing. No centered, close, frontal face looking into the lens.";
 
 export const CAPTURE_CHARACTER = [
   "This is one exposure made by a physical camera, carrying the losses that come with that.",
