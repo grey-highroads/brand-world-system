@@ -1455,6 +1455,7 @@ const state = {
     revisionPending: false,
     rebuildRequested: false,
     rebuildConfirm: false,
+    rebuildAfterRemoval: false,
     approvedVersion: 0,
     approvedResult: null,
     pendingSourceIds: [],
@@ -3107,6 +3108,11 @@ function renderBrainSources() {
     "Sources",
     "Add material the system reads to build brand knowledge, plus the protected assets and product briefs it works from.",
     `
+      ${
+        state.brain.rebuildAfterRemoval && hasApproved
+          ? `<section class="brain-source-update-callout"><span class="brain-status danger">Rebuild needed</span><span><strong>A source this Brand Brain was built with has been removed</strong><p>The current version still carries what it learned from that source. Rebuilding reads every remaining source again and replaces the current version, along with the review decisions attached to it.</p></span><span class="brain-rebuild-actions"><button class="button primary" type="button" data-action="confirm-brain-rebuild">Rebuild from remaining sources</button><button class="button secondary" type="button" data-action="dismiss-rebuild-notice">Not now</button></span></section>`
+          : ""
+      }
       ${
         hasApproved && pending > 0
           ? `<section class="brain-source-update-callout"><span class="brain-status governed">${pending} pending</span><span><strong>You have a proposed update ready</strong><p>New material creates a proposed update. Only guidance touched by it is reconsidered, and nothing changes for production until you review and approve the next version.</p></span><button class="button primary" type="button" data-action="start-brain-synthesis">Prepare proposed update</button></section>`
@@ -9512,8 +9518,13 @@ root.addEventListener("click", (event) => {
   }
   if (action === "confirm-brain-rebuild") {
     state.brain.rebuildConfirm = false;
+    state.brain.rebuildAfterRemoval = false;
     state.brain.rebuildRequested = true;
     void startBrainSynthesis();
+  }
+  if (action === "dismiss-rebuild-notice") {
+    state.brain.rebuildAfterRemoval = false;
+    render();
   }
   if (action === "load-sample-sources") loadSampleSources();
   if (action === "open-grammar-sample") navigate("brain-grammar-sample");
@@ -9736,14 +9747,16 @@ root.addEventListener("click", (event) => {
   }
   if (action === "remove-brain-source") {
     const source = state.brain.sources.find((item) => item.id === target.dataset.id);
-    const locked = sourceHasApprovedBaseline() && !state.brain.pendingSourceIds.includes(target.dataset.id);
-    if (locked) {
-      setToast("Active sources cannot be removed here. Source retirement will be a separate reviewed change.");
-    } else {
-      state.brain.sources = state.brain.sources.filter((item) => item.id !== target.dataset.id);
-      state.brain.pendingSourceIds = state.brain.pendingSourceIds.filter((id) => id !== target.dataset.id);
-      if (source) setToast(`${source.name} removed`);
-    }
+    const active = sourceHasApprovedBaseline() && !state.brain.pendingSourceIds.includes(target.dataset.id);
+    state.brain.sources = state.brain.sources.filter((item) => item.id !== target.dataset.id);
+    state.brain.pendingSourceIds = state.brain.pendingSourceIds.filter((id) => id !== target.dataset.id);
+    // An active source shaped the current Brand Brain, so removing it leaves
+    // that influence in place until the brain is rebuilt from what remains.
+    // The Sources screen shows the rebuild prompt while this flag is set.
+    if (active) state.brain.rebuildAfterRemoval = true;
+    if (source) setToast(active ? `${source.name} removed. The Brand Brain still carries it until you rebuild.` : `${source.name} removed`);
+    void persistBrainState();
+    render();
   }
   if (action === "toggle-source-details") {
     state.brain.selectedSourceId = state.brain.selectedSourceId === target.dataset.id ? "" : target.dataset.id;
