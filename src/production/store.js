@@ -27,6 +27,28 @@ function outputPackagePathname(clientId, jobId) {
   return `${clientRoot(clientId)}/production/jobs/${jobId}/package.json`;
 }
 
+// A two-call render writes the scene it made before placing the product, under
+// a job id derived from the finished job's id. The suffix is written out in
+// `generateProductionImage` in `src/production/service.js`, which imports this
+// module, so it cannot be imported back from there. It is repeated here
+// deliberately, and changing it in one file without the other leaves a scene
+// image in storage every time an output is discarded.
+function sceneImageJobId(jobId) {
+  return `${jobId}-scene`;
+}
+
+// Everything a discard has to remove. The scene image is on the list for every
+// job, including the single-call jobs that never wrote one, because a delete of
+// a path that holds nothing is cheaper than a check that has to know which kind
+// of render made the output.
+function outputArtifactPathnames(clientId, jobId) {
+  return [
+    productionImagePathname(clientId, jobId, "png"),
+    productionImagePathname(clientId, sceneImageJobId(jobId), "png"),
+    outputPackagePathname(clientId, jobId),
+  ];
+}
+
 function outputsPathname(clientId) {
   return `${clientRoot(clientId)}/production/outputs.json`;
 }
@@ -71,7 +93,12 @@ export function createFileProductionStore(rootPath) {
     },
     async deleteOutputArtifacts(jobId) {
       const targets = [path.join(rootPath, "packages", `${jobId}.json`)];
-      for (const extension of ["png", "jpg", "webp"]) targets.push(path.join(imageRoot, `${jobId}.${extension}`));
+      for (const extension of ["png", "jpg", "webp"]) {
+        targets.push(path.join(imageRoot, `${jobId}.${extension}`));
+        // The intermediate a two-call render wrote. Absent for a single-call
+        // job, and the loop below already treats a missing file as done.
+        targets.push(path.join(imageRoot, `${sceneImageJobId(jobId)}.${extension}`));
+      }
       for (const target of targets) {
         try {
           await fs.unlink(target);
@@ -94,6 +121,8 @@ export function createFileProductionStore(rootPath) {
     },
   };
 }
+
+export { outputArtifactPathnames, sceneImageJobId };
 
 export function createVercelBlobProductionStore(options = {}) {
   const token = options.token || process.env.BLOB_READ_WRITE_TOKEN;
@@ -170,13 +199,15 @@ export function createVercelBlobProductionStore(options = {}) {
     async readOutputPackage(jobId) {
       return readJsonBlobOrNull(outputPackagePathname(clientId, jobId));
     },
-    // Discarding an output is a hard delete. The image and the package go with
-    // the log record so nothing is left to resurface or pay storage for.
+    // Discarding an output is a hard delete. The image, the scene image a
+    // two-call render left behind, and the package all go with the log record
+    // so nothing is left to resurface or pay storage for. Each delete already
+    // swallows its own failure, which is what makes it safe to ask for a scene
+    // image on the great majority of jobs that never wrote one.
     async deleteOutputArtifacts(jobId) {
-      await Promise.all([
-        del(productionImagePathname(clientId, jobId, "png"), { ...credentials }).catch(() => {}),
-        del(outputPackagePathname(clientId, jobId), { ...credentials }).catch(() => {}),
-      ]);
+      await Promise.all(
+        outputArtifactPathnames(clientId, jobId).map((pathname) => del(pathname, { ...credentials }).catch(() => {})),
+      );
     },
     // Reads an output's picture back as bytes. Added for the place on
     // background page, which draws a finished output onto a canvas. A canvas
