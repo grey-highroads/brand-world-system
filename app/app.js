@@ -63,7 +63,7 @@ const deliverables = [
 const lookOptions = [
 
   {
-    id: "neutral", label: "Neutral", note: "No filter, still a photograph",
+    id: "neutral", label: "Neutral", note: "One soft strobe in a real room",
     swatch: "linear-gradient(145deg, #d8cec2 0%, #7a6656 42%, #1b1512 100%)", filter: "contrast(1.15)",
   },
   {
@@ -1324,7 +1324,10 @@ const state = {
     sceneProps: "",
     placement: "Instagram feed",
     format: "4:5 portrait",
-    look: "neutral",
+    // No filter by default. The 2026-09-02 finding: the old default silently
+    // compiled a full look into every prompt while the picker implied nothing
+    // was applied. A filter now compiles only when the user chooses one.
+    look: "",
     assetType: "scene",
     bannerHeadline: "",
     bannerTextSide: "Left third",
@@ -1374,6 +1377,7 @@ const state = {
     // the message from the brief and the Brand Brain.
     captionOn: true,
     headlineSetOn: false,
+    filtersOn: false,
     renderCopyIntoImage: false,
     displayZone: "lower_third",
     displayFields: ["headline"],
@@ -4004,19 +4008,30 @@ function studioActiveFormatCount() {
   return state.studio.activeFormats.length;
 }
 
-// ADR 0018 phase 1 look test. One field, rendered into every studio setup
-// screen, because a look applies to any photograph regardless of where it will
-// be placed. This is a test affordance for learning whether look language
-// reaches the render at all. ADR 0018 Decision 1 keeps a product picker
-// contingent on the looks proving themselves headless first, and that ruling
-// stands.
+// ADR 0018 phase 1 look test, reshaped 2026-09-02 into an optional Filters
+// disclosure. The grid was mandatory and the default was "neutral", which
+// silently compiled a full look into every prompt; see
+// docs/findings-2026-09-02-default-filter-defect.md. A filter now applies
+// only when the user opens the disclosure and picks one. Turning it off
+// clears the choice. ADR 0018 Decision 1 keeps a product picker contingent
+// on the looks proving themselves headless first, and that ruling stands.
 function studioLookField() {
   const selected = state.brief.look || "";
-  return `
+  const open = state.studio.filtersOn || Boolean(selected);
+  const toggle = `
+            <div class="field full">
+              <button class="studio-toggle-row" type="button" data-action="toggle-studio-filters">
+                <span class="studio-toggle-track ${open ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+                <span class="studio-toggle-content">
+                  <strong>Apply a filter</strong>
+                  <span class="field-note">Optional. A filter sets how the photograph is made: the light, the film, the grain. Scene suggestions are written for the filter you choose. Off means no filter is applied.</span>
+                </span>
+              </button>
+            </div>`;
+  if (!open) return toggle;
+  return `${toggle}
             <div class="field full studio-setup-field look-field">
-              <label>Look</label>
-              <span class="field-note">How the photograph is made: the light, the film, the grain, and what that medium cannot do. Chosen first, so the scene direction is written for it.</span>
-              <div class="look-grid" role="radiogroup" aria-label="Look">
+              <div class="look-grid" role="radiogroup" aria-label="Filter">
                 ${lookOptions.map((entry) => `
                   <button
                     class="look-card ${selected === entry.id ? "selected" : ""}"
@@ -6169,11 +6184,12 @@ function renderBrief() {
               </select>
             </div>
             <div class="field">
-              <label for="look">Look</label>
+              <label for="look">Filter</label>
               <select id="look" data-action="look-change">
+                <option value=""${state.brief.look ? "" : " selected"}>None</option>
                 ${lookOptions.map((entry) => `<option value="${entry.id}"${state.brief.look === entry.id ? " selected" : ""}>${entry.label}</option>`).join("")}
               </select>
-              <span class="field-note">Sets how the photograph was made: the light, the film, the grain, and what the medium cannot do. Leave on No look to keep the shared default.</span>
+              <span class="field-note">Optional. Sets how the photograph was made: the light, the film, the grain. None applies no filter.</span>
             </div>
           </div>
 
@@ -8894,7 +8910,7 @@ root.addEventListener("click", (event) => {
   const action = target.dataset.action;
 
   if (action === "look-select") {
-    const nextLook = target.dataset.id || "neutral";
+    const nextLook = target.dataset.id || "";
     if (state.brief.look !== nextLook) {
       state.brief.look = nextLook;
       // The scene writer is briefed with the look, so directions drafted under
@@ -9077,6 +9093,16 @@ root.addEventListener("click", (event) => {
   if (action === "toggle-studio-headline-set") {
     state.studio.headlineSetOn = !state.studio.headlineSetOn;
     if (!state.studio.headlineSetOn) state.studio.renderCopyIntoImage = false;
+    render();
+  }
+  if (action === "toggle-studio-filters") {
+    state.studio.filtersOn = !(state.studio.filtersOn || Boolean(state.brief.look));
+    if (!state.studio.filtersOn && state.brief.look) {
+      state.brief.look = "";
+      // The scene writer is briefed with the filter, so directions drafted
+      // under one describe a photograph the unfiltered path would not make.
+      clearSceneSuggestions();
+    }
     render();
   }
   if (action === "draft-display-copy") void draftDisplayCopy();

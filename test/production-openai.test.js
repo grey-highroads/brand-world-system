@@ -138,6 +138,23 @@ test("with no exclusions anywhere the Protection block is byte identical to head
   );
 });
 
+// 2026-09-02 filter defect regression: the app default used to send look
+// "neutral", silently replacing the capture floor with a full look line on
+// every scene. No filter and an empty filter must both compile the floor;
+// a look line compiles only when explicitly chosen.
+test("no filter and an empty filter compile the shared capture floor, a chosen filter compiles its line", () => {
+  const base = { approvedBrain: approvedBrain(), brainVersion: 1, brief: brief(), references: [] };
+  const absent = compileBrandWorldImagePackage({ ...base });
+  const empty = compileBrandWorldImagePackage({ ...base, look: "" });
+  const chosen = compileBrandWorldImagePackage({ ...base, look: "neutral" });
+  const capture = (pkg) => pkg.sections.find((section) => section.title === "Capture").body;
+  assert.equal(capture(absent), capture(empty));
+  assert.doesNotMatch(capture(absent), /strobe/);
+  assert.match(capture(chosen), /One strobe through a large modifier/);
+  assert.equal(absent.look, null);
+  assert.equal(chosen.look?.id, "neutral");
+});
+
 test("template and sales-enablement paths compile no People section", () => {
   for (const placement of ["Brand template", "Sales enablement"]) {
     const pkg = compileBrandWorldImagePackage({
