@@ -1,7 +1,7 @@
 import { selectApprovedBaseline } from "../brand-brain/service.js";
 import { createVercelBlobProductStore } from "../products/store.js";
 import { OPENAI_IMAGE_MODEL, chooseOpenAIImageEndpoint, renderWithOpenAIImages } from "../renderers/openai-images.js";
-import { SEEDREAM_IMAGE_MODEL, chooseSeedreamImageEndpoint, renderWithSeedreamImages } from "../renderers/seedream-images.js";
+import { SEEDREAM_EDIT_ENDPOINT, SEEDREAM_IMAGE_MODEL, chooseSeedreamImageEndpoint, renderWithSeedreamImages } from "../renderers/seedream-images.js";
 import { assembleClaimsSet } from "../claims/assembly.js";
 import { produceCopy } from "../copy/generate.js";
 import { displayBudgets, designFor } from "../copy/display-budget.js";
@@ -193,6 +193,17 @@ async function resolveProduct(productStore, productId) {
   return record;
 }
 
+// The call-two instruction for the two-call Seedream path. It is fixed text
+// rather than compiled text, because by the time it runs the scene already
+// exists and the only work left is swapping the drawn stand-in for the real
+// product without disturbing anything else in the frame. The orientation
+// clause is here because a hand run on 2026-09-02 came back with the label
+// upside down.
+export function productPlacementInstruction(productName) {
+  const name = String(productName || "").trim() || "product";
+  return `Replace the ${name} in Figure 1 with the one shown in Figure 2. Reproduce its label artwork, typography, colors, and proportions exactly. Keep the label upright and oriented as in Figure 2. Keep the replaced item at the same size and position it has in Figure 1. It stays closed and sealed. Keep the person, the light, and everything else in Figure 1 exactly unchanged.`;
+}
+
 export async function prepareProductionPackage(body, options) {
   const stored = await options.brainStore.read();
   const { approvedBrain, brainVersion } = approvedContext(stored);
@@ -348,7 +359,7 @@ export async function prepareProductionPackage(body, options) {
     }
   }
 
-  const generationPackage = compileBrandWorldImagePackage({
+  const compileInputs = {
     approvedBrain,
     brainVersion,
     brief: body.brief,
@@ -365,7 +376,35 @@ export async function prepareProductionPackage(body, options) {
     // job through both preflight and generate without a new request field, and
     // so a package records which look produced it.
     look: body.brief?.look || null,
-  });
+  };
+  const generationPackage = compileBrandWorldImagePackage(compileInputs);
+
+  // Two-call rendering on Seedream when a locked asset is present. One edit
+  // call carrying the product as a reference renders the product too large:
+  // the reference fills its own frame and that framing carries into the
+  // generated scene. Hand runs on 2026-09-01 and 2026-09-02 gave correct scale
+  // on a reference-free render and correct label fidelity on a separate edit
+  // that placed the real product into it, so the render splits in two.
+  //
+  // The scene prompt is the compiled prompt with the locked asset withheld,
+  // which is the shape this compiler already produces for a job that locks
+  // nothing. The same compiler runs twice with one argument dropped, so there
+  // is no second prompt to keep in step with the first. The locked asset stays
+  // on the package and on the record, because the job did lock one.
+  const plannedEngine = resolveRenderEngine(body.engine);
+  if (plannedEngine.name === "seedream" && lockedAsset) {
+    const scenePackage = compileBrandWorldImagePackage({ ...compileInputs, lockedAsset: null });
+    generationPackage.twoCall = {
+      engine: plannedEngine.name,
+      model: plannedEngine.model,
+      scenePrompt: scenePackage.prompt,
+      sceneEndpoint: plannedEngine.chooseEndpoint([...(templateAsset ? [templateAsset] : []), ...references]),
+      placementInstruction: productPlacementInstruction(product?.product_name),
+      placementEndpoint: SEEDREAM_EDIT_ENDPOINT,
+      sceneImageId: null,
+      scenePathname: null,
+    };
+  }
   if (generationPackage.copy) {
     generationPackage.copy.displayCopyError = displayCopyError;
     // The block was produced before the render, so it is already done. It is
@@ -483,9 +522,13 @@ export async function generateProductionImage(body, options) {
   };
   await options.productionStore.write(working);
 
+  // Set during package preparation, and only for Seedream with a locked asset.
+  // Every other job reads null here and renders in one call exactly as before.
+  const twoCall = generationPackage.twoCall || null;
+
   try {
-    const referenceImages = await Promise.all(
-      allReferenceEntries.map(async (entry) => {
+    const loadReferenceImages = (entries) => Promise.all(
+      entries.map(async (entry) => {
         const storedFile = await options.brainStore.readSourceFile(entry.file.blobPathname);
         return {
           name: entry.name,
@@ -494,16 +537,51 @@ export async function generateProductionImage(body, options) {
         };
       }),
     );
-    const result = await (options.render || engine.render)({
+    const render = options.render || engine.render;
+    const renderOptions = {
       apiKey: engine.apiKey(options.env),
-      prompt: generationPackage.prompt,
-      referenceImages,
       model: engine.model,
       size: generationPackage.output.size,
       quality: "medium",
       outputFormat: "png",
       fetchImpl: options.fetchImpl || fetch,
-    });
+    };
+
+    let result;
+    let sceneBytes = null;
+    if (twoCall) {
+      // Call one builds the room. The locked asset is held back so its own
+      // framing cannot set the scale of the scene. A template and creative
+      // references still travel here, since they exist to steer the scene.
+      const sceneEntries = allReferenceEntries.filter((entry) => !entry.isLockedAsset);
+      const sceneResult = await render({
+        ...renderOptions,
+        prompt: twoCall.scenePrompt,
+        referenceImages: await loadReferenceImages(sceneEntries),
+      });
+      const sceneImage = sceneResult?.data?.[0];
+      if (!sceneImage?.b64_json) throw new Error(`${engine.label} returned no image data for the scene.`);
+      sceneBytes = Buffer.from(sceneImage.b64_json, "base64");
+
+      // Call two puts the real product into that room. Order matters, because
+      // the instruction names the two images by figure number: the scene has
+      // to arrive first and the locked asset second.
+      const lockedEntries = allReferenceEntries.filter((entry) => entry.isLockedAsset);
+      result = await render({
+        ...renderOptions,
+        prompt: twoCall.placementInstruction,
+        referenceImages: [
+          { name: "scene.png", type: "image/png", bytes: sceneBytes },
+          ...(await loadReferenceImages(lockedEntries)),
+        ],
+      });
+    } else {
+      result = await render({
+        ...renderOptions,
+        prompt: generationPackage.prompt,
+        referenceImages: await loadReferenceImages(allReferenceEntries),
+      });
+    }
     const image = result?.data?.[0];
     if (!image?.b64_json) throw new Error(`${engine.label} returned no image data.`);
     const bytes = Buffer.from(image.b64_json, "base64");
@@ -517,6 +595,21 @@ export async function generateProductionImage(body, options) {
     }
 
     const savedImage = await options.productionStore.writeImage(jobId, bytes, "image/png");
+
+    // The scene render is written through the same storage path as any
+    // finished render, under its own job id, so the owner can see what the
+    // placement call changed. A failure here is swallowed on purpose: the
+    // deliverable already exists and losing the intermediate does not cost it.
+    if (sceneBytes && twoCall) {
+      try {
+        const sceneImageId = `${jobId}-scene`;
+        const savedScene = await options.productionStore.writeImage(sceneImageId, sceneBytes, "image/png");
+        twoCall.sceneImageId = sceneImageId;
+        twoCall.scenePathname = savedScene.pathname;
+      } catch {
+        // Only the record of the intermediate is affected.
+      }
+    }
 
     // Governed copy (ADR 0014 step 2). The copy runs after the image so a
     // copy failure never costs a render that already succeeded. Each block

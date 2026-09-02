@@ -7051,6 +7051,7 @@ function renderResult() {
                     ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
                 : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
+                   ${sceneRenderFigure(job)}
                    ${renderedCopyCheckPanel(job)}
                    ${producedCopyPanel(job)}`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : `${escapeHtml(renderEngineLabel(job?.engine || state.studio.renderEngine))} is rendering the image`}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
@@ -10199,6 +10200,17 @@ function outputImageSrc(output) {
   if (!id) return output.imageUrl || "";
   if (!output.hadImage && !output.imageUrl) return "";
   return `/api/production/outputs?action=image&outputId=${encodeURIComponent(id)}`;
+}
+
+// On the two-call Seedream path the scene is rendered first and the real
+// product is placed into it by a second call. The scene render is kept so the
+// reviewer can see what the placement changed. Records made by a single call
+// carry no scene image and show nothing here.
+function sceneRenderFigure(job) {
+  const sceneImageId = job?.generationPackage?.twoCall?.sceneImageId || "";
+  if (!sceneImageId) return "";
+  const src = `/api/production/outputs?action=image&outputId=${encodeURIComponent(sceneImageId)}`;
+  return `<figure class="generated-output"><img src="${escapeHtml(src)}" alt="Scene before product placement" onerror="this.closest('figure').remove();"><figcaption class="result-caption"><strong>Scene before product placement</strong><span>Rendered first, then the product was placed into it</span></figcaption></figure>`;
 }
 
 function readActiveClientCookie() {
