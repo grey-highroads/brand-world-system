@@ -614,6 +614,18 @@ function guessEvidenceMaterialType(file) {
 
 const sourceInfluenceOptions = ["Lead", "Strong", "Supporting", "Light"];
 
+// The models available to render a scene. The prompt sent to each is the same
+// compiled prompt, so this is a choice of who draws it and not a choice of what
+// was asked for.
+const renderEngineOptions = [
+  { id: "openai", label: "OpenAI" },
+  { id: "seedream", label: "Seedream 5 Pro" },
+];
+
+function renderEngineLabel(id) {
+  return renderEngineOptions.find((engine) => engine.id === id)?.label || "OpenAI";
+}
+
 const synthesisSteps = [
   {
     title: "Reading your sources",
@@ -1373,6 +1385,7 @@ const state = {
     draftCopyError: "",
     draftCopyStale: false,
     copyDirection: "",
+    renderEngine: "openai",
     referenceOpen: false,
     directionOpen: false,
     direction: "",
@@ -6603,7 +6616,11 @@ function renderPreflight() {
               ? "The exact prompt, approved Brand Brain version, creative sources, and output format are saved in this package."
               : `${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).map((r) => r.label).join(", ")} ${(generationPackage.requirementCheck || []).filter((r) => r.active && !r.met).length === 1 ? "is" : "are"} not available yet. You can still generate, but the result may be incomplete.`
             }</p>
-            <button class="button secondary" type="button" data-action="generate">Generate with OpenAI</button>
+            <div class="field">
+              <label for="render-engine">Render engine</label>
+              <select id="render-engine" data-action="render-engine-change">${renderEngineOptions.map((engine) => `<option value="${escapeHtml(engine.id)}" ${state.studio.renderEngine === engine.id ? "selected" : ""}>${escapeHtml(engine.label)}</option>`).join("")}</select>
+            </div>
+            <button class="button secondary" type="button" data-action="generate">Generate with ${escapeHtml(renderEngineLabel(state.studio.renderEngine))}</button>
           </section>
 
 
@@ -6952,7 +6969,7 @@ function renderResult() {
   const failed = state.production.status === "error" || job?.status === "error";
   const complete = job?.status === "complete" && job.imageUrl;
   const isLinkedIn = job?.deliverable === "linkedin-post" || job?.generationPackage?.deliverable === "linkedin-post";
-  const generationMethod = isLinkedIn ? "Post copy + image" : job?.endpoint?.includes("/edits") ? "Reference-guided image" : "Prompt-only image";
+  const generationMethod = isLinkedIn ? "Post copy + image" : /\/edits?$/.test(job?.endpoint || "") ? "Reference-guided image" : "Prompt-only image";
   const findings = complete ? [...buildCopyFindings(job), ...buildEvaluationFindings(job)] : [];
 
   // Add LinkedIn-specific evaluation findings
@@ -7020,7 +7037,7 @@ function renderResult() {
                 : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
                    ${renderedCopyCheckPanel(job)}
                    ${producedCopyPanel(job)}`
-              : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : "OpenAI is rendering the image"}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
+              : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : `${escapeHtml(renderEngineLabel(job?.engine || state.studio.renderEngine))} is rendering the image`}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
             }
           </section>
 
@@ -7130,7 +7147,7 @@ function renderResult() {
               <div class="rule"><span class="mini-pill">Brain</span><span>v${job.generationPackage.brainVersion} · ${job.generationPackage.sourceCount || 0} sources</span></div>
               <div class="rule"><span class="mini-pill">Look</span><span>${escapeHtml(job.generationPackage.look?.label || "No look selected")}</span></div>
               <div class="rule"><span class="mini-pill">Output</span><span>${escapeHtml(job.generationPackage.output?.placement || "")} · ${escapeHtml(job.generationPackage.output?.format || "")}</span></div>
-              <div class="rule"><span class="mini-pill">Render</span><span>${escapeHtml(job.model || "OpenAI")} · ${escapeHtml(generationMethod)}</span></div>
+              <div class="rule"><span class="mini-pill">Render</span><span>${escapeHtml(job.engineLabel || renderEngineLabel(job.engine))} · ${escapeHtml(job.model || "")} · ${escapeHtml(generationMethod)}</span></div>
               ${job.generationPackage.lockedAsset ? `<div class="rule"><span class="mini-pill">Locked</span><span>${escapeHtml(job.generationPackage.lockedAsset.name)}</span></div>` : ""}
               ${job.generationPackage.references?.length ? `<div class="rule"><span class="mini-pill">Sources</span><span>${job.generationPackage.references.map((r) => escapeHtml(r.name)).join(", ")}</span></div>` : ""}
             </div>
@@ -7864,6 +7881,7 @@ function productionRequest(jobId) {
     displayZone: state.studio.renderCopyIntoImage ? state.studio.displayZone : undefined,
     displayFields: state.studio.renderCopyIntoImage ? state.studio.displayFields : undefined,
     copyDirection: state.studio.copyDirection || undefined,
+    engine: state.studio.renderEngine || "openai",
     references: state.references.map((item) => ({
       id: item.id,
       role: item.role,
@@ -7979,6 +7997,8 @@ function recordOutput(job, extras = {}) {
     postCopy: extras.postCopy || job.postCopy || existing?.postCopy || null,
     copySummary: summarizeCopy(pkg) || existing?.copySummary || null,
     model: job.model || existing?.model || null,
+    engine: job.engine || existing?.engine || null,
+    engineLabel: job.engineLabel || existing?.engineLabel || null,
     // The durable substrate. Guidance section names decay as the brain is revised;
     // the compiled prompt is the only record of what the brand actually asserted
     // at the moment this was made.
@@ -8216,6 +8236,8 @@ async function openOutputForReview(outputId) {
       imageUrl: saved?.imageUrl || null,
       postCopy: saved?.postCopy || record?.postCopy || null,
       model: payload.package?.model || record?.model || null,
+      engine: payload.package?.engine || record?.engine || null,
+      engineLabel: payload.package?.engineLabel || record?.engineLabel || null,
       endpoint: payload.package?.endpoint || null,
       generationPackage,
     };
@@ -8582,6 +8604,11 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="sales-feature-input"]')) {
     state.studio.salesFeature = event.target.value;
+  }
+  if (event.target.matches('[data-action="render-engine-change"]')) {
+    state.studio.renderEngine = event.target.value;
+    render();
+    return;
   }
   if (event.target.matches('[data-action="sales-product-change"]')) {
     clearSceneSuggestions();

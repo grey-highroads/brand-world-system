@@ -1,11 +1,46 @@
 import { selectApprovedBaseline } from "../brand-brain/service.js";
 import { createVercelBlobProductStore } from "../products/store.js";
 import { OPENAI_IMAGE_MODEL, chooseOpenAIImageEndpoint, renderWithOpenAIImages } from "../renderers/openai-images.js";
+import { SEEDREAM_IMAGE_MODEL, chooseSeedreamImageEndpoint, renderWithSeedreamImages } from "../renderers/seedream-images.js";
 import { assembleClaimsSet } from "../claims/assembly.js";
 import { produceCopy } from "../copy/generate.js";
 import { displayBudgets, designFor } from "../copy/display-budget.js";
 import { buildJobScope } from "../scope/resolver.js";
 import { compileBrandWorldImagePackage } from "./package.js";
+
+// Render engines. The compiled prompt is identical for every entry here: this
+// table decides which model receives it, never what it says. An unrecognised
+// engine value falls back to the default rather than failing the render,
+// because a stale client sending an engine name this build does not know
+// should still get an image.
+export const DEFAULT_RENDER_ENGINE = "openai";
+const renderEngines = {
+  openai: {
+    label: "OpenAI",
+    model: OPENAI_IMAGE_MODEL,
+    chooseEndpoint: chooseOpenAIImageEndpoint,
+    render: renderWithOpenAIImages,
+    apiKey: (env) => env.OPENAI_API_KEY,
+  },
+  seedream: {
+    label: "Seedream 5 Pro",
+    model: SEEDREAM_IMAGE_MODEL,
+    chooseEndpoint: chooseSeedreamImageEndpoint,
+    render: renderWithSeedreamImages,
+    apiKey: (env) => env.FAL_KEY,
+  },
+};
+
+export function resolveRenderEngine(requested) {
+  const name = String(requested || "").trim().toLowerCase();
+  // Own entries only, for the same reason imageSizeForFormat checks its table:
+  // a bare lookup would resolve inherited properties and hand a function back
+  // as a render engine.
+  if (Object.prototype.hasOwnProperty.call(renderEngines, name)) {
+    return { name, ...renderEngines[name] };
+  }
+  return { name: DEFAULT_RENDER_ENGINE, ...renderEngines[DEFAULT_RENDER_ENGINE] };
+}
 
 const rasterTypes = new Set(["image/png", "image/jpeg", "image/webp"]);
 const allowedRoles = new Set(["Lighting + mood", "Composition", "Materials", "Casting", "Style calibration", "Differentiate away"]);
@@ -433,13 +468,17 @@ export async function generateProductionImage(body, options) {
     allReferenceEntries.push({ file: ref.file, name: ref.file.name, isLockedAsset: false });
   }
 
+  const engine = resolveRenderEngine(body.engine);
+
   const working = {
     jobId,
     attemptId,
     status: "working",
     createdAt: new Date().toISOString(),
-    model: OPENAI_IMAGE_MODEL,
-    endpoint: chooseOpenAIImageEndpoint(allReferenceEntries),
+    engine: engine.name,
+    engineLabel: engine.label,
+    model: engine.model,
+    endpoint: engine.chooseEndpoint(allReferenceEntries),
     generationPackage,
   };
   await options.productionStore.write(working);
@@ -455,18 +494,18 @@ export async function generateProductionImage(body, options) {
         };
       }),
     );
-    const result = await (options.render || renderWithOpenAIImages)({
-      apiKey: options.env.OPENAI_API_KEY,
+    const result = await (options.render || engine.render)({
+      apiKey: engine.apiKey(options.env),
       prompt: generationPackage.prompt,
       referenceImages,
-      model: OPENAI_IMAGE_MODEL,
+      model: engine.model,
       size: generationPackage.output.size,
       quality: "medium",
       outputFormat: "png",
       fetchImpl: options.fetchImpl || fetch,
     });
     const image = result?.data?.[0];
-    if (!image?.b64_json) throw new Error("OpenAI returned no image data.");
+    if (!image?.b64_json) throw new Error(`${engine.label} returned no image data.`);
     const bytes = Buffer.from(image.b64_json, "base64");
 
     // Last check before anything durable is written. If another attempt has
@@ -531,7 +570,9 @@ export async function generateProductionImage(body, options) {
       try {
         await options.productionStore.writeOutputPackage(jobId, {
           generationPackage,
-          model: OPENAI_IMAGE_MODEL,
+          engine: engine.name,
+          engineLabel: engine.label,
+          model: engine.model,
           endpoint: working.endpoint,
           savedAt: new Date().toISOString(),
         });
