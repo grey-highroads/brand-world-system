@@ -403,6 +403,21 @@ function compileProductSectionForImage(product) {
   return parts.join(" ");
 }
 
+// The scene call of a two-call render draws a stand-in that the placement call
+// replaces, so it has no use for label artwork or visual direction. Carrying
+// them inflated the product: the visual direction on the 2026-09-02 job asked
+// for the vertical branding and the flavor, energy, caffeine-free, and volume
+// statements to be visible, and the model made the can big enough to carry
+// legible text. The before image on that job record shows the can at half the
+// frame with no reference image attached at all. This placeholder compiles in
+// place of the Product knowledge body on the scene pass and asks only for true
+// physical size.
+function sceneProductPlaceholder(product) {
+  const name = cleanText(product?.product_name);
+  if (!name) return "";
+  return `This scene includes ${name}, shown as a plain unmarked version of the product at its true physical size relative to hands, furniture, and surroundings. No label, lettering, or artwork is needed on it; the real product artwork is applied in a separate step.`;
+}
+
 function referenceDirection(reference) {
   const instruction = cleanText(reference.usageInstruction || reference.source.usage, "Use only as visual inspiration where it supports the approved Brand Brain.");
   const exclusions = cleanText(reference.source.exclusions);
@@ -416,7 +431,13 @@ export function imageSizeForFormat(format) {
   return ownEntry(formatSizes, format, "1024x1024");
 }
 
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null, look = null }) {
+// scenePass is the compile mode for call one of a two-call render, and it
+// changes exactly one section body: Product knowledge becomes the plain-product
+// placeholder above. Everything else compiles as it does for any job that locks
+// nothing, so the scene prompt stays a compiler output rather than a second
+// prompt to keep in step with the first. Left at its default the compiled
+// package is unchanged in every byte.
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null, look = null, scenePass = false }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -619,7 +640,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     } : null,
     product ? {
       title: "Product knowledge",
-      body: compileProductSectionForImage(product),
+      body: scenePass ? sceneProductPlaceholder(product) : compileProductSectionForImage(product),
     } : null,
     ...((isTemplate || isSalesEnablement)
       ? guidance.map((section) => ({ title: section.name, body: sectionDirection(section, { compact: true }) }))

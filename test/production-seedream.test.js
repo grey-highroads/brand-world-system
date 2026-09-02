@@ -12,6 +12,7 @@ import {
 } from "../src/renderers/seedream-images.js";
 import { OPENAI_IMAGE_GENERATIONS_ENDPOINT, OPENAI_IMAGE_MODEL } from "../src/renderers/openai-images.js";
 import { generateProductionImage, productPlacementInstruction, resolveRenderEngine } from "../src/production/service.js";
+import { compileBrandWorldImagePackage } from "../src/production/package.js";
 
 function approvedBrain() {
   const section = (id, name) => ({
@@ -387,6 +388,95 @@ test("seedream with no locked asset still renders in one call", async () => {
   assert.equal(calls, 1);
   assert.equal(stores.saved().generationPackage.twoCall, undefined);
   assert.equal(stores.saved().endpoint, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
+});
+
+// ---------------------------------------------------------------------------
+// The scene call describes a plain product (2026-09-02)
+// ---------------------------------------------------------------------------
+
+// An approved product record whose visual direction carries the label demands
+// that inflated the can on the 2026-09-02 job. The scene call must not see it.
+function approvedProduct() {
+  return {
+    product_id: "yuzu-ginger-can",
+    product_name: "Yuzu Ginger can",
+    approved_at: "2026-08-01T00:00:00.000Z",
+    one_true_thing: "A sparkling tonic brewed rather than mixed.",
+    visual_direction: "Show the vertical branding on the can face, with the flavor statement, the energy statement, the caffeine-free statement, and the volume statement all legible.",
+    exclusions: ["No droplets"],
+    review_questions: [],
+    images: [],
+  };
+}
+
+function productStoreFor(record) {
+  return {
+    async readProduct(productId) {
+      return productId === record.product_id ? record : null;
+    },
+  };
+}
+
+test("the scene call asks for a plain product at true size and carries no label demands", async () => {
+  const stores = lockedAssetStores();
+  const product = approvedProduct();
+  const calls = [];
+  await generateProductionImage(
+    { jobId: "seedream-placeholder-01", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", productId: product.product_id, engine: "seedream" },
+    {
+      ...stores,
+      productStore: productStoreFor(product),
+      env: { FAL_KEY: "fal-test-only" },
+      async fetchImpl(url, init) {
+        calls.push({ url, body: JSON.parse(init.body) });
+        return jsonResponse({ images: [{ url: `data:image/png;base64,${Buffer.from(`render-${calls.length}`).toString("base64")}` }] });
+      },
+    },
+  );
+
+  const scenePrompt = calls[0].body.prompt;
+  assert.equal(
+    stores.saved().generationPackage.twoCall.scenePrompt,
+    scenePrompt,
+    "the prompt sent on call one is the recorded scene prompt",
+  );
+  assert.match(
+    scenePrompt,
+    /This scene includes Yuzu Ginger can, shown as a plain unmarked version of the product at its true physical size relative to hands, furniture, and surroundings\. No label, lettering, or artwork is needed on it; the real product artwork is applied in a separate step\./,
+  );
+  assert.doesNotMatch(scenePrompt, /Visual direction:/);
+  assert.doesNotMatch(scenePrompt, /vertical branding/);
+  assert.doesNotMatch(scenePrompt, /volume statement/);
+  assert.doesNotMatch(scenePrompt, /caffeine-free statement/);
+
+  // The one-call prompt on the same job still carries the full product section,
+  // because only the scene pass is placeholdered.
+  assert.match(stores.saved().generationPackage.prompt, /Visual direction: Show the vertical branding/);
+
+  // Call two is untouched: the same fixed instruction, named product and all.
+  assert.equal(calls[1].body.prompt, productPlacementInstruction("Yuzu Ginger can"));
+});
+
+test("the scene pass changes the Product knowledge body and nothing else", () => {
+  const inputs = {
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: brief(),
+    references: [],
+    product: approvedProduct(),
+  };
+  const normal = compileBrandWorldImagePackage(inputs);
+  const scene = compileBrandWorldImagePackage({ ...inputs, scenePass: true });
+  assert.deepEqual(
+    normal.sections.filter((section, index) => section.body !== scene.sections[index].body).map((section) => section.title),
+    ["Product knowledge"],
+  );
+  // Left at its default the option changes nothing, which is what keeps every
+  // single-call compile on both engines byte identical.
+  assert.equal(
+    JSON.stringify(compileBrandWorldImagePackage({ ...inputs, scenePass: false })),
+    JSON.stringify(normal),
+  );
 });
 
 test("openai with a locked asset is untouched by the two-call path", async () => {

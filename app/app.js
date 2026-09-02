@@ -6981,8 +6981,14 @@ function renderResult() {
     `);
   }
   const job = state.production.job;
-  const working = state.production.status === "generating" || job?.status === "working";
-  const failed = state.production.status === "error" || job?.status === "error";
+  const jobStatus = job?.status || "";
+  const working = state.production.status === "generating" || jobStatus === "working";
+  // The failure state follows the job's own status. On 2026-09-02 a dropped
+  // connection set the local status to error while the job was still rendering,
+  // and the screen showed failure text beside a Working badge for a job that
+  // completed three minutes later. A job that reports working is working, so
+  // the local status decides only when there is no job to ask.
+  const failed = jobStatus === "error" || (!jobStatus && state.production.status === "error");
   const complete = job?.status === "complete" && job.imageUrl;
   const isLinkedIn = job?.deliverable === "linkedin-post" || job?.generationPackage?.deliverable === "linkedin-post";
   const generationMethod = isLinkedIn ? "Post copy + image" : /\/edits?$/.test(job?.endpoint || "") ? "Reference-guided image" : "Prompt-only image";
@@ -8049,15 +8055,30 @@ async function fetchCurrentProductionJob() {
   return (await readApiJson(response)).job || null;
 }
 
+// Recovery has to outlast the render, not the connection. The generate
+// connection drops around sixty seconds, which is normal operation on this
+// platform, while a two-call render runs about four minutes. The old loop
+// polled twenty times at 1.5 seconds, gave up after thirty seconds, and called
+// a job failed that finished three minutes later on 2026-09-02. The ceiling is
+// eight minutes, above the server's own 300 second maxDuration, so a job that
+// is still working is still waited for and a job that can no longer be running
+// does not hold the screen forever.
+//
+// 2500 ms between polls: each attempt reads the current-job record from blob
+// storage, and a render measured in minutes gains nothing from tighter polling.
+const RECOVERY_POLL_INTERVAL_MS = 2500;
+const RECOVERY_CEILING_MS = 8 * 60 * 1000;
+
 async function recoverProductionJob(jobId) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  const deadline = Date.now() + RECOVERY_CEILING_MS;
+  while (Date.now() < deadline) {
     try {
       const job = await fetchCurrentProductionJob();
       if (job?.jobId === jobId && ["complete", "error"].includes(job.status)) return job;
     } catch {
       // The next check can still recover a job that completed while the connection was unavailable.
     }
-    await wait(1500);
+    await wait(RECOVERY_POLL_INTERVAL_MS);
   }
   return null;
 }
@@ -8102,6 +8123,11 @@ async function startProductionGeneration() {
     if (!response.ok) throw new Error(body.error || "The image could not be generated.");
     applyProductionJob(body.job);
   } catch (error) {
+    // A dropped generate connection is normal operation here, not a failure, so
+    // no error state is set on the way into recovery. The screen stays in its
+    // working state with the engine's rendering message while recovery polls,
+    // and the failure state is reached only when recovery runs out of time or
+    // the job itself reports an error.
     const recovered = await recoverProductionJob(jobId);
     if (recovered) {
       applyProductionJob(recovered);
@@ -8109,6 +8135,7 @@ async function startProductionGeneration() {
     }
     else {
       state.production.status = "error";
+      if (state.production.job) state.production.job.status = "error";
       state.production.error = `${error.message || "The image response was lost."} The reviewed package is still saved, so you can try again without rebuilding the Brand Brain.`;
     }
   }

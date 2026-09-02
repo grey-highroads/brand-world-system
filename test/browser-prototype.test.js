@@ -317,3 +317,46 @@ test("shared visual polish layer centralizes spacing, surfaces, and semantic sta
   assert.doesNotMatch(app, /style="color: #e6c765/);
   assert.doesNotMatch(styles, /font-family: var\(--body\)/);
 });
+
+// ---------------------------------------------------------------------------
+// The result screen reads the job's status, not the local one (2026-09-02)
+// ---------------------------------------------------------------------------
+
+function workingJob() {
+  return 'state.production.job = { jobId: "render-1", status: "working", engine: "seedream", model: "seedream-5-pro", generationPackage: { brainVersion: 1, output: { format: "4:5 portrait" } } }';
+}
+
+test("a job still working keeps the rendering state even after the connection drops", () => {
+  const session = prototypeSession();
+  session.evaluate('state.screen = "result"');
+  session.evaluate(workingJob());
+  // What a dropped connection used to leave behind: a local error beside a job
+  // the server still reports as working.
+  session.evaluate('state.production.status = "error"');
+  session.evaluate('state.production.error = "The image response was lost."');
+  session.evaluate("render()");
+  assert.match(session.appRoot.innerHTML, /is rendering the image/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /The image was not generated/);
+});
+
+test("a job that reports an error renders the failure state with a retry", () => {
+  const session = prototypeSession();
+  session.evaluate('state.screen = "result"');
+  session.evaluate(workingJob());
+  session.evaluate('state.production.job.status = "error"');
+  session.evaluate('state.production.status = "error"');
+  session.evaluate('state.production.error = "The render failed."');
+  session.evaluate("render()");
+  assert.match(session.appRoot.innerHTML, /The image was not generated/);
+  assert.match(session.appRoot.innerHTML, /data-action="retry-generate"/);
+});
+
+test("recovery outlasts the render rather than the connection", () => {
+  const app = fs.readFileSync(path.join(rootPath, "app/app.js"), "utf8");
+  // The loop itself runs on a real clock, so what is checked here is the
+  // arithmetic: an eight minute ceiling above the server's 300 second
+  // maxDuration, and an interval measured in seconds rather than the old
+  // thirty seconds of total patience.
+  assert.match(app, /const RECOVERY_CEILING_MS = 8 \* 60 \* 1000;/);
+  assert.match(app, /const RECOVERY_POLL_INTERVAL_MS = 2500;/);
+});

@@ -386,14 +386,21 @@ export async function prepareProductionPackage(body, options) {
   // on a reference-free render and correct label fidelity on a separate edit
   // that placed the real product into it, so the render splits in two.
   //
-  // The scene prompt is the compiled prompt with the locked asset withheld,
-  // which is the shape this compiler already produces for a job that locks
-  // nothing. The same compiler runs twice with one argument dropped, so there
-  // is no second prompt to keep in step with the first. The locked asset stays
-  // on the package and on the record, because the job did lock one.
+  // The scene prompt is the compiled prompt with the locked asset withheld and
+  // the scene-pass mode set, which is the shape this compiler already produces
+  // for a job that locks nothing apart from one section body. The same compiler
+  // runs twice, so there is no second prompt to keep in step with the first.
+  // The locked asset stays on the package and on the record, because the job
+  // did lock one.
+  //
+  // scenePass replaces the Product knowledge body with a plain-product
+  // placeholder. The scene call's product is replaced by the placement call, so
+  // label artwork and visual direction were never needed there, and carrying
+  // them made the model draw the product large enough for the label statements
+  // to read. See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
   const plannedEngine = resolveRenderEngine(body.engine);
   if (plannedEngine.name === "seedream" && lockedAsset) {
-    const scenePackage = compileBrandWorldImagePackage({ ...compileInputs, lockedAsset: null });
+    const scenePackage = compileBrandWorldImagePackage({ ...compileInputs, lockedAsset: null, scenePass: true });
     generationPackage.twoCall = {
       engine: plannedEngine.name,
       model: plannedEngine.model,
