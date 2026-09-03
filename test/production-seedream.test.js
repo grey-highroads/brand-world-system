@@ -376,7 +376,7 @@ test("the record carries both prompts, both endpoints, and both images", async (
   // Figure-grounded placement instruction, noun hardcoded to "can". Figure 1
   // is the scene and Figure 2 is the locked asset, which is the order the call
   // site supplies them in.
-  assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.");
+  assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Everything else in Figure 1 stays exactly as it is.");
   assert.notEqual(twoCall.scenePrompt, record.generationPackage.prompt);
   assert.match(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
   assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
@@ -392,9 +392,10 @@ test("the placement instruction names both figures and ignores the product name"
   // label and a re-rendered frame. The matching sentence was added after the
   // grounded render returned the replacement can at roughly twice the width
   // and three times the height of the can it replaced. The orientation
-  // sentence stays until grounding is proven, since its evidence was
-  // collected without grounding.
-  const expected = "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.";
+  // sentence is gone: its evidence was collected while the edit was
+  // ungrounded, and the first grounded render returned the label the right way
+  // up without it being asked for.
+  const expected = "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Everything else in Figure 1 stays exactly as it is.";
   assert.equal(productPlacementInstruction("Yuzu Ginger can"), expected);
   assert.equal(productPlacementInstruction(null), expected);
   assert.equal(productPlacementInstruction("  "), expected);

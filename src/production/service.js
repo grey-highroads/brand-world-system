@@ -210,8 +210,8 @@ async function resolveProduct(productStore, productId) {
 // call site sends the scene first and the locked asset second, so Figure 1 is
 // the scene and Figure 2 is the product.
 //
-// The third sentence tells the model to leave the rest of the frame alone,
-// which is the other half of the same problem.
+// The preservation sentence, the last one, tells the model to leave the rest of
+// the frame alone, which is the other half of the same problem.
 //
 // The matching sentence sits second, added 2026-09-02. Grounding worked on the
 // render before it: the real label survived and the rest of the frame was
@@ -220,14 +220,18 @@ async function resolveProduct(productStore, productId) {
 // because the product photo fills its own frame and the model took the size
 // from there instead of from the can already in the scene.
 //
-// The orientation sentence returned on 2026-09-02 under the terms the cut set:
-// a removed clause comes back alone, with render evidence, when its failure
-// recurs. The label mounted upside down on 2026-09-01 and mirrored on both
-// 2026-09-02 evening renders, under the verbose instruction and under the
-// minimal one. It gets tested for removal after grounding is proven, since the
-// evidence for it was collected while the edit was ungrounded.
+// There is no orientation sentence. One was here from 2026-09-02, asking for
+// the label to be kept upright and readable, after the label mounted upside
+// down on 2026-09-01 and mirrored on both evening renders of 2026-09-02. All
+// of that evidence was collected while the edit call was ungrounded, before
+// the figure numbering above existed. The 11:09 PM render of 2026-09-02 came
+// back grounded, with the label the right way up, the can at the right scale,
+// and the frame preserved, so the condition the sentence answered was gone.
+// The owner ruled it out on its own terms as well: a candid photograph does
+// not have perfect product facing, and a picture that does reads as staged.
+// It returns only if labels come back wrong on a grounded render.
 export function productPlacementInstruction(productName) {
-  return `Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.`;
+  return `Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Everything else in Figure 1 stays exactly as it is.`;
 }
 
 export async function prepareProductionPackage(body, options) {
