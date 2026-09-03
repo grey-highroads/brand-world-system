@@ -219,7 +219,7 @@ const studioPlatformFormats = {
   instagram: {
     label: "Instagram",
     formats: [
-      { id: "ig-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: true, craft: "The largest shape in the Instagram feed, which is why it is the default. It arrives top edge first as someone scrolls, so put the subject in the upper two thirds and let the lower third carry ground, shadow, or open space. Vertical depth reads better here than side to side composition. Caption text sits directly beneath, so the bottom edge should feel finished rather than cut off." },
+      { id: "ig-portrait", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: true, craft: "Put the subject in the upper two thirds and let the lower third carry ground, shadow, or open space. Vertical depth reads better here than side to side composition. The bottom edge should feel finished rather than cut off." },
       { id: "ig-square", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false, craft: "Displays smaller than the portrait shape and gives you less room, so commit to one idea. Center the subject, keep the composition balanced enough that a tight crop does not ruin it, and hold detail to what survives at phone scale." },
       { id: "ig-story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false, craft: "Full bleed and full screen, with interface elements sitting over roughly the top and bottom sixth. Keep the subject and anything that carries meaning inside the middle band. This is seen for a second or two before a tap, so it needs one clear read rather than a scene that rewards study." },
       { id: "ig-carousel", name: "Carousel card", ratio: "4:5", dim: "1080 x 1350", default: false, craft: "One card in a swipeable set, so it has to hold on its own and belong to the ones beside it. Keep horizon height, light direction, and palette consistent across the set. The grid preview crops this to a square, so keep the subject clear of the top and bottom edges." },
@@ -6548,11 +6548,18 @@ function renderPreflight() {
   const sources = generationPackage.compiledComponents
     .map((source) => `<span class="source-chip">${escapeHtml(source)}</span>`)
     .join("");
-  const prompt = generationPackage.sections
+  // A two-call job sends two different things to the model and neither of them
+  // is generationPackage.sections. The scene call sends its own compile, and
+  // the placement call sends one fixed instruction. Showing the single-call
+  // compile here meant the owner was reading text that was never sent.
+  const twoCall = generationPackage.twoCall || null;
+  const promptSections = twoCall?.sceneSections?.length ? twoCall.sceneSections : generationPackage.sections;
+  const renderSections = (sections) => sections
     .map(
       (section) => `<p><strong>${escapeHtml(section.title.toUpperCase())}</strong>: ${escapeHtml(section.body)}</p>`,
     )
     .join("");
+  const prompt = renderSections(promptSections);
 
   return shell(`
     <section class="workspace">
@@ -6563,12 +6570,14 @@ function renderPreflight() {
           <details class="card collapsible-card">
             <summary class="card-header collapsible-header">
               <h2>Compiled prompt</h2>
-              <span class="collapsible-meta"><span class="mini-pill pill-success">${generationPackage.sections.length} sections compiled</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
+              <span class="collapsible-meta"><span class="mini-pill pill-success">${promptSections.length} sections compiled</span><span class="collapsible-chevron" aria-hidden="true"></span></span>
             </summary>
             <div class="prompt-panel">
               <span class="component-kicker">Compiled components</span>
               <div class="source-chips">${sources}</div>
+              ${twoCall ? '<span class="component-kicker">Sent to build the scene</span>' : ""}
               <div class="compiled-prompt">${prompt}</div>
+              ${twoCall ? `<span class="component-kicker">Sent to place the product</span><div class="compiled-prompt"><p>${escapeHtml(twoCall.placementInstruction || "")}</p></div>` : ""}
             </div>
             <div class="utility-actions">
               <button class="button" type="button" data-action="copy-prompt">Copy prompt</button>
@@ -8372,8 +8381,16 @@ async function hydrateOutputs() {
   }
 }
 
+// Matches what preflight displays. On a two-call job that is the scene prompt
+// and then the placement instruction, in the order they are sent.
 function plainPrompt() {
-  return state.production.package?.prompt || "";
+  const generationPackage = state.production.package;
+  if (!generationPackage) return "";
+  const twoCall = generationPackage.twoCall;
+  if (twoCall?.sceneSections?.length) {
+    return [twoCall.scenePrompt || "", twoCall.placementInstruction || ""].filter(Boolean).join("\n\n");
+  }
+  return generationPackage.prompt || "";
 }
 
 async function copyPrompt() {

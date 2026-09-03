@@ -58,8 +58,8 @@ export function chooseSeedreamImageEndpoint(referenceImages = []) {
   return referenceImages.length ? SEEDREAM_EDIT_ENDPOINT : SEEDREAM_TEXT_TO_IMAGE_ENDPOINT;
 }
 
-function baseInput({ prompt, size, outputFormat }) {
-  const input = {
+function baseInput({ prompt, outputFormat }) {
+  return {
     prompt: requiredPrompt(prompt),
     num_images: 1,
     output_format: outputFormatFor(outputFormat),
@@ -67,26 +67,34 @@ function baseInput({ prompt, size, outputFormat }) {
     // round trip to fetch the rendered file back before it is stored.
     sync_mode: true,
   };
-  const imageSize = seedreamImageSize(size);
-  if (imageSize) input.image_size = imageSize;
-  return input;
 }
 
 export function buildSeedreamTextToImageRequest({ prompt, size = "auto", outputFormat = "png" }) {
+  const body = baseInput({ prompt, outputFormat });
+  const imageSize = seedreamImageSize(size);
+  if (imageSize) body.image_size = imageSize;
   return {
     endpoint: SEEDREAM_TEXT_TO_IMAGE_ENDPOINT,
     contentType: "application/json",
-    body: baseInput({ prompt, size, outputFormat }),
+    body,
   };
 }
 
+// No image_size on an edit. The fal schema for the edit endpoint defaults the
+// field to auto_2K, which means the output follows the input image, and
+// naming an output size on an edit reads as a request to generate a new frame
+// rather than to change one object in the frame we supplied. The key is
+// omitted rather than sent as auto_2K so the documented default applies. The
+// size argument stays in the signature because callers pass one shared options
+// object to both builders. Renders on 2026-09-02 came back with the whole
+// frame subtly redrawn; this is one of the two grounding fixes for that.
 export function buildSeedreamEditRequest({ prompt, referenceImages, size = "auto", outputFormat = "png" }) {
   if (!Array.isArray(referenceImages) || !referenceImages.length) throw new Error("At least one reference image is required for a Seedream edit request.");
   return {
     endpoint: SEEDREAM_EDIT_ENDPOINT,
     contentType: "application/json",
     body: {
-      ...baseInput({ prompt, size, outputFormat }),
+      ...baseInput({ prompt, outputFormat }),
       image_urls: referenceImages.map((image) => seedreamReferenceUrl(image)),
     },
   };

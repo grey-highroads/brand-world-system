@@ -387,7 +387,7 @@ export function humanTexture({ resolvesFineDetail = true } = {}) {
 // from centered frontal faces presenting to the lens, not from missing anatomy
 // language, so the fix is a framing instruction rather than a texture recital.
 // Compiled as its own People section, only when the frame carries a person.
-export const FACE_FRAMING_RULE = "When a person appears at primary scale, they are engaged with a task or the scene rather than presenting to the camera. Frame faces at a three-quarter turn, shaded by a brim or hair, softened by motion or partial defocus, or turned toward what the person is doing. No centered, close, frontal face looking into the lens.";
+export const FACE_FRAMING_RULE = "A person close enough to see clearly is engaged with a task or the scene rather than presenting to the camera. Frame faces at a three-quarter turn, shaded by a brim or hair, softened by motion or partial defocus, or turned toward what the person is doing. No centered, close, frontal face looking into the lens.";
 
 export const CAPTURE_CHARACTER = [
   "This is one exposure made by a physical camera, carrying the losses that come with that.",

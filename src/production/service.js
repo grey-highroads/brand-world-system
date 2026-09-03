@@ -195,21 +195,32 @@ async function resolveProduct(productStore, productId) {
 
 // The call-two instruction for the two-call Seedream path. It is fixed text
 // rather than compiled text, because by the time it runs the scene already
-// exists and the only work left is putting the real product into it. The
-// instruction is one sentence: the giant-can render on 2026-09-02 showed the
-// stacked clauses working against each other, and the owner ruled for minimal
-// instructions. The noun is hardcoded to "can" because cans are the current
-// test subject. The productName argument is ignored and stays in the signature
-// so callers do not change; a product-record field replaces the hardcode when
-// this proves out. See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
+// exists and the only work left is putting the real product into it. The noun
+// is hardcoded to "can" because cans are the current test subject. The
+// productName argument is ignored and stays in the signature so callers do not
+// change; a product-record field replaces the hardcode when this proves out.
+// See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
+//
+// The images are named by figure number because that is the edit endpoint's
+// own prompt convention. Its published example is "Replace the product in
+// Figure 1 with that in Figure 2." Until 2026-09-02 the instruction named no
+// figures, so the model received two images and had to work out for itself
+// which one was the scene and which one was the product. Both evening renders
+// that day came back with an invented label and a whole re-rendered frame. The
+// call site sends the scene first and the locked asset second, so Figure 1 is
+// the scene and Figure 2 is the product.
+//
+// The third sentence tells the model to leave the rest of the frame alone,
+// which is the other half of the same problem.
 //
 // The orientation sentence returned on 2026-09-02 under the terms the cut set:
 // a removed clause comes back alone, with render evidence, when its failure
 // recurs. The label mounted upside down on 2026-09-01 and mirrored on both
 // 2026-09-02 evening renders, under the verbose instruction and under the
-// minimal one. Nothing else that was cut returns with it.
+// minimal one. It gets tested for removal after grounding is proven, since the
+// evidence for it was collected while the edit was ungrounded.
 export function productPlacementInstruction(productName) {
-  return `Replace the can with the supplied can image. Keep the label upright and readable.`;
+  return `Replace the can in Figure 1 with the can in Figure 2. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.`;
 }
 
 export async function prepareProductionPackage(body, options) {
@@ -413,6 +424,11 @@ export async function prepareProductionPackage(body, options) {
       engine: plannedEngine.name,
       model: plannedEngine.model,
       scenePrompt: scenePackage.prompt,
+      // The same scene compile, kept as sections as well as the flat string.
+      // Preflight renders sections, and until 2026-09-02 it rendered the
+      // single-call sections on a two-call job, so the owner was reviewing a
+      // prompt that never reached the model.
+      sceneSections: scenePackage.sections,
       sceneEndpoint: plannedEngine.chooseEndpoint([...(templateAsset ? [templateAsset] : []), ...references]),
       placementInstruction: productPlacementInstruction(product?.product_name),
       placementEndpoint: SEEDREAM_EDIT_ENDPOINT,

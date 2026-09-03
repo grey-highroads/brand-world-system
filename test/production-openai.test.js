@@ -62,10 +62,12 @@ test("the brand world package is deterministic and preserves the approved Brain 
 });
 
 // Second 2026-08-31 ruling: the word-list person gate is retired and the face
-// framing rule compiles on every scene render. The rule opens with "When a
-// person appears," so it is self-conditional. This scene is the recorded miss
-// that forced the change: it names no person, the retired gate returned false,
-// and a person appeared in the render with no framing rule.
+// framing rule compiles on every scene render. The rule is written to be
+// self-conditional, so it costs nothing on a personless frame. This scene is
+// the recorded miss that forced the change: it names no person, the retired
+// gate returned false, and a person appeared in the render with no framing
+// rule. The opening clause was rewritten on 2026-09-02 to drop "primary
+// scale," which is our vocabulary rather than a visible fact.
 test("the festival scene that beat the person gate now compiles the face rule", () => {
   const pkg = compileBrandWorldImagePackage({
     approvedBrain: approvedBrain(),
@@ -75,8 +77,23 @@ test("the festival scene that beat the person gate now compiles the face rule", 
   });
   const people = pkg.sections.find((section) => section.title === "People");
   assert.ok(people, "the People section compiles on a scene that names no person");
-  assert.match(people.body, /When a person appears at primary scale/);
+  assert.match(people.body, /A person close enough to see clearly is engaged with a task or the scene/);
   assert.match(pkg.prompt, /No centered, close, frontal face looking into the lens/);
+  assert.doesNotMatch(pkg.prompt, /primary scale/);
+});
+
+// The Creative references section stopped compiling on jobs with no reference
+// on 2026-09-02. The line it used to emit reported the state of our own inputs
+// and described nothing to render.
+test("no Creative references section compiles when no reference is attached", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: { scene: "A can on a wet stone counter.", placement: "Instagram feed", format: "4:5 portrait" },
+    references: [],
+  });
+  assert.equal(pkg.sections.find((section) => section.title === "Creative references"), undefined);
+  assert.doesNotMatch(pkg.prompt, /No creative source image is attached/);
 });
 
 // Restored later on 2026-08-31: authored brief and product exclusions compile

@@ -152,6 +152,24 @@ test("the edit request passes references as data URIs under image_urls", () => {
   assert.equal(request.body.image_urls[0], `data:image/png;base64,${Buffer.from("can-pixels").toString("base64")}`);
 });
 
+// The edit endpoint defaults image_size to auto_2K, which follows the input
+// image. Naming a size on an edit reads as a request to generate a new frame
+// rather than to change one object in the frame we supplied, and the whole
+// frame came back subtly redrawn on 2026-09-02. The key is omitted rather than
+// sent as auto_2K so the documented default applies.
+test("the edit request sends no image_size even when the caller passes a size", () => {
+  const request = buildSeedreamEditRequest({
+    prompt: "Place the can on the table",
+    referenceImages: [{ name: "can.png", type: "image/png", bytes: Uint8Array.from(Buffer.from("can-pixels")) }],
+    size: "1024x1024",
+  });
+  assert.equal("image_size" in request.body, false);
+  // Everything else on the edit body is unchanged.
+  assert.equal(request.body.num_images, 1);
+  assert.equal(request.body.output_format, "png");
+  assert.equal(request.body.sync_mode, true);
+});
+
 test("an edit request without a reference image is refused", () => {
   assert.throws(() => buildSeedreamEditRequest({ prompt: "Anything", referenceImages: [] }), /reference image is required/);
 });
@@ -355,9 +373,10 @@ test("the record carries both prompts, both endpoints, and both images", async (
   assert.equal(twoCall.model, SEEDREAM_IMAGE_MODEL);
   assert.equal(twoCall.sceneEndpoint, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
   assert.equal(twoCall.placementEndpoint, SEEDREAM_EDIT_ENDPOINT);
-  // Minimal placement instruction, noun hardcoded to "can". The orientation
-  // sentence returned on 2026-09-02 after the mirrored label recurred.
-  assert.equal(twoCall.placementInstruction, "Replace the can with the supplied can image. Keep the label upright and readable.");
+  // Figure-grounded placement instruction, noun hardcoded to "can". Figure 1
+  // is the scene and Figure 2 is the locked asset, which is the order the call
+  // site supplies them in.
+  assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.");
   assert.notEqual(twoCall.scenePrompt, record.generationPackage.prompt);
   assert.match(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
   assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
@@ -366,10 +385,13 @@ test("the record carries both prompts, both endpoints, and both images", async (
   assert.deepEqual(stores.writtenImages(), ["seedream-two-call-02", "seedream-two-call-02-scene"]);
 });
 
-test("the placement instruction carries the orientation sentence and ignores the product name", () => {
-  // The orientation sentence returned on 2026-09-02 after the label mirrored on
-  // both evening renders under the minimal instruction. Nothing else returned.
-  const expected = "Replace the can with the supplied can image. Keep the label upright and readable.";
+test("the placement instruction names both figures and ignores the product name", () => {
+  // The edit endpoint's own prompt convention identifies inputs by figure
+  // number. Naming no figures left the model to guess which supplied image was
+  // the scene, and both 2026-09-02 evening renders came back with an invented
+  // label and a re-rendered frame. The orientation sentence stays until
+  // grounding is proven, since its evidence was collected without grounding.
+  const expected = "Replace the can in Figure 1 with the can in Figure 2. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.";
   assert.equal(productPlacementInstruction("Yuzu Ginger can"), expected);
   assert.equal(productPlacementInstruction(null), expected);
   assert.equal(productPlacementInstruction("  "), expected);

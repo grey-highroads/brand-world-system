@@ -685,12 +685,18 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // keep reaching treatments and every stored record; the prompt stops
     // reciting them. rejectsDirection above is kept, uncalled, so reversal is
     // one revert. See docs/findings-2026-08-31-prompt-reset.md.
-    {
-      title: "Creative references",
-      body: references.length
-        ? `${references.map(referenceDirection).join(" ")} These sources guide only the named qualities and do not replace the approved Brand Brain.`
-        : "No creative source image is attached. Resolve open visual choices from the approved Brand Brain.",
-    },
+    // Nothing compiles when no reference is attached. The fallback line that
+    // used to sit here, "No creative source image is attached. Resolve open
+    // visual choices from the approved Brand Brain," told the model about the
+    // state of our own inputs and described nothing to render. Removed
+    // 2026-09-02 alongside the other two lines that addressed the system
+    // rather than the frame.
+    references.length
+      ? {
+          title: "Creative references",
+          body: `${references.map(referenceDirection).join(" ")} These sources guide only the named qualities and do not replace the approved Brand Brain.`,
+        }
+      : null,
     {
       title: "Protection",
       // Since 2026-08-31 the scene path compiles the compact block from
