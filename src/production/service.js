@@ -195,13 +195,15 @@ async function resolveProduct(productStore, productId) {
 
 // The call-two instruction for the two-call Seedream path. It is fixed text
 // rather than compiled text, because by the time it runs the scene already
-// exists and the only work left is swapping the drawn stand-in for the real
-// product without disturbing anything else in the frame. The orientation
-// clause is here because a hand run on 2026-09-02 came back with the label
-// upside down.
+// exists and the only work left is putting the real product into it. The
+// instruction is one sentence: the giant-can render on 2026-09-02 showed the
+// stacked clauses working against each other, and the owner ruled for minimal
+// instructions. The noun is hardcoded to "can" because cans are the current
+// test subject. The productName argument is ignored and stays in the signature
+// so callers do not change; a product-record field replaces the hardcode when
+// this proves out. See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
 export function productPlacementInstruction(productName) {
-  const name = String(productName || "").trim() || "product";
-  return `Replace the ${name} in Figure 1 with the one shown in Figure 2. Reproduce its label artwork, typography, colors, and proportions exactly. Keep the label upright and oriented as in Figure 2. Keep the replaced item at the same size and position it has in Figure 1. It stays closed and sealed. Keep the person, the light, and everything else in Figure 1 exactly unchanged.`;
+  return `Replace the can with the supplied can image.`;
 }
 
 export async function prepareProductionPackage(body, options) {
@@ -570,9 +572,9 @@ export async function generateProductionImage(body, options) {
       if (!sceneImage?.b64_json) throw new Error(`${engine.label} returned no image data for the scene.`);
       sceneBytes = Buffer.from(sceneImage.b64_json, "base64");
 
-      // Call two puts the real product into that room. Order matters, because
-      // the instruction names the two images by figure number: the scene has
-      // to arrive first and the locked asset second.
+      // Call two puts the real product into that room. Order matters: the
+      // scene arrives first as the image being edited, and the locked asset
+      // second as the supplied product image the instruction names.
       const lockedEntries = allReferenceEntries.filter((entry) => entry.isLockedAsset);
       result = await render({
         ...renderOptions,

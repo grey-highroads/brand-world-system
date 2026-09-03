@@ -327,8 +327,8 @@ test("a locked asset on Seedream renders the scene first and then places the pro
   assert.doesNotMatch(calls[0].body.prompt, /closed and sealed exactly as supplied/);
   assert.doesNotMatch(calls[0].body.prompt, /Exactly one unit of the product/);
 
-  // Call two is the edit, with the scene first and the asset second, because
-  // the instruction names them by figure number.
+  // Call two is the edit, with the scene first as the image being edited and
+  // the asset second as the supplied product image.
   assert.equal(calls[1].url, SEEDREAM_EDIT_ENDPOINT);
   assert.equal(calls[1].body.image_urls.length, 2);
   assert.equal(calls[1].body.image_urls[0], `data:image/png;base64,${Buffer.from("render-1").toString("base64")}`);
@@ -355,7 +355,8 @@ test("the record carries both prompts, both endpoints, and both images", async (
   assert.equal(twoCall.model, SEEDREAM_IMAGE_MODEL);
   assert.equal(twoCall.sceneEndpoint, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
   assert.equal(twoCall.placementEndpoint, SEEDREAM_EDIT_ENDPOINT);
-  assert.match(twoCall.placementInstruction, /^Replace the product in Figure 1/);
+  // Minimal placement instruction, one sentence, noun hardcoded to "can".
+  assert.equal(twoCall.placementInstruction, "Replace the can with the supplied can image.");
   assert.notEqual(twoCall.scenePrompt, record.generationPackage.prompt);
   assert.match(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
   assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
@@ -364,11 +365,12 @@ test("the record carries both prompts, both endpoints, and both images", async (
   assert.deepEqual(stores.writtenImages(), ["seedream-two-call-02", "seedream-two-call-02-scene"]);
 });
 
-test("the placement instruction names the product when a product record supplies one", () => {
-  assert.match(productPlacementInstruction("Yuzu Ginger can"), /^Replace the Yuzu Ginger can in Figure 1 with the one shown in Figure 2\./);
-  assert.match(productPlacementInstruction(null), /^Replace the product in Figure 1/);
-  assert.match(productPlacementInstruction("  "), /^Replace the product in Figure 1/);
-  assert.match(productPlacementInstruction("Yuzu Ginger can"), /Keep the label upright and oriented as in Figure 2\./);
+test("the placement instruction is one sentence and ignores the product name", () => {
+  // Minimal placement instruction, one sentence, noun hardcoded to "can".
+  const expected = "Replace the can with the supplied can image.";
+  assert.equal(productPlacementInstruction("Yuzu Ginger can"), expected);
+  assert.equal(productPlacementInstruction(null), expected);
+  assert.equal(productPlacementInstruction("  "), expected);
 });
 
 test("seedream with no locked asset still renders in one call", async () => {
@@ -440,10 +442,9 @@ test("the scene call asks for a plain product at true size and carries no label 
     scenePrompt,
     "the prompt sent on call one is the recorded scene prompt",
   );
-  assert.match(
-    scenePrompt,
-    /This scene includes Yuzu Ginger can, shown as a plain unmarked version of the product at its true physical size relative to hands, furniture, and surroundings\. No label, lettering, or artwork is needed on it; the real product artwork is applied in a separate step\./,
-  );
+  // Minimal scene placeholder, one sentence, noun hardcoded to "can".
+  assert.match(scenePrompt, /This scene includes a plain unmarked can at its real size\./);
+  assert.doesNotMatch(scenePrompt, /Yuzu Ginger can, shown as a plain unmarked version/);
   assert.doesNotMatch(scenePrompt, /Visual direction:/);
   assert.doesNotMatch(scenePrompt, /vertical branding/);
   assert.doesNotMatch(scenePrompt, /volume statement/);

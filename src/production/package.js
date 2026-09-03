@@ -404,18 +404,17 @@ function compileProductSectionForImage(product) {
 }
 
 // The scene call of a two-call render draws a stand-in that the placement call
-// replaces, so it has no use for label artwork or visual direction. Carrying
-// them inflated the product: the visual direction on the 2026-09-02 job asked
-// for the vertical branding and the flavor, energy, caffeine-free, and volume
-// statements to be visible, and the model made the can big enough to carry
-// legible text. The before image on that job record shows the can at half the
-// frame with no reference image attached at all. This placeholder compiles in
-// place of the Product knowledge body on the scene pass and asks only for true
-// physical size.
+// replaces, so it has no use for label artwork or visual direction. The longer
+// placeholder that named the product and its size relationships was cut after
+// the 2026-09-02 giant-can render: the stacked directives conflicted, and the
+// owner ruled for minimal instructions. The noun is hardcoded to "can" because
+// cans are the current test subject. A job that names no product still compiles
+// an empty body, as before. See
+// docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
 function sceneProductPlaceholder(product) {
   const name = cleanText(product?.product_name);
   if (!name) return "";
-  return `This scene includes ${name}, shown as a plain unmarked version of the product at its true physical size relative to hands, furniture, and surroundings. No label, lettering, or artwork is needed on it; the real product artwork is applied in a separate step.`;
+  return `This scene includes a plain unmarked can at its real size.`;
 }
 
 function referenceDirection(reference) {

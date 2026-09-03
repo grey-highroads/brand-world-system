@@ -56,3 +56,7 @@ If the product is still oversized in the scene image with the placeholder compil
 ## Out of scope, untouched
 
 Queue mode. The 60 second connection cut itself. Any prompt change beyond the placeholder. Look language. Engine changes.
+
+## Addendum, 2026-09-02: both prompts cut to minimal instructions
+
+The placement instruction and the scene placeholder each carried several directives at once, and those directives worked against each other in the render. The giant-can render pair of 2026-09-02 verified it. The owner ruled for minimal instructions on both: the placement instruction is now `Replace the can with the supplied can image.` and the scene placeholder is now `This scene includes a plain unmarked can at its real size.` The noun is hardcoded to "can" because cans are what we are testing, and the `productName` argument to `productPlacementInstruction` is accepted and ignored. Each removed clause was written to answer one observed failure: the orientation clause for an upside-down label, the sealed clause for an opened can, the size and position clauses for a stand-in that moved, and the placeholder's size relationships for a can that filled half the frame. Any of them returns individually, with render evidence, only if that failure recurs. Both strings compile only on the two-call path, so the single-call prompt is untouched by this change and byte identity there was not re-proved. A product-record form field replaces the hardcoded noun when this proves out.
