@@ -376,7 +376,7 @@ test("the record carries both prompts, both endpoints, and both images", async (
   // Figure-grounded placement instruction, noun hardcoded to "can". Figure 1
   // is the scene and Figure 2 is the locked asset, which is the order the call
   // site supplies them in.
-  assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.");
+  assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.");
   assert.notEqual(twoCall.scenePrompt, record.generationPackage.prompt);
   assert.match(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
   assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
@@ -389,9 +389,12 @@ test("the placement instruction names both figures and ignores the product name"
   // The edit endpoint's own prompt convention identifies inputs by figure
   // number. Naming no figures left the model to guess which supplied image was
   // the scene, and both 2026-09-02 evening renders came back with an invented
-  // label and a re-rendered frame. The orientation sentence stays until
-  // grounding is proven, since its evidence was collected without grounding.
-  const expected = "Replace the can in Figure 1 with the can in Figure 2. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.";
+  // label and a re-rendered frame. The matching sentence was added after the
+  // grounded render returned the replacement can at roughly twice the width
+  // and three times the height of the can it replaced. The orientation
+  // sentence stays until grounding is proven, since its evidence was
+  // collected without grounding.
+  const expected = "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.";
   assert.equal(productPlacementInstruction("Yuzu Ginger can"), expected);
   assert.equal(productPlacementInstruction(null), expected);
   assert.equal(productPlacementInstruction("  "), expected);
@@ -467,8 +470,10 @@ test("the scene call asks for a plain product at true size and carries no label 
     "the prompt sent on call one is the recorded scene prompt",
   );
   // Minimal scene placeholder, one sentence, noun hardcoded to "can". The
-  // format was named on 2026-09-02 after the stand-in came back the wrong shape.
-  assert.match(scenePrompt, /This scene includes a plain unmarked 12 oz sleek can at its real size\./);
+  // format was named on 2026-09-02 after the stand-in came back the wrong
+  // shape, and reworded the same day: "sleek" is the can trade's term for the
+  // tall narrow format and the model read it as a finish.
+  assert.match(scenePrompt, /This scene includes a plain unmarked tall narrow can at its real size\./);
   assert.doesNotMatch(scenePrompt, /Yuzu Ginger can, shown as a plain unmarked version/);
   assert.doesNotMatch(scenePrompt, /Visual direction:/);
   assert.doesNotMatch(scenePrompt, /vertical branding/);

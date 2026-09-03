@@ -427,15 +427,16 @@ function compileProductSectionForImage(product) {
 // an empty body, as before. See
 // docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
 //
-// "12 oz sleek can" names the format, added 2026-09-02. Both evening renders
-// drew a standard-proportioned can, and the placement call then stretched the
-// stand-in to the real can's aspect at the stand-in's grip width, roughly
-// doubling its height. The stand-in was the wrong shape, not the wrong scale,
-// so the placeholder now names the shape the can trade names it by.
+// The format is named in plain words, revised 2026-09-02. The first attempt
+// said "12 oz sleek can", because sleek is the can trade's name for the tall
+// narrow format. The model read sleek as a finish rather than a format and
+// drew a standard stubby can in plain silver, so the trade term is gone and
+// the shape is described the way anyone would describe it out loud. The
+// volume went with it: a number of ounces is not visible in a picture.
 function sceneProductPlaceholder(product) {
   const name = cleanText(product?.product_name);
   if (!name) return "";
-  return `This scene includes a plain unmarked 12 oz sleek can at its real size.`;
+  return `This scene includes a plain unmarked tall narrow can at its real size.`;
 }
 
 function referenceDirection(reference) {

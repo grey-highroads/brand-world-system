@@ -213,6 +213,13 @@ async function resolveProduct(productStore, productId) {
 // The third sentence tells the model to leave the rest of the frame alone,
 // which is the other half of the same problem.
 //
+// The matching sentence sits second, added 2026-09-02. Grounding worked on the
+// render before it: the real label survived and the rest of the frame was
+// preserved. The replacement can came back roughly twice as wide and three
+// times as tall as the can it replaced, undistorted and simply scaled up,
+// because the product photo fills its own frame and the model took the size
+// from there instead of from the can already in the scene.
+//
 // The orientation sentence returned on 2026-09-02 under the terms the cut set:
 // a removed clause comes back alone, with render evidence, when its failure
 // recurs. The label mounted upside down on 2026-09-01 and mirrored on both
@@ -220,7 +227,7 @@ async function resolveProduct(productStore, productId) {
 // minimal one. It gets tested for removal after grounding is proven, since the
 // evidence for it was collected while the edit was ungrounded.
 export function productPlacementInstruction(productName) {
-  return `Replace the can in Figure 1 with the can in Figure 2. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.`;
+  return `Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Keep the label upright and readable. Everything else in Figure 1 stays exactly as it is.`;
 }
 
 export async function prepareProductionPackage(body, options) {
