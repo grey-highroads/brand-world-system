@@ -109,6 +109,26 @@ Three tests were added: no `image_size` on an edit request body, no Creative ref
 
 After: 167 tests, 166 pass, 1 fail, the same pre-existing failure.
 
+## Reference-present path, confirmed after the push
+
+The truthy branch of item 5 is byte identical to the compiler at `7d17a516`. Checked by importing both compilers into one process and compiling the same inputs at one reference and at two. In both cases the Creative references section body matches exactly, the section holds position three in the array, and the full section order is unchanged. (Verified by compile, 2026-09-02.)
+
+One reference:
+
+```
+Material board. Guiding influence for Mood. Calibrates feeling only. Do not carry over: Logos These sources guide only the named qualities and do not replace the approved Brand Brain.
+```
+
+Two references:
+
+```
+Material board. Guiding influence for Mood. Calibrates feeling only. Do not carry over: Logos Light board. Strong influence for Lighting. Sets the light. These sources guide only the named qualities and do not replace the approved Brand Brain.
+```
+
+No revert is required.
+
 ## Open at the close of this session
 
-The reference-present path of item 5 was not confirmed byte identical against the head-minus-one compiler before the push. The check is written and the expectation is that it holds, since the truthy branch of that section was moved without its body being edited, but it is not verified. (Reasoned, not verified.) If it fails, the item 5 change is the revert.
+Both parity harnesses are unrunnable and neither is picked up by `node --test`. Left in place on the owner's instruction, to be handled separately. Until they are fixed, the compiler has no byte-identity gate running in the suite.
+
+The orientation sentence in the placement instruction is still untested for removal. Its evidence was collected while the edit was ungrounded, so it gets tested after grounding is proven on real render output, not before.
