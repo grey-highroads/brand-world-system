@@ -60,3 +60,61 @@ Queue mode. The 60 second connection cut itself. Any prompt change beyond the pl
 ## Addendum, 2026-09-02: both prompts cut to minimal instructions
 
 The placement instruction and the scene placeholder each carried several directives at once, and those directives worked against each other in the render. The giant-can render pair of 2026-09-02 verified it. The owner ruled for minimal instructions on both: the placement instruction is now `Replace the can with the supplied can image.` and the scene placeholder is now `This scene includes a plain unmarked can at its real size.` The noun is hardcoded to "can" because cans are what we are testing, and the `productName` argument to `productPlacementInstruction` is accepted and ignored. Each removed clause was written to answer one observed failure: the orientation clause for an upside-down label, the sealed clause for an opened can, the size and position clauses for a stand-in that moved, and the placeholder's size relationships for a can that filled half the frame. Any of them returns individually, with render evidence, only if that failure recurs. Both strings compile only on the two-call path, so the single-call prompt is untouched by this change and byte identity there was not re-proved. A product-record form field replaces the hardcoded noun when this proves out.
+
+## Addendum, 2026-09-02 evening: the two renders under the minimal instructions
+
+Two renders ran on the job record after the cut above. Both used the minimal placement instruction and the minimal placeholder. Three failures came back, and each of the first three changes below answers one of them.
+
+**What the renders showed.** (Verified by looking at both images.)
+
+1. The scene call drew a standard-proportioned can. The placement call then fitted the real can onto it, matching the stand-in at the grip width and running the height to the real can's aspect, which roughly doubled it. The stand-in was the wrong shape rather than the wrong scale, so the size language in the placeholder was never the lever.
+2. The label came back mirrored on both renders. It had mounted upside down on 2026-09-01 under the verbose instruction. The failure now has three occurrences across both instruction lengths.
+3. The 7:38 PM scene image showed the placeholder can painted with CAFFEINE FREE, set verbatim from the product record's avoid sentence, which was still compiling into the scene call's Protection block.
+
+**Change 1, the placeholder names the shape.** `sceneProductPlaceholder` returns `This scene includes a plain unmarked 12 oz sleek can at its real size.` "Sleek can" is the can trade's name for the format, which is why it is the phrase rather than a description of the proportions.
+
+**Change 2, the orientation sentence returns alone.** `productPlacementInstruction` returns `Replace the can with the supplied can image. Keep the label upright and readable.` The cut set the terms for this: a removed clause comes back individually, with render evidence, when its failure recurs. Orientation recurred under both instruction lengths. Nothing else that was cut returns with it.
+
+**Change 3, product-record exclusions stop compiling on the scene pass.** An avoid sentence naming label text has nothing to protect on a pass that draws a blank stand-in, and the renderer read it as an instruction to draw the text. The brief's exclusions still compile on the scene pass, because they are the owner's depiction intent for the scene itself and the scene pass is the pass that draws the scene. The gate sits at the single call site in `package.js` that passes the product's values into `sceneProtectionBlock`, which is also the only place that knows which pass is compiling. `prompt-craft.js` is unchanged. The constraint audit was checked for honesty before the change was made: `auditConstraints` reads only the brief's exclusions against the prompt it was compiled with, and the scene package's audit is discarded by the service, which reads only `.prompt`. Dropping the product's values on the scene pass therefore makes no audit report a carriage that did not happen. (Verified by reading `package.js` L722 to L726 and `service.js` L403 to L416.)
+
+## Change 4: the assignment sentence boundary, verified
+
+An outside review claimed a compiled assignment could read `holding a soda can The largest shape in the Instagram feed` with no boundary. **The claim reproduces.** (Verified by compile.) Head compiled:
+
+```
+Create one 4:5 portrait brand world image for Instagram feed. a hand holding a soda can The largest shape in the Instagram feed, which is why it is the default.
+```
+
+**The join is not in the compiler.** The format's craft paragraph is appended to the authored scene text in `app/app.js`, at two sites: the social-format branch that fires when a format is picked, and the website-format branch that fires on the studio brief. Both joined with a bare space. By the time the brief reaches the compiler the two texts are already one string, so a compiler-side fix cannot separate them. Fixing the reported defect meant editing `app/app.js`, which the brief did not name. The owner accepted the out-of-list edit after the fact.
+
+**The fix.** `joinSceneAndCraft` in `app/app.js` adds a period only when the scene text does not already end in `.`, `!`, or `?`. `sentenceBoundary` in `package.js` applies the same rule to the scene entry of the Assignment join, which is the same defect one layer down for any scene text that arrives unpunctuated from any other path.
+
+**Which inputs change.** Only briefs whose scene text does not end in terminal punctuation. All four frozen fixture scenes are already punctuated, so all four compile to the same bytes. A scene ending in a question mark keeps its question mark.
+
+**One adjacent defect, recorded and not fixed.** The same Assignment join runs the composition and lighting entries together with no boundary:
+
+```
+a hand holding a soda can. Composition: Low three quarter view Lighting: Late sun Present in the scene: A chipped mug.
+```
+
+This one is compiler-authored rather than caused by malformed input, so fixing it would change prompts for well-formed briefs. That is outside this brief's bound of "only for inputs that were malformed." Owner ruling: it goes through the ritual on its own, with a before and after compile diff, as its own small brief. (Verified by compile, not fixed.)
+
+## Verification, evening changes
+
+**Byte identity of single-call compiles.** A pristine head checkout at `7826c539` was extracted beside the working tree and both compilers were run over the four frozen fixture scene shapes in `fixtures/adr-0018-phase0-scenes.json`, locked and unlocked, against a synthetic brain and a synthetic product record carrying two exclusions. All eight compiles are byte identical. (Verified.)
+
+**Tests changed and added.**
+
+- `test/production-seedream.test.js`: the three string pins updated to the new placeholder and the new placement instruction, each with a one-line comment naming this change.
+- `test/production-seedream.test.js`: the scene-pass equivalence test now expects Product knowledge and Protection to differ, and still pins that `scenePass: false` compiles identically to omitting the option.
+- `test/production-seedream.test.js`: a scene-pass compile with a product carrying exclusions contains neither exclusion string nor the product-record avoid clause, while the single-call compile on the same inputs still carries both.
+- `test/production-seedream.test.js`: the assignment closes an unpunctuated scene sentence, leaves a punctuated one byte identical, and leaves a question mark alone.
+- `test/browser-prototype.test.js`: `joinSceneAndCraft` pinned across an unpunctuated scene, a punctuated scene, a question, an empty scene, and an empty craft paragraph.
+
+**Suite.** Before: 162 tests, 161 pass, 1 fail. After: 165 tests, 164 pass, 1 fail. The single failure is `fixtures/copy-audit-mechanism-test.mjs` in both runs, which depends on credentials absent from this environment.
+
+**Still open, untouched.** The scene call's overall length. It remains the standing open question and nothing here addresses it.
+
+## Out of scope, untouched, evening changes
+
+All other prompt content, the scene call's length, engines, recovery, storage, schema fields.

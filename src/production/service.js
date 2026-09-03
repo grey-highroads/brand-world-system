@@ -202,8 +202,14 @@ async function resolveProduct(productStore, productId) {
 // test subject. The productName argument is ignored and stays in the signature
 // so callers do not change; a product-record field replaces the hardcode when
 // this proves out. See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
+//
+// The orientation sentence returned on 2026-09-02 under the terms the cut set:
+// a removed clause comes back alone, with render evidence, when its failure
+// recurs. The label mounted upside down on 2026-09-01 and mirrored on both
+// 2026-09-02 evening renders, under the verbose instruction and under the
+// minimal one. Nothing else that was cut returns with it.
 export function productPlacementInstruction(productName) {
-  return `Replace the can with the supplied can image.`;
+  return `Replace the can with the supplied can image. Keep the label upright and readable.`;
 }
 
 export async function prepareProductionPackage(body, options) {

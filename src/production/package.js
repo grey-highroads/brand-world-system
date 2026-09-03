@@ -298,6 +298,21 @@ function firstClause(text) {
   return clean.split(/[;(]/)[0].replace(/[.,\s]+$/, "").trim();
 }
 
+// A sentence boundary for text that arrives from an author and is then joined
+// to compiler-authored text. Scene text reaches the Assignment section already
+// carrying the format's craft paragraph, appended in the browser, and the
+// author's own sentence often ends without a period. The result on 2026-09-02
+// read "holding a soda can The largest shape in the Instagram feed" with no
+// break. A period is added only when the text does not already end in terminal
+// punctuation, so every assignment that was already correct compiles to the
+// same bytes. prompt-craft.js holds the same rule for the avoid sentence; this
+// copy exists so the compiler does not import a helper for one call.
+function sentenceBoundary(text) {
+  const clean = cleanText(text);
+  if (!clean) return "";
+  return /[.!?]$/.test(clean) ? clean : `${clean}.`;
+}
+
 function sectionDirection(section, { compact = false } = {}) {
   const pieces = compact
     ? [section.summary, ...(section.principles || []).map((principle) => `${principle}`)]
@@ -411,10 +426,16 @@ function compileProductSectionForImage(product) {
 // cans are the current test subject. A job that names no product still compiles
 // an empty body, as before. See
 // docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
+//
+// "12 oz sleek can" names the format, added 2026-09-02. Both evening renders
+// drew a standard-proportioned can, and the placement call then stretched the
+// stand-in to the real can's aspect at the stand-in's grip width, roughly
+// doubling its height. The stand-in was the wrong shape, not the wrong scale,
+// so the placeholder now names the shape the can trade names it by.
 function sceneProductPlaceholder(product) {
   const name = cleanText(product?.product_name);
   if (!name) return "";
-  return `This scene includes a plain unmarked can at its real size.`;
+  return `This scene includes a plain unmarked 12 oz sleek can at its real size.`;
 }
 
 function referenceDirection(reference) {
@@ -591,7 +612,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
             // that system, so the section now opens with the assignment itself
             // and the scene follows immediately.
             `Create one ${format} brand world image for ${placement}.`,
-            scene,
+            sentenceBoundary(scene),
             sceneComposition ? `Composition: ${sceneComposition}` : "",
             sceneLighting ? `Lighting: ${sceneLighting}` : "",
             sceneProps ? `Present in the scene: ${sceneProps}.` : "",
@@ -695,7 +716,20 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
             lockedAsset,
             displayCopyCompiles,
             briefExclusions: exclusions,
-            productExclusions: (product?.exclusions || []).map((entry) => cleanText(entry)).filter(Boolean).join("; "),
+            // Product-record exclusions do not compile on the scene pass. The
+            // 7:38 PM render of 2026-09-02 came back with CAFFEINE FREE painted
+            // onto the placeholder can, verbatim from the product record's
+            // avoid sentence, because an avoid sentence naming label text is an
+            // instruction to draw label text when the thing in frame is a blank
+            // stand-in. The brief's exclusions still compile here: they are the
+            // owner's depiction intent for the scene itself, which is the pass
+            // that draws the scene. The gate sits at this call site because
+            // this is the only place the product's values reach the block, and
+            // it is the only place that knows which pass is compiling. Left at
+            // the default the argument is unchanged, so single-call prompts on
+            // both engines are byte identical.
+            // See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
+            productExclusions: scenePass ? "" : (product?.exclusions || []).map((entry) => cleanText(entry)).filter(Boolean).join("; "),
           }),
     },
     displayCopyCompiles

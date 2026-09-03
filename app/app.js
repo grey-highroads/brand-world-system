@@ -306,6 +306,20 @@ function studioCategoryLabel(id) {
   return studioCategories.find((c) => c.id === id)?.name || "Setup";
 }
 
+// The format's craft paragraph is appended to the scene text here, before the
+// brief is sent, so the two run together in the compiled assignment when the
+// author's last sentence has no period. A render on 2026-09-02 read "holding a
+// soda can The largest shape in the Instagram feed" for that reason. A period
+// is added only when the text does not already end in terminal punctuation, so
+// a scene that was already punctuated produces the same string as before.
+function joinSceneAndCraft(sceneText, craft) {
+  const scene = String(sceneText || "").trim();
+  const tail = String(craft || "").trim();
+  if (!scene) return tail;
+  if (!tail) return scene;
+  return `${/[.!?]$/.test(scene) ? scene : `${scene}.`} ${tail}`;
+}
+
 let brainBatch = {
   id: "slake-foundational-library-001",
   name: "SLAKE foundational library",
@@ -9175,7 +9189,7 @@ root.addEventListener("click", (event) => {
           const legacyPlacement = Object.keys(placementFormats).find((p) => p.toLowerCase().includes(platform.label.toLowerCase()));
           if (legacyPlacement) state.brief.placement = legacyPlacement;
           state.brief.format = `${match.ratio} ${orientationForRatio(match.ratio)}`;
-          if (match.craft) state.brief.scene = `${state.brief.scene.trim()} ${match.craft}`;
+          if (match.craft) state.brief.scene = joinSceneAndCraft(state.brief.scene, match.craft);
           break;
         }
       }
@@ -9287,7 +9301,7 @@ root.addEventListener("click", (event) => {
     state.activeCampaignId = state.studio.campaignId || null;
     // The preset carries the art direction so a thin brief still produces a
     // composition built for this shape.
-    state.brief.scene = `${state.studio.brief.trim()} ${fmt.craft}`;
+    state.brief.scene = joinSceneAndCraft(state.studio.brief, fmt.craft);
     state.brief.placement = fmt.placement;
     state.brief.format = fmt.dim.replace(" x ", "x");
     void prepareProductionPreflight();

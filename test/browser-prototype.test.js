@@ -360,3 +360,27 @@ test("recovery outlasts the render rather than the connection", () => {
   assert.match(app, /const RECOVERY_CEILING_MS = 8 \* 60 \* 1000;/);
   assert.match(app, /const RECOVERY_POLL_INTERVAL_MS = 2500;/);
 });
+
+// The format's craft paragraph is appended to the authored scene before the
+// brief is sent. Until 2026-09-02 the join was a bare space, so a scene ending
+// without a period ran into the craft text and compiled as "holding a soda can
+// The largest shape in the Instagram feed."
+test("the scene and its craft paragraph join with a sentence between them", () => {
+  const session = prototypeSession();
+
+  assert.equal(
+    session.evaluate('joinSceneAndCraft("A hand holding a soda can", "The largest shape in the Instagram feed.")'),
+    "A hand holding a soda can. The largest shape in the Instagram feed.",
+  );
+  // A scene the author already punctuated joins exactly as it did before.
+  assert.equal(
+    session.evaluate('joinSceneAndCraft("A hand holding a soda can.", "The largest shape in the Instagram feed.")'),
+    "A hand holding a soda can. The largest shape in the Instagram feed.",
+  );
+  assert.equal(
+    session.evaluate('joinSceneAndCraft("Who is holding the can?", "Square and small.")'),
+    "Who is holding the can? Square and small.",
+  );
+  assert.equal(session.evaluate('joinSceneAndCraft("", "Square and small.")'), "Square and small.");
+  assert.equal(session.evaluate('joinSceneAndCraft("A hand holding a soda can", "")'), "A hand holding a soda can");
+});

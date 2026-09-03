@@ -355,8 +355,9 @@ test("the record carries both prompts, both endpoints, and both images", async (
   assert.equal(twoCall.model, SEEDREAM_IMAGE_MODEL);
   assert.equal(twoCall.sceneEndpoint, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
   assert.equal(twoCall.placementEndpoint, SEEDREAM_EDIT_ENDPOINT);
-  // Minimal placement instruction, one sentence, noun hardcoded to "can".
-  assert.equal(twoCall.placementInstruction, "Replace the can with the supplied can image.");
+  // Minimal placement instruction, noun hardcoded to "can". The orientation
+  // sentence returned on 2026-09-02 after the mirrored label recurred.
+  assert.equal(twoCall.placementInstruction, "Replace the can with the supplied can image. Keep the label upright and readable.");
   assert.notEqual(twoCall.scenePrompt, record.generationPackage.prompt);
   assert.match(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
   assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
@@ -365,9 +366,10 @@ test("the record carries both prompts, both endpoints, and both images", async (
   assert.deepEqual(stores.writtenImages(), ["seedream-two-call-02", "seedream-two-call-02-scene"]);
 });
 
-test("the placement instruction is one sentence and ignores the product name", () => {
-  // Minimal placement instruction, one sentence, noun hardcoded to "can".
-  const expected = "Replace the can with the supplied can image.";
+test("the placement instruction carries the orientation sentence and ignores the product name", () => {
+  // The orientation sentence returned on 2026-09-02 after the label mirrored on
+  // both evening renders under the minimal instruction. Nothing else returned.
+  const expected = "Replace the can with the supplied can image. Keep the label upright and readable.";
   assert.equal(productPlacementInstruction("Yuzu Ginger can"), expected);
   assert.equal(productPlacementInstruction(null), expected);
   assert.equal(productPlacementInstruction("  "), expected);
@@ -442,8 +444,9 @@ test("the scene call asks for a plain product at true size and carries no label 
     scenePrompt,
     "the prompt sent on call one is the recorded scene prompt",
   );
-  // Minimal scene placeholder, one sentence, noun hardcoded to "can".
-  assert.match(scenePrompt, /This scene includes a plain unmarked can at its real size\./);
+  // Minimal scene placeholder, one sentence, noun hardcoded to "can". The
+  // format was named on 2026-09-02 after the stand-in came back the wrong shape.
+  assert.match(scenePrompt, /This scene includes a plain unmarked 12 oz sleek can at its real size\./);
   assert.doesNotMatch(scenePrompt, /Yuzu Ginger can, shown as a plain unmarked version/);
   assert.doesNotMatch(scenePrompt, /Visual direction:/);
   assert.doesNotMatch(scenePrompt, /vertical branding/);
@@ -458,7 +461,7 @@ test("the scene call asks for a plain product at true size and carries no label 
   assert.equal(calls[1].body.prompt, productPlacementInstruction("Yuzu Ginger can"));
 });
 
-test("the scene pass changes the Product knowledge body and nothing else", () => {
+test("the scene pass changes the Product knowledge body and the Protection avoid sentence", () => {
   const inputs = {
     approvedBrain: approvedBrain(),
     brainVersion: 1,
@@ -468,9 +471,11 @@ test("the scene pass changes the Product knowledge body and nothing else", () =>
   };
   const normal = compileBrandWorldImagePackage(inputs);
   const scene = compileBrandWorldImagePackage({ ...inputs, scenePass: true });
+  // Protection joined Product knowledge on 2026-09-02: product-record
+  // exclusions stopped compiling on the scene pass. See the test below.
   assert.deepEqual(
     normal.sections.filter((section, index) => section.body !== scene.sections[index].body).map((section) => section.title),
-    ["Product knowledge"],
+    ["Product knowledge", "Protection"],
   );
   // Left at its default the option changes nothing, which is what keeps every
   // single-call compile on both engines byte identical.
@@ -478,6 +483,57 @@ test("the scene pass changes the Product knowledge body and nothing else", () =>
     JSON.stringify(compileBrandWorldImagePackage({ ...inputs, scenePass: false })),
     JSON.stringify(normal),
   );
+});
+
+// The 7:38 PM render of 2026-09-02 came back with CAFFEINE FREE painted onto
+// the placeholder can, verbatim from the product record's avoid sentence. The
+// scene pass draws a blank stand-in, so an avoid sentence naming label text has
+// nothing to protect there and reads as an instruction to draw it.
+test("the scene pass drops product-record exclusions and keeps the brief's", () => {
+  const product = { ...approvedProduct(), exclusions: ["No caffeine-free callout", "No droplets"] };
+  const inputs = {
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    brief: brief(),
+    references: [],
+    product,
+  };
+  const scene = compileBrandWorldImagePackage({ ...inputs, scenePass: true });
+  const single = compileBrandWorldImagePackage(inputs);
+  const sceneProtection = scene.sections.find((section) => section.title === "Protection").body;
+  const singleProtection = single.sections.find((section) => section.title === "Protection").body;
+
+  assert.doesNotMatch(scene.prompt, /No caffeine-free callout/);
+  assert.doesNotMatch(scene.prompt, /No droplets/);
+  assert.doesNotMatch(scene.prompt, /per the product record/);
+  assert.match(sceneProtection, /Avoid the following, per the brief: No showroom polish or readable copy\./);
+
+  // The single-call compile still carries both, unchanged.
+  assert.match(singleProtection, /per the brief and the product record/);
+  assert.match(singleProtection, /No caffeine-free callout; No droplets/);
+});
+
+// The format's craft paragraph is appended to the scene text in the browser,
+// and an authored sentence ending without a period ran straight into it:
+// "holding a soda can The largest shape in the Instagram feed."
+test("the assignment closes the scene sentence only when the author left it open", () => {
+  const base = {
+    approvedBrain: approvedBrain(),
+    brainVersion: 1,
+    references: [],
+  };
+  const assignment = (scene) => compileBrandWorldImagePackage({
+    ...base,
+    brief: { ...brief(), scene },
+  }).sections.find((section) => section.title === "Assignment").body;
+
+  assert.match(assignment("A hand holding a soda can Wide cinematic banner"), /soda can Wide cinematic banner\./);
+  // Already-correct assignments compile to the same bytes as before.
+  assert.equal(
+    assignment("A person arranging flowers at a worn kitchen table in morning light."),
+    "Create one 4:5 portrait brand world image for Instagram feed. A person arranging flowers at a worn kitchen table in morning light.",
+  );
+  assert.match(assignment("Who is holding the can?"), /Who is holding the can\?$/);
 });
 
 test("openai with a locked asset is untouched by the two-call path", async () => {
