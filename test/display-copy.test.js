@@ -206,7 +206,12 @@ test("a job with no display copy compiles no display section and no record", () 
   assert.equal("copy" in pkg, false);
 });
 
-test("a job with display copy carries the string in the prompt and on the record", () => {
+// The 2026-09-07 section cut would have taken Display copy off the scene path
+// with everything else. Owner ruling the same day put it back: an approved
+// display string is a fact about the image in the same sense the format and the
+// locked asset are, and the compiler attaches facts. A scene render compiles
+// three sections, or four when display copy is present.
+test("a job with display copy compiles it on a scene render as a fourth section", () => {
   const pkg = compileBrandWorldImagePackage({
     approvedBrain: brain,
     brainVersion: 1,
@@ -219,10 +224,28 @@ test("a job with display copy carries the string in the prompt and on the record
       lines: [{ id: "headline", label: "Headline", text: "Fewer empty chairs" }],
     },
   });
+  assert.deepEqual(pkg.sections.map((section) => section.title), ["Assignment", "Capture", "Display copy", "Output"]);
   assert.match(pkg.prompt, /DISPLAY COPY/);
   assert.match(pkg.prompt, /Fewer empty chairs/);
   assert.equal(pkg.copy.display.lines[0].text, "Fewer empty chairs");
   assert.equal(pkg.copy.display.zoneId, "lower_third");
+});
+
+test("a template job still compiles its display copy section", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: brain,
+    brainVersion: 1,
+    brief: { ...baseBrief, placement: "Brand template" },
+    copyOutputs: ["headline_set"],
+    claimsSet: { approved: [], prohibited: [], disclosures: [] },
+    displayCopy: {
+      zoneId: "lower_third",
+      format: "1:1 square",
+      lines: [{ id: "headline", label: "Headline", text: "Fewer empty chairs" }],
+    },
+  });
+  assert.match(pkg.prompt, /DISPLAY COPY/);
+  assert.match(pkg.prompt, /Fewer empty chairs/);
 });
 
 test("a recorded display copy contract is never marked verified", () => {

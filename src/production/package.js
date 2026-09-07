@@ -418,6 +418,12 @@ function compileProductSectionForImage(product) {
   return parts.join(" ");
 }
 
+// Uncalled since 2026-09-07: Product knowledge stopped compiling on the scene
+// path, and this was the only caller. Kept so a return is one revert. The
+// scene pass of a two-call render now compiles the same three sections a
+// single call does, and the writer's prose is what names the product.
+// See docs/findings-2026-09-07-writer-authors-the-prompt.md.
+//
 // The scene call of a two-call render draws a stand-in that the placement call
 // replaces, so it has no use for label artwork or visual direction. The longer
 // placeholder that named the product and its size relationships was cut after
@@ -598,6 +604,14 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
 
   const displayCopyCompiles = Boolean(displayCopy && displayCopy.lines?.some((line) => line.text));
 
+  // Section assembly, revised 2026-09-07 by the ruling that the writer authors
+  // the prompt and the compiler attaches facts. A scene render compiles three
+  // sections and no others: Assignment, Capture, Output, and Display copy when
+  // the job carries an approved display string. Everything the scene
+  // path used to recite now reaches the person who writes the prose instead,
+  // through the brain's four artifacts. Template and sales enablement compiles
+  // are untouched and are byte identical to the base commit.
+  // See docs/findings-2026-09-07-writer-authors-the-prompt.md.
   const sections = [
     {
       title: "Assignment",
@@ -631,18 +645,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       // check above and docs/findings-2026-08-31-prompt-reset.md.
       body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
     },
-    // Immediately after Capture, on every scene render since 2026-08-31 (same
-    // day, second ruling). The rule opens with "When a person appears," so it
-    // is self-conditional and safe on a personless frame. The word-list gate
-    // that used to sit here missed scenes that imply people without naming
-    // them; the festival fixture, "At a music festival like bonaroo or
-    // cochella," is the recorded miss. Template and sales elements stay
-    // excluded, as they are from Capture: neither is a photograph of a person.
-    // See docs/findings-2026-08-31-prompt-reset.md.
-    (isTemplate || isSalesEnablement) ? null : {
-      title: "People",
-      body: FACE_FRAMING_RULE,
-    },
+    // The People section stopped compiling on 2026-09-07, with the ruling that
+    // the writer authors the prompt and the compiler attaches facts. It was a
+    // scene-path section only, so it now compiles nowhere. How people are cast,
+    // framed, and turned is the writer's job, working from the brain's own
+    // artifacts. FACE_FRAMING_RULE is still exported from prompt-craft.js and
+    // still imported here, so restoring this block is one revert.
+    // See docs/findings-2026-09-07-writer-authors-the-prompt.md.
     // The scene-invariant middle cut, owner ruling of 2026-08-19. Four sections
     // stop compiling on the scene path: this one, the guidance sections below,
     // Audience and feeling, and Visual materials. The phase 0 baseline measured
@@ -659,18 +668,27 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       title: "Brand foundation",
       body: `${brandOpener(approvedBrain)} ${cleanText(dossier.readBody, approvedBrain.synthesisSummary)}`,
     } : null,
-    product ? {
+    // Template and sales paths only since 2026-09-07. On a scene render the
+    // writer names the product in the prose, and the locked asset still
+    // attaches as a reference on the render call, so the compiler has nothing
+    // left to say about the product here. sceneProductPlaceholder below is now
+    // uncalled and kept for reversal.
+    ((isTemplate || isSalesEnablement) && product) ? {
       title: "Product knowledge",
-      body: scenePass ? sceneProductPlaceholder(product) : compileProductSectionForImage(product),
+      body: compileProductSectionForImage(product),
     } : null,
     ...((isTemplate || isSalesEnablement)
       ? guidance.map((section) => ({ title: section.name, body: sectionDirection(section, { compact: true }) }))
       : []),
     isTemplate ? templateProductionInstructions : null,
     isSalesEnablement ? buildSalesElementInstructions(hasTemplate) : null,
-    campaignSection,
-    priorOutputs,
-    compositionSection,
+    // Campaign direction, campaign continuity, and the banner and product
+    // composition blocks narrowed to the template and sales paths on
+    // 2026-09-07. Campaign context still reaches the writer, which is where a
+    // campaign belongs: it changes what the moment is, not what a rule says.
+    (isTemplate || isSalesEnablement) ? campaignSection : null,
+    (isTemplate || isSalesEnablement) ? priorOutputs : null,
+    (isTemplate || isSalesEnablement) ? compositionSection : null,
     // Palette only, and template and sales paths only. The materials line was
     // already suppressed on both paths before this cut, for template and sales
     // because neither is a scene and for the scene path because the world block
@@ -692,13 +710,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // state of our own inputs and described nothing to render. Removed
     // 2026-09-02 alongside the other two lines that addressed the system
     // rather than the frame.
-    references.length
+    ((isTemplate || isSalesEnablement) && references.length)
       ? {
           title: "Creative references",
           body: `${references.map(referenceDirection).join(" ")} These sources guide only the named qualities and do not replace the approved Brand Brain.`,
         }
       : null,
-    {
+    (isTemplate || isSalesEnablement) ? {
       title: "Protection",
       // Since 2026-08-31 the scene path compiles the compact block from
       // prompt-craft.js in place of the long form. Guardrails stay fully
@@ -709,8 +727,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       // inside the compact block, so the audit reports them as carried again.
       // Template and sales paths are unchanged.
       // See docs/findings-2026-08-31-prompt-reset.md.
-      body: (isTemplate || isSalesEnablement)
-        ? [
+      body: [
             protection,
             isTemplate ? "Do not include any people, faces, hands, devices, screens, product packaging, or identifiable objects. The surface must work as a background layer." : "",
             isSalesEnablement && !hasTemplate ? "Do not include people, lifestyle environments, or narrative scenes. The element is the subject, rendered cleanly for placement onto a branded background." : "",
@@ -718,27 +735,15 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
             dossier.guardrails?.length ? dossier.guardrails.map((rule) => `${rule.title}: ${rule.body}`).join(" ") : "",
             product?.exclusions?.length ? product.exclusions.map((ex) => `Product rule: ${ex}`).join(" ") : "",
             exclusions ? `Also avoid: ${exclusions}` : "",
-          ].filter(Boolean).join(" ")
-        : sceneProtectionBlock({
-            lockedAsset,
-            displayCopyCompiles,
-            briefExclusions: exclusions,
-            // Product-record exclusions do not compile on the scene pass. The
-            // 7:38 PM render of 2026-09-02 came back with CAFFEINE FREE painted
-            // onto the placeholder can, verbatim from the product record's
-            // avoid sentence, because an avoid sentence naming label text is an
-            // instruction to draw label text when the thing in frame is a blank
-            // stand-in. The brief's exclusions still compile here: they are the
-            // owner's depiction intent for the scene itself, which is the pass
-            // that draws the scene. The gate sits at this call site because
-            // this is the only place the product's values reach the block, and
-            // it is the only place that knows which pass is compiling. Left at
-            // the default the argument is unchanged, so single-call prompts on
-            // both engines are byte identical.
-            // See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
-            productExclusions: scenePass ? "" : (product?.exclusions || []).map((entry) => cleanText(entry)).filter(Boolean).join("; "),
-          }),
-    },
+          ].filter(Boolean).join(" "),
+    } : null,
+    // Display copy compiles on every path, including scene renders. It is an
+    // approved fact about the image in the same sense the format and the locked
+    // asset are: the string was produced and audited through the ADR 0014 copy
+    // path, and it belongs with the other facts the compiler attaches rather
+    // than with the rules it stopped reciting. Owner ruling of 2026-09-07, made
+    // when the section cut would otherwise have taken this with it. A scene
+    // render compiles three sections, or four when display copy is present.
     displayCopyCompiles
       ? {
           title: "Display copy",

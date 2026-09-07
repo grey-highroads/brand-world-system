@@ -53,106 +53,88 @@ test("the brand world package is deterministic and preserves the approved Brain 
   assert.deepEqual(first, second);
   assert.equal(first.brainVersion, 4);
   assert.equal(first.output.size, "1024x1280");
-  // Updated 2026-08-31 with the compiled prompt reset: the scene path no longer recites brand prose or brief exclusions, and a person in the scene compiles the face rule.
+  // Updated 2026-09-07 by the ruling that the writer authors the prompt and the
+  // compiler attaches facts. A scene render compiles three sections and no
+  // others, and the scene prose is the only thing in the Assignment beyond the
+  // format line. The face framing rule that used to compile here is gone with
+  // the People section.
+  assert.deepEqual(first.sections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
   assert.doesNotMatch(first.prompt, /Fallow finds character in useful, lived-in rooms/);
   assert.match(first.prompt, /A person arranging flowers/);
-  assert.match(first.prompt, /three-quarter turn/);
+  assert.doesNotMatch(first.prompt, /three-quarter turn/);
   assert.equal(first.brief.exclusions, "No showroom polish or readable copy.");
   assert.doesNotMatch(first.prompt, /SLAKE|Yuzu Ginger|4pm Reset/);
 });
 
-// Second 2026-08-31 ruling: the word-list person gate is retired and the face
-// framing rule compiles on every scene render. The rule is written to be
-// self-conditional, so it costs nothing on a personless frame. This scene is
-// the recorded miss that forced the change: it names no person, the retired
-// gate returned false, and a person appeared in the render with no framing
-// rule. The opening clause was rewritten on 2026-09-02 to drop "primary
-// scale," which is our vocabulary rather than a visible fact.
-test("the festival scene that beat the person gate now compiles the face rule", () => {
+// The People section compiled on every scene render between 2026-08-31 and
+// 2026-09-07 and now compiles nowhere. How people are cast, framed, and turned
+// is the writer's job, working from the brain's own artifacts. The festival
+// fixture is kept because it is the recorded miss that produced the rule: it
+// names no person, and a person appeared in the render.
+test("no People section compiles on a scene render", () => {
   const pkg = compileBrandWorldImagePackage({
     approvedBrain: approvedBrain(),
     brainVersion: 1,
     brief: { scene: "At a music festival like bonaroo or cochella.", placement: "Instagram feed", format: "4:5 portrait" },
     references: [],
   });
-  const people = pkg.sections.find((section) => section.title === "People");
-  assert.ok(people, "the People section compiles on a scene that names no person");
-  assert.match(people.body, /A person close enough to see clearly is engaged with a task or the scene/);
-  assert.match(pkg.prompt, /No centered, close, frontal face looking into the lens/);
-  assert.doesNotMatch(pkg.prompt, /primary scale/);
+  assert.equal(pkg.sections.find((section) => section.title === "People"), undefined);
+  assert.doesNotMatch(pkg.prompt, /No centered, close, frontal face looking into the lens/);
+  assert.deepEqual(pkg.sections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
 });
 
 // The Creative references section stopped compiling on jobs with no reference
-// on 2026-09-02. The line it used to emit reported the state of our own inputs
-// and described nothing to render.
-test("no Creative references section compiles when no reference is attached", () => {
-  const pkg = compileBrandWorldImagePackage({
+// on 2026-09-02, and stopped compiling on the scene path entirely on
+// 2026-09-07. An attached reference still travels to the renderer as an image
+// and still reaches the record; the prompt stops describing it in words.
+test("no Creative references section compiles on a scene render, with or without a reference", () => {
+  const base = {
     approvedBrain: approvedBrain(),
     brainVersion: 1,
     brief: { scene: "A can on a wet stone counter.", placement: "Instagram feed", format: "4:5 portrait" },
-    references: [],
+  };
+  const bare = compileBrandWorldImagePackage({ ...base, references: [] });
+  assert.equal(bare.sections.find((section) => section.title === "Creative references"), undefined);
+  assert.doesNotMatch(bare.prompt, /No creative source image is attached/);
+
+  const withReference = compileBrandWorldImagePackage({
+    ...base,
+    references: [{
+      source: { id: "source-1", name: "Material moodboard", usage: "Use the material contrast." },
+      role: "Materials",
+      influence: "Strong",
+      file: { name: "grid.png", type: "image/png" },
+    }],
   });
-  assert.equal(pkg.sections.find((section) => section.title === "Creative references"), undefined);
-  assert.doesNotMatch(pkg.prompt, /No creative source image is attached/);
+  assert.equal(withReference.sections.find((section) => section.title === "Creative references"), undefined);
+  assert.doesNotMatch(withReference.prompt, /Material moodboard/);
+  assert.equal(withReference.references[0].name, "Material moodboard");
 });
 
-// Restored later on 2026-08-31: authored brief and product exclusions compile
-// as one avoid sentence at the end of the compact Protection block. The four
-// tests below pin the sentence shapes and the byte-identical no-exclusions case.
-test("a brief exclusions value compiles verbatim into the Protection section and audits as carried", () => {
+// The Protection section stopped compiling on the scene path on 2026-09-07.
+// The four tests that pinned its avoid sentences are replaced by this one. What
+// the brand refuses is still recorded: the brief's exclusions and the product
+// record's exclusions stay on the package and in the constraint audit, and the
+// audit now reports them honestly as not carried into the prompt. The locked
+// asset is still attached to the render call, which is the one product
+// mechanism the compiler keeps.
+test("no Protection section compiles on a scene render, and the audit says so", () => {
   const pkg = compileBrandWorldImagePackage({
     approvedBrain: approvedBrain(),
     brainVersion: 1,
     brief: { ...brief(), exclusions: "No showroom polish or readable copy." },
     references: [],
-  });
-  const protection = pkg.sections.find((section) => section.title === "Protection");
-  assert.match(protection.body, /Avoid the following, per the brief: No showroom polish or readable copy\./);
-  assert.doesNotMatch(protection.body, /per the product record/);
-  const audited = pkg.constraintAudit.find((entry) => entry.source === "Brief exclusion");
-  assert.equal(audited.status, "carried");
-});
-
-test("product record exclusions compile their avoid clause in Protection", () => {
-  const pkg = compileBrandWorldImagePackage({
-    approvedBrain: approvedBrain(),
-    brainVersion: 1,
-    brief: { ...brief(), exclusions: "" },
-    references: [],
-    product: { product_id: "p1", product_name: "Fallow Jar", one_true_thing: "Quiet.", visual_direction: "Plain.", exclusions: ["No droplets", "No stacked jars"], review_questions: [] },
-  });
-  const protection = pkg.sections.find((section) => section.title === "Protection");
-  assert.match(protection.body, /Avoid the following, per the product record: No droplets; No stacked jars\./);
-  assert.doesNotMatch(protection.body, /per the brief/);
-});
-
-test("brief and product exclusions together compile as one sentence, brief first", () => {
-  const pkg = compileBrandWorldImagePackage({
-    approvedBrain: approvedBrain(),
-    brainVersion: 1,
-    brief: { ...brief(), exclusions: "No showroom polish" },
-    references: [],
     product: { product_id: "p1", product_name: "Fallow Jar", one_true_thing: "Quiet.", visual_direction: "Plain.", exclusions: ["No droplets"], review_questions: [] },
   });
-  const protection = pkg.sections.find((section) => section.title === "Protection");
-  assert.match(protection.body, /Avoid the following, per the brief and the product record: No showroom polish; No droplets\./);
-});
-
-test("with no exclusions anywhere the Protection block is byte identical to head", () => {
-  const pkg = compileBrandWorldImagePackage({
-    approvedBrain: approvedBrain(),
-    brainVersion: 1,
-    brief: { ...brief(), exclusions: "" },
-    references: [],
-  });
-  const protection = pkg.sections.find((section) => section.title === "Protection");
-  // The exact head output for a scene with no locked asset and no display
-  // copy, frozen here as a literal so a drift in the always-on sentences
-  // fails loudly.
-  assert.equal(
-    protection.body,
-    "Any surface that would carry writing, including signs, screens, menus, and posters, is blank, abstract, cropped, or defocused beyond reading, with no pseudo-text anywhere. Do not render any text into the image beyond what appears on the supplied product.",
-  );
+  assert.equal(pkg.sections.find((section) => section.title === "Protection"), undefined);
+  assert.doesNotMatch(pkg.prompt, /Avoid the following/);
+  assert.doesNotMatch(pkg.prompt, /No showroom polish or readable copy/);
+  assert.doesNotMatch(pkg.prompt, /No droplets/);
+  // The record still carries what the brief asked to avoid.
+  assert.equal(pkg.brief.exclusions, "No showroom polish or readable copy.");
+  assert.ok(pkg.policy.excluded.includes("No showroom polish or readable copy."));
+  const audited = pkg.constraintAudit.find((entry) => entry.source === "Brief exclusion");
+  assert.notEqual(audited.status, "carried");
 });
 
 // 2026-09-02 filter defect regression: the app default used to send look
@@ -226,8 +208,12 @@ test("production uses Images edits for selected source images and saves a recove
   };
 
   const preflight = await prepareProductionPackage(body, { brainStore });
-  assert.match(preflight.generationPackage.prompt, /Material moodboard/);
-  assert.match(preflight.generationPackage.prompt, /rough and soft material contrast/);
+  // The reference travels to the renderer as an image and stays on the record.
+  // Since 2026-09-07 the scene prompt no longer describes it in words.
+  assert.doesNotMatch(preflight.generationPackage.prompt, /Material moodboard/);
+  assert.doesNotMatch(preflight.generationPackage.prompt, /rough and soft material contrast/);
+  assert.equal(preflight.generationPackage.references[0].name, "Material moodboard");
+  assert.equal(preflight.generationPackage.references[0].usageInstruction, "Use the rough and soft material contrast.");
 
   const job = await generateProductionImage(body, {
     brainStore,
@@ -337,13 +323,18 @@ test("a locked asset uses the edits endpoint with format-aware protection", asyn
   assert.equal(job.status, "complete");
   assert.equal(job.endpoint, OPENAI_IMAGE_EDITS_ENDPOINT);
   assert.equal(renderRefCount, 1);
-  // The prompt must contain the locked-asset protection, not the world-only block.
-  // Updated 2026-08-31 with the compiled prompt reset: the scene path compiles the compact protection block.
-  assert.match(renderPrompt, /The supplied product image governs artwork and geometry/);
-  assert.match(renderPrompt, /closed and sealed exactly as supplied/);
-  assert.match(renderPrompt, /Exactly one unit of the product/);
-  // The prompt must NOT contain the world-only "invented logos" language
+  // The locked asset attaches as a reference on the render call, which is the
+  // one product mechanism the compiler keeps. Since 2026-09-07 the prompt does
+  // not carry the protection block that used to describe it: the scene render
+  // compiles Assignment, Capture, and Output and nothing else.
+  assert.doesNotMatch(renderPrompt, /The supplied product image governs artwork and geometry/);
+  assert.doesNotMatch(renderPrompt, /closed and sealed exactly as supplied/);
+  assert.doesNotMatch(renderPrompt, /Exactly one unit of the product/);
   assert.doesNotMatch(renderPrompt, /no additional focal object/i);
+  assert.deepEqual(
+    savedJob.generationPackage.sections.map((section) => section.title),
+    ["Assignment", "Capture", "Output"],
+  );
   // The package should record the locked asset
   assert.equal(savedJob.generationPackage.lockedAsset.name, "SLAKE Yuzu Ginger Can");
   assert.equal(savedJob.generationPackage.lockedAsset.format, "can");
@@ -408,10 +399,16 @@ test("a locked asset with creative references sends all images with the asset fi
   assert.equal(referenceOrder[0], "wordmark.png");
   assert.equal(referenceOrder[1], "mood.jpg");
   assert.equal(referenceOrder.length, 2);
-  // Non-product asset gets identity preservation, not packaging protection
-  // Updated 2026-08-31 with the compiled prompt reset: the scene path compiles the compact protection block for every locked asset kind.
-  assert.match(savedJob.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
-  assert.match(savedJob.generationPackage.prompt, /closed and sealed exactly as supplied/);
+  // Both files still reach the render call in the right order. Since 2026-09-07
+  // the scene prompt no longer carries a protection block for either of them:
+  // it compiles Assignment, Capture, and Output and nothing else.
+  assert.doesNotMatch(savedJob.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
+  assert.doesNotMatch(savedJob.generationPackage.prompt, /closed and sealed exactly as supplied/);
+  assert.deepEqual(
+    savedJob.generationPackage.sections.map((section) => section.title),
+    ["Assignment", "Capture", "Output"],
+  );
+  assert.equal(savedJob.generationPackage.lockedAsset.name, "SLAKE wordmark");
 });
 
 test("state-lock neutralization rewrites scene prose when a locked asset is present", async () => {

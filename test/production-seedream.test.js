@@ -377,8 +377,14 @@ test("the record carries both prompts, both endpoints, and both images", async (
   // is the scene and Figure 2 is the locked asset, which is the order the call
   // site supplies them in.
   assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Everything else in Figure 1 stays exactly as it is.");
-  assert.notEqual(twoCall.scenePrompt, record.generationPackage.prompt);
-  assert.match(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
+  // Since 2026-09-07 both passes compile Assignment, Capture, and Output, so the
+  // scene prompt and the single-call prompt are the same three sections. The
+  // two calls still differ in what they send alongside the prompt: call one
+  // sends no product image, call two sends the locked asset and the fixed
+  // placement instruction.
+  assert.equal(twoCall.scenePrompt, record.generationPackage.prompt);
+  assert.doesNotMatch(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
+  assert.deepEqual(twoCall.sceneSections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
   assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
   // The final call is an edit call, which is what the provenance label reads.
   assert.equal(record.endpoint, SEEDREAM_EDIT_ENDPOINT);
@@ -470,26 +476,32 @@ test("the scene call asks for a plain product at true size and carries no label 
     scenePrompt,
     "the prompt sent on call one is the recorded scene prompt",
   );
-  // Minimal scene placeholder, one sentence, noun hardcoded to "can". The
-  // format was named on 2026-09-02 after the stand-in came back the wrong
-  // shape, and reworded the same day: "sleek" is the can trade's term for the
-  // tall narrow format and the model read it as a finish.
-  assert.match(scenePrompt, /This scene includes a plain unmarked tall narrow can at its real size\./);
+  // The scene placeholder stopped compiling on 2026-09-07 along with the rest
+  // of Product knowledge. The writer's prose is what puts a can in the scene,
+  // and the placement call is what makes it the real one. sceneProductPlaceholder
+  // is kept uncalled in the compiler so a return is one revert.
+  assert.doesNotMatch(scenePrompt, /This scene includes a plain unmarked tall narrow can/);
   assert.doesNotMatch(scenePrompt, /Yuzu Ginger can, shown as a plain unmarked version/);
   assert.doesNotMatch(scenePrompt, /Visual direction:/);
   assert.doesNotMatch(scenePrompt, /vertical branding/);
   assert.doesNotMatch(scenePrompt, /volume statement/);
   assert.doesNotMatch(scenePrompt, /caffeine-free statement/);
 
-  // The one-call prompt on the same job still carries the full product section,
-  // because only the scene pass is placeholdered.
-  assert.match(stores.saved().generationPackage.prompt, /Visual direction: Show the vertical branding/);
+  // The single-call prompt on the same job compiles the same three sections and
+  // also carries no product section.
+  assert.doesNotMatch(stores.saved().generationPackage.prompt, /Visual direction: Show the vertical branding/);
 
   // Call two is untouched: the same fixed instruction, named product and all.
   assert.equal(calls[1].body.prompt, productPlacementInstruction("Yuzu Ginger can"));
 });
 
-test("the scene pass changes the Product knowledge body and the Protection avoid sentence", () => {
+// scenePass used to change the Product knowledge body and the Protection avoid
+// sentence. Neither section compiles on a scene render as of 2026-09-07, so the
+// flag now changes nothing in the compiled sections. It is left in place: the
+// two-call branch still reads it, and the scene pass still compiles with the
+// locked asset withheld, which is what keeps call one from rendering the
+// product before call two places it.
+test("the scene pass and the single call compile the same three sections", () => {
   const inputs = {
     approvedBrain: approvedBrain(),
     brainVersion: 1,
@@ -499,12 +511,9 @@ test("the scene pass changes the Product knowledge body and the Protection avoid
   };
   const normal = compileBrandWorldImagePackage(inputs);
   const scene = compileBrandWorldImagePackage({ ...inputs, scenePass: true });
-  // Protection joined Product knowledge on 2026-09-02: product-record
-  // exclusions stopped compiling on the scene pass. See the test below.
-  assert.deepEqual(
-    normal.sections.filter((section, index) => section.body !== scene.sections[index].body).map((section) => section.title),
-    ["Product knowledge", "Protection"],
-  );
+  assert.deepEqual(normal.sections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
+  assert.deepEqual(scene.sections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
+  assert.equal(scene.prompt, normal.prompt);
   // Left at its default the option changes nothing, which is what keeps every
   // single-call compile on both engines byte identical.
   assert.equal(
@@ -514,10 +523,12 @@ test("the scene pass changes the Product knowledge body and the Protection avoid
 });
 
 // The 7:38 PM render of 2026-09-02 came back with CAFFEINE FREE painted onto
-// the placeholder can, verbatim from the product record's avoid sentence. The
-// scene pass draws a blank stand-in, so an avoid sentence naming label text has
-// nothing to protect there and reads as an instruction to draw it.
-test("the scene pass drops product-record exclusions and keeps the brief's", () => {
+// the placeholder can, verbatim from the product record's avoid sentence, which
+// is why product-record exclusions stopped compiling on the scene pass. As of
+// 2026-09-07 no exclusions compile into a scene prompt on either pass. They
+// stay on the record and in the constraint audit, which now reports them as not
+// carried.
+test("no exclusions compile into a scene prompt on either pass, and both stay on the record", () => {
   const product = { ...approvedProduct(), exclusions: ["No caffeine-free callout", "No droplets"] };
   const inputs = {
     approvedBrain: approvedBrain(),
@@ -528,17 +539,19 @@ test("the scene pass drops product-record exclusions and keeps the brief's", () 
   };
   const scene = compileBrandWorldImagePackage({ ...inputs, scenePass: true });
   const single = compileBrandWorldImagePackage(inputs);
-  const sceneProtection = scene.sections.find((section) => section.title === "Protection").body;
-  const singleProtection = single.sections.find((section) => section.title === "Protection").body;
 
-  assert.doesNotMatch(scene.prompt, /No caffeine-free callout/);
-  assert.doesNotMatch(scene.prompt, /No droplets/);
-  assert.doesNotMatch(scene.prompt, /per the product record/);
-  assert.match(sceneProtection, /Avoid the following, per the brief: No showroom polish or readable copy\./);
+  for (const pkg of [scene, single]) {
+    assert.equal(pkg.sections.find((section) => section.title === "Protection"), undefined);
+    assert.doesNotMatch(pkg.prompt, /No caffeine-free callout/);
+    assert.doesNotMatch(pkg.prompt, /No droplets/);
+    assert.doesNotMatch(pkg.prompt, /No showroom polish or readable copy/);
+    assert.doesNotMatch(pkg.prompt, /Avoid the following/);
+  }
 
-  // The single-call compile still carries both, unchanged.
-  assert.match(singleProtection, /per the brief and the product record/);
-  assert.match(singleProtection, /No caffeine-free callout; No droplets/);
+  assert.equal(single.brief.exclusions, "No showroom polish or readable copy.");
+  assert.equal(single.product.product_name, product.product_name);
+  const audited = single.constraintAudit.find((entry) => entry.source === "Brief exclusion");
+  assert.notEqual(audited.status, "carried");
 });
 
 // The format's craft paragraph is appended to the scene text in the browser,

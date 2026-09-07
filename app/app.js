@@ -9277,11 +9277,13 @@ root.addEventListener("click", (event) => {
     }
     if (option) {
       state.studio[state.studio.sceneField || "brief"] = option.brief || "";
-      // The visible field stays plain prose the user can edit. Camera and light
-      // behaviour ride alongside it rather than being flattened into it.
-      state.brief.sceneComposition = option.composition || "";
-      state.brief.sceneLighting = option.lighting || "";
-      state.brief.sceneProps = option.props || "";
+      // As of 2026-09-07 an option carries a label and one piece of prose, and
+      // that prose is the whole direction. The three writes that used to sit
+      // here set sceneComposition, sceneLighting, and sceneProps from the
+      // option's per-field keys, which the writer no longer produces. The
+      // fields stay on the brief state because a person can still type into
+      // them by hand, and retireSceneDetail below still clears them on every
+      // other path that changes the scene.
       state.studio.sceneSuggestions = [];
       state.studio.sceneSourcesOpen = false;
       setToast("Direction applied. Edit it however you like.");

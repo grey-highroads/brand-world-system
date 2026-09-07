@@ -321,60 +321,267 @@ export default async function handler(request, response) {
 // context, and the product record. Three rather than one, because a marketer
 // who cannot yet describe what they want can still recognize it, and choosing
 // between options is a faster way to arrive than editing a single guess.
+// Cut on 2026-09-07 by the ruling that the writer authors the prompt and the
+// compiler attaches facts. Everything below used to sit in this function's
+// system prompt: the scene kind's rules, the world rules, and the third look
+// rule. Each was written after a bad render and each carries the dated comment
+// that records which render caused it, so the comments are kept with them. They
+// are here rather than deleted because a rule that returns should return with
+// the render that asked for it, and this is where to find the wording.
+// See docs/findings-2026-09-07-writer-authors-the-prompt.md.
+//
+// The scene kind's task line before the cut:
+//
+//   "You art direct brand image production. For each direction you write four
+//   separate fields: the world, the composition, the lighting, and the props.
+//   This is direction for a photographer on set, not marketing copy. Write it
+//   the way a director of photography would be briefed."
+//
+// The scene kind's rules before the cut:
+//
+//   Describe only what a camera could see. No slogans, no statistics, no claims
+//   about the product's performance.
+//   Stay inside the brand's earned environments and guardrails. Do not invent a
+//   setting the brand has no reason to be in. When a look above requires a
+//   specific condition, choose among the earned environments that can provide
+//   it rather than treating the most familiar one as fixed.
+//   The world field carries the place, the person, the moment, and what is
+//   happening. Name the hour and the specific physical evidence that the place
+//   is used by real people.
+//   When anyone appears behind the subject, give an exact number and make each
+//   one different: a different distance from camera, a different direction of
+//   travel or facing, and at least one partly hidden behind something. Three
+//   people at the same scale walking the same way is a procession, and it is
+//   the clearest sign that nobody was actually there.
+//   Each person performs one action, and that action is already underway or
+//   just finished. Two simultaneous actions cannot be photographed in one
+//   frame: a person cannot stretch and drink at the same time.
+//   Every person in the frame gets a stated mouth and a stated eye direction.
+//   Not an adjective, a position: lips closed and relaxed, jaw slack mid
+//   exhale, eyes down and left at the screen, eyes on the far end of the
+//   hallway. Leaving expression unstated returns a soft pleasant half smile
+//   aimed at whatever the person is holding, every time.
+//   A person alone with a task is not enjoying it. Most of the time the correct
+//   mouth is closed and unsmiling and the correct eyes are somewhere specific
+//   in the room. Reserve a smile for a frame where another person caused it.
+//   Words like natural, candid, effortless, joyful, serene, or unposed describe
+//   a feeling you want and give the camera nothing to do.
+//   The composition field carries camera behavior and spatial structure: where
+//   the subject sits in frame, camera height, focal length, and what runs from
+//   foreground to background.
+//   Depth is an optical fact, not a narrative one. Name the one thing held in
+//   sharp focus, then name what loses edge detail and contrast with distance.
+//   Do not write that the eye moves through the scene or that focus expands
+//   outward; that describes a viewer, not a lens, and it produces a frame that
+//   is equally sharp everywhere.
+//   Every composition names one thing the frame cuts and which edge cuts it.
+//   This is required, not optional. A crop is a concrete event: the bench runs
+//   out of the bottom left corner, the doorway is halved by the right edge.
+//   Saying the composition feels unbalanced or observational is not one.
+//   The subject is placed off the center line, horizontally or vertically. A
+//   subject centered with matched space on both sides is the single most
+//   reliable way to make a photograph look arranged.
+//   The shape guidance you are given describes what survives cropping and where
+//   text will sit. It is not an instruction to center the subject or to balance
+//   the frame. Where the subject sits inside the shape is yours to decide, and
+//   the answer is off center.
+//   In that ranking the person and what they are doing come first and the place
+//   they are in comes second. The product is not the first thing the eye lands
+//   on and it is not centered on a surface facing the camera. It sits where
+//   someone actually set it down or is holding it, inside the moment rather
+//   than on top of it.
+//   The product appears once. One unit, in one place, held or set down. Do not
+//   populate the scene with several of them.
+//   Compose off center. Give the frame an unbalanced weight, crop something at
+//   an edge, and let the camera read as an observation of a moment already
+//   happening rather than a setup arranged for it.
+//   The lighting field names one dominant source and its position relative to
+//   the camera, in plain terms: behind and to the left, high and in front,
+//   through the window at frame right.
+//   Light is selective. Name the specific surfaces that catch the source, and
+//   name what is turned away from it and stays in shadow. A frame where
+//   everything is lit is a frame with no light in it.
+//   State whether anything returns light into the shadow side, and if nothing
+//   does, say so. Do not soften a face because it is the subject.
+//   Never light the whole scene consistently and never give every subject the
+//   same edge. A warm glow across the frame, matching tones on everyone
+//   present, and a rim on every outline are the same failure: light applied as
+//   a finish rather than arriving from somewhere.
+//   The props field is a short list of specific objects present in the scene.
+//   Give each one a state and the cause of that state: paint dulled by weather,
+//   a seam softened by washing, dust settled in a joint. A state without a
+//   cause invites the camera to invent one, which is where unexplained wet and
+//   glossy surfaces come from.
+//   Only name surfaces that are in this frame. The brand's material vocabulary
+//   is a description of the brand, not a shopping list for every scene.
+//   The three directions must differ in world, not merely in wording.
+//   The brand's creative direction and declared ambitions are direction to
+//   follow, not background reading. If the brand has named an aesthetic it is
+//   reaching for, one of the three directions should pursue it.
+//
+// The world rules before the cut, with the dated comment that produced them:
+//
+//   ADR 0018. The grammar reached the writer as context and the writer treated
+//   it as background reading, so across more than twenty renders the brand's
+//   world arrived thinly or not at all. Context describes; rules oblige. These
+//   put the world's content in the RULES block and say plainly that the world
+//   is what is in the frame, which is the same precedence fix that repaired
+//   looks whose medium required a specific setting.
+//
+//   The sections above headed PEOPLE ON CAMERA, OBJECTS AND ERA, and PLACES AND
+//   MATERIALS describe the world this brand's photographs take place in. That
+//   world is required content, not background reading. A direction that could
+//   have been written for any brand in this category has failed even if it is a
+//   good photograph.
+//   Build the setting out of the surfaces, rooms, and landscapes named under
+//   PLACES AND MATERIALS. Name those materials in the world field. Do not
+//   substitute a more familiar room that the brand has no particular claim on.
+//   Name at least two specific objects from OBJECTS AND ERA in the props field
+//   and put at least one of them in the world field where it is doing something
+//   in the scene. These are physical objects present in the room, not
+//   decoration and not a style applied afterward.
+//   Carry the wardrobe, posture, and era cues from PEOPLE ON CAMERA into how
+//   you describe the person.
+//   The sources named under LIGHT are the sources in this scene: name them and
+//   their color in the lighting field. Where the look and this world disagree
+//   about color, the world decides which sources are present and what color
+//   they emit, and the look decides how the film or sensor renders them.
+//   An entry marked as a declared ambition is a direction the brand is reaching
+//   for and it belongs in the frame at full strength. Do not soften it, do not
+//   reduce it to a single small prop, and do not leave it out because the scene
+//   reads fine without it.
+//   The world decides what is in the frame. The look decides how it was
+//   photographed. Neither replaces the other, and a direction that satisfies
+//   the look while dropping the world has answered half the brief.
+//
+// The third look rule before the cut. The first two are kept, and the dated
+// ADR 0018 comment that produced all three stays on them below:
+//
+//   Do not describe the medium itself in your fields. Capture character
+//   compiles separately and repeating it would send the same instruction twice.
+//   Write the world, the composition, the lighting, and the props so they
+//   belong to that medium: light it renders well, surfaces it resolves, and a
+//   moment it can hold.
+//
+// The per-field length rule for the scene kind before the cut:
+//
+//   Two to four sentences per field. Concrete nouns over adjectives. Specific
+//   over evocative.
+
 async function handleSceneBrief({ body, brain, product, apiKey, response }) {
-  const dossier = brain.artifacts?.dossier || {};
-  const lived = brain.artifacts?.livedWorld || brain.artifacts?.lived_world || {};
-  const section = (id) => brain.guidanceSections?.find((s) => s.id === id);
-  const world = section("world");
-  const identity = section("identity");
-  const creative = section("creative");
-  const rules = section("rules");
+  // The four artifacts are the whole of what the writer reads, as of
+  // 2026-09-07. The guidance sections are gone from this path: they are prose
+  // summaries of the same material, and sending both gave the writer two
+  // answers to every question. The dossier's guardrails are gone because a
+  // guardrail is a rule, and rules are what this change removed. The grammar's
+  // rejects section is gone for the same reason and because ADR 0017 already
+  // made the governed refusals document the only refusal source.
+  const artifacts = brain.artifacts || {};
+  const dossier = artifacts.dossier || {};
+  const lived = artifacts.livedWorld || artifacts.lived_world || {};
+  const story = artifacts.storyArchitecture || artifacts.story_architecture || {};
+  const grammar = artifacts.visualGrammar || artifacts.visual_grammar || {};
   const campaign = body.campaign || null;
 
   const drewOn = [];
   const context = [];
-
-  context.push(`BRAND: ${brain.brandName}. ${brain.brandDescription || ""}`);
-  if (world) {
-    context.push(`WORLD: ${world.summary}. ${(world.principles || []).join(". ")}`);
-    drewOn.push("Brand world guidance");
-  }
-  // ADR 0016 step 4. A brain carrying a visual grammar briefs the scene writer
-  // from the grammar's descriptive sections instead of the identity and
-  // creative summaries. Per client on artifact presence, per the ADR's
-  // transition rule: a brain without the artifact keeps today's assembly
-  // exactly, and gets it byte-identical, proven by the parity fixture.
-  //
-  // The interim identity-principles fix from 1a9357e is superseded on this
-  // path and retained on the legacy path below, which is the supersession the
-  // ADR's corrected finding anticipated.
-  //
-  // Rejects are deliberately absent. ADR 0017 made the governed refusals
-  // document the only refusal source for the image path, and grammar rejects
-  // are never a compile source. The step 1 harness carried a rejects line
-  // because it predates that decision; carrying it here would put a second,
-  // ungoverned refusal channel back into the prompt.
-  const grammarSections = brain.artifacts?.visualGrammar?.sections;
-  const grammarMode = Boolean(grammarSections && typeof grammarSections === "object");
   const grammarEntries = [];
-  if (grammarMode) {
-    // The ambition label travels into the prompt because ADR 0016 requires it
-    // to reach the compiled prompt and the result screen rather than stopping
-    // at the brain interface. Origin never dampens the direction: an ambition
-    // entry compiles at full strength and carries its label.
+
+  const text = (value) => String(value == null ? "" : value).trim();
+  const list = (value) => (Array.isArray(value) ? value.map(text).filter(Boolean) : []);
+  const joined = (value, separator = " ") => list(value).join(separator);
+  // An empty field sends nothing. A labelled heading with nothing under it
+  // reads as an absence the writer has to account for, and there is nothing to
+  // account for: the brand simply has not written that part yet.
+  const block = (label, entries) => {
+    const kept = entries.filter(Boolean);
+    if (!kept.length) return false;
+    context.push(`${label}\n${kept.join("\n")}`);
+    return true;
+  };
+
+  context.push(`BRAND: ${brain.brandName}. ${brain.brandDescription || ""}`.trim());
+
+  if (block("THE BRAND DOSSIER", [
+    text(dossier.description),
+    list(dossier.read).length ? `How this brand reads: ${joined(dossier.read, " ")}` : "",
+    text(dossier.readBody),
+    dossier.audience ? `Who it is for: ${text(dossier.audience)}` : "",
+    dossier.desiredFeeling ? `What someone should feel looking at its work: ${text(dossier.desiredFeeling)}` : "",
+    dossier.productTruth ? `The true thing about the product: ${text(dossier.productTruth)}` : "",
+    list(dossier.proof).length ? `What backs that up: ${joined(dossier.proof, " ")}` : "",
+    Array.isArray(dossier.palette) && dossier.palette.length
+      ? `Colors this brand owns: ${dossier.palette.map((color) => `${text(color?.name)} (${text(color?.role)}, ${text(color?.color)})`).filter((entry) => entry.trim() !== "( , )").join(", ")}`
+      : "",
+    list(dossier.materials).length ? `Materials and surfaces it is made of: ${joined(dossier.materials, ", ")}` : "",
+    dossier.culturalCodes ? `The culture it sits in: ${text(dossier.culturalCodes)}` : "",
+  ])) drewOn.push("Brand dossier");
+
+  // The patterns, emotions, tensions, and social modes are the reason the
+  // writer has anything to say, so they arrive as what these people do and
+  // feel rather than as a list of field names.
+  const patterns = Array.isArray(lived.patterns) ? lived.patterns : [];
+  const social = Array.isArray(lived.social) ? lived.social : [];
+  const environments = Array.isArray(lived.environments) ? lived.environments : [];
+  if (block("THE LIVED WORLD", [
+    text(lived.description),
+    lived.person ? `The person at the center of this: ${text(lived.person)}` : "",
+    list(lived.wants).length ? `What they want: ${joined(lived.wants, " ")}` : "",
+    list(lived.rejects).length ? `What they will not have: ${joined(lived.rejects, " ")}` : "",
+    list(lived.tensions).length ? `What pulls against itself in their life: ${joined(lived.tensions, " ")}` : "",
+    patterns.length
+      ? `How their days actually run:\n${patterns.map((entry) => `${text(entry?.time)}. ${text(entry?.title)}. ${text(entry?.body)}`.trim()).filter(Boolean).join("\n")}`
+      : "",
+    list(lived.emotions).length ? `What they feel: ${joined(lived.emotions, ", ")}` : "",
+    social.length
+      ? `How they are around other people:\n${social.map((entry) => `${text(entry?.mode)}. ${text(entry?.body)}`.trim()).filter(Boolean).join("\n")}`
+      : "",
+    environments.length
+      ? `Where the brand has earned a place:\n${environments.map((entry) => `${text(entry?.name)}. Why the brand belongs there: ${text(entry?.earned)} ${text(entry?.detail)}`.trim()).filter(Boolean).join("\n")}`
+      : "",
+    lived.belongs ? `Where the brand belongs in this: ${text(lived.belongs)}` : "",
+    lived.opens ? `What it opens up: ${text(lived.opens)}` : "",
+  ])) drewOn.push("Lived World");
+
+  const moments = Array.isArray(story.moments) ? story.moments : [];
+  if (block("THE STORY", [
+    text(story.description),
+    story.rhythm ? `The rhythm this brand's story runs on: ${text(story.rhythm)}` : "",
+    moments.length
+      ? `The moments the story turns on, which are what these people are doing when the brand matters most:\n${moments.map((moment) => [
+          `${text(moment?.index)}. ${text(moment?.title)}. ${text(moment?.time)}, ${text(moment?.scale)}.`.replace(/\s+/g, " ").trim(),
+          text(moment?.action),
+          text(moment?.feeling),
+          moment?.role ? `Its place in the story: ${text(moment.role)}` : "",
+          moment?.product ? `Where the product sits: ${text(moment.product)}` : "",
+        ].filter(Boolean).join(" ")).join("\n")}`
+      : "",
+    story.why ? `Why the story is built this way: ${text(story.why)}` : "",
+    list(story.continuity).length ? `What carries across every moment: ${joined(story.continuity, " ")}` : "",
+  ])) drewOn.push("Story Architecture");
+
+  // The grammar's five descriptive sections. Rejects is deliberately absent:
+  // ADR 0017 made the governed refusals document the only refusal source, and
+  // a second ungoverned refusal channel in the prompt is what that decision
+  // removed. The ambition label travels, per ADR 0016, because an entry the
+  // brand is reaching for belongs in the frame at full strength and the result
+  // screen has to be able to say so.
+  const grammarSections = grammar.sections && typeof grammar.sections === "object" ? grammar.sections : null;
+  if (grammarSections) {
     const labelled = [
-      ["people", "PEOPLE ON CAMERA"],
-      ["objects", "OBJECTS AND ERA"],
-      ["places", "PLACES AND MATERIALS"],
-      ["light", "LIGHT"],
-      ["camera", "CAMERA"],
+      ["people", "Who appears on camera"],
+      ["objects", "The objects and the era they belong to"],
+      ["places", "The places and what they are made of"],
+      ["light", "The light"],
+      ["camera", "The camera"],
     ];
+    const grammarLines = [text(grammar.description)];
     for (const [key, label] of labelled) {
       const entries = Array.isArray(grammarSections[key]) ? grammarSections[key] : [];
       if (!entries.length) continue;
       const body = entries
         .map((entry) => {
-          const statement = typeof entry === "string" ? entry : entry?.statement || "";
+          const statement = typeof entry === "string" ? entry : text(entry?.statement);
           if (!statement) return "";
           const origin = typeof entry === "string" ? null : entry?.basis?.origin || null;
           grammarEntries.push({ id: (typeof entry === "string" ? null : entry?.id) || null, section: key, statement, origin });
@@ -382,46 +589,20 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
         })
         .filter(Boolean)
         .join(" ");
-      if (body) context.push(`${label}: ${body}`);
+      if (body) grammarLines.push(`${label}: ${body}`);
     }
-    drewOn.push("Visual grammar");
+    if (block("THE VISUAL GRAMMAR", grammarLines)) drewOn.push("Visual grammar");
   }
-  if (identity && !grammarMode) {
-    context.push(`IDENTITY: ${identity.summary}. ${(identity.principles || []).join(". ")}`);
-    drewOn.push("Identity guidance");
-  }
-  if (creative && !grammarMode) {
-    context.push(`CREATIVE DIRECTION: ${creative.summary}. ${(creative.principles || []).join(". ")}`);
-    drewOn.push("Creative direction");
-  }
-  const environments = Array.isArray(lived.environments) ? lived.environments : [];
-  if (environments.length) {
-    context.push(`EARNED ENVIRONMENTS: ${environments.map((e) => `${e.name || e.title || ""}${e.earned ? ` (why the brand belongs: ${e.earned})` : ""}`).filter(Boolean).join("; ")}`);
-    drewOn.push("Lived World environments");
-  }
-  if (lived.person) {
-    context.push(`PERSON AT THE CENTER: ${typeof lived.person === "string" ? lived.person : JSON.stringify(lived.person).slice(0, 600)}`);
-    drewOn.push("Lived World person");
-  }
-  if (dossier.desiredFeeling) context.push(`DESIRED FEELING: ${dossier.desiredFeeling}`);
-  // Step 1 finding: two channels describe light in the same prompt. When the
-  // grammar owns light, the dossier line stops being sent rather than being
-  // narrowed, because on Dialog Health it is not about light at all: it lists
-  // message threads, console views, forms, and canonical asset files. Keeping
-  // it beside the grammar's LIGHT section sends the writer two answers.
-  if (dossier.materials?.length && !grammarMode) context.push(`MATERIALS AND LIGHT: ${dossier.materials.join(", ")}`);
-  if (dossier.palette?.length) context.push(`PALETTE: ${dossier.palette.map((c) => `${c.name} (${c.role})`).join(", ")}`);
-  if (rules) {
-    context.push(`RULES AND GUARDRAILS: ${rules.summary}. ${(dossier.guardrails || []).map((g) => `${g.title}: ${g.body}`).join(" ")}`);
-    drewOn.push("Creative rules and guardrails");
-  }
+
   if (campaign) {
     context.push(`CAMPAIGN: ${campaign.name}. Idea: ${campaign.campaignIdea || ""}. Message territory: ${campaign.messageTerritory || ""}. Audience: ${campaign.audience || ""}. Objective: ${campaign.objective || ""}`);
     drewOn.push(`Campaign: ${campaign.name}`);
   }
+  // The product line names the product and says it is in the scene. Visual
+  // direction and exclusions used to travel here and no longer do: one is a
+  // second art director and the other is a rule.
   if (product) {
-    context.push(`PRODUCT: ${product.product_name}. ${product.one_true_thing || ""} Visual direction: ${product.visual_direction || ""}`);
-    if (product.exclusions?.length) context.push(`PRODUCT EXCLUSIONS: ${product.exclusions.join("; ")}`);
+    context.push(`PRODUCT: ${product.product_name} is present in the scene.`);
     drewOn.push(`Product record: ${product.product_name}`);
     const images = Array.isArray(product.images) ? product.images : [];
     if (images.some((i) => i.kind === "isolated")) drewOn.push("Product image on the record");
@@ -431,33 +612,16 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   // line and the rules change with it. Everything else is shared.
   const kinds = {
     scene: {
-      task: "You art direct brand image production. For each direction you write four separate fields: the world, the composition, the lighting, and the props. This is direction for a photographer on set, not marketing copy. Write it the way a director of photography would be briefed.",
-      rules: [
-        "Describe only what a camera could see. No slogans, no statistics, no claims about the product's performance.",
-        "Stay inside the brand's earned environments and guardrails. Do not invent a setting the brand has no reason to be in. When a look above requires a specific condition, choose among the earned environments that can provide it rather than treating the most familiar one as fixed.",
-        "The world field carries the place, the person, the moment, and what is happening. Name the hour and the specific physical evidence that the place is used by real people.",
-        "When anyone appears behind the subject, give an exact number and make each one different: a different distance from camera, a different direction of travel or facing, and at least one partly hidden behind something. Three people at the same scale walking the same way is a procession, and it is the clearest sign that nobody was actually there.",
-        "Each person performs one action, and that action is already underway or just finished. Two simultaneous actions cannot be photographed in one frame: a person cannot stretch and drink at the same time.",
-        "Every person in the frame gets a stated mouth and a stated eye direction. Not an adjective, a position: lips closed and relaxed, jaw slack mid exhale, eyes down and left at the screen, eyes on the far end of the hallway. Leaving expression unstated returns a soft pleasant half smile aimed at whatever the person is holding, every time.",
-        "A person alone with a task is not enjoying it. Most of the time the correct mouth is closed and unsmiling and the correct eyes are somewhere specific in the room. Reserve a smile for a frame where another person caused it.",
-        "Words like natural, candid, effortless, joyful, serene, or unposed describe a feeling you want and give the camera nothing to do.",
-        "The composition field carries camera behavior and spatial structure: where the subject sits in frame, camera height, focal length, and what runs from foreground to background.",
-        "Depth is an optical fact, not a narrative one. Name the one thing held in sharp focus, then name what loses edge detail and contrast with distance. Do not write that the eye moves through the scene or that focus expands outward; that describes a viewer, not a lens, and it produces a frame that is equally sharp everywhere.",
-        "Every composition names one thing the frame cuts and which edge cuts it. This is required, not optional. A crop is a concrete event: the bench runs out of the bottom left corner, the doorway is halved by the right edge. Saying the composition feels unbalanced or observational is not one.",
-        "The subject is placed off the center line, horizontally or vertically. A subject centered with matched space on both sides is the single most reliable way to make a photograph look arranged.",
-        "The shape guidance you are given describes what survives cropping and where text will sit. It is not an instruction to center the subject or to balance the frame. Where the subject sits inside the shape is yours to decide, and the answer is off center.",
-        "In that ranking the person and what they are doing come first and the place they are in comes second. The product is not the first thing the eye lands on and it is not centered on a surface facing the camera. It sits where someone actually set it down or is holding it, inside the moment rather than on top of it.",
-        "The product appears once. One unit, in one place, held or set down. Do not populate the scene with several of them.",
-        "Compose off center. Give the frame an unbalanced weight, crop something at an edge, and let the camera read as an observation of a moment already happening rather than a setup arranged for it.",
-        "The lighting field names one dominant source and its position relative to the camera, in plain terms: behind and to the left, high and in front, through the window at frame right.",
-        "Light is selective. Name the specific surfaces that catch the source, and name what is turned away from it and stays in shadow. A frame where everything is lit is a frame with no light in it.",
-        "State whether anything returns light into the shadow side, and if nothing does, say so. Do not soften a face because it is the subject.",
-        "Never light the whole scene consistently and never give every subject the same edge. A warm glow across the frame, matching tones on everyone present, and a rim on every outline are the same failure: light applied as a finish rather than arriving from somewhere.",
-        "The props field is a short list of specific objects present in the scene. Give each one a state and the cause of that state: paint dulled by weather, a seam softened by washing, dust settled in a joint. A state without a cause invites the camera to invent one, which is where unexplained wet and glossy surfaces come from.",
-        "Only name surfaces that are in this frame. The brand's material vocabulary is a description of the brand, not a shopping list for every scene.",
-        "The three directions must differ in world, not merely in wording.",
-        "The brand's creative direction and declared ambitions are direction to follow, not background reading. If the brand has named an aesthetic it is reaching for, one of the three directions should pursue it.",
-      ],
+      // Rewritten 2026-09-07. This is the whole instruction for the scene
+      // kind. It says what a good direction is and stops. The rules that used
+      // to follow it are recorded in the comment block above this function.
+      task: [
+        "You write the direction for one photograph. Read the brand's artifacts below, then write three different directions the brand could take.",
+        "",
+        "A good direction names a specific place that people use for something. It names specific people rather than roles, each doing one concrete thing, and those things differ from each other. It names a few objects that belong in that place. It describes light by where it comes from and how it behaves on what it hits. And it lands on a moment that means something to the people in it, taken from what these artifacts say these people are like and what they are doing when they are at their best.",
+        "",
+        "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject.",
+      ].join("\n"),
     },
     template_surface: {
       task: "You write short briefs for reusable branded background surfaces. A surface is a backdrop that other work sits on top of: a gradient, a texture, a lit environment with open space. It is not a finished image and it has no subject of its own.",
@@ -486,69 +650,41 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   const lookBrief = resolveLook(body.look);
 
   // ADR 0018. A look that requires a condition to exist has to decide the
-  // setting, and it was losing to the earned-environments rule below because
-  // that rule sits in the system prompt and the look was only in the user
-  // prompt. Three looks failed exactly this way on 2026-08-18: studio seamless
-  // returned a living room, overcast editorial returned a dark interior, and
-  // daylight street documentary returned a night campfire. Precedence is
-  // stated rather than implied, and the earned-environments rule is narrowed
-  // to a choice among the environments this medium can photograph.
-  // ADR 0018. The grammar reached the writer as context and the writer treated
-  // it as background reading, so across more than twenty renders the brand's
-  // world arrived thinly or not at all. Context describes; rules oblige. These
-  // put the world's content in the RULES block and say plainly that the world
-  // is what is in the frame, which is the same precedence fix that repaired
-  // looks whose medium required a specific setting.
-  const worldSections = grammarMode ? (brain.artifacts?.visualGrammar?.sections || {}) : {};
-  const worldHas = (key) => Array.isArray(worldSections[key]) && worldSections[key].length > 0;
-  const worldRules = grammarMode
-    ? [
-        "The sections above headed PEOPLE ON CAMERA, OBJECTS AND ERA, and PLACES AND MATERIALS describe the world this brand's photographs take place in. That world is required content, not background reading. A direction that could have been written for any brand in this category has failed even if it is a good photograph.",
-        worldHas("places")
-          ? "Build the setting out of the surfaces, rooms, and landscapes named under PLACES AND MATERIALS. Name those materials in the world field. Do not substitute a more familiar room that the brand has no particular claim on."
-          : "",
-        worldHas("objects")
-          ? "Name at least two specific objects from OBJECTS AND ERA in the props field and put at least one of them in the world field where it is doing something in the scene. These are physical objects present in the room, not decoration and not a style applied afterward."
-          : "",
-        worldHas("people")
-          ? "Carry the wardrobe, posture, and era cues from PEOPLE ON CAMERA into how you describe the person."
-          : "",
-        worldHas("light")
-          ? "The sources named under LIGHT are the sources in this scene: name them and their color in the lighting field. Where the look and this world disagree about color, the world decides which sources are present and what color they emit, and the look decides how the film or sensor renders them."
-          : "",
-        "An entry marked as a declared ambition is a direction the brand is reaching for and it belongs in the frame at full strength. Do not soften it, do not reduce it to a single small prop, and do not leave it out because the scene reads fine without it.",
-        "The world decides what is in the frame. The look decides how it was photographed. Neither replaces the other, and a direction that satisfies the look while dropping the world has answered half the brief.",
-      ].filter(Boolean)
-    : [];
-
+  // setting, and it was losing to the earned-environments rule that used to sit
+  // below because that rule sat in the system prompt and the look was only in
+  // the user prompt. Three looks failed exactly this way on 2026-08-18: studio
+  // seamless returned a living room, overcast editorial returned a dark
+  // interior, and daylight street documentary returned a night campfire.
+  // Precedence is stated rather than implied.
+  //
+  // The world rules that sat here were cut on 2026-09-07. See the comment block
+  // above this function for their wording and the record of what produced them.
   const lookRules = lookBrief
     ? [
         `This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${lookBrief.line}`,
         lookBrief.environment === "binding"
           ? `That medium requires ${lookBrief.requires}. Set the scene somewhere that condition holds. Choose the brand's earned environment that can be photographed this way, or the moment in an earned environment when that condition is true, and if no earned environment can carry it, say so in the label rather than setting the scene somewhere the medium would not work. This requirement outranks the preference for a familiar setting.`
           : "That medium works in any setting, so the environment stays governed by the brand's earned environments.",
-        "Do not describe the medium itself in your fields. Capture character compiles separately and repeating it would send the same instruction twice. Write the world, the composition, the lighting, and the props so they belong to that medium: light it renders well, surfaces it resolves, and a moment it can hold.",
       ]
     : [];
 
   const systemPrompt = [
     kind.task,
     "",
-    context.join("\n"),
+    context.join("\n\n"),
     "",
     "RULES:",
-    ...worldRules.map((rule) => `- ${rule}`),
     ...lookRules.map((rule) => `- ${rule}`),
-    ...kind.rules.map((rule) => `- ${rule}`),
+    ...(kind.rules || []).map((rule) => `- ${rule}`),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",
     "- Write physical facts, not perceptual targets. A camera can be told where a light sits, which surfaces it strikes, how many people are present and which way they face, what is cropped, and what is dry or worn and why. It cannot be told to make something feel authentic, cinematic, elevated, atmospheric, or unposed. Every sentence that does not change what is in front of the lens is a sentence the frame will ignore.",
-    String(body.kind || "scene") === "scene"
-      ? "- Two to four sentences per field. Concrete nouns over adjectives. Specific over evocative."
-      : "- Two or three sentences per brief. Concrete nouns over adjectives.",
+    ...(String(body.kind || "scene") === "scene"
+      ? []
+      : ["- Two or three sentences per brief. Concrete nouns over adjectives."]),
     "",
     "OUTPUT FORMAT:",
     String(body.kind || "scene") === "scene"
-      ? 'Return only JSON: {"options":[{"label":"three or four words","brief":"the world field","composition":"the composition field","lighting":"the lighting field","props":"comma separated objects"}]} with exactly three options. The world field is the key named brief; there is no key named world. No markdown fences, no preamble.'
+      ? 'Return only JSON: {"options":[{"label":"three or four words","brief":"the whole direction written as one piece of prose, between 120 and 220 words"}]} with exactly three options. There are no other keys. No markdown fences, no preamble.'
       : 'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
 
@@ -581,10 +717,10 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   try {
     const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
     options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
-    // The rules speak of a world field and the shape calls that key brief, so a
-    // model following the rules literally emits world, and the card then
-    // renders a heading with no body. Accept either rather than relying on the
-    // model to resolve our own naming inconsistency.
+    // Kept from the four-field shape. A model that emits world instead of
+    // brief used to produce a card with a heading and no body, and accepting
+    // either costs nothing. The rules that made world a likely key are gone as
+    // of 2026-09-07, so this should stop firing.
     options = options.map((option) => (
       option && !option.brief && option.world ? { ...option, brief: option.world } : option
     ));
