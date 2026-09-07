@@ -1,5 +1,9 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import {
   SEEDREAM_EDIT_ENDPOINT,
   SEEDREAM_IMAGE_MODEL,
@@ -13,6 +17,9 @@ import {
 import { OPENAI_IMAGE_GENERATIONS_ENDPOINT, OPENAI_IMAGE_MODEL } from "../src/renderers/openai-images.js";
 import { generateProductionImage, productPlacementInstruction, resolveRenderEngine } from "../src/production/service.js";
 import { compileBrandWorldImagePackage } from "../src/production/package.js";
+
+const srcDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..", "src");
+const servicePath = path.join(srcDir, "production", "service.js");
 
 function approvedBrain() {
   const section = (id, name) => ({
@@ -316,14 +323,26 @@ test("the compiled prompt does not vary by engine", async () => {
 });
 
 // ---------------------------------------------------------------------------
-// Two-call rendering when a locked asset is present (2026-09-02)
+// The two-call render, disabled 2026-09-07
+//
+// The branch existed to withhold the product from call one and swap the real
+// asset in on call two, which worked because the scene pass replaced the
+// Product knowledge section with a plain-product placeholder. No product
+// section compiles on any scene render as of c8664ba3, so call one would draw
+// an invented product and call two would be asked to replace "the can" in a
+// frame that may hold two. The owner ruled single call with the locked asset.
+//
+// The branch body is preserved behind one value. The tests below cover both
+// states: the live path renders in one call, and the flag-flip test exercises
+// the preserved code end to end so it cannot rot while it waits.
+// See docs/findings-2026-09-07-two-call-disabled.md.
 // ---------------------------------------------------------------------------
 
-test("a locked asset on Seedream renders the scene first and then places the product", async () => {
+test("a locked asset on Seedream renders in one call with the asset supplied", async () => {
   const stores = lockedAssetStores();
   const calls = [];
   const job = await generateProductionImage(
-    { jobId: "seedream-two-call-01", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", engine: "seedream" },
+    { jobId: "seedream-single-call-01", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", engine: "seedream" },
     {
       ...stores,
       env: { FAL_KEY: "fal-test-only" },
@@ -335,29 +354,22 @@ test("a locked asset on Seedream renders the scene first and then places the pro
   );
 
   assert.equal(job.status, "complete");
-  assert.equal(calls.length, 2);
+  assert.equal(calls.length, 1);
 
-  // Call one is text to image with nothing supplied, so the scene sets its own
-  // scale rather than inheriting the product reference's framing.
-  assert.equal(calls[0].url, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
-  assert.equal("image_urls" in calls[0].body, false);
-  assert.doesNotMatch(calls[0].body.prompt, /The supplied product image governs artwork and geometry/);
-  assert.doesNotMatch(calls[0].body.prompt, /closed and sealed exactly as supplied/);
-  assert.doesNotMatch(calls[0].body.prompt, /Exactly one unit of the product/);
-
-  // Call two is the edit, with the scene first as the image being edited and
-  // the asset second as the supplied product image.
-  assert.equal(calls[1].url, SEEDREAM_EDIT_ENDPOINT);
-  assert.equal(calls[1].body.image_urls.length, 2);
-  assert.equal(calls[1].body.image_urls[0], `data:image/png;base64,${Buffer.from("render-1").toString("base64")}`);
-  assert.equal(calls[1].body.image_urls[1], `data:image/png;base64,${Buffer.from("can-pixels").toString("base64")}`);
-  assert.equal(calls[1].body.prompt, productPlacementInstruction(""));
+  // One edit call, because an image is supplied. The locked asset is the only
+  // thing supplied, and the prompt is the compiled single-call prompt rather
+  // than the fixed placement instruction.
+  assert.equal(calls[0].url, SEEDREAM_EDIT_ENDPOINT);
+  assert.equal(calls[0].body.image_urls.length, 1);
+  assert.equal(calls[0].body.image_urls[0], `data:image/png;base64,${Buffer.from("can-pixels").toString("base64")}`);
+  assert.equal(calls[0].body.prompt, stores.saved().generationPackage.prompt);
+  assert.notEqual(calls[0].body.prompt, productPlacementInstruction(""));
 });
 
-test("the record carries both prompts, both endpoints, and both images", async () => {
+test("a locked asset on Seedream records no two-call plan and writes one image", async () => {
   const stores = lockedAssetStores();
   await generateProductionImage(
-    { jobId: "seedream-two-call-02", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", engine: "seedream" },
+    { jobId: "seedream-single-call-02", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", engine: "seedream" },
     {
       ...stores,
       env: { FAL_KEY: "fal-test-only" },
@@ -368,27 +380,87 @@ test("the record carries both prompts, both endpoints, and both images", async (
   );
 
   const record = stores.saved();
-  const twoCall = record.generationPackage.twoCall;
-  assert.ok(twoCall, "the package records the two-call plan");
-  assert.equal(twoCall.model, SEEDREAM_IMAGE_MODEL);
-  assert.equal(twoCall.sceneEndpoint, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
-  assert.equal(twoCall.placementEndpoint, SEEDREAM_EDIT_ENDPOINT);
-  // Figure-grounded placement instruction, noun hardcoded to "can". Figure 1
-  // is the scene and Figure 2 is the locked asset, which is the order the call
-  // site supplies them in.
-  assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Everything else in Figure 1 stays exactly as it is.");
-  // Since 2026-09-07 both passes compile Assignment, Capture, and Output, so the
-  // scene prompt and the single-call prompt are the same three sections. The
-  // two calls still differ in what they send alongside the prompt: call one
-  // sends no product image, call two sends the locked asset and the fixed
-  // placement instruction.
-  assert.equal(twoCall.scenePrompt, record.generationPackage.prompt);
-  assert.doesNotMatch(record.generationPackage.prompt, /The supplied product image governs artwork and geometry/);
-  assert.deepEqual(twoCall.sceneSections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
-  assert.equal(twoCall.sceneImageId, "seedream-two-call-02-scene");
-  // The final call is an edit call, which is what the provenance label reads.
+  assert.equal(record.generationPackage.twoCall, undefined);
+  // The compiled package is otherwise unchanged: the locked asset is still on
+  // it, and the compile is still the three-section scene shape.
+  assert.equal(record.generationPackage.lockedAsset.name, "SLAKE Yuzu Ginger Can");
+  assert.deepEqual(
+    record.generationPackage.sections.map((section) => section.title),
+    ["Assignment", "Capture", "Output"],
+  );
   assert.equal(record.endpoint, SEEDREAM_EDIT_ENDPOINT);
-  assert.deepEqual(stores.writtenImages(), ["seedream-two-call-02", "seedream-two-call-02-scene"]);
+  // No scene intermediate is written, so the discard path has one image to find.
+  assert.deepEqual(stores.writtenImages(), ["seedream-single-call-02"]);
+});
+
+// The preserved branch, exercised by flipping the one value that disables it.
+// The module is copied to a temporary file with the flag set true and its
+// relative imports rewritten to absolute ones, so the real branch body runs
+// against the real compiler. This fails if someone deletes the branch, renames
+// the flag, or lets the preserved code drift out of working order, and it is
+// the reason the code can sit disabled without quietly rotting.
+test("flipping twoCallEnabled restores the two-call render", async () => {
+  const source = fs.readFileSync(servicePath, "utf8");
+  assert.equal(
+    source.split("const twoCallEnabled = false;").length - 1,
+    1,
+    "the two-call flag is one value in one place",
+  );
+  const flipped = source
+    .replace("const twoCallEnabled = false;", "const twoCallEnabled = true;")
+    .replaceAll('from "../', `from "${pathToFileURL(path.join(srcDir, "x")).href.replace(/x$/, "")}`)
+    .replaceAll('from "./', `from "${pathToFileURL(path.join(srcDir, "production", "x")).href.replace(/x$/, "")}`);
+  const tempPath = path.join(os.tmpdir(), `bws-two-call-flip-${process.pid}.mjs`);
+  fs.writeFileSync(tempPath, flipped);
+  try {
+    const flippedModule = await import(pathToFileURL(tempPath).href);
+    const stores = lockedAssetStores();
+    const calls = [];
+    const job = await flippedModule.generateProductionImage(
+      { jobId: "seedream-flip-01", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", engine: "seedream" },
+      {
+        ...stores,
+        env: { FAL_KEY: "fal-test-only" },
+        async fetchImpl(url, init) {
+          calls.push({ url, body: JSON.parse(init.body) });
+          return jsonResponse({ images: [{ url: `data:image/png;base64,${Buffer.from(`render-${calls.length}`).toString("base64")}` }] });
+        },
+      },
+    );
+
+    assert.equal(job.status, "complete");
+    assert.equal(calls.length, 2);
+
+    // Call one is text to image with nothing supplied, so the scene sets its own
+    // scale rather than inheriting the product reference's framing.
+    assert.equal(calls[0].url, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
+    assert.equal("image_urls" in calls[0].body, false);
+
+    // Call two is the edit, with the scene first as the image being edited and
+    // the asset second as the supplied product image.
+    assert.equal(calls[1].url, SEEDREAM_EDIT_ENDPOINT);
+    assert.equal(calls[1].body.image_urls.length, 2);
+    assert.equal(calls[1].body.image_urls[0], `data:image/png;base64,${Buffer.from("render-1").toString("base64")}`);
+    assert.equal(calls[1].body.image_urls[1], `data:image/png;base64,${Buffer.from("can-pixels").toString("base64")}`);
+    assert.equal(calls[1].body.prompt, productPlacementInstruction(""));
+
+    const record = stores.saved();
+    const twoCall = record.generationPackage.twoCall;
+    assert.ok(twoCall, "the package records the two-call plan");
+    assert.equal(twoCall.model, SEEDREAM_IMAGE_MODEL);
+    assert.equal(twoCall.sceneEndpoint, SEEDREAM_TEXT_TO_IMAGE_ENDPOINT);
+    assert.equal(twoCall.placementEndpoint, SEEDREAM_EDIT_ENDPOINT);
+    assert.equal(twoCall.placementInstruction, "Replace the can in Figure 1 with the can in Figure 2. Match the size and position of the can already in Figure 1. Everything else in Figure 1 stays exactly as it is.");
+    // Both passes compile the same three sections, so the scene prompt and the
+    // single-call prompt are equal. The calls differ in what they send beside it.
+    assert.equal(twoCall.scenePrompt, record.generationPackage.prompt);
+    assert.deepEqual(twoCall.sceneSections.map((section) => section.title), ["Assignment", "Capture", "Output"]);
+    assert.equal(twoCall.sceneImageId, "seedream-flip-01-scene");
+    assert.equal(record.endpoint, SEEDREAM_EDIT_ENDPOINT);
+    assert.deepEqual(stores.writtenImages(), ["seedream-flip-01", "seedream-flip-01-scene"]);
+  } finally {
+    fs.rmSync(tempPath, { force: true });
+  }
 });
 
 test("the placement instruction names both figures and ignores the product name", () => {
@@ -453,12 +525,17 @@ function productStoreFor(record) {
   };
 }
 
-test("the scene call asks for a plain product at true size and carries no label demands", async () => {
+// This test used to read the scene call's prompt off call one. There is no call
+// one now. What it was really pinning is that the product record's label
+// demands do not reach the renderer, which is still worth holding: the visual
+// direction asked for four legible statements on the can face, and carrying it
+// is what made the model draw the product large enough to read.
+test("the product record's label demands do not reach the renderer", async () => {
   const stores = lockedAssetStores();
   const product = approvedProduct();
   const calls = [];
   await generateProductionImage(
-    { jobId: "seedream-placeholder-01", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", productId: product.product_id, engine: "seedream" },
+    { jobId: "seedream-single-call-03", brief: brief(), references: [], lockedAssetId: "asset-yuzu-can-001", productId: product.product_id, engine: "seedream" },
     {
       ...stores,
       productStore: productStoreFor(product),
@@ -470,29 +547,15 @@ test("the scene call asks for a plain product at true size and carries no label 
     },
   );
 
-  const scenePrompt = calls[0].body.prompt;
-  assert.equal(
-    stores.saved().generationPackage.twoCall.scenePrompt,
-    scenePrompt,
-    "the prompt sent on call one is the recorded scene prompt",
-  );
-  // The scene placeholder stopped compiling on 2026-09-07 along with the rest
-  // of Product knowledge. The writer's prose is what puts a can in the scene,
-  // and the placement call is what makes it the real one. sceneProductPlaceholder
-  // is kept uncalled in the compiler so a return is one revert.
-  assert.doesNotMatch(scenePrompt, /This scene includes a plain unmarked tall narrow can/);
-  assert.doesNotMatch(scenePrompt, /Yuzu Ginger can, shown as a plain unmarked version/);
-  assert.doesNotMatch(scenePrompt, /Visual direction:/);
-  assert.doesNotMatch(scenePrompt, /vertical branding/);
-  assert.doesNotMatch(scenePrompt, /volume statement/);
-  assert.doesNotMatch(scenePrompt, /caffeine-free statement/);
-
-  // The single-call prompt on the same job compiles the same three sections and
-  // also carries no product section.
-  assert.doesNotMatch(stores.saved().generationPackage.prompt, /Visual direction: Show the vertical branding/);
-
-  // Call two is untouched: the same fixed instruction, named product and all.
-  assert.equal(calls[1].body.prompt, productPlacementInstruction("Yuzu Ginger can"));
+  assert.equal(calls.length, 1);
+  const prompt = calls[0].body.prompt;
+  assert.equal(prompt, stores.saved().generationPackage.prompt);
+  assert.doesNotMatch(prompt, /This scene includes a plain unmarked tall narrow can/);
+  assert.doesNotMatch(prompt, /Visual direction:/);
+  assert.doesNotMatch(prompt, /vertical branding/);
+  assert.doesNotMatch(prompt, /volume statement/);
+  assert.doesNotMatch(prompt, /caffeine-free statement/);
+  assert.doesNotMatch(prompt, /No droplets/);
 });
 
 // scenePass used to change the Product knowledge body and the Protection avoid

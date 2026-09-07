@@ -428,8 +428,25 @@ export async function prepareProductionPackage(body, options) {
   // label artwork and visual direction were never needed there, and carrying
   // them made the model draw the product large enough for the label statements
   // to read. See docs/findings-2026-09-02-scene-placeholder-and-recovery.md.
+  //
+  // Disabled in this commit. The whole branch depended on the scene pass
+  // withholding the product from call one, so that call one drew a plain
+  // stand-in and call two swapped the real asset onto it. That stopped being
+  // true at c8664ba3, where no product section compiles on any scene render
+  // and the writer names the product in its prose instead. Call one now draws
+  // an invented product, and call two is asked to replace "the can" in a frame
+  // that may hold two of them. The owner has ruled single call with the locked
+  // asset as the render path.
+  //
+  // Nothing here is deleted. The branch body, productPlacementInstruction, the
+  // scenePass compile mode, the scene blob write and delete, and the
+  // preflight's two-call display are all still reachable. Flipping this one
+  // value to true restores the two-call render, and a test exercises the body
+  // by doing exactly that.
+  // See docs/findings-2026-09-07-two-call-disabled.md.
+  const twoCallEnabled = false;
   const plannedEngine = resolveRenderEngine(body.engine);
-  if (plannedEngine.name === "seedream" && lockedAsset) {
+  if (twoCallEnabled && plannedEngine.name === "seedream" && lockedAsset) {
     const scenePackage = compileBrandWorldImagePackage({ ...compileInputs, lockedAsset: null, scenePass: true });
     generationPackage.twoCall = {
       engine: plannedEngine.name,
