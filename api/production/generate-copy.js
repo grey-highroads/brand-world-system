@@ -468,7 +468,38 @@ export default async function handler(request, response) {
 //   Two to four sentences per field. Concrete nouns over adjectives. Specific
 //   over evocative.
 
-async function handleSceneBrief({ body, brain, product, apiKey, response }) {
+// Three moments, chosen at random, and the writer never sees the rest.
+//
+// The writer was handed every moment in the Story Architecture and told to
+// build a direction from one of them. Nothing said which, so it took the first
+// three, every time: two rounds running returned Nia at her dining table, Priya
+// at the fitness studio counter and Marco at the trailhead, and the Nia
+// direction came back nearly word for word. That is what a language model does
+// with a list. Selecting here means the writer cannot favor the top of one,
+// because it is not given one.
+//
+// The source is real randomness rather than a hash of the request, so two runs
+// against the same brain pick differently. A test hands in its own source.
+// See docs/findings-2026-09-07-moment-selection.md.
+export const SCENE_MOMENT_COUNT = 3;
+
+export function selectMoments(moments, random = Math.random) {
+  const pool = Array.isArray(moments) ? moments.filter(Boolean) : [];
+  if (pool.length <= SCENE_MOMENT_COUNT) return pool.slice();
+  // Partial Fisher-Yates over a copy. Shuffling rather than picking indexes
+  // also drops the order the artifact happened to be written in, which is the
+  // other thing a model reads position from.
+  const shuffled = pool.slice();
+  for (let index = 0; index < SCENE_MOMENT_COUNT; index += 1) {
+    const swap = index + Math.floor(random() * (shuffled.length - index));
+    const held = shuffled[index];
+    shuffled[index] = shuffled[swap];
+    shuffled[swap] = held;
+  }
+  return shuffled.slice(0, SCENE_MOMENT_COUNT);
+}
+
+export async function handleSceneBrief({ body, brain, product, apiKey, response, random = Math.random }) {
   // Three artifacts are the whole of what the writer reads, as of 2026-09-07.
   // The guidance sections went first: they are prose summaries of the same
   // material, and sending both gave the writer two answers to every question.
@@ -545,7 +576,9 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     lived.opens ? `What it opens up: ${text(lived.opens)}` : "",
   ])) drewOn.push("Lived World");
 
-  const moments = Array.isArray(story.moments) ? story.moments : [];
+  // Only these three reach the writer. A brand with twelve moments still has
+  // twelve moments; this call sees three of them.
+  const moments = selectMoments(story.moments, random);
   // A moment is somewhere these people already are. The old shape carried an
   // index, a scale, a narrative role and a product beat per moment, and it is
   // read here so a brain synthesized before 2026-09-07 still briefs a writer.
@@ -571,7 +604,7 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
     text(story.description),
     story.rhythm ? `The rhythm this brand's story runs on: ${text(story.rhythm)}` : "",
     moments.length
-      ? `Moments in this world. Each one is somewhere these people already are, and a camera could walk into any of them:\n${moments.map(momentLine).filter(Boolean).join("\n")}`
+      ? `${moments.length === 1 ? "A moment" : `${moments.length} moments`} from this world. ${moments.length === 1 ? "It is" : "Each is"} somewhere these people already are, and a camera could walk into ${moments.length === 1 ? "it" : "any of them"}:\n${moments.map(momentLine).filter(Boolean).join("\n")}`
       : "",
     story.why ? `Why the story is built this way: ${text(story.why)}` : "",
     list(story.continuity).length ? `What carries across every moment: ${joined(story.continuity, " ")}` : "",
@@ -629,15 +662,23 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   // line and the rules change with it. Everything else is shared.
   const kinds = {
     scene: {
-      // Rewritten 2026-09-07. This is the whole instruction for the scene
-      // kind. It says what a good direction is and stops. The rules that used
-      // to follow it are recorded in the comment block above this function.
+      // The opening paragraph was rewritten 2026-09-07, second revision the
+      // same day. It used to say a direction was built from a moment, and the
+      // writer read that as an instruction to transcribe one: the moment naming
+      // Nia's dining table, her headphones and her printed questions came back
+      // as a direction naming exactly those, twice. A moment is a situation to
+      // photograph, and the same situation an hour later is a different
+      // picture. That is now what the first paragraph says.
+      //
+      // The other three paragraphs are unchanged apart from one sentence added
+      // to the third, which says a direction is one instant. A person doing
+      // three things in sequence is the transcription failure in miniature.
       task: [
-        "You write the direction for one photograph. Read the brand's artifacts below, then write three different directions, each built from one of the moments in THE STORY.",
+        "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment. The moment says who is there, where, when and what is going on. Yours is what a camera saw at one instant of that, and the same moment an hour later, on another day, or a few minutes either side is a different photograph. Write the photograph, not the moment.",
         "",
         "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are the ones named in THE LIVED WORLD. Use their names and write them as themselves. Do not invent a person and do not describe anyone by their job or their age bracket.",
         "",
-        "A good direction puts those people in that place doing separate concrete things. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut.",
+        "A good direction puts those people in that place doing separate concrete things. A direction is one instant, so every person is in the middle of one thing rather than several in a row. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut.",
         "",
         "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject. It is not what the moment is about.",
       ].join("\n"),
@@ -755,10 +796,15 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   // The grammar entries that fed the writer travel back with the suggestions, so
   // the job can record which statements shaped the scene and an ambition entry
   // keeps its label all the way to the result screen.
+  // Which moments this call was given. The job carries them so a direction can
+  // be traced back to the situation it was photographing, and so a repeat can
+  // be told from a re-pick of the same three.
+  const momentIds = moments.map((moment) => text(moment?.id)).filter(Boolean);
   sendJson(response, 200, {
     options,
     drewOn,
     model: "gpt-4o",
     grammarEntries: grammarEntries.length ? grammarEntries : undefined,
+    momentIds: momentIds.length ? momentIds : undefined,
   });
 }
