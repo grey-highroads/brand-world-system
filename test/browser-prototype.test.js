@@ -256,7 +256,12 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /A worked kitchen at 4pm/);
 
   session.click("select-brain-artifact", { id: "story" });
-  assert.match(session.appRoot.innerHTML, /Four scenes from one believable life/);
+  // The moments heading stopped promising four on 2026-09-07, when the schema
+  // opened moments to between six and twelve. The sample brain still carries
+  // four old-shape moments, which is what this session renders, so it doubles
+  // as the old-shape reader case.
+  assert.match(session.appRoot.innerHTML, /Places a camera could walk into/);
+  assert.match(session.appRoot.innerHTML, /Role in the story/);
   assert.match(session.appRoot.innerHTML, /Why these four/);
   session.click("toggle-guidance-comment", { target: "story:artifact:rhythm" });
   session.input("guidance-comment-draft", "Make the transition into the shared evening more specific.");

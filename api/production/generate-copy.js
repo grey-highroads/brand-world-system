@@ -469,15 +469,20 @@ export default async function handler(request, response) {
 //   over evocative.
 
 async function handleSceneBrief({ body, brain, product, apiKey, response }) {
-  // The four artifacts are the whole of what the writer reads, as of
-  // 2026-09-07. The guidance sections are gone from this path: they are prose
-  // summaries of the same material, and sending both gave the writer two
-  // answers to every question. The dossier's guardrails are gone because a
-  // guardrail is a rule, and rules are what this change removed. The grammar's
-  // rejects section is gone for the same reason and because ADR 0017 already
-  // made the governed refusals document the only refusal source.
+  // Three artifacts are the whole of what the writer reads, as of 2026-09-07.
+  // The guidance sections went first: they are prose summaries of the same
+  // material, and sending both gave the writer two answers to every question.
+  // The dossier followed on the same day. It is the brand explaining itself to
+  // a person reviewing it, and desiredFeeling, productTruth, culturalCodes and
+  // the rest are the reason two writer outputs came back with sentences a
+  // camera cannot use. Nothing physical is lost with it: the palette, the
+  // materials and the cultural codes all flow into the Visual Grammar at
+  // synthesis time, as visible facts rather than as brand language.
+  //
+  // The grammar's rejects section stays out, because ADR 0017 made the governed
+  // refusals document the only refusal source for the image path.
+  // See docs/findings-2026-09-07-world-artifacts.md.
   const artifacts = brain.artifacts || {};
-  const dossier = artifacts.dossier || {};
   const lived = artifacts.livedWorld || artifacts.lived_world || {};
   const story = artifacts.storyArchitecture || artifacts.story_architecture || {};
   const grammar = artifacts.visualGrammar || artifacts.visual_grammar || {};
@@ -502,30 +507,27 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
 
   context.push(`BRAND: ${brain.brandName}. ${brain.brandDescription || ""}`.trim());
 
-  if (block("THE BRAND DOSSIER", [
-    text(dossier.description),
-    list(dossier.read).length ? `How this brand reads: ${joined(dossier.read, " ")}` : "",
-    text(dossier.readBody),
-    dossier.audience ? `Who it is for: ${text(dossier.audience)}` : "",
-    dossier.desiredFeeling ? `What someone should feel looking at its work: ${text(dossier.desiredFeeling)}` : "",
-    dossier.productTruth ? `The true thing about the product: ${text(dossier.productTruth)}` : "",
-    list(dossier.proof).length ? `What backs that up: ${joined(dossier.proof, " ")}` : "",
-    Array.isArray(dossier.palette) && dossier.palette.length
-      ? `Colors this brand owns: ${dossier.palette.map((color) => `${text(color?.name)} (${text(color?.role)}, ${text(color?.color)})`).filter((entry) => entry.trim() !== "( , )").join(", ")}`
-      : "",
-    list(dossier.materials).length ? `Materials and surfaces it is made of: ${joined(dossier.materials, ", ")}` : "",
-    dossier.culturalCodes ? `The culture it sits in: ${text(dossier.culturalCodes)}` : "",
-  ])) drewOn.push("Brand dossier");
-
   // The patterns, emotions, tensions, and social modes are the reason the
   // writer has anything to say, so they arrive as what these people do and
   // feel rather than as a list of field names.
   const patterns = Array.isArray(lived.patterns) ? lived.patterns : [];
   const social = Array.isArray(lived.social) ? lived.social : [];
   const environments = Array.isArray(lived.environments) ? lived.environments : [];
+  // The people, by name. A brain synthesized before 2026-09-07 carries a single
+  // `person` string instead, and that still reads: it is the shape that
+  // produced "a late 20s professional" and then Mark, so a writer given it will
+  // invent someone, but a saved brain must still work until it is re-synthesized.
+  const people = Array.isArray(lived.people) ? lived.people : [];
+  const peopleById = new Map(people.map((entry) => [text(entry?.id), entry]).filter(([id]) => id));
+  const personLabel = (id) => {
+    const entry = peopleById.get(text(id));
+    return entry ? text(entry.name) || text(id) : text(id);
+  };
   if (block("THE LIVED WORLD", [
     text(lived.description),
-    lived.person ? `The person at the center of this: ${text(lived.person)}` : "",
+    people.length
+      ? `The people this is about. Write these people, by name. Do not invent others:\n${people.map((entry) => `${text(entry?.name)}. ${text(entry?.who)}`.trim()).filter(Boolean).join("\n")}`
+      : (lived.person ? `The person at the center of this: ${text(lived.person)}` : ""),
     list(lived.wants).length ? `What they want: ${joined(lived.wants, " ")}` : "",
     list(lived.rejects).length ? `What they will not have: ${joined(lived.rejects, " ")}` : "",
     list(lived.tensions).length ? `What pulls against itself in their life: ${joined(lived.tensions, " ")}` : "",
@@ -544,17 +546,32 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
   ])) drewOn.push("Lived World");
 
   const moments = Array.isArray(story.moments) ? story.moments : [];
+  // A moment is somewhere these people already are. The old shape carried an
+  // index, a scale, a narrative role and a product beat per moment, and it is
+  // read here so a brain synthesized before 2026-09-07 still briefs a writer.
+  const momentLine = (moment) => {
+    const present = list(moment?.who).map(personLabel).filter(Boolean);
+    const who = present.join(" and ");
+    if (moment?.doing || moment?.where || who) {
+      return [
+        `${text(moment?.title)}.`,
+        moment?.when || moment?.where ? `${text(moment?.when)}${moment?.when && moment?.where ? ", " : ""}${text(moment?.where)}.` : "",
+        who ? `${who} ${present.length === 1 ? "is" : "are"} there.` : "",
+        text(moment?.doing),
+        text(moment?.feeling),
+      ].filter(Boolean).join(" ");
+    }
+    return [
+      `${text(moment?.title)}. ${text(moment?.time)}.`.replace(/\s+/g, " ").trim(),
+      text(moment?.action),
+      text(moment?.feeling),
+    ].filter(Boolean).join(" ");
+  };
   if (block("THE STORY", [
     text(story.description),
     story.rhythm ? `The rhythm this brand's story runs on: ${text(story.rhythm)}` : "",
     moments.length
-      ? `The moments the story turns on, which are what these people are doing when the brand matters most:\n${moments.map((moment) => [
-          `${text(moment?.index)}. ${text(moment?.title)}. ${text(moment?.time)}, ${text(moment?.scale)}.`.replace(/\s+/g, " ").trim(),
-          text(moment?.action),
-          text(moment?.feeling),
-          moment?.role ? `Its place in the story: ${text(moment.role)}` : "",
-          moment?.product ? `Where the product sits: ${text(moment.product)}` : "",
-        ].filter(Boolean).join(" ")).join("\n")}`
+      ? `Moments in this world. Each one is somewhere these people already are, and a camera could walk into any of them:\n${moments.map(momentLine).filter(Boolean).join("\n")}`
       : "",
     story.why ? `Why the story is built this way: ${text(story.why)}` : "",
     list(story.continuity).length ? `What carries across every moment: ${joined(story.continuity, " ")}` : "",
@@ -616,11 +633,13 @@ async function handleSceneBrief({ body, brain, product, apiKey, response }) {
       // kind. It says what a good direction is and stops. The rules that used
       // to follow it are recorded in the comment block above this function.
       task: [
-        "You write the direction for one photograph. Read the brand's artifacts below, then write three different directions the brand could take.",
+        "You write the direction for one photograph. Read the brand's artifacts below, then write three different directions, each built from one of the moments in THE STORY.",
         "",
-        "A good direction names a specific place that people use for something. It names specific people rather than roles, each doing one concrete thing, and those things differ from each other. It names a few objects that belong in that place. It describes light by where it comes from and how it behaves on what it hits. And it lands on a moment that means something to the people in it, taken from what these artifacts say these people are like and what they are doing when they are at their best.",
+        "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are the ones named in THE LIVED WORLD. Use their names and write them as themselves. Do not invent a person and do not describe anyone by their job or their age bracket.",
         "",
-        "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject.",
+        "A good direction puts those people in that place doing separate concrete things. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut.",
+        "",
+        "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject. It is not what the moment is about.",
       ].join("\n"),
     },
     template_surface: {

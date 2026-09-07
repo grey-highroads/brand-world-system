@@ -207,7 +207,28 @@ const livedWorld = strictObject({
   description: { type: "string" },
   sourceCount: { type: "integer", minimum: 1 },
   categories: stringArray(2, 6),
-  person: { type: "string" },
+  people: {
+    type: "array",
+    description:
+      "The people this brand serves, written as particular people rather than as an audience. Each entry is someone a photographer could cast and a scene writer could put in a room. Two entries must not be describable as the same person.",
+    items: strictObject({
+      id: {
+        type: "string",
+        description: "A stable identifier for this person, unique within the artifact, such as person-2. Story Architecture moments cite it, so it must survive edits to the list and must never be a position.",
+      },
+      name: {
+        type: "string",
+        description: "A first name, so moments and scenes can refer to this person by name rather than by role.",
+      },
+      who: {
+        type: "string",
+        description: "Two or three sentences that make this a particular person: roughly how old they are, what they do with their days, how they carry themselves, and what they are like to be around. Physical enough to cast from and specific enough that no other entry could be the same person. An audience description is not a person.",
+      },
+      basis,
+    }),
+    minItems: 2,
+    maxItems: 5,
+  },
   wants: stringArray(3, 6),
   rejects: stringArray(3, 6),
   tensions: stringArray(3, 6),
@@ -250,20 +271,47 @@ const storyArchitecture = strictObject({
   sourceCount: { type: "integer", minimum: 1 },
   categories: stringArray(2, 6),
   rhythm: { type: "string" },
-  moments: objectArray(
-    {
-      index: { type: "string" },
-      time: { type: "string" },
-      scale: { type: "string" },
-      title: { type: "string" },
-      action: { type: "string" },
-      feeling: { type: "string" },
-      role: { type: "string" },
-      product: { type: "string" },
-    },
-    4,
-    4,
-  ),
+  moments: {
+    type: "array",
+    description:
+      "Moments in the world of the people the Lived World describes. Each one is something they are doing, somewhere specific, at a particular time, that a photographer could walk into. A moment does not exist to show the product, and the product may be absent from it.",
+    items: strictObject({
+      id: {
+        type: "string",
+        description: "A stable identifier for this moment, unique within the artifact, such as moment-4. It must survive edits to the list and must never be a position.",
+      },
+      title: {
+        type: "string",
+        description: "A short handle of two to five words for scanning by, such as The last hour of light. Display only: the other fields carry the moment.",
+      },
+      when: {
+        type: "string",
+        description: "A time of day or a point in a routine. Not a content calendar category and not a campaign beat.",
+      },
+      where: {
+        type: "string",
+        description: "The place, named as a physical setting someone could stand in. A room, a stretch of street, a patch of ground. Not an environment category and not a channel.",
+      },
+      who: {
+        type: "array",
+        description: "Which of the Lived World people are present, by their ids. At least one. Never a role, a segment, or a name that is not in the people list.",
+        items: { type: "string" },
+        minItems: 1,
+        maxItems: 5,
+      },
+      doing: {
+        type: "string",
+        description: "What is happening, written as something a camera could see, already underway rather than about to begin. Two or three plain sentences.",
+      },
+      feeling: {
+        type: "string",
+        description: "What the moment means to the people in it, in one sentence. Not what the brand wants a viewer to feel.",
+      },
+      basis,
+    }),
+    minItems: 6,
+    maxItems: 12,
+  },
   why: { type: "string" },
   continuity: stringArray(3, 6),
 });

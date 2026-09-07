@@ -1236,6 +1236,11 @@ const sampleBrainArtifacts = JSON.parse(JSON.stringify(brainArtifacts));
 const sampleBrainExceptions = JSON.parse(JSON.stringify(brainExceptions));
 
 function sampleResultSnapshot() {
+  // Sample data, still in the pre-2026-09-07 shape: one person string and four
+  // product-beat moments. It is left as it is rather than rewritten, because
+  // rewriting it means inventing several pages of SLAKE brand content, and it
+  // doubles here as the old-shape case both readers have to keep handling.
+  // Recorded in docs/findings-2026-09-07-world-artifacts.md as follow-up.
   const [dossier, livedWorld, storyArchitecture, visualGrammar] = sampleBrainArtifacts.map(({ id: _id, number: _number, name: _name, short: _short, ...artifact }) => artifact);
   return {
     brandName: "SLAKE",
@@ -3422,10 +3427,19 @@ function basisNote(item) {
 }
 
 function renderLivedArtifact(artifact) {
+  // Brains synthesized before 2026-09-07 carry one `person` string instead of a
+  // `people` list. Both render. Nothing migrates a saved brain: it keeps its
+  // shape until the owner re-synthesizes, and until then this shows what it has.
+  const people = Array.isArray(artifact.people) ? artifact.people : [];
+  const peopleBody = people.length
+    ? `<div class="artifact-people">${people.map((item) => `<article><h4>${escapeHtml(item.name || "")}</h4><p>${escapeHtml(item.who || "")}</p>${basisNote(item)}</article>`).join("")}</div>`
+    : artifact.person
+    ? `<p class="artifact-lead-copy">${escapeHtml(artifact.person)}</p>`
+    : `<p class="artifact-grammar-empty">This brain was built before the Lived World held people. Re-synthesize it to get them.</p>`;
   return `
     <section class="artifact-module artifact-person-module">
-      ${artifactSectionHeading(artifact, "The person", "A life the brand can honestly belong in", "person")}
-      <p class="artifact-lead-copy">${escapeHtml(artifact.person)}</p>
+      ${artifactSectionHeading(artifact, people.length ? "The people" : "The person", "Lives the brand can honestly belong in", "person")}
+      ${peopleBody}
     </section>
     <div class="artifact-split">
       <section class="artifact-module">
@@ -3461,6 +3475,29 @@ function renderLivedArtifact(artifact) {
   `;
 }
 
+// One moment, in either shape. Since 2026-09-07 a moment names when, where, who
+// and what is being done. Brains synthesized before that carry an index, a
+// scale, a narrative role and a product beat instead, and those still render so
+// a saved brain reads correctly until the owner re-synthesizes it. The `who`
+// ids resolve to names through the Lived World artifact beside this one; an id
+// with no match shows as itself rather than disappearing.
+function renderStoryMoment(item) {
+  const lived = brainArtifacts.find((entry) => entry.id === "lived");
+  const people = Array.isArray(lived?.people) ? lived.people : [];
+  const nameFor = (id) => {
+    const match = people.find((entry) => entry.id === id);
+    return match?.name || id;
+  };
+  const isNewShape = Boolean(item.doing || item.where || item.when);
+  if (isNewShape) {
+    const who = (Array.isArray(item.who) ? item.who : []).map(nameFor).filter(Boolean);
+    const stamp = [item.when, item.where].filter(Boolean).join(" · ");
+    return `<article><header><small>${escapeHtml(stamp)}</small></header><h4>${escapeHtml(item.title || "")}</h4><p>${escapeHtml(item.doing || "")}</p><dl>${who.length ? `<div><dt>Who is there</dt><dd>${escapeHtml(who.join(", "))}</dd></div>` : ""}${item.feeling ? `<div><dt>What it means to them</dt><dd>${escapeHtml(item.feeling)}</dd></div>` : ""}</dl>${basisNote(item)}</article>`;
+  }
+  const stamp = [item.time, item.scale].filter(Boolean).join(" · ");
+  return `<article><header>${item.index ? `<span>${escapeHtml(item.index)}</span>` : ""}<small>${escapeHtml(stamp)}</small></header><h4>${escapeHtml(item.title || "")}</h4><p>${escapeHtml(item.action || "")}</p><dl>${item.feeling ? `<div><dt>Feels</dt><dd>${escapeHtml(item.feeling)}</dd></div>` : ""}${item.role ? `<div><dt>Role in the story</dt><dd>${escapeHtml(item.role)}</dd></div>` : ""}${item.product ? `<div><dt>Product</dt><dd>${escapeHtml(item.product)}</dd></div>` : ""}</dl></article>`;
+}
+
 function renderStoryArtifact(artifact) {
   return `
     <section class="artifact-module artifact-story-intro">
@@ -3468,8 +3505,8 @@ function renderStoryArtifact(artifact) {
       <p class="artifact-lead-copy">${escapeHtml(artifact.rhythm)}</p>
     </section>
     <section class="artifact-module">
-      ${artifactSectionHeading(artifact, "The moment plan", "Four scenes from one believable life", "moments")}
-      <div class="artifact-moments">${artifact.moments.map((item) => `<article><header><span>${escapeHtml(item.index)}</span><small>${escapeHtml(item.time)} · ${escapeHtml(item.scale)}</small></header><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.action)}</p><dl><div><dt>Feels</dt><dd>${escapeHtml(item.feeling)}</dd></div><div><dt>Role in the story</dt><dd>${escapeHtml(item.role)}</dd></div><div><dt>Product</dt><dd>${escapeHtml(item.product)}</dd></div></dl></article>`).join("")}</div>
+      ${artifactSectionHeading(artifact, "The moments", "Places a camera could walk into", "moments")}
+      <div class="artifact-moments">${(artifact.moments || []).map(renderStoryMoment).join("")}</div>
     </section>
     <div class="artifact-split">
       <section class="artifact-module artifact-highlight-module">

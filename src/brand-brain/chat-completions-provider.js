@@ -31,7 +31,9 @@ Writing rules:
 - Never write an em dash or an en dash in any text you produce. This covers every field, including names and labels: palette entry names, artifact descriptions, guidance summaries, statements, and review questions. Use a comma, a colon, a full stop, or rewrite the sentence. Straight quotes and apostrophes only, never curly ones.
 
 Lived World:
-- The Lived World describes the people the brand serves, living their own lives, with the brand's products somewhere in them. It is a portrait of a person and their days.
+- The Lived World describes the people the brand serves, living their own lives, with the brand's products somewhere in them. It holds several of them, in the "people" array, each one particular enough to put in a room.
+- A person entry is a character, not a segment. "A late 20s professional" is a segment: it describes a bracket that every competitor also sells to, and a writer handed it will invent someone to fill it. "Dana, 27, runs the front of a bike shop and talks with her hands" is a person. Write the second kind. Give each one a name, roughly how old they are, what they do with their days, how they carry themselves, and what they are like to be around, so that two entries could never be read as the same person.
+- The people carry ids. Story Architecture moments name who is present by those ids, so the ids have to be stable and have to mean someone.
 - It is not a description of the brand's marketing. Observed posting behavior, content categories, campaign beats, shot types, and studio treatments are facts about the brand's content practice, not life patterns. They belong in the identity and creative guidance sections.
 - "patterns" entries describe moments in a person's day or week. The "time" field holds a time of day, a point in a routine, or a stage in a recurring process. It does not hold a content calendar category.
 - "environments" entries are physical places that person occupies for reasons of their own. The "earned" field states the behavior that puts them there. A place the brand photographs its product is not by itself a place the audience has earned.
@@ -43,6 +45,17 @@ Lived World:
 - "basis.derivedFrom" names what it rests on in plain language: the source and what it said for evidence, or the specific brand facts the reasoning used for inference.
 - "basis.confidence" is High, Medium, or Low. Reserve High for entries a reader could verify against a named source.
 - When the sources contain no direct evidence about the audience at all, still build the Lived World by inference, and raise a review question saying the audience portrait is reasoned from the brand's own material and asking what customer evidence exists.
+
+Story Architecture:
+- The Story Architecture is a set of moments in the world of the people the Lived World describes. Each moment is something they do, somewhere specific, at a particular time, that a photographer could walk into and start working.
+- The product may be present in a moment or absent from it, and the moment does not exist to show the product. A moment that is really a reason to hold, open, or drink the product is not a moment, it is an ad, and it belongs nowhere in this artifact. If you find yourself writing a sequence that builds toward the product appearing, stop and write what these people are doing instead.
+- "who" names the people present by their Lived World ids, at least one. Never a role, never a segment, and never a name that is not in the people list. The people in these moments are the people in that artifact, not new ones.
+- "where" is a physical setting someone could stand in: a room, a stretch of street, a patch of ground. Not an environment category and not a channel.
+- "when" is a time of day or a point in a routine, in the same sense the Lived World patterns use it. Not a content calendar category.
+- "doing" is what is happening, written as something a camera could see, already underway rather than about to begin.
+- "feeling" is what the moment means to the people in it, in one sentence. It is not what the brand wants a viewer to feel, and it is not a mood word for a photograph.
+- Write each moment so a scene writer could set a camera down inside it without asking a follow-up question. That is the test this artifact has to pass.
+- Every moment carries a "basis" object, under the same rules the Lived World entries follow. The origin is "evidence" when the supplied sources state or directly show the thing and "inference" when it was reasoned, and it is never "ambition". "derivedFrom" names what it rests on in plain language: the source and what it said, or the specific brand facts and Lived World entries the reasoning used. "basis.confidence" is High, Medium, or Low, and High is reserved for a moment a reader could verify against a named source.
 
 Visual Grammar:
 - The visual grammar describes the physical world of the brand's pictures: who is in frame, what the things in it are and what era they belong to, what the rooms are made of, how the light behaves, what the camera is set to, and what territory the brand refuses. Everything in it is something a camera could record.

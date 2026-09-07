@@ -14,6 +14,7 @@ import {
   buildOpenAIImageGenerationRequest,
   chooseOpenAIImageEndpoint,
 } from "../src/renderers/openai-images.js";
+import { brandBrainSchema } from "../src/brand-brain/schema.js";
 import { assertSafeRemoteUrl, mergeIncrementalSources, selectApprovedBaseline } from "../scripts/dev-server.js";
 
 test("Chat Completions synthesis preserves authority, normalized document text, and image evidence", () => {
@@ -258,4 +259,60 @@ test("incremental synthesis keeps the stored approved baseline and merges only n
     ],
   );
   assert.deepEqual(merged.map((source) => source.name), ["Approved source", "Updated record", "New source"]);
+});
+
+// ---------------------------------------------------------------------------
+// The world artifacts (2026-09-07)
+//
+// Story Architecture became a set of moments in the world of the Lived World's
+// people, and the Lived World gained those people. The schema is the contract
+// the model is held to, so these check the shape rather than the prose.
+// See docs/findings-2026-09-07-world-artifacts.md.
+// ---------------------------------------------------------------------------
+
+test("the Lived World schema asks for several people rather than one portrait", () => {
+  const lived = brandBrainSchema.properties.artifacts.properties.livedWorld;
+  assert.equal("person" in lived.properties, false, "the single person string is gone");
+  const people = lived.properties.people;
+  assert.equal(people.type, "array");
+  assert.equal(people.minItems, 2);
+  assert.equal(people.maxItems, 5);
+  assert.deepEqual(people.items.required, ["id", "name", "who", "basis"]);
+  assert.equal(people.items.additionalProperties, false);
+  // A person entry has to be castable, so the description says so rather than
+  // leaving the model to decide that a segment counts.
+  assert.match(people.items.properties.who.description, /audience description is not a person/);
+  assert.ok(lived.required.includes("people"));
+  assert.equal(lived.required.includes("person"), false);
+});
+
+test("a Story Architecture moment names when, where, who, and what is being done", () => {
+  const moments = brandBrainSchema.properties.artifacts.properties.storyArchitecture.properties.moments;
+  assert.equal(moments.minItems, 6);
+  assert.equal(moments.maxItems, 12);
+  assert.deepEqual(moments.items.required, ["id", "title", "when", "where", "who", "doing", "feeling", "basis"]);
+  // The product beat is gone. A moment that exists to show the product is the
+  // failure this change was made to stop.
+  for (const gone of ["product", "index", "scale", "role", "action"]) {
+    assert.equal(gone in moments.items.properties, false, `the ${gone} field is gone from a moment`);
+  }
+  // who is a list of Lived World person ids, at least one.
+  assert.equal(moments.items.properties.who.type, "array");
+  assert.equal(moments.items.properties.who.minItems, 1);
+  assert.match(moments.items.properties.who.description, /by their ids/);
+  assert.equal(moments.items.properties.basis.properties.origin.enum.includes("ambition"), true,
+    "the shared basis object still permits ambition; the instructions are what forbid it here");
+});
+
+test("the synthesis instructions brief Story Architecture and the Lived World people", () => {
+  const request = buildSynthesisRequest([], {});
+  const instructions = request.messages[0].content;
+  assert.match(instructions, /Story Architecture:/);
+  assert.match(instructions, /it is an ad, and it belongs nowhere in this artifact/);
+  assert.match(instructions, /names the people present by their Lived World ids|by their Lived World ids/);
+  // The Lived World now briefs people, and says plainly what a segment looks
+  // like, because "a late 20s professional" is what the old shape produced.
+  assert.match(instructions, /is a segment/);
+  assert.match(instructions, /each one particular enough to put in a room/);
+  assert.doesNotMatch(instructions, /It is a portrait of a person and their days/);
 });
