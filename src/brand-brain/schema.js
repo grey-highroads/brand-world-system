@@ -316,23 +316,39 @@ const storyArchitecture = strictObject({
   continuity: stringArray(3, 6),
 });
 
+const guidanceSections = {
+  type: "array",
+  items: guidanceSection,
+  minItems: 6,
+  maxItems: 6,
+};
+
+const reviewQuestions = {
+  type: "array",
+  items: reviewQuestion,
+  minItems: 0,
+  maxItems: 8,
+};
+
+// Since 2026-09-07 no model call answers to this schema. It describes the
+// assembled brain, which the service builds from four pass results, and it is
+// the validation target for that assembly. The four passes each cap review
+// questions at eight, and the assembly keeps all of them, so the cap here is
+// four times the pass cap rather than eight. Nothing is dropped on merge.
+const assembledReviewQuestions = {
+  type: "array",
+  items: reviewQuestion,
+  minItems: 0,
+  maxItems: 32,
+};
+
 export const brandBrainSchema = strictObject({
   brandName: { type: "string" },
   brandDescription: { type: "string" },
   synthesisSummary: { type: "string" },
   cleanAssetCount: { type: "integer", minimum: 0 },
-  guidanceSections: {
-    type: "array",
-    items: guidanceSection,
-    minItems: 6,
-    maxItems: 6,
-  },
-  reviewQuestions: {
-    type: "array",
-    items: reviewQuestion,
-    minItems: 0,
-    maxItems: 8,
-  },
+  guidanceSections,
+  reviewQuestions: assembledReviewQuestions,
   artifacts: strictObject({
     dossier,
     livedWorld,
@@ -340,3 +356,38 @@ export const brandBrainSchema = strictObject({
     visualGrammar,
   }),
 });
+
+// Synthesis runs in four ordered passes, one model call each, added 2026-09-07.
+// Each pass answers to a slice of the schema above, and the service assembles
+// the slices back into one brain with exactly the shape brandBrainSchema
+// describes. The slices are cut from the same field definitions rather than
+// written out again, so a change to an artifact reaches its pass by being made
+// once. See docs/findings-2026-09-07-four-pass-synthesis.md.
+//
+// Every pass carries reviewQuestions, because any pass can find something worth
+// asking about. The service appends passes 2 through 4 to the pass 1 list.
+export const passSchemas = {
+  1: strictObject({
+    brandName: { type: "string" },
+    brandDescription: { type: "string" },
+    synthesisSummary: { type: "string" },
+    cleanAssetCount: { type: "integer", minimum: 0 },
+    guidanceSections,
+    reviewQuestions,
+    dossier,
+  }),
+  2: strictObject({ livedWorld, reviewQuestions }),
+  3: strictObject({ storyArchitecture, reviewQuestions }),
+  4: strictObject({ visualGrammar, reviewQuestions }),
+};
+
+// The order is the point of the split, so it is stated once here and read
+// everywhere else rather than being written out per caller.
+export const PASS_IDS = [1, 2, 3, 4];
+
+export const PASS_LABELS = {
+  1: "the brand as it presents itself",
+  2: "the people and their days",
+  3: "moments in their world",
+  4: "the physical world of the pictures",
+};

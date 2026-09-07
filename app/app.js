@@ -640,24 +640,29 @@ function renderEngineLabel(id) {
   return renderEngineOptions.find((engine) => engine.id === id)?.label || "OpenAI";
 }
 
+// One step per synthesis pass since 2026-09-07. The screen used to advance on a
+// timer while one long call ran, so the step it showed was a guess. Each step is
+// now a request that has either finished or is running.
 const synthesisSteps = [
   {
     title: "Reading your sources",
-    detail: "Capturing files, pages, notes, source details, and reusable assets.",
+    detail: "Working out how the brand presents itself: the six guidance sections and the Brand Dossier.",
   },
   {
-    title: "Connecting the brand story",
-    detail: "Grouping related ideas across strategy, identity, audience, world, and creative work.",
+    title: "Finding the people",
+    detail: "Building the Lived World: who these people are, what they want, and what their days are like.",
   },
   {
-    title: "Checking for questions",
-    detail: "Finding conflicts, likely duplicates, repeated patterns, and suggested brand rules.",
+    title: "Placing them in moments",
+    detail: "Writing the Story Architecture: those people, in their own places, doing things a camera could walk into.",
   },
   {
-    title: "Preparing your Brand Brain draft",
-    detail: "Organizing the guidance and assets that can inform future production work.",
+    title: "Describing the pictures",
+    detail: "Building the Visual Grammar: the rooms, the light, and the camera behind those moments.",
   },
 ];
+
+const SYNTHESIS_PASSES = [1, 2, 3, 4];
 
 let guidanceSections = [
   {
@@ -7677,24 +7682,39 @@ async function startBrainSynthesis() {
   state.brain.synthesisKind = "openai";
   const requestId = newRequestId("synthesis");
   state.brain.synthesisRequestId = requestId;
-  const progressTimer = window.setInterval(() => {
-    if (state.brain.processingStep < synthesisSteps.length - 1) state.brain.processingStep += 1;
-    if (state.screen === "brain-processing") render();
-  }, 1400);
+  // Which pass was running when something went wrong. Only a failure on the
+  // last pass can have left a saved brain behind, so only that one is worth
+  // trying to recover; the others saved nothing by design.
+  let runningPass = SYNTHESIS_PASSES[0];
 
   try {
-    const response = await fetch("/api/brand-brain/synthesize", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sources: requestSources,
-        mode: incremental ? "incremental" : "initial",
-        baselineVersion: incremental ? state.brain.approvedVersion : undefined,
-        requestId,
-      }),
-    });
-    const body = await readApiJson(response);
-    if (!response.ok) throw new Error(body.error || "The Brand Brain could not be built.");
+    // Four requests, one per pass, each with its own server clock. Pass 1
+    // carries the sources; the rest carry the request id, because the server
+    // holds the in-progress brain between them. Nothing is written to the saved
+    // Brand Brain until the last pass returns.
+    let body = null;
+    for (const pass of SYNTHESIS_PASSES) {
+      runningPass = pass;
+      state.brain.processingStep = pass - 1;
+      if (state.screen === "brain-processing") render();
+      const payload = pass === SYNTHESIS_PASSES[0]
+        ? {
+            pass,
+            sources: requestSources,
+            mode: incremental ? "incremental" : "initial",
+            baselineVersion: incremental ? state.brain.approvedVersion : undefined,
+            requestId,
+          }
+        : { pass, requestId };
+      const response = await fetch("/api/brand-brain/synthesize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      body = await readApiJson(response);
+      if (!response.ok) throw new Error(body.error || "The Brand Brain could not be built.");
+    }
+    if (!body?.result) throw new Error("The Brand Brain came back without a result. Try again.");
     applySynthesisResult(body.result, {
       baseline: body.approvedResult || baseline,
       baselineVersion: body.baselineVersion || state.brain.approvedVersion,
@@ -7711,7 +7731,12 @@ async function startBrainSynthesis() {
       "complete",
     );
   } catch (error) {
-    const recovered = await recoverBrainSynthesis(requestId);
+    // A pass before the last one writes nothing to the saved brain, so there is
+    // nothing to recover and polling for it would only delay the message that
+    // says which pass failed.
+    const recovered = runningPass === SYNTHESIS_PASSES[SYNTHESIS_PASSES.length - 1]
+      ? await recoverBrainSynthesis(requestId)
+      : null;
     if (recovered) {
       applySynthesisResult(recovered.result, {
         baseline: recovered.approvedResult || baseline,
@@ -7732,7 +7757,6 @@ async function startBrainSynthesis() {
       state.brain.stage = "intake";
     }
   } finally {
-    window.clearInterval(progressTimer);
     if (state.screen.startsWith("brain")) render();
   }
 }

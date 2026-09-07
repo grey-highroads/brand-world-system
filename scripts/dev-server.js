@@ -3,7 +3,7 @@ import fs from "node:fs/promises";
 import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { synthesizeWithChatCompletions } from "../src/brand-brain/chat-completions-provider.js";
+import { synthesizePassWithChatCompletions } from "../src/brand-brain/chat-completions-provider.js";
 import { saveBrandBrainSnapshot, synthesizeBrandBrain } from "../src/brand-brain/service.js";
 import { createFileBrandBrainStore } from "../src/brand-brain/store.js";
 import { generateProductionImage, prepareProductionPackage, readProductionJob } from "../src/production/service.js";
@@ -104,7 +104,7 @@ export function createBrandWorldServer(options = {}) {
   const store = options.store || createFileBrandBrainStore(storePath);
   const productionStore = options.productionStore || createFileProductionStore(options.productionRoot || defaultProductionRoot);
   const fetchImpl = options.fetchImpl || fetch;
-  const synthesize = options.synthesize || synthesizeWithChatCompletions;
+  const synthesize = options.synthesize || synthesizePassWithChatCompletions;
   const renderImage = options.renderImage;
   const envPromise = options.env ? Promise.resolve(options.env) : readLocalEnv();
 
