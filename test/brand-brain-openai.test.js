@@ -16,7 +16,7 @@ import {
   chooseOpenAIImageEndpoint,
 } from "../src/renderers/openai-images.js";
 import { PASS_IDS, brandBrainSchema, passSchemas } from "../src/brand-brain/schema.js";
-import { assembleBrainFromPasses } from "../src/brand-brain/service.js";
+import { assembleBrainFromPasses, readSynthesisProgress } from "../src/brand-brain/service.js";
 import { assertSafeRemoteUrl, mergeIncrementalSources, selectApprovedBaseline } from "../scripts/dev-server.js";
 
 test("Chat Completions synthesis preserves authority, normalized document text, and image evidence", () => {
@@ -576,4 +576,64 @@ test("the synthesis instructions brief Story Architecture and the Lived World pe
   assert.match(instructions, /is a segment/);
   assert.match(instructions, /each one particular enough to put in a room/);
   assert.doesNotMatch(instructions, /It is a portrait of a person and their days/);
+});
+
+// ---------------------------------------------------------------------------
+// The in-progress read (2026-09-07)
+//
+// A pass can outlive the connection that started it. This is the one thing the
+// browser may learn about a synthesis it lost: which pass has finished.
+// See docs/findings-2026-09-07-pass-recovery.md.
+// ---------------------------------------------------------------------------
+
+test("the in-progress read reports the completed pass and nothing else", async () => {
+  const store = passStore();
+  await synthesizeBrandBrain(
+    {
+      pass: 1,
+      mode: "initial",
+      requestId: "synthesis-progress-test",
+      sources: [{ id: "note", name: "Note", authority: "approved-guidance", content: "text", files: [] }],
+    },
+    {
+      store,
+      env: { OPENAI_API_KEY: "test-only" },
+      async synthesize({ passId }) {
+        return { result: passOutput(passId), responseId: `chatcmpl-${passId}`, model: "gpt-5.6", usage: null };
+      },
+    },
+  );
+
+  const progress = await readSynthesisProgress("synthesis-progress-test", { store });
+  assert.deepEqual(progress, {
+    requestId: "synthesis-progress-test",
+    inProgress: true,
+    completedPass: 1,
+    nextPass: 2,
+  });
+  // The half-built brain stays on the server. Nothing in the reply carries it.
+  const serialized = JSON.stringify(progress);
+  assert.doesNotMatch(serialized, /Fallow|guidanceSections|dossier|passResults/);
+});
+
+test("the in-progress read answers plainly rather than erroring when there is nothing to report", async () => {
+  const store = passStore();
+  for (const requestId of ["never-started", null, undefined]) {
+    const progress = await readSynthesisProgress(requestId, { store });
+    assert.equal(progress.inProgress, false);
+    assert.equal(progress.completedPass, 0);
+  }
+});
+
+test("the in-progress read does not answer for a different synthesis", async () => {
+  const store = passStore();
+  await store.writeInProgress({ synthesisRequestId: "synthesis-a", nextPass: 3 });
+  assert.equal((await readSynthesisProgress("synthesis-a", { store })).completedPass, 2);
+  assert.equal((await readSynthesisProgress("synthesis-b", { store })).inProgress, false);
+});
+
+test("a finished synthesis reports nothing in progress, because its record is cleared", async () => {
+  const store = passStore();
+  await runAllPasses(store);
+  assert.equal((await readSynthesisProgress("synthesis-pass-test", { store })).inProgress, false);
 });

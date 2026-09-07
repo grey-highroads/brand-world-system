@@ -167,6 +167,33 @@ function validateSynthesisBody(body) {
   }
 }
 
+// What the browser is allowed to know about a synthesis it lost the connection
+// to: which pass has finished. Nothing else from the in-progress record leaves
+// the server, so the half-built brain stays unreachable by anything that could
+// render it.
+//
+// A request id that does not match, or no in-progress state at all, is not an
+// error. The client polls this while the server may still be writing, and an
+// error there would read as a failure when the honest answer is "not yet".
+// See docs/findings-2026-09-07-pass-recovery.md.
+export async function readSynthesisProgress(requestId, options) {
+  const store = options.store;
+  const id = typeof requestId === "string" ? requestId.slice(0, 120) : null;
+  if (!id || typeof store?.readInProgress !== "function") {
+    return { requestId: id, inProgress: false, completedPass: 0 };
+  }
+  const inProgress = await store.readInProgress();
+  if (!inProgress || inProgress.synthesisRequestId !== id) {
+    return { requestId: id, inProgress: false, completedPass: 0 };
+  }
+  return {
+    requestId: id,
+    inProgress: true,
+    completedPass: Number(inProgress.nextPass || FIRST_PASS) - 1,
+    nextPass: Number(inProgress.nextPass || FIRST_PASS),
+  };
+}
+
 export async function synthesizeBrandBrain(body, options) {
   const passId = body.pass === undefined || body.pass === null ? FIRST_PASS : Number(body.pass);
   if (!PASS_IDS.includes(passId)) {

@@ -4,7 +4,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { synthesizePassWithChatCompletions } from "../src/brand-brain/chat-completions-provider.js";
-import { saveBrandBrainSnapshot, synthesizeBrandBrain } from "../src/brand-brain/service.js";
+import { readSynthesisProgress, saveBrandBrainSnapshot, synthesizeBrandBrain } from "../src/brand-brain/service.js";
 import { createFileBrandBrainStore } from "../src/brand-brain/store.js";
 import { generateProductionImage, prepareProductionPackage, readProductionJob } from "../src/production/service.js";
 import { createFileProductionStore } from "../src/production/store.js";
@@ -119,6 +119,12 @@ export function createBrandWorldServer(options = {}) {
         const snapshot = await readJson(request, 5 * 1024 * 1024);
         const saved = await saveBrandBrainSnapshot(snapshot, store);
         sendJson(response, 200, { savedAt: saved.savedAt });
+        return;
+      }
+      // Which pass of a synthesis has finished, for a client that lost the
+      // connection mid-pass. Mirrors the GET branch in api/brand-brain/synthesize.js.
+      if (request.method === "GET" && url.pathname === "/api/brand-brain/synthesize") {
+        sendJson(response, 200, await readSynthesisProgress(url.searchParams.get("requestId"), { store }));
         return;
       }
       if (request.method === "POST" && url.pathname === "/api/brand-brain/synthesize") {

@@ -7601,8 +7601,39 @@ function simulateBrainSynthesis() {
   }, 1250);
 }
 
+// How long the client waits for work the server may still be doing, and how
+// often it asks. A pass has the route's full 300 seconds, so a window shorter
+// than that would give up on a pass that is still running and report a failure
+// that did not happen. The 30 second window these pollers used before
+// 2026-09-07 was the reason a dropped connection ended the synthesis.
+const SYNTHESIS_POLL_INTERVAL_MS = 1500;
+const SYNTHESIS_POLL_ATTEMPTS = 220;
+
+// Which pass of this synthesis the server has finished. Returns true once the
+// pass the client was waiting on is done. A synthesis that has finished
+// entirely clears its in-progress record, so `inProgress: false` on the last
+// pass is expected and is not what this is asked about.
+async function waitForSynthesisPass(requestId, pass) {
+  for (let attempt = 0; attempt < SYNTHESIS_POLL_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetch(`/api/brand-brain/synthesize?requestId=${encodeURIComponent(requestId)}`, {
+        headers: { Accept: "application/json" },
+      });
+      if (response.ok) {
+        const progress = await readApiJson(response);
+        if (progress?.inProgress && Number(progress.completedPass) >= pass) return true;
+      }
+    } catch {
+      // The connection is still down. A later attempt can still find the
+      // answer once it returns.
+    }
+    await wait(SYNTHESIS_POLL_INTERVAL_MS);
+  }
+  return false;
+}
+
 async function recoverBrainSynthesis(requestId) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < SYNTHESIS_POLL_ATTEMPTS; attempt += 1) {
     try {
       const response = await fetch("/api/brand-brain", { headers: { Accept: "application/json" } });
       if (response.ok) {
@@ -7612,7 +7643,7 @@ async function recoverBrainSynthesis(requestId) {
     } catch {
       // A later check can still find the saved result after the connection returns.
     }
-    await wait(1500);
+    await wait(SYNTHESIS_POLL_INTERVAL_MS);
   }
   return null;
 }
@@ -7682,9 +7713,13 @@ async function startBrainSynthesis() {
   state.brain.synthesisKind = "openai";
   const requestId = newRequestId("synthesis");
   state.brain.synthesisRequestId = requestId;
-  // Which pass was running when something went wrong. Only a failure on the
-  // last pass can have left a saved brain behind, so only that one is worth
-  // trying to recover; the others saved nothing by design.
+  // Which pass was running when something went wrong. Any pass can outlive the
+  // connection that started it: the first four-pass synthesis on the deployed
+  // app reported "Failed to fetch" on pass 1 while the server logged two 200s
+  // and no error, having finished pass 1 and stored the in-progress brain. The
+  // in-progress read is how the client finds that out, and it is why a dropped
+  // connection on a pass is no longer the end of the synthesis.
+  // See docs/findings-2026-09-07-pass-recovery.md.
   let runningPass = SYNTHESIS_PASSES[0];
 
   try {
@@ -7706,11 +7741,30 @@ async function startBrainSynthesis() {
             requestId,
           }
         : { pass, requestId };
-      const response = await fetch("/api/brand-brain/synthesize", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+      let response = null;
+      try {
+        response = await fetch("/api/brand-brain/synthesize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (networkError) {
+        // fetch threw, so no response ever arrived. That is a severed
+        // connection rather than a failed pass, and the server may have
+        // finished the pass anyway. A pass that returned a body, ok or not, is
+        // a real answer and is handled below.
+        //
+        // The last pass is left to the existing recovery in the catch block:
+        // by then the in-progress record is cleared and the saved brain is
+        // what there is to poll for.
+        if (pass === SYNTHESIS_PASSES[SYNTHESIS_PASSES.length - 1]) throw networkError;
+        const completed = await waitForSynthesisPass(requestId, pass);
+        if (!completed) throw networkError;
+        // The pass finished on the server. Its response is gone, and nothing
+        // in it was needed: only the last pass returns a result. Carry on.
+        body = null;
+        continue;
+      }
       body = await readApiJson(response);
       if (!response.ok) throw new Error(body.error || "The Brand Brain could not be built.");
     }
@@ -7731,9 +7785,9 @@ async function startBrainSynthesis() {
       "complete",
     );
   } catch (error) {
-    // A pass before the last one writes nothing to the saved brain, so there is
-    // nothing to recover and polling for it would only delay the message that
-    // says which pass failed.
+    // Reaching here on an earlier pass means the loop already polled and the
+    // pass did not finish, so there is nothing left to recover. Only the last
+    // pass can have left a saved brain behind, and that is what this polls for.
     const recovered = runningPass === SYNTHESIS_PASSES[SYNTHESIS_PASSES.length - 1]
       ? await recoverBrainSynthesis(requestId)
       : null;

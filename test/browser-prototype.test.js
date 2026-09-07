@@ -7,7 +7,7 @@ import { fileURLToPath } from "node:url";
 
 const rootPath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-function prototypeSession() {
+function prototypeSession(options = {}) {
   const listeners = {};
   const intervals = new Map();
   let nextIntervalId = 1;
@@ -19,7 +19,11 @@ function prototypeSession() {
   };
   const windowMock = {
     scrollTo() {},
-    setTimeout() {
+    setTimeout(callback) {
+      // Off by default, so a toast that clears itself does not re-render in the
+      // middle of an assertion. The synthesis recovery tests need wait() to
+      // resolve, and turn it on.
+      if (options.runTimeouts && typeof callback === "function") callback();
       return 1;
     },
     setInterval(callback) {
@@ -58,6 +62,9 @@ function prototypeSession() {
     window: windowMock,
     console,
   };
+  // Absent by default, which is what makes startBrainSynthesis fall through to
+  // its simulated path in every other test here.
+  if (options.fetch) context.fetch = options.fetch;
 
   vm.runInNewContext(fs.readFileSync(path.join(rootPath, "app/app.js"), "utf8"), context);
 
@@ -85,7 +92,11 @@ function prototypeSession() {
     return vm.runInContext(expression, context);
   }
 
-  return { appRoot, click, input, finishIntervals, evaluate };
+  async function evaluateAsync(expression) {
+    return vm.runInContext(expression, context);
+  }
+
+  return { appRoot, click, input, finishIntervals, evaluate, evaluateAsync, context };
 }
 
 test("Sources landing separates guided intake from the detailed source library", () => {
@@ -388,4 +399,121 @@ test("the scene and its craft paragraph join with a sentence between them", () =
   );
   assert.equal(session.evaluate('joinSceneAndCraft("", "Square and small.")'), "Square and small.");
   assert.equal(session.evaluate('joinSceneAndCraft("A hand holding a soda can", "")'), "A hand holding a soda can");
+});
+
+// ---------------------------------------------------------------------------
+// Synthesis pass recovery (2026-09-07)
+//
+// The first four-pass synthesis on the deployed app reported "Failed to fetch"
+// on pass 1 while the server logged two 200s and no error: it had finished the
+// pass and stored the in-progress brain, and the browser never saw the reply.
+// Any pass can outlive its connection, so a thrown fetch now polls the
+// in-progress read instead of ending the synthesis.
+// See docs/findings-2026-09-07-pass-recovery.md.
+// ---------------------------------------------------------------------------
+
+function jsonReply(payload, ok = true) {
+  return {
+    ok,
+    headers: { get: () => "application/json" },
+    async json() {
+      return payload;
+    },
+  };
+}
+
+// A server that runs all four passes, with one pass whose reply is lost on the
+// way back to the browser. The pass itself completes, exactly as the deployed
+// failure did.
+function synthesisServer({ dropReplyOnPass = null, failOnPass = null } = {}) {
+  const calls = [];
+  let completedPass = 0;
+  const fetchImpl = async (url, init = {}) => {
+    if (String(url).startsWith("/api/brand-brain/synthesize?")) {
+      calls.push({ kind: "progress", url: String(url) });
+      const requestId = new URL(String(url), "http://localhost").searchParams.get("requestId");
+      return jsonReply(
+        completedPass > 0 && completedPass < 4
+          ? { requestId, inProgress: true, completedPass, nextPass: completedPass + 1 }
+          : { requestId, inProgress: false, completedPass: 0 },
+      );
+    }
+    if (String(url) !== "/api/brand-brain/synthesize") {
+      // Anything else the app touches while this runs, such as persisting the
+      // brain state. Not what these tests are about.
+      calls.push({ kind: "other", url: String(url) });
+      return jsonReply({ saved: null });
+    }
+    const payload = JSON.parse(init.body);
+    calls.push({ kind: "pass", pass: payload.pass, requestId: payload.requestId });
+    if (payload.pass === failOnPass) {
+      return jsonReply({ error: `Pass ${payload.pass}, the people and their days: the model call failed` }, false);
+    }
+    completedPass = payload.pass;
+    if (payload.pass === dropReplyOnPass) {
+      // The work is done and recorded. The connection dies before the reply.
+      throw new TypeError("Failed to fetch");
+    }
+    if (payload.pass < 4) return jsonReply({ pass: payload.pass, nextPass: payload.pass + 1, complete: false });
+    return jsonReply({
+      complete: true,
+      result: {
+        brandName: "Fallow",
+        brandDescription: "A quiet home goods brand",
+        synthesisSummary: "Ordinary moments, considered.",
+        guidanceSections: [],
+        reviewQuestions: [],
+        artifacts: {},
+      },
+      model: "gpt-5.6",
+      responseId: "chatcmpl-4",
+      savedAt: "2026-09-07T22:10:00.000Z",
+    });
+  };
+  return { fetchImpl, calls, passCalls: () => calls.filter((c) => c.kind === "pass").map((c) => c.pass) };
+}
+
+async function runSynthesis(server) {
+  const session = prototypeSession({ fetch: server.fetchImpl, runTimeouts: true });
+  session.evaluate('state.brain.sources = [{ id: "s1", name: "Approved note", authority: "approved-guidance", content: "text", files: [] }]');
+  await session.evaluate("startBrainSynthesis()");
+  return session;
+}
+
+for (const droppedPass of [1, 2, 3]) {
+  test(`a dropped connection on pass ${droppedPass} continues to the next pass without the person acting`, async () => {
+    const server = synthesisServer({ dropReplyOnPass: droppedPass });
+    const session = await runSynthesis(server);
+
+    // Every pass ran exactly once. The dropped pass was polled for, not retried:
+    // retrying a pass the server may still be running is the thing to avoid.
+    assert.deepEqual(server.passCalls(), [1, 2, 3, 4]);
+    assert.ok(
+      server.calls.some((call) => call.kind === "progress"),
+      "the client asked the in-progress read which pass had finished",
+    );
+    assert.equal(session.evaluate("state.brain.processingError"), "");
+    assert.equal(session.evaluate("state.brain.synthesisResponseId"), "chatcmpl-4");
+  });
+}
+
+test("a server error with a body fails immediately and names the pass", async () => {
+  const server = synthesisServer({ failOnPass: 2 });
+  const session = await runSynthesis(server);
+
+  // Pass 2 answered, so there was nothing to wait for. The loop stops there.
+  assert.deepEqual(server.passCalls(), [1, 2]);
+  assert.equal(server.calls.some((call) => call.kind === "progress"), false, "a real failure is not polled for");
+  assert.match(session.evaluate("state.brain.processingError"), /Pass 2, the people and their days/);
+  assert.equal(session.evaluate('state.brain.stage'), "intake");
+});
+
+test("the in-progress read never returns the half-built brain", async () => {
+  const server = synthesisServer({ dropReplyOnPass: 1 });
+  await runSynthesis(server);
+  const progressCall = server.calls.find((call) => call.kind === "progress");
+  assert.match(progressCall.url, /requestId=synthesis-/);
+  // The client asks for one thing and is given one thing. The contract on the
+  // server side is covered in test/brand-brain-openai.test.js.
+  assert.doesNotMatch(progressCall.url, /result|artifacts|passResults/);
 });
