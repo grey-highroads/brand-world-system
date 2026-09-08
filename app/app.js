@@ -1331,6 +1331,11 @@ const state = {
     // compiled a full look into every prompt while the picker implied nothing
     // was applied. A filter now compiles only when the user chooses one.
     look: "",
+    // Which kind of scene the writer is asked for. Default is the kind that has
+    // always been produced, so someone who never touches the control gets what
+    // they got before. It sits on the brief record so it travels with the job
+    // to the compiler the same way the look does.
+    kind: "scene",
     assetType: "scene",
     bannerHeadline: "",
     bannerTextSide: "Left third",
@@ -4084,6 +4089,34 @@ function studioLookField() {
             </div>`;
 }
 
+// Two kinds of photograph, on the scene forms only. Category above says where
+// the image goes. This says what the image is, and per ADR 0005 that is a
+// choice inside the form rather than a sixth studio category.
+const sceneKinds = [
+  { id: "scene", label: "With people" },
+  { id: "scene_no_people", label: "Place and product" },
+];
+
+function studioSceneKindField() {
+  const selected = state.brief.kind === "scene_no_people" ? "scene_no_people" : "scene";
+  return `
+            <div class="field full studio-setup-field">
+              <label>What the image is</label>
+              <span class="field-note">With people puts the moment's people in the frame. Place and product photographs the same place at a point when nobody is in it.</span>
+              <div class="studio-platform-grid" role="radiogroup" aria-label="What the image is">
+                ${sceneKinds.map((entry) => `
+                  <button
+                    class="studio-platform-chip ${selected === entry.id ? "selected" : ""}"
+                    type="button"
+                    role="radio"
+                    aria-checked="${selected === entry.id ? "true" : "false"}"
+                    data-action="scene-kind-select"
+                    data-id="${entry.id}"
+                  >${escapeHtml(entry.label)}</button>`).join("")}
+              </div>
+            </div>`;
+}
+
 function renderStudioSetup() {
   const approved = approvedBrainForProduction();
   const cat = studioCategories.find((c) => c.id === state.studio.category);
@@ -4190,13 +4223,15 @@ function renderStudioSetup() {
 
               ${renderCopyField()}
 
+              ${studioSceneKindField()}
+
               ${studioLookField()}
 
               ${sceneSuggestField({
                 id: "studio-brief",
                 field: "brief",
                 inputAction: "studio-brief-input",
-                kind: "scene",
+                kind: state.brief.kind,
                 label: "Describe the image you want",
                 note: "The system composes this from everything above plus your Brand Brain.",
                 cta: "Show me three directions",
@@ -4688,13 +4723,15 @@ function renderWebsiteSetup(cat) {
 
               ${renderCopyField()}
 
+              ${studioSceneKindField()}
+
               ${studioLookField()}
 
               ${sceneSuggestField({
                 id: "website-brief",
                 field: "brief",
                 inputAction: "studio-brief-input",
-                kind: "scene",
+                kind: state.brief.kind,
                 label: "Describe the image you want",
                 note: "The system composes this from everything above plus your Brand Brain.",
                 cta: "Show me three directions",
@@ -9074,6 +9111,18 @@ root.addEventListener("click", (event) => {
     return;
   }
 
+  if (action === "scene-kind-select") {
+    const nextKind = target.dataset.id === "scene_no_people" ? "scene_no_people" : "scene";
+    if (state.brief.kind !== nextKind) {
+      state.brief.kind = nextKind;
+      // A direction written for one kind describes a frame the other kind does
+      // not produce, so options on screen from the previous kind are stale.
+      clearSceneSuggestions();
+    }
+    render();
+    return;
+  }
+
   if (action === "toggle-client-switcher") { state.clientSwitcherOpen = !state.clientSwitcherOpen; render(); return; }
   if (action === "switch-client") { switchClient(target.dataset.id); return; }
   if (action === "create-client") { state.clientSwitcherOpen = false; void createClient(); return; }
@@ -10161,6 +10210,7 @@ root.addEventListener("click", (event) => {
         sourceCount: pkg.sourceCount || 0,
         guidanceSections: (pkg.compiledComponents || []).map((c) => c),
         look: pkg.look?.id || null,
+        kind: pkg.kind || null,
         output: { placement: pkg.output?.placement, format: pkg.output?.format },
         lockedAsset: pkg.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
         references: (pkg.references || []).map((r) => ({ name: r.name, role: r.role, influence: r.influence })),

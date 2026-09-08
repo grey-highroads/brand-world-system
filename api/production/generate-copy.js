@@ -519,6 +519,14 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   const grammar = artifacts.visualGrammar || artifacts.visual_grammar || {};
   const campaign = body.campaign || null;
 
+  // Two kinds write a scene. One puts the moment's people in the frame and one
+  // arrives at a point when nobody is in it, and both take the same output
+  // shape and the same word budget. The shape test is a predicate here rather
+  // than the same string comparison repeated at each of the sites below.
+  const requestedKind = String(body.kind || "scene");
+  const peopleless = requestedKind === "scene_no_people";
+  const writesAScene = requestedKind === "scene" || peopleless;
+
   const drewOn = [];
   const context = [];
   const grammarEntries = [];
@@ -557,7 +565,15 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   if (block("THE LIVED WORLD", [
     text(lived.description),
     people.length
-      ? `The people this is about. Write these people, by name. Do not invent others:\n${people.map((entry) => `${text(entry?.name)}. ${text(entry?.who)}`.trim()).filter(Boolean).join("\n")}`
+      // On the peopleless kind the standing instruction to write these people
+      // by name contradicts the task, which is a photograph taken when nobody
+      // is in the frame. The list itself still travels, names and all, because
+      // their activity is what put the room in the state the camera finds it
+      // in. The single-`person` path below is a brain synthesized before
+      // 2026-09-07 and is unchanged on both kinds.
+      ? `${peopleless
+          ? "The people whose place this is. Their activity is the reason the room is in the state it is in:"
+          : "The people this is about. Write these people, by name. Do not invent others:"}\n${people.map((entry) => `${text(entry?.name)}. ${text(entry?.who)}`.trim()).filter(Boolean).join("\n")}`
       : (lived.person ? `The person at the center of this: ${text(lived.person)}` : ""),
     list(lived.wants).length ? `What they want: ${joined(lived.wants, " ")}` : "",
     list(lived.rejects).length ? `What they will not have: ${joined(lived.rejects, " ")}` : "",
@@ -619,7 +635,11 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   const grammarSections = grammar.sections && typeof grammar.sections === "object" ? grammar.sections : null;
   if (grammarSections) {
     const labelled = [
-      ["people", "Who appears on camera"],
+      // The peopleless kind gets the same entries under a label that fits what
+      // it is doing with them. Withholding the section would cost the wardrobe
+      // and era detail that a jacket over a chair or a knit cap on a counter
+      // comes from.
+      ["people", peopleless ? "Whose place this is" : "Who appears on camera"],
       ["objects", "The objects and the era they belong to"],
       ["places", "The places and what they are made of"],
       ["light", "The light"],
@@ -715,6 +735,34 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
         "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject. It is not what the moment is about. The product sits where someone set it down and left it, on a surface in the room, and no one in the frame is holding or touching it.",
       ].join("\n"),
     },
+    // The second scene kind, added 2026-09-08. Same three brain artifacts, same
+    // moments, same world and visual grammar, and the camera arrives when
+    // nobody is in the frame. The task text is the owner's, approved as
+    // written, and test/scene-brief.test.js matches it against the string, so
+    // an edit here fails the suite.
+    //
+    // The prose never says the room is empty. Two hand pulls on 2026-09-08
+    // returned empty frames from complete description with no prohibition and
+    // no absence sentence, so the description carries it.
+    //
+    // The paragraph beginning "Name one thing in the frame" answers a finding
+    // from those same pulls: the can is the only saturated warm object in these
+    // frames, so it becomes the subject by color unless something else in the
+    // room has real visual weight. On the people kind a person doing something
+    // holds that rule up. Here nothing does, so the writer names the subject.
+    scene_no_people: {
+      task: [
+        "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment, at a point when nobody is in the frame. The moment says who is there, where, when and what is going on. Yours is what a camera saw in that place a few minutes before they arrived, a few minutes after they left, or at an hour when the room is theirs but empty.",
+        "",
+        "The people are still the reason the room looks the way it does. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
+        "",
+        "Name one thing in the frame that is not the product and give it size and position, so the eye has somewhere to land first. Without a person the frame has no natural subject, and whatever is largest and most contrasted becomes one. A direction is one instant, so the room is in one state rather than several. It names a few objects that belong there and gives each one a state and the reason it is in that state. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color, the grain, the contrast, the focus and the lens are set elsewhere in this prompt and do not belong in the prose.",
+        "",
+        "Where a product is named below, it appears once. It sits where someone set it down on a surface in the room, and it is never the subject and never centered.",
+        "",
+        "The three directions are not all at the same distance from the people. One is a place someone left minutes ago. One is a place at rest. In one the product is the closest thing the frame has to a subject.",
+      ].join("\n"),
+    },
     template_surface: {
       task: "You write short briefs for reusable branded background surfaces. A surface is a backdrop that other work sits on top of: a gradient, a texture, a lit environment with open space. It is not a finished image and it has no subject of its own.",
       rules: [
@@ -734,7 +782,7 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       ],
     },
   };
-  const kind = kinds[String(body.kind || "scene")] || kinds.scene;
+  const kind = kinds[requestedKind] || kinds.scene;
 
   // The look is chosen before the scene is written, so the scene is authored
   // for the medium rather than handed to it afterward. The look owns capture
@@ -757,7 +805,19 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
         lookBrief.environment === "binding"
           ? `That medium requires ${lookBrief.requires}. Set the scene somewhere that condition holds. Choose the brand's earned environment that can be photographed this way, or the moment in an earned environment when that condition is true, and if no earned environment can carry it, say so in the label rather than setting the scene somewhere the medium would not work. This requirement outranks the preference for a familiar setting.`
           : "That medium works in any setting, so the environment stays governed by the brand's earned environments.",
-      ]
+        // Several look lines describe faces, skin, hair, and how a subject
+        // holds the camera. `neutral` and `color_slide_1975` are the clearest
+        // cases, and on this kind those sentences describe nothing. Precedence
+        // is stated rather than left for the writer to work out, which is the
+        // same shape as the fix that made a binding look decide the setting.
+        //
+        // Untested as of 2026-09-08. If a person appears in a render on a
+        // face-heavy look, this sentence is not enough and the fallback is
+        // filtering the look list for this kind.
+        peopleless
+          ? "Nobody is in the frame, so anything that medium says about how a subject behaves on camera, how a face or skin renders, or how a person holds themselves does not apply here. Its color, its contrast, its grain, and how it holds or loses focus apply in full."
+          : "",
+      ].filter(Boolean)
     : [];
 
   const systemPrompt = [
@@ -770,12 +830,12 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
     ...(kind.rules || []).map((rule) => `- ${rule}`),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",
     "- Write physical facts, not perceptual targets. A camera can be told where a light sits, which surfaces it strikes, how many people are present and which way they face, what is cropped, and what is dry or worn and why. It cannot be told to make something feel authentic, cinematic, elevated, atmospheric, or unposed. Every sentence that does not change what is in front of the lens is a sentence the frame will ignore.",
-    ...(String(body.kind || "scene") === "scene"
+    ...(writesAScene
       ? []
       : ["- Two or three sentences per brief. Concrete nouns over adjectives."]),
     "",
     "OUTPUT FORMAT:",
-    String(body.kind || "scene") === "scene"
+    writesAScene
       ? 'Return only JSON: {"options":[{"label":"three or four words","brief":"the whole direction written as one piece of prose, between 120 and 220 words"}]} with exactly three options. There are no other keys. No markdown fences, no preamble.'
       : 'Return only JSON: {"options":[{"label":"three or four words","brief":"the description"}]} with exactly three options. No markdown fences, no preamble.',
   ].join("\n");
@@ -795,7 +855,7 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      max_tokens: String(body.kind || "scene") === "scene" ? 2200 : 800,
+      max_tokens: writesAScene ? 2200 : 800,
       temperature: 0.9,
     }),
   });

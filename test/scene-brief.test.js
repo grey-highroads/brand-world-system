@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { SCENE_MOMENT_COUNT, handleSceneBrief, selectMoments } from "../api/production/generate-copy.js";
 import { resolveLook } from "../src/production/looks.js";
+import { SCENE_NO_PEOPLE_DEFAULT_LOOK, compileBrandWorldImagePackage } from "../src/production/package.js";
+import { CAPTURE_CHARACTER } from "../src/production/prompt-craft.js";
+import crypto from "node:crypto";
 
 // The scene writer returned the same three directions on every run: Nia at her
 // dining table, Priya at the fitness studio counter, Marco at the trailhead,
@@ -70,7 +73,7 @@ async function runSceneBrief({ moments, random, kind = "scene", look = null, pro
   } finally {
     globalThis.fetch = previousFetch;
   }
-  return { system: sent.messages[0].content, reply: JSON.parse(response.body) };
+  return { system: sent.messages[0].content, sent, reply: JSON.parse(response.body) };
 }
 
 function momentTitlesIn(systemPrompt) {
@@ -287,4 +290,209 @@ test("a scene with no look carries no look rules", async () => {
   const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
   const rules = system.split("RULES:\n")[1].split("\n\nOUTPUT FORMAT:")[0];
   assert.equal(rules.split("\n").filter((line) => line.startsWith("- ")).length, 2);
+});
+
+// ---------------------------------------------------------------------------
+// The second scene kind, added 2026-09-08. A photograph of the same moment at a
+// point when nobody is in the frame. Same three brain artifacts, same moments,
+// same world and visual grammar, and a different task.
+// ---------------------------------------------------------------------------
+
+// The approved task text, as the owner wrote it. Matched against the string so
+// an edit to the task in api/production/generate-copy.js fails here.
+const NO_PEOPLE_TASK_PARAGRAPHS = [
+  "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment, at a point when nobody is in the frame. The moment says who is there, where, when and what is going on. Yours is what a camera saw in that place a few minutes before they arrived, a few minutes after they left, or at an hour when the room is theirs but empty.",
+  "The people are still the reason the room looks the way it does. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
+  "Name one thing in the frame that is not the product and give it size and position, so the eye has somewhere to land first. Without a person the frame has no natural subject, and whatever is largest and most contrasted becomes one. A direction is one instant, so the room is in one state rather than several. It names a few objects that belong there and gives each one a state and the reason it is in that state. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color, the grain, the contrast, the focus and the lens are set elsewhere in this prompt and do not belong in the prose.",
+  "Where a product is named below, it appears once. It sits where someone set it down on a surface in the room, and it is never the subject and never centered.",
+  "The three directions are not all at the same distance from the people. One is a place someone left minutes ago. One is a place at rest. In one the product is the closest thing the frame has to a subject.",
+];
+
+test("the peopleless kind carries the approved task text", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
+  const blocks = system.split("\n\n");
+  assert.equal(blocks.length > NO_PEOPLE_TASK_PARAGRAPHS.length, true);
+  NO_PEOPLE_TASK_PARAGRAPHS.forEach((paragraph, index) => {
+    assert.equal(blocks[index], paragraph, `paragraph ${index + 1} is the approved text`);
+  });
+  // Five paragraphs and nothing inserted after them, so the context starts
+  // where it does on the people kind.
+  assert.equal(blocks[NO_PEOPLE_TASK_PARAGRAPHS.length].startsWith("BRAND:"), true);
+  // And the people kind's task is not what arrived.
+  assert.equal(system.includes("Write the photograph, not the moment."), false);
+});
+
+test("the peopleless kind takes the scene output shape and the scene word budget", async () => {
+  const short = await runSceneBrief({ moments: [moment(1)], kind: "template_surface", random: () => 0.5 });
+  const scene = await runSceneBrief({ moments: [moment(1)], kind: "scene", random: () => 0.5 });
+  const peopleless = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
+
+  const outputFormat = (system) => system.split("OUTPUT FORMAT:\n")[1];
+  assert.equal(outputFormat(peopleless.system), outputFormat(scene.system));
+  assert.match(outputFormat(peopleless.system), /between 120 and 220 words/);
+  assert.equal(peopleless.sent.max_tokens, scene.sent.max_tokens);
+  assert.equal(peopleless.sent.max_tokens, 2200);
+
+  // And the short-brief branch is still the short-brief branch.
+  assert.notEqual(outputFormat(short.system), outputFormat(scene.system));
+  assert.equal(short.sent.max_tokens, 800);
+  assert.match(short.system, /Two or three sentences per brief/);
+  assert.equal(peopleless.system.includes("Two or three sentences per brief"), false);
+});
+
+test("the peopleless kind keeps the people and drops the instruction to write them into the frame", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
+  // The list itself, names and all.
+  assert.match(system, /Dana\. 27, runs the front of a bike shop\./);
+  assert.match(system, /The people whose place this is\. Their activity is the reason the room is in the state it is in:/);
+  // The instruction that contradicts the task is gone.
+  assert.equal(system.includes("Write these people, by name. Do not invent others"), false);
+  // The grammar's people section arrives under a label that says whose place
+  // it is, and the people kind's label does not appear.
+  assert.equal(system.includes("Who appears on camera"), false);
+
+  // On the people kind both are unchanged.
+  const people = await runSceneBrief({ moments: [moment(1)], kind: "scene", random: () => 0.5 });
+  assert.match(people.system, /The people this is about\. Write these people, by name\. Do not invent others:/);
+});
+
+test("a look on the peopleless kind carries the sentence that suspends its subject behavior", async () => {
+  const look = resolveLook("neutral");
+  const { system } = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", look: "neutral", random: () => 0.5 });
+  assert.ok(system.includes(`- This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${look.line}`));
+  assert.ok(system.includes(
+    "- Nobody is in the frame, so anything that medium says about how a subject behaves on camera, how a face or skin renders, or how a person holds themselves does not apply here. Its color, its contrast, its grain, and how it holds or loses focus apply in full."
+  ), "the precedence sentence is in the RULES block");
+
+  // Three look lines on this kind with a look, and none of them on the people
+  // kind, where the medium still governs behavior in frame.
+  const rules = (system) => system.split("RULES:\n")[1].split("\n\nOUTPUT FORMAT:")[0].split("\n").filter((line) => line.startsWith("- "));
+  assert.equal(rules(system).length, 5);
+  const people = await runSceneBrief({ moments: [moment(1)], kind: "scene", look: "neutral", random: () => 0.5 });
+  assert.equal(rules(people.system).length, 4);
+  assert.equal(people.system.includes("Nobody is in the frame"), false);
+
+  // With no look there is no look rule to suspend anything on either kind.
+  const bare = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
+  assert.equal(rules(bare.system).length, 2);
+});
+
+// ---------------------------------------------------------------------------
+// The kind reaching the compiler
+// ---------------------------------------------------------------------------
+
+function compileBrain() {
+  const section = (id, name) => ({
+    id,
+    name,
+    summary: `${name} summary from approved guidance.`,
+    principles: [`Follow ${name.toLowerCase()} deliberately`],
+    productionUse: `Use the approved ${name.toLowerCase()} direction.`,
+  });
+  return {
+    brandName: "Fallow",
+    brandDescription: "A quiet home goods brand",
+    synthesisSummary: "Make ordinary domestic moments feel considered.",
+    guidanceSections: [
+      section("foundation", "Brand foundation"),
+      section("identity", "Identity"),
+      section("world", "World and story"),
+      section("voice", "Voice and messaging"),
+      section("creative", "Creative direction"),
+      section("rules", "Creative rules"),
+    ],
+    artifacts: {
+      dossier: {
+        readBody: "Fallow finds character in useful, lived-in rooms.",
+        audience: "People who value useful objects and unforced beauty.",
+        desiredFeeling: "Calm, observant, and at home.",
+        palette: [{ name: "Clay", role: "Warmth", color: "#A36F54" }],
+        materials: ["Worn oak", "Washed linen", "Soft daylight"],
+        guardrails: [{ title: "Never pristine", body: "The world should show real use." }],
+      },
+    },
+  };
+}
+
+function compileBrief(extra = {}) {
+  return {
+    scene: "A person arranging flowers at a worn kitchen table in morning light.",
+    exclusions: "No showroom polish or readable copy.",
+    placement: "Instagram feed",
+    format: "4:5 portrait",
+    ...extra,
+  };
+}
+
+const capture = (pkg) => pkg.sections.find((section) => section.title === "Capture")?.body;
+
+test("a peopleless compile with no look chosen resolves the default look instead of the capture floor", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: compileBrain(),
+    brainVersion: 4,
+    brief: compileBrief({ kind: "scene_no_people" }),
+    references: [],
+  });
+  const fallback = resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK);
+  assert.equal(capture(pkg), fallback.line);
+  // The floor is a paragraph mostly about skin, and it appears nowhere.
+  assert.equal(pkg.prompt.includes(CAPTURE_CHARACTER), false);
+  // A defaulted look is a real look on the record, so the result screen can
+  // name the medium without knowing whether the user chose it.
+  assert.equal(pkg.look?.id, SCENE_NO_PEOPLE_DEFAULT_LOOK);
+  assert.equal(pkg.kind, "scene_no_people");
+});
+
+test("a peopleless compile with a look chosen uses that look, not the default", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: compileBrain(),
+    brainVersion: 4,
+    brief: compileBrief({ kind: "scene_no_people" }),
+    references: [],
+    look: "neutral",
+  });
+  assert.equal(pkg.look?.id, "neutral");
+  assert.equal(capture(pkg), resolveLook("neutral").line);
+  assert.equal(capture(pkg) === resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK).line, false);
+});
+
+test("a scene compile with no look still falls back to the shared capture floor", () => {
+  for (const brief of [compileBrief(), compileBrief({ kind: "scene" })]) {
+    const pkg = compileBrandWorldImagePackage({ approvedBrain: compileBrain(), brainVersion: 4, brief, references: [] });
+    assert.equal(capture(pkg), CAPTURE_CHARACTER);
+    assert.equal(pkg.look, null);
+    assert.equal(pkg.kind, "scene");
+  }
+});
+
+// The compiled scene prompt and sections, hashed at 14f7e6836e, the commit this
+// work was written against. The kind reaching the compiler must not move a byte
+// of what a with-people render sends.
+//
+// The package object itself is not hashed here, because it now carries one key
+// it did not carry at that commit: `kind`. That key is the record of which kind
+// made the image and is asserted above. Every other field, and the whole of the
+// prompt and the sections, is unchanged.
+const BASE_COMMIT_SCENE_PROMPT_SHA = "a0191d7329702644f51ccf24b84c9f3a081b81d36cf0e0f0fb987936e7518c38";
+const BASE_COMMIT_SCENE_SECTIONS_SHA = "1cbaed05a833dc8607c5297d7ade107eb7c811eb3d8c775d3889a91031377c5e";
+
+test("a compiled scene prompt is byte identical to the base commit", () => {
+  const pkg = compileBrandWorldImagePackage({
+    approvedBrain: compileBrain(),
+    brainVersion: 4,
+    brief: compileBrief(),
+    references: [],
+  });
+  const sha = (value) => crypto.createHash("sha256").update(value).digest("hex");
+  assert.equal(sha(pkg.prompt), BASE_COMMIT_SCENE_PROMPT_SHA);
+  assert.equal(sha(JSON.stringify(pkg.sections)), BASE_COMMIT_SCENE_SECTIONS_SHA);
+
+  // And the kind on the brief changes nothing on the scene path.
+  const explicit = compileBrandWorldImagePackage({
+    approvedBrain: compileBrain(),
+    brainVersion: 4,
+    brief: compileBrief({ kind: "scene" }),
+    references: [],
+  });
+  assert.equal(explicit.prompt, pkg.prompt);
 });

@@ -17,6 +17,13 @@ import { ownEntry } from "../lookup.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
+// The look a peopleless scene falls back to when the user chose none. The
+// shared capture floor is a paragraph mostly about skin, and in a frame with
+// nobody in it that paragraph describes nothing. This is the one line in the
+// library that names no face, chin, hair, or skin. Named here rather than
+// inline at the call site, so changing it later is one edit.
+export const SCENE_NO_PEOPLE_DEFAULT_LOOK = "available_light_interior";
+
 // Template compilation uses a subset of guidance. World and creative storytelling
 // push the model toward narrative scenes with focal subjects. Templates need
 // abstract branded surfaces, so those sections are replaced with template-specific
@@ -482,6 +489,11 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   const placement = requiredText(brief?.placement, "Placement", 120);
   const format = requiredText(brief?.format, "Format", 120);
   const assetType = cleanText(brief?.assetType) || "scene";
+  // The writer's kind, carried on the brief record from the studio form.
+  // `placement` says where the image goes; this says what the image is, and
+  // the two are separate choices. Only the capture fallback branches on it.
+  const briefKind = cleanText(brief?.kind) || "scene";
+  const peoplelessScene = briefKind === "scene_no_people";
   const bannerHeadline = optionalText(brief?.bannerHeadline, "The headline", 300);
   const bannerTextSide = cleanText(brief?.bannerTextSide);
   const selected = new Map(approvedBrain.guidanceSections.map((section) => [section.id, section]));
@@ -593,7 +605,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // A selected look replaces the shared capture floor rather than stacking on
   // it. Two finish descriptions in one prompt is the conflict shape this work
   // exists to remove; the floor applies when no look has been chosen.
-  const selectedLook = resolveLook(look);
+  // A peopleless scene with no look chosen resolves the default above rather
+  // than compiling the capture floor. What comes back is a real look in every
+  // other respect: it resolves through resolveLook like any other, it compiles
+  // into Capture the same way, and it is recorded on the package, so the result
+  // screen can name the medium without knowing whether the user picked it.
+  const selectedLook = resolveLook(look)
+    || (peoplelessScene ? resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK) : null);
 
   // The world block stopped compiling into the scene-path prompt on
   // 2026-08-31. The scene writer stays briefed by the visual grammar per
@@ -801,6 +819,10 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // system on 2026-08-19. A record naming a register that no longer compiles
     // is worse than one naming nothing.
     look: selectedLook ? { id: selectedLook.id, label: selectedLook.label } : null,
+    // Which kind of image this was, so a job can say later whether the frame
+    // held people. Carried beside the look because the two answer the same
+    // question about a finished output from opposite sides.
+    kind: briefKind,
     lockedAsset: lockedAsset ? { name: lockedAsset.name, format: packageFormat } : null,
     templateAsset: templateAsset ? { name: templateAsset.name, ratio: templateAsset.ratio } : null,
     stateNeutralizations,
@@ -891,6 +913,7 @@ export function buildConsumptionRecord(job) {
     sourceCount: pkg.sourceCount || 0,
     guidanceSections: (pkg.compiledComponents || []).map((c) => c),
     look: pkg.look?.id || null,
+    kind: pkg.kind || null,
     output: { placement: pkg.output?.placement, format: pkg.output?.format },
     lockedAsset: pkg.lockedAsset ? { name: pkg.lockedAsset.name, format: pkg.lockedAsset.format } : null,
     references: (pkg.references || []).map((r) => ({ name: r.name, role: r.role, influence: r.influence })),
