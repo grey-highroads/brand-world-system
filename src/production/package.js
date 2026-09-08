@@ -11,18 +11,12 @@ import {
   sceneProtectionBlock,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
-import { resolveLook } from "./looks.js";
+import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "./looks.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 import { ownEntry } from "../lookup.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
-// The look a peopleless scene falls back to when the user chose none. The
-// shared capture floor is a paragraph mostly about skin, and in a frame with
-// nobody in it that paragraph describes nothing. This is the one line in the
-// library that names no face, chin, hair, or skin. Named here rather than
-// inline at the call site, so changing it later is one edit.
-export const SCENE_NO_PEOPLE_DEFAULT_LOOK = "available_light_interior";
 
 // Template compilation uses a subset of guidance. World and creative storytelling
 // push the model toward narrative scenes with focal subjects. Templates need
@@ -605,11 +599,16 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // A selected look replaces the shared capture floor rather than stacking on
   // it. Two finish descriptions in one prompt is the conflict shape this work
   // exists to remove; the floor applies when no look has been chosen.
-  // A peopleless scene with no look chosen resolves the default above rather
-  // than compiling the capture floor. What comes back is a real look in every
-  // other respect: it resolves through resolveLook like any other, it compiles
-  // into Capture the same way, and it is recorded on the package, so the result
+  // A peopleless scene with no look chosen resolves the default rather than
+  // compiling the capture floor. What comes back is a real look in every other
+  // respect: it resolves through resolveLook like any other, it compiles into
+  // Capture the same way, and it is recorded on the package, so the result
   // screen can name the medium without knowing whether the user picked it.
+  //
+  // The writer resolves the same constant at suggest time, so the direction was
+  // written for this medium rather than fitted to it here. This branch is what
+  // catches a brief that reaches the compiler without one: a direct API call,
+  // or prose written by hand rather than chosen from the three directions.
   const selectedLook = resolveLook(look)
     || (peoplelessScene ? resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK) : null);
 

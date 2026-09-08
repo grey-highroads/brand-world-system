@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { SCENE_MOMENT_COUNT, handleSceneBrief, selectMoments } from "../api/production/generate-copy.js";
-import { resolveLook } from "../src/production/looks.js";
-import { SCENE_NO_PEOPLE_DEFAULT_LOOK, compileBrandWorldImagePackage } from "../src/production/package.js";
+import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "../src/production/looks.js";
+import { compileBrandWorldImagePackage } from "../src/production/package.js";
 import { CAPTURE_CHARACTER } from "../src/production/prompt-craft.js";
 import crypto from "node:crypto";
 
@@ -372,9 +372,31 @@ test("a look on the peopleless kind carries the sentence that suspends its subje
   assert.equal(rules(people.system).length, 4);
   assert.equal(people.system.includes("Nobody is in the frame"), false);
 
-  // With no look there is no look rule to suspend anything on either kind.
-  const bare = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
-  assert.equal(rules(bare.system).length, 2);
+});
+
+test("the peopleless kind resolves the default look at suggest time", async () => {
+  const fallback = resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK);
+  const { system } = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
+  // The direction is written for the medium rather than fitted to it at compile
+  // time, so the writer sees the default the compiler would have supplied.
+  assert.ok(system.includes(fallback.line), "the default look's line reaches the writer");
+  assert.ok(system.includes("Nobody is in the frame, so anything that medium says"), "and its subject behavior is suspended");
+  // The default is environment-agnostic, so it leaves the setting to the brand.
+  assert.equal(fallback.environment, "agnostic");
+  assert.ok(system.includes(
+    "- That medium works in any setting, so the environment stays governed by the brand's earned environments."
+  ), "an unasked-for default does not decide where the scene is set");
+
+  // A chosen look still wins over the default.
+  const chosen = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", look: "film_noir", random: () => 0.5 });
+  assert.ok(chosen.system.includes(resolveLook("film_noir").line));
+  assert.equal(chosen.system.includes(fallback.line), false);
+
+  // And the people kind defaults to nothing, exactly as before.
+  const people = await runSceneBrief({ moments: [moment(1)], kind: "scene", random: () => 0.5 });
+  const rules = people.system.split("RULES:\n")[1].split("\n\nOUTPUT FORMAT:")[0];
+  assert.equal(rules.split("\n").filter((line) => line.startsWith("- ")).length, 2);
+  assert.equal(people.system.includes(fallback.line), false);
 });
 
 // ---------------------------------------------------------------------------

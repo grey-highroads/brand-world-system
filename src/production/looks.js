@@ -203,6 +203,24 @@ export const LOOKS = {
   },
 };
 
+// The look a peopleless scene falls back to when the user chose none. The
+// shared capture floor is a paragraph mostly about skin, and in a frame with
+// nobody in it that paragraph describes nothing.
+//
+// Named here rather than inline at either call site, because both the writer
+// and the compiler resolve it and the two have to agree. Changing it later is
+// one edit.
+//
+// Chosen 2026-09-08 from the four lines in the library that name no face, chin,
+// hair, or skin: this one, `available_light_interior`,
+// `saturated_daylight_adventure`, and `daylight_street_documentary`. It is the
+// only one of the four that is environment-agnostic, and a default that arrives
+// without the user asking for it has no business deciding where the scene is
+// set. The cost is that its own framing is strong: a long lens from well back,
+// a compressed stack of planes, and a muted 1970s palette. See the deferred
+// entry on filtering the look library for this kind.
+export const SCENE_NO_PEOPLE_DEFAULT_LOOK = "long_lens_distance";
+
 // Derived, so a new entry in LOOKS reaches this list by being written above.
 // The picker order in app/app.js is curated separately and runs from the
 // cleanest options to the most extreme; nothing validates that the two files

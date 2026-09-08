@@ -6,7 +6,7 @@ import { buildJobScope } from "../../src/scope/resolver.js";
 import { auditCopyAgainstClaims, checkDisclosurePresence } from "../../src/claims/copy-audit.js";
 import { produceCopy, auditProducedCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
-import { resolveLook } from "../../src/production/looks.js";
+import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "../../src/production/looks.js";
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -787,7 +787,15 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   // The look is chosen before the scene is written, so the scene is authored
   // for the medium rather than handed to it afterward. The look owns capture
   // character; the scene owns content.
-  const lookBrief = resolveLook(body.look);
+  //
+  // A peopleless scene with no look chosen resolves the default here rather
+  // than at compile time. Resolving it only in the compiler meant the direction
+  // was written with no medium in the prompt at all and then compiled against
+  // one, which is the conflict shape ADR 0018 exists to remove. A look that
+  // reaches the writer decides the setting before the prose is written, and a
+  // look that arrives afterward can only contradict it.
+  const lookBrief = resolveLook(body.look)
+    || (peopleless ? resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK) : null);
 
   // ADR 0018. A look that requires a condition to exist has to decide the
   // setting, and it was losing to the earned-environments rule that used to sit

@@ -259,6 +259,18 @@ Studio and packshot looks are a real need for fashion, ecommerce, and product ph
 
 The clean and professional need that studio seamless was partly serving is met instead by the `clean_digital` look, which supplies optical consequence without a studio and without a color personality.
 
+## Filtering the look library for the peopleless scene kind
+
+Added 2026-09-08 with `scene_no_people`, the scene kind that photographs a moment at a point when nobody is in the frame.
+
+Twelve of the sixteen look lines describe faces, skin, hair, or how a subject holds the camera. `neutral` and `color_slide_1975` are the clearest cases. On this kind those sentences describe nothing, and a sentence that describes nothing in a prompt is a sentence the model can read as an instruction to supply what is missing.
+
+What ships instead is one sentence, added to `lookRules` whenever this kind resolves a look, saying that the medium's claims about subject behavior do not apply and its color, contrast, grain, and focus apply in full. That sentence has not been tested against a render. It is the same shape as the precedence fix that made a binding look decide the setting, which did hold, so it is worth trying before building machinery.
+
+The fallback is filtering the library so this kind only offers the four looks that name no face, chin, hair, or skin: `long_lens_distance`, `available_light_interior`, `saturated_daylight_adventure`, and `daylight_street_documentary`. That is a narrow picker rather than a general fix, and it costs the user twelve options on one kind, which is why it was not built first.
+
+Bring it back when: a person appears in a peopleless render on a face-heavy look. One occurrence is enough, because the whole point of the kind is that nobody is in the frame.
+
 ## Retire AESTHETIC_MODES
 
 ADR 0018 Decision 2 rules that the look library absorbs and retires the aesthetic modes system: the mode opener's role passes to the selected look's compiled paragraph, `AESTHETIC_MODES` and `selectAestheticMode` are removed, and the package's `aestheticMode` field is replaced by the look id and version. Not done. The modes still supply the assignment opening line, though their finish claims were stripped on 2026-08-18 so they now state register only.
