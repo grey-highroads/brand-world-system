@@ -673,14 +673,46 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       // The other three paragraphs are unchanged apart from one sentence added
       // to the third, which says a direction is one instant. A person doing
       // three things in sequence is the transcription failure in miniature.
+      //
+      // Two more sentences added 2026-09-08, one to the third paragraph and one
+      // to the fourth, from three directions written the same day against
+      // MycoPop with the drugstore_flash look.
+      //
+      // The third paragraph now says a direction is what was in front of the
+      // lens rather than how the film rendered it. All three directions
+      // paraphrased the look's own line back into the scene prose: orange skin
+      // against magenta whites, a narrow contrast range, flattened faces, a
+      // wide lens distorting the edges, background falling off into
+      // underexposed murk, grain softening the photo. The medium then gets
+      // specified twice in one render, loosely in Assignment and in the
+      // governed version in Capture, and the two can disagree. The third
+      // lookRules entry prevented exactly this until c8664ba3 cut it; its
+      // wording is in the comment block above handleSceneBrief. It is not
+      // restored there, because it was addressed to a four-field output shape
+      // that no longer exists, and the constraint belongs in the statement of
+      // what a direction is. The look still travels to the writer, because the
+      // writer needs to know what the medium implies about behavior in frame.
+      // That is the part it dropped: drugstore_flash says subjects face the
+      // camera and know they are being photographed, and nobody in any of the
+      // three directions faced the camera.
+      //
+      // The fourth paragraph now says where the product sits. All three
+      // directions put the can in someone's hand, because the paragraph said
+      // the product was one object among several and never said where it was,
+      // so the writer picked the most obvious thing a person does with a can.
+      // The reason this matters is not composition. The render models do not
+      // judge the scale of a can against a body, and that failed in 100 percent
+      // of owner testing, while scale without direct interaction has been
+      // holding. The wording is positive placement rather than a prohibition,
+      // because a negative leaves the writer nowhere to put the can.
       task: [
         "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment. The moment says who is there, where, when and what is going on. Yours is what a camera saw at one instant of that, and the same moment an hour later, on another day, or a few minutes either side is a different photograph. Write the photograph, not the moment.",
         "",
         "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are the ones named in THE LIVED WORLD. Use their names and write them as themselves. Do not invent a person and do not describe anyone by their job or their age bracket.",
         "",
-        "A good direction puts those people in that place doing separate concrete things. A direction is one instant, so every person is in the middle of one thing rather than several in a row. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut.",
+        "A good direction puts those people in that place doing separate concrete things. A direction is one instant, so every person is in the middle of one thing rather than several in a row. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color cast, the grain, the contrast, the focus and the lens are all set elsewhere in this prompt and do not belong in the prose.",
         "",
-        "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject. It is not what the moment is about.",
+        "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject. It is not what the moment is about. The product sits where someone set it down and left it, on a surface in the room, and no one in the frame is holding or touching it.",
       ].join("\n"),
     },
     template_surface: {

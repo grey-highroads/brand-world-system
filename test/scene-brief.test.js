@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { SCENE_MOMENT_COUNT, handleSceneBrief, selectMoments } from "../api/production/generate-copy.js";
+import { resolveLook } from "../src/production/looks.js";
 
 // The scene writer returned the same three directions on every run: Nia at her
 // dining table, Priya at the fitness studio counter, Marco at the trailhead,
@@ -38,7 +39,7 @@ function brainWith(moments) {
 // Runs the writer with a stubbed model call and returns what it sent and what
 // it replied. The random source is handed in, so a pick is a fact rather than a
 // coin toss inside an assertion.
-async function runSceneBrief({ moments, random, kind = "scene" }) {
+async function runSceneBrief({ moments, random, kind = "scene", look = null, product = null }) {
   let sent = null;
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
@@ -59,9 +60,9 @@ async function runSceneBrief({ moments, random, kind = "scene" }) {
   const response = { setHeader() {}, end(payload) { this.body = payload; } };
   try {
     await handleSceneBrief({
-      body: { action: "scene_brief", kind },
+      body: { action: "scene_brief", kind, look },
       brain: brainWith(moments),
-      product: null,
+      product,
       apiKey: "test-only",
       response,
       random,
@@ -153,5 +154,137 @@ test("template and sales element kinds are untouched by moment selection", async
     const { system } = await runSceneBrief({ moments, kind, random: () => 0.5 });
     assert.doesNotMatch(system, /A direction is one photograph taken inside a moment/);
     assert.match(system, kind === "template_surface" ? /reusable branded background surfaces/ : /sit on top of a branded template/);
+    // Neither kind's task moved on 2026-09-08. Both sentences added that day
+    // went into the scene kind only.
+    assert.ok(system.includes(
+      kind === "template_surface"
+        ? "You write short briefs for reusable branded background surfaces. A surface is a backdrop that other work sits on top of: a gradient, a texture, a lit environment with open space. It is not a finished image and it has no subject of its own."
+        : "You write short briefs for a single generated element that will sit on top of a branded template in sales collateral. The element is one object rendered cleanly: a device mockup, a product shot, a demonstration visual."
+    ), `${kind} task is unchanged`);
+    assert.equal(system.includes("The product sits where someone set it down"), false);
+    assert.equal(system.includes("what was in front of the lens"), false);
   }
+});
+
+// Three directions written 2026-09-08 against MycoPop with the drugstore_flash
+// look, all three of them, paraphrased that look's own line back into the scene
+// prose and put the can in someone's hand. The task now says a direction is
+// what was in front of the lens, and where the product sits. See
+// docs/findings-2026-09-08-lens-and-product-placement.md.
+
+// Every sentence the four task paragraphs carried before 2026-09-08, in the
+// paragraph it belongs to. The two additions are asserted separately below, so
+// this list is what must survive them.
+const EXISTING_TASK_SENTENCES = {
+  1: [
+    "You write the direction for one photograph.",
+    "Below are three moments from this brand's world, and you write one direction from each.",
+    "A direction is one photograph taken inside a moment.",
+    "The moment says who is there, where, when and what is going on.",
+    "Yours is what a camera saw at one instant of that, and the same moment an hour later, on another day, or a few minutes either side is a different photograph.",
+    "Write the photograph, not the moment.",
+  ],
+  2: [
+    "Take the moment's people, its place, and its time, and write what a camera in that room would see.",
+    "The people are the ones named in THE LIVED WORLD.",
+    "Use their names and write them as themselves.",
+    "Do not invent a person and do not describe anyone by their job or their age bracket.",
+  ],
+  3: [
+    "A good direction puts those people in that place doing separate concrete things.",
+    "A direction is one instant, so every person is in the middle of one thing rather than several in a row.",
+    "It names a few objects that belong there.",
+    "It describes light by where it comes from and how it behaves on what it hits.",
+    "Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut.",
+  ],
+  4: [
+    "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject.",
+    "It is not what the moment is about.",
+  ],
+};
+
+test("the task says a direction is what was in front of the lens", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5, look: "drugstore_flash" });
+  assert.ok(system.includes(
+    "A direction is what was in front of the lens rather than how the film rendered it, so the color cast, the grain, the contrast, the focus and the lens are all set elsewhere in this prompt and do not belong in the prose."
+  ), "the lens sentence is in the assembled task");
+  // It sits in the third paragraph, after the sentence about cutting anything
+  // the camera cannot record, rather than anywhere else in the prompt.
+  assert.match(
+    system,
+    /is a sentence to cut\. A direction is what was in front of the lens rather than how the film rendered it/
+  );
+});
+
+test("the task says the product sits where someone left it", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
+  // Verbatim, as written in the brief that produced it.
+  assert.ok(system.includes(
+    "The product sits where someone set it down and left it, on a surface in the room, and no one in the frame is holding or touching it."
+  ), "the product placement sentence is in the assembled task");
+  assert.match(
+    system,
+    /It is not what the moment is about\. The product sits where someone set it down and left it/
+  );
+});
+
+test("the four task paragraphs keep every sentence they had", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
+  // The task is four paragraphs separated by blank lines, and the context
+  // follows after another blank line, so the first four blocks are the task.
+  const blocks = system.split("\n\n");
+  for (const [paragraph, sentences] of Object.entries(EXISTING_TASK_SENTENCES)) {
+    const body = blocks[Number(paragraph) - 1];
+    for (const sentence of sentences) {
+      assert.ok(body.includes(sentence), `paragraph ${paragraph} kept: ${sentence}`);
+    }
+    // And each paragraph is its own sentences and nothing else, so a sentence
+    // cannot be quietly reworded or dropped while its neighbours still match.
+    // Paragraphs 3 and 4 each carry one sentence added on 2026-09-08, asserted
+    // above and appended here.
+    const added = {
+      3: " A direction is what was in front of the lens rather than how the film rendered it, so the color cast, the grain, the contrast, the focus and the lens are all set elsewhere in this prompt and do not belong in the prose.",
+      4: " The product sits where someone set it down and left it, on a surface in the room, and no one in the frame is holding or touching it.",
+    }[paragraph] || "";
+    assert.equal(body, `${sentences.join(" ")}${added}`, `paragraph ${paragraph} is unchanged apart from what was added`);
+  }
+  // Still four, so nothing was inserted between them and no fifth was added.
+  assert.equal(blocks[0].startsWith("You write the direction for one photograph."), true);
+  assert.equal(blocks[3].startsWith("Where a product is named below,"), true);
+  assert.equal(blocks[4].startsWith("BRAND:"), true);
+});
+
+test("the look still reaches the writer unchanged", async () => {
+  // The fix went into the task, not the compiler. The writer needs the look,
+  // because what the medium implies about behavior in frame is the part it was
+  // dropping.
+  const agnostic = resolveLook("drugstore_flash");
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5, look: "drugstore_flash" });
+  assert.ok(system.includes(
+    `- This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${agnostic.line}`
+  ), "the medium line is carried whole");
+  assert.ok(system.includes(
+    "- That medium works in any setting, so the environment stays governed by the brand's earned environments."
+  ), "an agnostic look leaves the environment to the brand");
+
+  const binding = resolveLook("overcast_editorial");
+  const bound = await runSceneBrief({ moments: [moment(1)], random: () => 0.5, look: "overcast_editorial" });
+  assert.ok(bound.system.includes(
+    `- This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${binding.line}`
+  ), "the binding look carries the same medium line");
+  assert.ok(bound.system.includes(
+    `- That medium requires ${binding.requires}. Set the scene somewhere that condition holds.`
+  ), "a binding look still decides the setting");
+
+  // And no third look rule came back. The RULES block for a scene with a look
+  // holds two look lines and the two shared lines, and nothing else.
+  const rules = bound.system.split("RULES:\n")[1].split("\n\nOUTPUT FORMAT:")[0];
+  assert.equal(rules.split("\n").filter((line) => line.startsWith("- ")).length, 4);
+  assert.doesNotMatch(rules, /Do not describe the medium itself/);
+});
+
+test("a scene with no look carries no look rules", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
+  const rules = system.split("RULES:\n")[1].split("\n\nOUTPUT FORMAT:")[0];
+  assert.equal(rules.split("\n").filter((line) => line.startsWith("- ")).length, 2);
 });
