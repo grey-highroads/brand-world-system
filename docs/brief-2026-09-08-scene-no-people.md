@@ -31,8 +31,12 @@ build it as written anyway.
 - The prose never says the room is empty. Two hand pulls on 2026-09-08 returned
   empty frames from complete description with no prohibition and no absence
   sentence, so the description carries it.
-- A look is required on this kind. The `CAPTURE_CHARACTER` fallback is not
-  touched in this session.
+- This kind falls back to a named default look rather than to
+  `CAPTURE_CHARACTER`, which is a paragraph mostly about skin and is describing
+  nothing in a frame with no people in it. The default is
+  `available_light_interior`, the one look in the library whose line names no
+  face, chin, hair, or skin. `CAPTURE_CHARACTER` itself is not touched in this
+  session, and the with-people kind keeps using it exactly as it does now.
 - The user control is a choice inside the studio form, not a new studio
   category. Category is where the image goes. This is what the image is.
 
@@ -144,11 +148,19 @@ Today `compileBrandWorldImagePackage` in `src/production/package.js` derives
 The writer's kind never reaches it. Carry the kind on the brief record and read
 it in the compiler.
 
-In this session the compiler does one thing with it: when the kind is
-`scene_no_people`, a look is required, and a request arriving without one is a
-validation failure with a message a person can act on. Nothing else branches on
-it. Do not add sections, do not restore Protection on this path, and do not
-change the Assignment, Capture, or Output bodies.
+In this session the compiler does one thing with it. When the kind is
+`scene_no_people` and no look was chosen, resolve `available_light_interior` and
+compile its line into Capture, instead of falling back to `CAPTURE_CHARACTER`.
+The default look is a named constant, not a string inline at the call site, so
+changing it later is one edit.
+
+A defaulted look is a real look in every other respect. It resolves through
+`resolveLook` like any other, it reaches the writer through `lookRules` the same
+way, and it is recorded on the production record, so the result screen says which
+medium made the image without needing to know whether the user chose it.
+
+Nothing else branches on the kind. Do not add sections, do not restore Protection
+on this path, and do not change the Assignment or Output bodies.
 
 Record the kind on the stored production record alongside the look, so a job can
 say later which kind of image it was.
@@ -164,9 +176,9 @@ Labels: "With people" and "Place and product". Default is "With people", so
 existing behavior is unchanged for someone who does not touch it.
 
 The selection sets the `kind` passed to the suggest call and rides on the brief
-record through to the compiler. Because a look is required on the second option,
-selecting it when no look is chosen should say so at the point of choice rather
-than at generate time.
+record through to the compiler. Selecting it asks nothing further of the user. A
+person who picks "Place and product" and touches nothing else gets a working
+image, because the compiler supplies the default look.
 
 ## 7. Tests
 
@@ -180,8 +192,11 @@ than starting a new file.
   these people, by name" instruction is not.
 - On `scene_no_people` with a look resolved, the added look sentence is in the
   system prompt.
-- A `scene_no_people` compile with no look fails validation, and the same brief
-  with a look compiles.
+- A `scene_no_people` compile with no look chosen puts the
+  `available_light_interior` line in Capture, and `CAPTURE_CHARACTER` appears
+  nowhere in the compiled prompt.
+- A `scene_no_people` compile with a look chosen uses that look, not the default.
+- A `scene` compile with no look still falls back to `CAPTURE_CHARACTER`.
 - The existing `scene` assertions still pass unchanged. A compiled `scene`
   package is byte identical to the base commit.
 
