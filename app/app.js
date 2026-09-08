@@ -1296,32 +1296,11 @@ const state = {
   brandDescription: "Adaptogen sparkling water",
   selectedDeliverable: deliverables[0],
   creativeMode: null,
-  // Seeded campaigns are not yet client-scoped or persisted, so this list is
-  // shared across clients and resets on reload. See docs/deferred-work.md.
-  campaigns: [
-    {
-      id: "dh-rcs-campaign",
-      name: "Before They Open It",
-      description: "RCS is the first meaningful change to healthcare texting since texting itself, and most health systems have not heard of it yet. This campaign teaches the category and positions Dialog Health as the partner that already has it running, so that when a communications leader starts asking about verified sender identity, we are the name attached to the answer.",
-      objective: "Category education and early-adopter demand for RCS",
-      audience: "Patient experience, patient access, and marketing communications leaders at hospitals, health systems, and ASCs who already run text messaging at scale. They are not evaluating whether to text patients; that decision is years behind them. They are living with its ceiling: messages that arrive from a number nobody recognizes, patients who hesitate before tapping a link, and staff who chase confirmations by phone. Secondary audience is the IT or security stakeholder who has to be satisfied before anything new touches patient communication.",
-      currentBelief: "Texting is a solved problem, and the remaining engagement gap is a patient behavior issue rather than a channel issue",
-      desiredBelief: "Patients hesitate because the message is anonymous, and that is fixable",
-      desiredAction: "Ask to see RCS running, and start the verified sender process before their competitors do",
-      campaignIdea: "Before They Open It",
-      messageTerritory: "The decisive moment in patient communication happens before the message is opened. A patient looks at an unknown number and decides in under a second whether this is their surgery center or a scam. Every downstream metric a health system cares about, confirmations, no-shows, prep compliance, payment follow-through, sits on the other side of that hesitation. The campaign lives in that instant of recognition. Not the technology, not the feature list, and not the message content, but the moment a patient sees a name, a logo, and a verified badge and simply knows. Everything else the campaign says is downstream of that: one-tap actions, richer media, read receipts, and analytics all matter more once trust is already established. The tone is calm and clinical rather than promotional. This audience is fluent in patient communication and skeptical of vendors selling novelty. The campaign should read as one operator explaining a real change to another.",
-      proofPoints: "Patients see the organization's name, logo, and verified badge before opening the message. One-tap actions let patients confirm, reschedule, or complete a step inside the message, with no app download required. RCS messages automatically convert to SMS when needed, so every patient receives the message regardless of device or carrier. Analytics go beyond SMS reporting: read receipts, engagement tracking for clicks and taps, and real-time interaction data. Supports the full patient journey: scheduling and confirmation, pre-visit preparation, day-of arrival, post-visit follow-up, and surveys, reviews, and payments. Built on the same trusted, compliant messaging infrastructure already used for HIPAA-compliant SMS, and integrates with existing EHR and patient engagement platforms. Dialog Health provides best-practice healthcare templates, staff training resources, and onboarding support.",
-      preserve: "Healthcare specificity over generic technology imagery. Nothing in this campaign should be reusable by a retail SaaS brand. Operational credibility: real clinical and administrative settings, correctly staffed and plausibly equipped. This audience notices when a scene is wrong. Calm, unhurried tone, because Dialog Health reduces effort and the work should never look frantic or over-produced. Trust and security as an atmosphere rather than a motif, so no padlocks, no shields, no glowing circuitry. Natural light, real rooms, and restrained color, with navy and pale blue carrying the brand without labeling it.",
-      explore: "The phone in a real hand, in a real place: waiting rooms, kitchen counters, car seats before the engine starts, a hallway between patient rooms. The screen is legible and the environment is honest rather than styled. Recognition as a physical moment: the pause before tapping, the second look at an unknown number, the shift in posture when someone realizes a message is legitimate. Faces reading rather than smiling at the camera. Both sides of the exchange, so care coordinators and schedulers at work belong here too, because the argument is that recognition reduces work on the staff side. Message surfaces treated as artifacts: clean, close, well-lit views of a branded message with the verified badge visible, shot with the care of a product shot rather than a screenshot. Older patients as a deliberate part of the set, because verified identity matters most to the people most targeted by scams.",
-      paletteShift: "Hold the brand palette. Let the navy sit deeper and use pale blue as the light source rather than a fill, so screens and windows read as the brightest thing in frame.",
-      productFocus: "RCS for Healthcare",
-      channels: ["LinkedIn", "Email", "Website"],
-      startDate: "2026-09-08",
-      endDate: "2026-12-19",
-      learnings: [],
-      createdAt: "2026-08-10T09:00:00Z",
-    },
-  ],
+  // Campaigns are stored per client and loaded from /api/campaigns on start.
+  campaigns: [],
+  campaignsLoading: false,
+  campaignsLoadedForClient: "",
+  campaignsError: "",
   activeCampaignId: null,
   campaignReferences: [],
   campaignDraft: null,
@@ -9544,9 +9523,7 @@ root.addEventListener("click", (event) => {
     const draft = state.campaignEditDraft;
     const field = target.dataset.field;
     if (campaign && draft && field) {
-      campaign[field] = (draft[field] || "").trim();
-      recordBrainHistory(`Campaign updated: ${campaign.name}`, `${field} was edited.`, "complete");
-      setToast("Campaign updated");
+      void persistCampaignEdit(campaign, { [field]: (draft[field] || "").trim() }, `${field} was edited.`);
     }
     state.campaignEditField = null;
     state.campaignEditDraft = null;
@@ -9570,11 +9547,11 @@ root.addEventListener("click", (event) => {
     const draft = state.campaignEditDraft;
     if (campaign && draft) {
       const editableFields = ["name", "description", "objective", "audience", "currentBelief", "desiredBelief", "desiredAction", "campaignIdea", "messageTerritory", "proofPoints", "preserve", "explore", "paletteShift", "productFocus"];
+      const changes = {};
       for (const field of editableFields) {
-        campaign[field] = (draft[field] || "").trim();
+        changes[field] = (draft[field] || "").trim();
       }
-      recordBrainHistory(`Campaign updated: ${campaign.name}`, "Campaign parameters were edited.", "complete");
-      setToast("Campaign updated");
+      void persistCampaignEdit(campaign, changes, "Campaign parameters were edited.");
     }
     state.campaignEditing = false;
     state.campaignEditDraft = null;
@@ -9702,34 +9679,7 @@ root.addEventListener("click", (event) => {
     const draft = state.campaignDraft;
     if (!draft || !draft.name.trim() || !draft.objective.trim()) return;
     const id = "campaign-" + Date.now();
-    state.campaigns.push({
-      id,
-      name: draft.name.trim(),
-      description: draft.description.trim(),
-      objective: draft.objective.trim(),
-      audience: draft.audience.trim(),
-      currentBelief: draft.currentBelief.trim(),
-      desiredBelief: draft.desiredBelief.trim(),
-      desiredAction: draft.desiredAction.trim(),
-      campaignIdea: draft.campaignIdea.trim(),
-      messageTerritory: draft.messageTerritory.trim(),
-      proofPoints: draft.proofPoints.trim(),
-      preserve: draft.preserve.trim(),
-      explore: draft.explore.trim(),
-      paletteShift: draft.paletteShift.trim(),
-      productFocus: draft.productFocus.trim(),
-      channels: draft.channels.slice(),
-      startDate: draft.startDate || "",
-      endDate: draft.endDate || "",
-      learnings: [],
-      createdAt: new Date().toISOString(),
-    });
-    state.campaignDraft = null;
-    state.activeCampaignId = id;
-    state.creativeMode = null;
-    recordBrainHistory(`Campaign created: ${draft.name.trim()}`, `New campaign with objective: ${draft.objective.trim()}`, "complete");
-    setToast(`${draft.name.trim()} created. Start making assets.`);
-    navigate("campaign-workspace");
+    void createCampaignFromDraft(id, draft);
   }
   if (action === "brand-brain") navigate("brain-overview");
   if (action === "navigate-brain") navigate(target.dataset.screen);
@@ -10583,6 +10533,121 @@ async function loadProducts(force = false) {
   }
 }
 
+// Campaigns for the active client. Same guard shape as loadProducts: a
+// concurrent call is refused, and the attempt is recorded on both success and
+// failure so repeated render passes cannot retry forever.
+async function loadCampaigns(force = false) {
+  if (typeof fetch !== "function") return;
+  if (state.campaignsLoading) return;
+  if (!force && state.campaignsLoadedForClient === state.activeClientId) return;
+  const attemptingClientId = state.activeClientId;
+  state.campaignsLoading = true;
+  state.campaignsError = "";
+  try {
+    const response = await fetch("/api/campaigns", { headers: { Accept: "application/json" } });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The campaign list could not be loaded.");
+    state.campaigns = Array.isArray(body.campaigns) ? body.campaigns : [];
+  } catch (error) {
+    state.campaignsError = error.message || "The campaign list could not be loaded.";
+    state.campaigns = [];
+  } finally {
+    state.campaignsLoadedForClient = attemptingClientId;
+    state.campaignsLoading = false;
+    render();
+  }
+}
+
+// Write one campaign record through the API and return the stored record.
+// Every caller updates state from what comes back rather than from what it
+// sent, so what the screen shows is what storage holds. A failure throws, and
+// the caller leaves state alone so the person sees the save did not happen
+// instead of seeing the change appear and vanish on the next reload.
+async function saveCampaignRecord(campaign) {
+  if (typeof fetch !== "function") throw new Error("The campaign could not be saved.");
+  const response = await fetch("/api/campaigns", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({ campaign }),
+  });
+  const body = await readApiJson(response);
+  if (!response.ok || !body?.campaign) {
+    throw new Error(body?.error || "The campaign could not be saved.");
+  }
+  return body.campaign;
+}
+
+// Create a campaign from the creation form. The record reaches storage before
+// it reaches state, and a failed save leaves the person on the form with the
+// draft intact rather than on a workspace for a campaign that does not exist.
+async function createCampaignFromDraft(id, draft) {
+  const record = {
+    id,
+    name: draft.name.trim(),
+    description: draft.description.trim(),
+    objective: draft.objective.trim(),
+    audience: draft.audience.trim(),
+    currentBelief: draft.currentBelief.trim(),
+    desiredBelief: draft.desiredBelief.trim(),
+    desiredAction: draft.desiredAction.trim(),
+    campaignIdea: draft.campaignIdea.trim(),
+    messageTerritory: draft.messageTerritory.trim(),
+    proofPoints: draft.proofPoints.trim(),
+    preserve: draft.preserve.trim(),
+    explore: draft.explore.trim(),
+    paletteShift: draft.paletteShift.trim(),
+    productFocus: draft.productFocus.trim(),
+    channels: draft.channels.slice(),
+    startDate: draft.startDate || "",
+    endDate: draft.endDate || "",
+    learnings: [],
+    createdAt: new Date().toISOString(),
+  };
+  let stored;
+  try {
+    stored = await saveCampaignRecord(record);
+  } catch (error) {
+    setToast(error.message || "The campaign could not be saved. Try again.");
+    render();
+    return;
+  }
+  state.campaigns.push(stored);
+  state.campaignDraft = null;
+  state.activeCampaignId = stored.id;
+  state.creativeMode = null;
+  recordBrainHistory(`Campaign created: ${stored.name}`, `New campaign with objective: ${stored.objective}`, "complete");
+  setToast(`${stored.name} created. Start making assets.`);
+  navigate("campaign-workspace");
+}
+
+// Apply an edit to a campaign and write it through. State takes the stored
+// record on success. On failure the record in state is untouched, so the
+// screen keeps showing what storage actually holds.
+async function persistCampaignEdit(campaign, changes, historyNote) {
+  let stored;
+  try {
+    stored = await saveCampaignRecord({ ...campaign, ...changes });
+  } catch (error) {
+    setToast(error.message || "That edit could not be saved. Try again.");
+    render();
+    return;
+  }
+  mergeStoredCampaign(stored);
+  recordBrainHistory(`Campaign updated: ${stored.name}`, historyNote, "complete");
+  setToast("Campaign updated");
+  render();
+}
+
+// Replace one campaign in state with the record storage returned.
+function mergeStoredCampaign(record) {
+  const index = state.campaigns.findIndex((c) => c.id === record.id);
+  if (index >= 0) {
+    state.campaigns[index] = record;
+  } else {
+    state.campaigns.push(record);
+  }
+}
+
 // Fetch one full product record and store it in state.products.detail.
 // Upload the file to Blob first, then record it on the product record. The
 // two-step matches how source files already work: the browser puts the bytes
@@ -11129,6 +11194,7 @@ async function createClient() {
 
 render();
 void hydrateClients();
+void loadCampaigns();
 void hydrateStoredBrain();
 void hydrateProtections();
 // Outputs must hydrate before the production job so the job hydration
