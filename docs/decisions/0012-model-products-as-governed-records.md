@@ -73,6 +73,6 @@ All five steps in the sequencing landed by 2026-08-09.
 - **Step 5** (commit `bdd5d43`). Products navigation entry, list and detail screens, approve action, sales enablement product picker.
 - **Follow-ups** (commit `cdae93d`). Product synthesis button on product-brief source rows. Re-synthesis bumps version and clears approval. Product-version drift on workspace and Design Studio chooser.
 
-The closing handoff for this phase is `docs/handoff-2026-08-09-adr-0012-complete.md`.
+The closing handoff for this phase is `docs/handoffs/handoff-2026-08-09-adr-0012-complete.md`.
 
 Known follow-ups not blocking closure: server-side `classifyChangeImpact` extension for product-version comparisons, vision handling for image-dense product briefs, text extraction at intake, product picker across production surfaces beyond sales enablement.

@@ -1,5 +1,7 @@
 # Handoff: deterministic text compositing
 
+> Reversed, 2026-08-11. This document records that generated in-image copy is rejected permanently and that deterministic compositing is the path. ADR 0014's revision of 2026-08-11 reversed both, stating that the 2026-08-10 revision overreached and that display copy is rendered into images gated on measurement. Nothing here is a standing ruling.
+
 - Written: 2026-08-10
 - Status: not started, not scheduled
 - Governing decision: ADR 0014, revision of 2026-08-10

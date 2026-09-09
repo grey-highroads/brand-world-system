@@ -1,6 +1,6 @@
 # Handoff: Builder session, look library, 2026-08-18
 
-This session builds and refines the look library. It is execution work. Architecture rulings, open structural questions, and code review belong to the architect thread and its handoff at `docs/handoff-2026-08-18-architect.md`.
+This session builds and refines the look library. It is execution work. Architecture rulings, open structural questions, and code review belong to the architect thread and its handoff at `docs/handoffs/handoff-2026-08-18-architect.md`.
 
 ## What a look is
 

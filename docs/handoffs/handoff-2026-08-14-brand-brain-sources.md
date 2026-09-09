@@ -5,7 +5,7 @@
 - Branch: `main`
 - Shipped commit: `bb8992d` (`Redesign Brand Brain Sources experience`)
 - Status: live and intended as the baseline for incremental refinement
-- Supersedes the Sources-page interaction guidance in `docs/handoff-intake-restructure.md`
+- Supersedes the Sources-page interaction guidance in `docs/handoffs/handoff-intake-restructure.md`
 - Product-wide design standard: `docs/experience/design-quality-standard.md`
 
 ## Read this first

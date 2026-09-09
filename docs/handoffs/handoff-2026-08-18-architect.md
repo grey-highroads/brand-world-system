@@ -1,6 +1,6 @@
 # Handoff: Chief Architect and Code Review, 2026-08-18
 
-This document exists so a new architecture session can pick up with full context and without re-deriving anything. It is written for a reviewer, not a builder. The builder handoff is `docs/handoff-2026-08-18-builder-look-library.md`.
+This document exists so a new architecture session can pick up with full context and without re-deriving anything. It is written for a reviewer, not a builder. The builder handoff is `docs/handoffs/handoff-2026-08-18-builder-look-library.md`.
 
 Read this first, then `docs/decisions/0018-compile-scene-relevant-prompts-and-govern-looks.md`, then the delta list at the head of `docs/image-pipeline-contract.md`. Verify anything you intend to act on against the committed tree rather than against this summary.
 

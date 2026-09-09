@@ -1,5 +1,7 @@
 # Design Sprint Brief: Brand World System
 
+> Mandate closed, 2026-09-09. The status line below still reads Active. It is not. Every decision record and finding since 2026-08-09 is render pipeline work, and screens are not the current problem. See [`../direction-2026-09-09-world-first.md`](../direction-2026-09-09-world-first.md). This brief is retained for the design decisions it records.
+
 > Status: Active mandate. This document governs the whole-product design sprint. It records decisions made on 2026-08-02, with clarifications added after repository audits on 2026-08-02 and 2026-08-03.
 
 ## Context in one paragraph

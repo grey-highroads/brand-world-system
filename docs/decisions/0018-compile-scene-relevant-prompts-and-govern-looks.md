@@ -99,7 +99,7 @@ Wrong: the remedy's emphasis. Subtraction was not what moved the image. Every in
 
 The corrected principle, for whoever writes the next record: the failure was silence, not volume. Four of the five axes fixed today were absences rather than errors, and the renderer filled each silence with consensus. When quality plateaus, ask which axis nobody has written to yet.
 
-Handoffs: `docs/handoff-2026-08-18-architect.md` and `docs/handoff-2026-08-18-builder-look-library.md`.
+Handoffs: `docs/handoffs/handoff-2026-08-18-architect.md` and `docs/handoffs/handoff-2026-08-18-builder-look-library.md`.
 
 **Amended 2026-08-18.** Decision 1 said no user facing look choice ships yet, with any picker contingent on the looks proving themselves headless first. The owner has ruled that looks become a user facing feature now. The contingency was satisfied faster than the decision anticipated: on 2026-08-18 the film noir and drugstore flash looks both reached the render unmistakably on MycoPop, which established that look language moves finish and that the library is worth choosing from. The ruling also adds two requirements the original decision did not contemplate.
 

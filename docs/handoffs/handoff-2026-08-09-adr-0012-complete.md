@@ -25,7 +25,7 @@ The next agent should read these before touching product code. Reading order mat
 
 1. `docs/decisions/0012-model-products-as-governed-records.md`. The decision itself.
 2. `docs/evaluations/2026-08-08-adr-0012-product-synthesis.md`. The evidence-fidelity gate that unblocked steps 2 through 5.
-3. `docs/handoff-2026-08-08-adr-0012-continuation.md`. The incoming handoff that opened this phase.
+3. `docs/handoffs/handoff-2026-08-08-adr-0012-continuation.md`. The incoming handoff that opened this phase.
 4. This document.
 5. `schemas/v1/product-record.schema.json`. The frozen product record contract.
 6. `src/products/service.js`. Synthesis, persistence, approval.

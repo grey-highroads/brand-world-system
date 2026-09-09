@@ -1,11 +1,11 @@
 # Handoff: source intake restructure (complete) and what it opened
 
-> Update, 2026-08-14: The Brand Brain Sources landing page and its guided intake interactions were redesigned after this handoff. Read `docs/handoff-2026-08-14-brand-brain-sources.md` first. It supersedes the Sources-page interaction guidance below while preserving the underlying source contracts.
+> Update, 2026-08-14: The Brand Brain Sources landing page and its guided intake interactions were redesigned after this handoff. Read `docs/handoffs/handoff-2026-08-14-brand-brain-sources.md` first. It supersedes the Sources-page interaction guidance below while preserving the underlying source contracts.
 
 - Date: 2026-08-09
 - Repository: `github.com/grey-highroads/brand-world-system`, branch `main`
 - Status: shipped and iterated through live testing. Stable. One tracked synthesis follow-up.
-- Companion doc: `docs/handoff-copy-governance.md` (the next planned slice, roadmap item 6)
+- Companion doc: `docs/handoffs/handoff-copy-governance.md` (the next planned slice, roadmap item 6)
 
 ## Why this exists
 
@@ -71,4 +71,4 @@ This is a synthesis-prompt change, server-side, and it is the honest completion 
 
 ## First action for the next session
 
-If continuing on intake polish or the aspiration synthesis follow-up, read this doc and the intake functions named above. If moving to the planned next slice, read `docs/handoff-copy-governance.md`; the copy-governance work is unaffected by this restructure and its six open questions still stand. The aspiration-synthesis follow-up and copy governance are independent; either can go first.
+If continuing on intake polish or the aspiration synthesis follow-up, read this doc and the intake functions named above. If moving to the planned next slice, read `docs/handoffs/handoff-copy-governance.md`; the copy-governance work is unaffected by this restructure and its six open questions still stand. The aspiration-synthesis follow-up and copy governance are independent; either can go first.

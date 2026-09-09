@@ -1,5 +1,7 @@
 # First Proof: Success Criteria
 
+> Superseded, 2026-09-09. First proof is defined below as a hybrid production stage composing locked canonical elements deterministically. Deterministic composition does not exist in the live path, and it is not a current priority. The protected asset is supplied to a generative edit as a reference and fidelity rests on human review. Current success is defined in [`direction-2026-09-09-world-first.md`](direction-2026-09-09-world-first.md) as a flagship build for MycoPop and a credible transfer to Simply Agree.
+
 The first proof is one configured client workflow with a hybrid production stage and one internal constrained control run over a closely related stage request.
 
 ## Policy control test

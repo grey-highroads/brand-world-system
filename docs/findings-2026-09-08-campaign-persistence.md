@@ -57,7 +57,7 @@ owner of that item rather than edited here.
 
 ## "Before They Open It" survives in one historical document
 
-`docs/handoff-2026-08-10-ui-pass.md` line 79 records the session that added the
+`docs/handoffs/handoff-2026-08-10-ui-pass.md` line 79 records the session that added the
 seed. It is a record of what happened, not source, and deleting it would edit
 the history the handoff exists to hold. Left in place. No source file, fixture,
 or spec contains either the campaign name or `dh-rcs-campaign`.

@@ -1,5 +1,7 @@
 # Persistent Brand Intelligence and Production Systems
 
+> Superseded in part, 2026-09-09. This thesis argues that the durable product is a governed, portable representation of what a brand is and what it is permitted to do. That position was retired on 2026-09-09. Nobody produced market evidence that a buyer pays for claims governance, and the build history showed that compiling rules into the instruction was the thing repeatedly unwound to get usable output. The current direction is recorded in [`direction-2026-09-09-world-first.md`](direction-2026-09-09-world-first.md). Read the argument below as history. The description of the system's mechanics is also older than the September render pipeline work.
+
 > This thesis was written before the system was built. It has been revised against what building it proved, on 2026-08-24. The argument held. Three things it did not anticipate are recorded in [What building it taught us](#what-building-it-taught-us), and the sections below carry the corrections.
 
 ## Executive thesis

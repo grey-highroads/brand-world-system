@@ -1,5 +1,7 @@
 # System Architecture
 
+> Frozen against a target that has since moved, 2026-09-09. The component boundaries below are broadly accurate, but the compile path they describe no longer runs as written. Since 2026-09-07 the writer reads the brain artifacts and authors the render prompt as one piece of prose, and the compiler attaches the output format, the locked asset, and provenance without adding guidance sections. See [`findings-2026-09-07-writer-authors-the-prompt.md`](findings-2026-09-07-writer-authors-the-prompt.md) for what stopped compiling, and [`direction-2026-09-09-world-first.md`](direction-2026-09-09-world-first.md) for the direction.
+
 > Status: Frozen target-state reference. Revised only by findings from design sprints or fixture work. This document defines implementation boundaries and responsibilities. It deliberately avoids committing to infrastructure that the fixtures have not yet justified.
 
 Product and architecture decisions in this document are governed by [`product-development-principles.md`](product-development-principles.md). Logical components do not become product surfaces without passing the product architecture test.

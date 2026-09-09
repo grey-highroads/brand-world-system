@@ -1,5 +1,7 @@
 # Product Primer
 
+> Superseded, 2026-09-09. The bet stated below, that governed representation of brand permission is what does not commoditize, was retired on 2026-09-09. Do not use this document to onboard anyone. The current direction is [`direction-2026-09-09-world-first.md`](direction-2026-09-09-world-first.md), and a replacement primer has not been written yet.
+
 A plain-language walkthrough of the Brand World System. Read this first. The thesis, specs, and decision records go deeper.
 
 ## The bet
