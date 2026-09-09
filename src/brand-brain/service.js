@@ -1,5 +1,5 @@
 import { synthesizePassWithChatCompletions } from "./chat-completions-provider.js";
-import { PASS_IDS, PASS_LABELS } from "./schema.js";
+import { DEFAULT_REACH, PASS_IDS, PASS_LABELS, REACH_LEVELS, passStep, passWorld } from "./schema.js";
 import { normalizeSourcesForSynthesis } from "./source-normalizer.js";
 import { enrichUrlSources } from "./source-reader.js";
 
@@ -26,7 +26,12 @@ export async function saveBrandBrainSnapshot(snapshot, store) {
 }
 
 // ---------------------------------------------------------------------------
-// Four-pass synthesis (2026-09-07)
+// Eight-pass synthesis (four passes 2026-09-07, eight under ADR 0019, 2026-09-09)
+//
+// Passes 1 to 4 write the brand today. Passes 5 to 8 write the brand evolved
+// from all sources, with the finished today world supplied as data. The client
+// drives eight requests; nothing reaches the saved brain until pass 8 finishes,
+// and a failed evolved pass saves nothing, the today world included.
 //
 // One call produced the whole brain until today, and after the Lived World
 // widened to several people and the Story Architecture to six to twelve
@@ -52,12 +57,25 @@ function passError(passId, message, status = 400) {
   return error;
 }
 
+// The world artifacts of a brain, by world. A brain saved before ADR 0019
+// carries one `artifacts` object with no world under it; that reads as the
+// brand today with no evolved world. Exported because the writer and the app
+// make the same read.
+export function worldArtifacts(brain, world) {
+  const artifacts = brain?.artifacts;
+  if (!artifacts || typeof artifacts !== "object") return null;
+  if (artifacts.today || artifacts.evolved) return artifacts[world] || null;
+  return world === "today" ? artifacts : null;
+}
+
 // The slice of an approved baseline a pass is responsible for. A baseline that
 // predates an artifact yields null for that pass, which runs it as a first
-// synthesis of that slice, because there is genuinely nothing to update.
+// synthesis of that slice, because there is genuinely nothing to update. The
+// slice has a world axis: pass 6 is handed the evolved Lived World, and an
+// approved brain with no evolved world yields null for every evolved pass.
 function baselineForPass(passId, baseline) {
   if (!baseline) return null;
-  const artifacts = baseline.artifacts || {};
+  const artifacts = worldArtifacts(baseline, passWorld(passId)) || {};
   if (passId === 1) {
     return {
       brandName: baseline.brandName,
@@ -69,8 +87,16 @@ function baselineForPass(passId, baseline) {
       dossier: artifacts.dossier,
     };
   }
-  const key = { 2: "livedWorld", 3: "storyArchitecture", 4: "visualGrammar" }[passId];
+  const key = { 1: "dossier", 2: "livedWorld", 3: "storyArchitecture", 4: "visualGrammar" }[passStep(passId)];
   return artifacts[key] ? { [key]: artifacts[key] } : null;
+}
+
+// The reach level an evolved pass runs at. The app sends the level; a request
+// that carries none, or an unknown one, runs at the default rather than
+// failing, because the level is not yet a control anyone can set on screen.
+function reachFor(body) {
+  const requested = typeof body?.reach === "string" ? body.reach.trim() : "";
+  return REACH_LEVELS.includes(requested) ? requested : DEFAULT_REACH;
 }
 
 // Image bytes are not carried between passes. A source file that reached the
@@ -116,8 +142,9 @@ function sumUsage(entries) {
   return seen ? totals : null;
 }
 
-// The assembled brain has exactly the shape one call used to return. Nothing
-// downstream of the store can tell it was built in four passes.
+// The assembled brain has the shape brandBrainSchema describes: brand fields,
+// guidance and review questions at the root from pass 1, and two worlds under
+// artifacts. Nothing downstream of the store can tell it was built in passes.
 export function assembleBrainFromPasses(passResults) {
   const one = passResults[1] || {};
   const reviewQuestions = [];
@@ -137,10 +164,18 @@ export function assembleBrainFromPasses(passResults) {
     guidanceSections: one.guidanceSections,
     reviewQuestions,
     artifacts: {
-      dossier: one.dossier,
-      livedWorld: passResults[2]?.livedWorld,
-      storyArchitecture: passResults[3]?.storyArchitecture,
-      visualGrammar: passResults[4]?.visualGrammar,
+      today: {
+        dossier: one.dossier,
+        livedWorld: passResults[2]?.livedWorld,
+        storyArchitecture: passResults[3]?.storyArchitecture,
+        visualGrammar: passResults[4]?.visualGrammar,
+      },
+      evolved: {
+        dossier: passResults[5]?.dossier,
+        livedWorld: passResults[6]?.livedWorld,
+        storyArchitecture: passResults[7]?.storyArchitecture,
+        visualGrammar: passResults[8]?.visualGrammar,
+      },
     },
   };
 }
@@ -191,6 +226,7 @@ export async function readSynthesisProgress(requestId, options) {
     inProgress: true,
     completedPass: Number(inProgress.nextPass || FIRST_PASS) - 1,
     nextPass: Number(inProgress.nextPass || FIRST_PASS),
+    totalPasses: PASS_IDS.length,
   };
 }
 
@@ -297,6 +333,11 @@ async function runLaterPass(passId, body, options) {
   }
 
   const sources = await rehydrateSources(inProgress.synthesisSources, store);
+  // An evolved pass runs at the reach level on its request. The level is
+  // recorded on the in-progress record from the first evolved pass so the
+  // saved brain can say what its evolved world was built at.
+  const evolved = passWorld(passId) === "evolved";
+  const reach = evolved ? reachFor(body) : undefined;
   const pass = await synthesize({
     apiKey: options.env.OPENAI_API_KEY,
     model: options.env.OPENAI_MODEL,
@@ -305,14 +346,16 @@ async function runLaterPass(passId, body, options) {
     priorPasses: inProgress.passResults,
     baseline: baselineForPass(passId, inProgress.baseline),
     baselineVersion: inProgress.baselineVersion,
+    reach,
     fetchImpl,
   });
 
   const passResults = { ...inProgress.passResults, [passId]: pass.result };
   const passes = [...inProgress.passes, { pass: passId, responseId: pass.responseId, model: pass.model, usage: pass.usage || null }];
+  const reachRecord = evolved ? { reach: inProgress.reach || reach } : {};
 
   if (passId !== FINAL_PASS) {
-    const next = { ...inProgress, passResults, passes, nextPass: passId + 1 };
+    const next = { ...inProgress, ...reachRecord, passResults, passes, nextPass: passId + 1 };
     await store.writeInProgress(next);
     return passProgress(next);
   }
@@ -324,6 +367,9 @@ async function runLaterPass(passId, body, options) {
     synthesisRequestId: inProgress.synthesisRequestId,
     sources: inProgress.sources,
     result: assembleBrainFromPasses(passResults),
+    // The reach the evolved world was built at. The writer never reads it;
+    // it is the record of how far the aspiration sources were allowed to go.
+    reach: reachRecord.reach || null,
     approvedResult: inProgress.baseline,
     baselineVersion: incremental ? inProgress.baselineVersion || inProgress.baselineStoredVersion || null : null,
     responseId: firstPassEntry?.responseId || null,
