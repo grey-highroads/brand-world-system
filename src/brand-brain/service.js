@@ -2,6 +2,10 @@ import { synthesizePassWithChatCompletions } from "./chat-completions-provider.j
 import { DEFAULT_REACH, PASS_IDS, PASS_LABELS, REACH_LEVELS, passStep, passWorld } from "./schema.js";
 import { normalizeSourcesForSynthesis } from "./source-normalizer.js";
 import { enrichUrlSources } from "./source-reader.js";
+import { worldArtifacts } from "./world.js";
+
+// Re-exported so callers that already import the service keep working.
+export { worldArtifacts, selectWorldArtifacts } from "./world.js";
 
 function persistedSources(sources) {
   return sources.map((source) => ({
@@ -55,17 +59,6 @@ function passError(passId, message, status = 400) {
   error.status = status;
   error.pass = passId;
   return error;
-}
-
-// The world artifacts of a brain, by world. A brain saved before ADR 0019
-// carries one `artifacts` object with no world under it; that reads as the
-// brand today with no evolved world. Exported because the writer and the app
-// make the same read.
-export function worldArtifacts(brain, world) {
-  const artifacts = brain?.artifacts;
-  if (!artifacts || typeof artifacts !== "object") return null;
-  if (artifacts.today || artifacts.evolved) return artifacts[world] || null;
-  return world === "today" ? artifacts : null;
 }
 
 // The slice of an approved baseline a pass is responsible for. A baseline that

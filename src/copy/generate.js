@@ -21,6 +21,7 @@ import { auditCopyAgainstClaims, checkDisclosurePresence } from "../claims/copy-
 import { checkDisplayBudgets } from "./display-budget.js";
 import { checkProseRules, collapseProseFindings } from "./prose-check.js";
 import { getCopyType } from "./types.js";
+import { selectWorldArtifacts } from "../brand-brain/world.js";
 
 const CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions";
 const COPY_MODEL = "gpt-4o";
@@ -41,7 +42,7 @@ function guidanceLine(entry, fallback) {
  * role line, length rule, structure, and output format.
  */
 export function buildCopySystemPrompt({ copyType, brain, product, claimsSet, context }) {
-  const dossier = brain?.artifacts?.dossier || {};
+  const dossier = selectWorldArtifacts(brain).artifacts.dossier || {};
   const voice = section(brain, "voice");
   const foundation = section(brain, "foundation");
   const world = section(brain, "world");

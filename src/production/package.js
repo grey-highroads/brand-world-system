@@ -14,6 +14,10 @@ import { getZone } from "../copy/display-budget.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "./looks.js";
 import { buildJobScope, arrayScopeAppliesToJob } from "../scope/resolver.js";
 import { ownEntry } from "../lookup.js";
+// Every brain artifact read in this file goes through selectWorldArtifacts
+// (ADR 0019): evolved when approved, today otherwise, legacy root before the
+// split. The compiler never asks which world on its own.
+import { selectWorldArtifacts } from "../brand-brain/world.js";
 
 const guidanceOrder = ["foundation", "identity", "world", "creative", "rules"];
 
@@ -114,7 +118,7 @@ export function resolveTreatments({ approvedBrain, lockedAsset, brief, reference
   const treatments = [];
   const placement = brief?.placement || "";
   const jobScope = buildJobScope({ placement, productId, campaignId });
-  const dossier = approvedBrain?.artifacts?.dossier || {};
+  const dossier = selectWorldArtifacts(approvedBrain).artifacts.dossier || {};
   const rulesSection = (approvedBrain?.guidanceSections || []).find((s) => s.id === "rules");
 
   // Locked assets
@@ -355,7 +359,7 @@ const GRAMMAR_SECTION_LABELS = [
 ];
 
 function worldDirection(approvedBrain) {
-  const grammar = approvedBrain?.artifacts?.visualGrammar?.sections;
+  const grammar = selectWorldArtifacts(approvedBrain).artifacts.visualGrammar?.sections;
   if (!grammar || typeof grammar !== "object") return "";
 
   const blocks = [];
@@ -398,7 +402,8 @@ function rejectsDirection(approvedBrain, activeRefusals = null) {
   if (governed.length) {
     return `This brand is not these things, and none of them belong in the frame: ${governed.join(" ")}`;
   }
-  const lived = approvedBrain?.artifacts?.livedWorld || approvedBrain?.artifacts?.lived_world;
+  const worldArtifactsForRejects = selectWorldArtifacts(approvedBrain).artifacts;
+  const lived = worldArtifactsForRejects.livedWorld || worldArtifactsForRejects.lived_world;
   const rejects = Array.isArray(lived?.rejects) ? lived.rejects.map((item) => cleanText(item)).filter(Boolean) : [];
   if (!rejects.length) return "";
   return `This brand is not these things, and none of them belong in the frame: ${rejects.join("; ")}.`;
@@ -502,13 +507,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
   // guidance summaries are a second, vaguer answer to a question already
   // answered, and they stop. Foundation, identity, and rules stay, because
   // they carry positioning and governance rather than visual content.
-  const grammarPresent = Boolean(approvedBrain?.artifacts?.visualGrammar?.sections);
+  const grammarPresent = Boolean(selectWorldArtifacts(approvedBrain).artifacts.visualGrammar?.sections);
   const sceneGuidanceOrder = grammarPresent
     ? guidanceOrder.filter((id) => id !== "world" && id !== "creative")
     : guidanceOrder;
   const activeGuidanceOrder = (isTemplate || isSalesEnablement) ? templateGuidanceOrder : sceneGuidanceOrder;
   const guidance = activeGuidanceOrder.map((id) => selected.get(id)).filter(Boolean);
-  const dossier = approvedBrain.artifacts?.dossier || {};
+  const dossier = selectWorldArtifacts(approvedBrain).artifacts.dossier || {};
 
   // Package format inference and state-lock neutralization
   const packageFormat = lockedAsset ? inferPackageFormat(lockedAsset) : null;

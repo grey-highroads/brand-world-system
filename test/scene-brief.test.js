@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { SCENE_MOMENT_COUNT, handleSceneBrief, selectMoments } from "../api/production/generate-copy.js";
+import { SCENE_MOMENT_COUNT, handleSceneBrief, selectMoments, selectWorldArtifacts } from "../api/production/generate-copy.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "../src/production/looks.js";
 import { compileBrandWorldImagePackage } from "../src/production/package.js";
 import { CAPTURE_CHARACTER } from "../src/production/prompt-craft.js";
@@ -19,30 +19,52 @@ function moment(index) {
     title: `Moment ${index}`,
     when: "Late afternoon",
     where: `Room ${index}`,
-    who: ["person-1"],
-    doing: `Dana does thing ${index}.`,
+    who: "One person, alone.",
+    situation: `Someone does thing ${index}.`,
     feeling: `It means something ${index}.`,
   };
 }
 
-function brainWith(moments) {
+// Brains in the three shapes the writer reads. "today" is a two-world brain
+// with only the today world approved; "evolved" has both; "legacy" is a brain
+// saved before ADR 0019, with a people list at the root.
+function brainWith(moments, shape = "today") {
+  const today = {
+    livedWorld: {
+      cast: {
+        description: "People who fix things for a living and talk while they work.",
+        examples: [{ name: "Dana", who: "27, runs the front of a bike shop." }],
+      },
+    },
+    storyArchitecture: { rhythm: "Pressure, then release.", moments },
+    visualGrammar: { sections: { light: [{ id: "light-1", statement: "One north window." }] } },
+  };
+  const evolved = {
+    livedWorld: {
+      cast: {
+        description: "People who repair rather than replace, and are proud of the marks it leaves.",
+        examples: [{ name: "Ola", who: "34, reupholsters chairs out of a garage." }],
+      },
+    },
+    storyArchitecture: { rhythm: "Evolved rhythm.", moments },
+    visualGrammar: { sections: { light: [{ id: "light-e1", statement: "Tungsten work lamp." }] } },
+  };
+  const legacy = {
+    livedWorld: { people: [{ id: "person-1", name: "Dana", who: "27, runs the front of a bike shop." }] },
+    storyArchitecture: { rhythm: "Pressure, then release.", moments },
+    visualGrammar: { sections: { light: [{ id: "light-1", statement: "One north window." }] } },
+  };
   return {
     brandName: "Fallow",
     brandDescription: "A quiet home goods brand.",
-    artifacts: {
-      livedWorld: {
-        people: [{ id: "person-1", name: "Dana", who: "27, runs the front of a bike shop." }],
-      },
-      storyArchitecture: { rhythm: "Pressure, then release.", moments },
-      visualGrammar: { sections: { light: [{ id: "light-1", statement: "One north window." }] } },
-    },
+    artifacts: shape === "legacy" ? legacy : shape === "evolved" ? { today, evolved } : { today },
   };
 }
 
 // Runs the writer with a stubbed model call and returns what it sent and what
 // it replied. The random source is handed in, so a pick is a fact rather than a
 // coin toss inside an assertion.
-async function runSceneBrief({ moments, random, kind = "scene", look = null, product = null }) {
+async function runSceneBrief({ moments, random, kind = "scene", look = null, product = null, shape = "today" }) {
   let sent = null;
   const previousFetch = globalThis.fetch;
   globalThis.fetch = async (url, init) => {
@@ -64,7 +86,7 @@ async function runSceneBrief({ moments, random, kind = "scene", look = null, pro
   try {
     await handleSceneBrief({
       body: { action: "scene_brief", kind, look },
-      brain: brainWith(moments),
+      brain: brainWith(moments, shape),
       product,
       apiKey: "test-only",
       response,
@@ -135,7 +157,7 @@ test("the moment line still carries the whole moment", async () => {
   const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
   // The fields are the moment and the writer needs them. What changed is the
   // task, not the input.
-  assert.match(system, /Moment 1\. Late afternoon, Room 1\. Dana is there\. Dana does thing 1\. It means something 1\./);
+  assert.match(system, /Moment 1\. Late afternoon, Room 1\. Who is there: One person, alone\. Someone does thing 1\. It means something 1\./);
 });
 
 test("the task tells the writer to photograph the moment rather than transcribe it", async () => {
@@ -146,8 +168,9 @@ test("the task tells the writer to photograph the moment rather than transcribe 
   assert.match(system, /A direction is one instant, so every person is in the middle of one thing rather than several in a row/);
   // The instruction that produced the transcription is gone.
   assert.doesNotMatch(system, /each built from one of the moments in THE STORY/);
-  // The paragraphs the rewrite was told to leave alone are intact.
-  assert.match(system, /The people are the ones named in THE LIVED WORLD/);
+  // The paragraphs the rewrite was told to leave alone are intact. The second
+  // paragraph changed under ADR 0019 and is asserted whole below.
+  assert.match(system, /The people are cast from the description in THE LIVED WORLD/);
   assert.match(system, /it is present in the scene as one object among several/);
 });
 
@@ -187,11 +210,12 @@ const EXISTING_TASK_SENTENCES = {
     "Yours is what a camera saw at one instant of that, and the same moment an hour later, on another day, or a few minutes either side is a different photograph.",
     "Write the photograph, not the moment.",
   ],
+  // Paragraph two is the ADR 0019 version, asserted whole in its own test
+  // below; its sentences are listed here so the paragraph check still holds.
   2: [
     "Take the moment's people, its place, and its time, and write what a camera in that room would see.",
-    "The people are the ones named in THE LIVED WORLD.",
-    "Use their names and write them as themselves.",
-    "Do not invent a person and do not describe anyone by their job or their age bracket.",
+    "The people are cast from the description in THE LIVED WORLD: write particular people who belong there, with what they are doing and how they carry themselves, and do not describe anyone by their job or their age bracket.",
+    "Nobody in this frame has appeared in another picture of this brand, so do not use an example's name and do not write an example as themselves.",
   ],
   3: [
     "A good direction puts those people in that place doing separate concrete things.",
@@ -302,7 +326,7 @@ test("a scene with no look carries no look rules", async () => {
 // an edit to the task in api/production/generate-copy.js fails here.
 const NO_PEOPLE_TASK_PARAGRAPHS = [
   "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment, at a point when nobody is in the frame. The moment says who is there, where, when and what is going on. Yours is what a camera saw in that place a few minutes before they arrived, a few minutes after they left, or at an hour when the room is theirs but empty.",
-  "The people are still the reason the room looks the way it does. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
+  "The people are still the reason the room looks the way it does. They are the kind of people THE LIVED WORLD describes, and nobody in particular: the room belongs to someone cast from that description who has appeared in no other picture of this brand. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
   "Name one thing in the frame that is not the product and give it size and position, so the eye has somewhere to land first. Without a person the frame has no natural subject, and whatever is largest and most contrasted becomes one. A direction is one instant, so the room is in one state rather than several. It names a few objects that belong there and gives each one a state and the reason it is in that state. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color, the grain, the contrast, the focus and the lens are set elsewhere in this prompt and do not belong in the prose.",
   "Where a product is named below, it appears once. It sits where someone set it down on a surface in the room, and it is never the subject and never centered.",
   "The three directions are not all at the same distance from the people. One is a place someone left minutes ago. One is a place at rest. In one the product is the closest thing the frame has to a subject.",
@@ -340,20 +364,73 @@ test("the peopleless kind takes the scene output shape and the scene word budget
   assert.equal(peopleless.system.includes("Two or three sentences per brief"), false);
 });
 
-test("the peopleless kind keeps the people and drops the instruction to write them into the frame", async () => {
+test("the peopleless kind keeps the cast and says whose place this is", async () => {
   const { system } = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
-  // The list itself, names and all.
+  // The cast description and the examples, names and all.
+  assert.match(system, /People who fix things for a living and talk while they work\./);
   assert.match(system, /Dana\. 27, runs the front of a bike shop\./);
   assert.match(system, /The people whose place this is\. Their activity is the reason the room is in the state it is in:/);
-  // The instruction that contradicts the task is gone.
   assert.equal(system.includes("Write these people, by name. Do not invent others"), false);
   // The grammar's people section arrives under a label that says whose place
   // it is, and the people kind's label does not appear.
   assert.equal(system.includes("Who appears on camera"), false);
+});
 
-  // On the people kind both are unchanged.
-  const people = await runSceneBrief({ moments: [moment(1)], kind: "scene", random: () => 0.5 });
-  assert.match(people.system, /The people this is about\. Write these people, by name\. Do not invent others:/);
+// ---------------------------------------------------------------------------
+// ADR 0019: the writer reads the evolved world, and casts from a description
+// ---------------------------------------------------------------------------
+
+test("the writer reads the evolved world when present, the today world when not, and the legacy root otherwise", async () => {
+  const evolved = await runSceneBrief({ moments: [moment(1)], random: () => 0.5, shape: "evolved" });
+  assert.match(evolved.system, /People who repair rather than replace/);
+  assert.match(evolved.system, /Ola\. 34, reupholsters chairs out of a garage\./);
+  assert.match(evolved.system, /Tungsten work lamp\./);
+  assert.equal(evolved.system.includes("People who fix things for a living"), false, "the today world is not sent when the evolved one is");
+  assert.equal(evolved.reply.world, "evolved");
+
+  const today = await runSceneBrief({ moments: [moment(1)], random: () => 0.5, shape: "today" });
+  assert.match(today.system, /People who fix things for a living/);
+  assert.equal(today.system.includes("Ola."), false);
+  assert.equal(today.reply.world, "today");
+
+  const legacy = await runSceneBrief({ moments: [moment(1)], random: () => 0.5, shape: "legacy" });
+  assert.match(legacy.system, /Dana\. 27, runs the front of a bike shop\./);
+  assert.match(legacy.system, /One north window\./);
+  assert.equal(legacy.reply.world, "today");
+
+  // The function that decides, on its own.
+  assert.equal(selectWorldArtifacts({ artifacts: { today: { a: 1 }, evolved: { b: 2 } } }).world, "evolved");
+  assert.equal(selectWorldArtifacts({ artifacts: { today: { a: 1 } } }).world, "today");
+  assert.deepEqual(selectWorldArtifacts({ artifacts: { livedWorld: {} } }), { world: "today", artifacts: { livedWorld: {} } });
+  assert.deepEqual(selectWorldArtifacts(null), { world: "today", artifacts: {} });
+});
+
+test("the people block carries the cast description and the examples, and the roster instruction is gone", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
+  assert.match(system, /These are the kind of people who belong here\. Cast someone new for this picture from this description, and never reuse an example's name:\nPeople who fix things for a living and talk while they work\.\nExamples to cast from, not to reuse:\nDana\. 27, runs the front of a bike shop\./);
+  assert.equal(system.includes("Write these people, by name. Do not invent others"), false);
+  assert.equal(system.includes("Do not invent others"), false);
+});
+
+test("the moments line carries prose who and the situation", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(3)], random: () => 0.5 });
+  assert.match(system, /Moment 3\. Late afternoon, Room 3\. Who is there: One person, alone\. Someone does thing 3\. It means something 3\./);
+  // A legacy brain's id list still resolves through its people list.
+  const legacyMoment = { ...moment(4), who: ["person-1"], situation: undefined, doing: "Dana does thing 4." };
+  const legacy = await runSceneBrief({ moments: [legacyMoment], random: () => 0.5, shape: "legacy" });
+  assert.match(legacy.system, /Moment 4\. Late afternoon, Room 4\. Dana is there\. Dana does thing 4\./);
+});
+
+test("the task's people paragraph casts from the description and says nobody recurs", async () => {
+  const { system } = await runSceneBrief({ moments: [moment(1)], random: () => 0.5 });
+  const paragraph = system.split("\n\n")[1];
+  assert.equal(
+    paragraph,
+    "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are cast from the description in THE LIVED WORLD: write particular people who belong there, with what they are doing and how they carry themselves, and do not describe anyone by their job or their age bracket. Nobody in this frame has appeared in another picture of this brand, so do not use an example's name and do not write an example as themselves.",
+  );
+  assert.equal(system.includes("Use their names and write them as themselves."), false);
+  const peopleless = await runSceneBrief({ moments: [moment(1)], kind: "scene_no_people", random: () => 0.5 });
+  assert.match(peopleless.system.split("\n\n")[1], /^The people are still the reason the room looks the way it does\. They are the kind of people THE LIVED WORLD describes, and nobody in particular: the room belongs to someone cast from that description who has appeared in no other picture of this brand\. Write what their activity left behind:/);
 });
 
 test("a look on the peopleless kind carries the sentence that suspends its subject behavior", async () => {

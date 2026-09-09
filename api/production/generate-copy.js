@@ -7,6 +7,7 @@ import { auditCopyAgainstClaims, checkDisclosurePresence } from "../../src/claim
 import { produceCopy, auditProducedCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "../../src/production/looks.js";
+import { selectWorldArtifacts } from "../../src/brand-brain/world.js";
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -145,7 +146,7 @@ export default async function handler(request, response) {
     const foundation = brain.guidanceSections?.find((s) => s.id === "foundation");
     const world = brain.guidanceSections?.find((s) => s.id === "world");
     const rules = brain.guidanceSections?.find((s) => s.id === "rules");
-    const dossier = brain.artifacts?.dossier || {};
+    const dossier = selectWorldArtifacts(brain).artifacts.dossier || {};
 
     // Assemble the governed claims set (ADR 0013 derived model).
     // Uses the claims store and assembly function instead of inline assembly.
@@ -499,6 +500,12 @@ export function selectMoments(moments, random = Math.random) {
   return shuffled.slice(0, SCENE_MOMENT_COUNT);
 }
 
+// Which world the writer reads: the evolved world once approved, the today
+// world before that, and the legacy root for a brain saved before ADR 0019.
+// selectWorldArtifacts in src/brand-brain/world.js is the one function that
+// decides, here and in the compiler; nothing else asks which world.
+export { selectWorldArtifacts };
+
 export async function handleSceneBrief({ body, brain, product, apiKey, response, random = Math.random }) {
   // Three artifacts are the whole of what the writer reads, as of 2026-09-07.
   // The guidance sections went first: they are prose summaries of the same
@@ -513,7 +520,7 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   // The grammar's rejects section stays out, because ADR 0017 made the governed
   // refusals document the only refusal source for the image path.
   // See docs/findings-2026-09-07-world-artifacts.md.
-  const artifacts = brain.artifacts || {};
+  const { world, artifacts } = selectWorldArtifacts(brain);
   const lived = artifacts.livedWorld || artifacts.lived_world || {};
   const story = artifacts.storyArchitecture || artifacts.story_architecture || {};
   const grammar = artifacts.visualGrammar || artifacts.visual_grammar || {};
@@ -552,28 +559,37 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   const patterns = Array.isArray(lived.patterns) ? lived.patterns : [];
   const social = Array.isArray(lived.social) ? lived.social : [];
   const environments = Array.isArray(lived.environments) ? lived.environments : [];
-  // The people, by name. A brain synthesized before 2026-09-07 carries a single
-  // `person` string instead, and that still reads: it is the shape that
-  // produced "a late 20s professional" and then Mark, so a writer given it will
-  // invent someone, but a saved brain must still work until it is re-synthesized.
-  const people = Array.isArray(lived.people) ? lived.people : [];
-  const peopleById = new Map(people.map((entry) => [text(entry?.id), entry]).filter(([id]) => id));
+  // The cast. Since ADR 0019 the Lived World carries one description of who
+  // belongs in this world plus example people, and the writer casts someone
+  // new for every picture. Nobody recurs across a brand's pictures, so an
+  // example's name never appears in a direction. Two older shapes still read:
+  // a `people` list from 2026-09-07, treated as examples with no description,
+  // and a single `person` string from before that. A saved brain must still
+  // work until it is re-synthesized.
+  const cast = lived.cast && typeof lived.cast === "object" ? lived.cast : null;
+  const castExamples = Array.isArray(cast?.examples) ? cast.examples : Array.isArray(lived.people) ? lived.people : [];
+  const castDescription = text(cast?.description);
+  const peopleById = new Map(castExamples.map((entry) => [text(entry?.id), entry]).filter(([id]) => id));
   const personLabel = (id) => {
     const entry = peopleById.get(text(id));
     return entry ? text(entry.name) || text(id) : text(id);
   };
+  const exampleLines = castExamples.map((entry) => `${text(entry?.name)}. ${text(entry?.who)}`.trim()).filter(Boolean);
   if (block("THE LIVED WORLD", [
     text(lived.description),
-    people.length
-      // On the peopleless kind the standing instruction to write these people
-      // by name contradicts the task, which is a photograph taken when nobody
-      // is in the frame. The list itself still travels, names and all, because
-      // their activity is what put the room in the state the camera finds it
-      // in. The single-`person` path below is a brain synthesized before
+    castDescription || exampleLines.length
+      // On the peopleless kind the lead line says whose place this is, because
+      // the task is a photograph taken when nobody is in the frame and their
+      // activity is what put the room in the state the camera finds it in.
+      // The single-`person` path below is a brain synthesized before
       // 2026-09-07 and is unchanged on both kinds.
-      ? `${peopleless
-          ? "The people whose place this is. Their activity is the reason the room is in the state it is in:"
-          : "The people this is about. Write these people, by name. Do not invent others:"}\n${people.map((entry) => `${text(entry?.name)}. ${text(entry?.who)}`.trim()).filter(Boolean).join("\n")}`
+      ? [
+          peopleless
+            ? "The people whose place this is. Their activity is the reason the room is in the state it is in:"
+            : "These are the kind of people who belong here. Cast someone new for this picture from this description, and never reuse an example's name:",
+          castDescription,
+          exampleLines.length ? `${peopleless ? "For example:" : "Examples to cast from, not to reuse:"}\n${exampleLines.join("\n")}` : "",
+        ].filter(Boolean).join("\n")
       : (lived.person ? `The person at the center of this: ${text(lived.person)}` : ""),
     list(lived.wants).length ? `What they want: ${joined(lived.wants, " ")}` : "",
     list(lived.rejects).length ? `What they will not have: ${joined(lived.rejects, " ")}` : "",
@@ -595,18 +611,24 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   // Only these three reach the writer. A brand with twelve moments still has
   // twelve moments; this call sees three of them.
   const moments = selectMoments(story.moments, random);
-  // A moment is somewhere these people already are. The old shape carried an
-  // index, a scale, a narrative role and a product beat per moment, and it is
-  // read here so a brain synthesized before 2026-09-07 still briefs a writer.
+  // A moment is somewhere these people already are. Since ADR 0019 `who` is
+  // prose describing who is there and `situation` is the one thing underway.
+  // The 2026-09-07 shape carried `who` as a list of person ids and `doing`,
+  // and the older shape an index, a scale, a narrative role and a product
+  // beat. Both are read here so a saved brain still briefs a writer; the id
+  // list resolves through the legacy people list only, because a cast example
+  // has no id to resolve.
   const momentLine = (moment) => {
-    const present = list(moment?.who).map(personLabel).filter(Boolean);
-    const who = present.join(" and ");
-    if (moment?.doing || moment?.where || who) {
+    const who = typeof moment?.who === "string"
+      ? text(moment.who)
+      : list(moment?.who).map(personLabel).filter(Boolean).join(" and ");
+    const situation = text(moment?.situation) || text(moment?.doing);
+    if (situation || moment?.where || who) {
       return [
         `${text(moment?.title)}.`,
         moment?.when || moment?.where ? `${text(moment?.when)}${moment?.when && moment?.where ? ", " : ""}${text(moment?.where)}.` : "",
-        who ? `${who} ${present.length === 1 ? "is" : "are"} there.` : "",
-        text(moment?.doing),
+        who ? (typeof moment?.who === "string" ? `Who is there: ${who}${/[.!?]$/.test(who) ? "" : "."}` : `${who} ${list(moment?.who).length === 1 ? "is" : "are"} there.`) : "",
+        situation,
         text(moment?.feeling),
       ].filter(Boolean).join(" ");
     }
@@ -694,6 +716,11 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       // to the third, which says a direction is one instant. A person doing
       // three things in sequence is the transcription failure in miniature.
       //
+      // The second paragraph changed on 2026-09-09 under ADR 0019. It used to
+      // say the people are the ones named in THE LIVED WORLD and to use their
+      // names. The Lived World is now a cast rather than a roster, nobody
+      // recurs across a brand's pictures, and the paragraph says so.
+      //
       // Two more sentences added 2026-09-08, one to the third paragraph and one
       // to the fourth, from three directions written the same day against
       // MycoPop with the drugstore_flash look.
@@ -728,7 +755,7 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       task: [
         "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment. The moment says who is there, where, when and what is going on. Yours is what a camera saw at one instant of that, and the same moment an hour later, on another day, or a few minutes either side is a different photograph. Write the photograph, not the moment.",
         "",
-        "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are the ones named in THE LIVED WORLD. Use their names and write them as themselves. Do not invent a person and do not describe anyone by their job or their age bracket.",
+        "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are cast from the description in THE LIVED WORLD: write particular people who belong there, with what they are doing and how they carry themselves, and do not describe anyone by their job or their age bracket. Nobody in this frame has appeared in another picture of this brand, so do not use an example's name and do not write an example as themselves.",
         "",
         "A good direction puts those people in that place doing separate concrete things. A direction is one instant, so every person is in the middle of one thing rather than several in a row. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color cast, the grain, the contrast, the focus and the lens are all set elsewhere in this prompt and do not belong in the prose.",
         "",
@@ -754,7 +781,7 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       task: [
         "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment, at a point when nobody is in the frame. The moment says who is there, where, when and what is going on. Yours is what a camera saw in that place a few minutes before they arrived, a few minutes after they left, or at an hour when the room is theirs but empty.",
         "",
-        "The people are still the reason the room looks the way it does. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
+        "The people are still the reason the room looks the way it does. They are the kind of people THE LIVED WORLD describes, and nobody in particular: the room belongs to someone cast from that description who has appeared in no other picture of this brand. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
         "",
         "Name one thing in the frame that is not the product and give it size and position, so the eye has somewhere to land first. Without a person the frame has no natural subject, and whatever is largest and most contrasted becomes one. A direction is one instant, so the room is in one state rather than several. It names a few objects that belong there and gives each one a state and the reason it is in that state. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color, the grain, the contrast, the focus and the lens are set elsewhere in this prompt and do not belong in the prose.",
         "",
@@ -904,6 +931,9 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
     options,
     drewOn,
     model: "gpt-4o",
+    // Which world briefed the writer, so a result can say whether it came
+    // from the brand today or the brand evolved.
+    world,
     grammarEntries: grammarEntries.length ? grammarEntries : undefined,
     momentIds: momentIds.length ? momentIds : undefined,
   });
