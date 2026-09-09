@@ -1,6 +1,6 @@
 # ADR 0017: Govern refusals as durable records, with synthesis as proposer
 
-- Status: Proposed
+- Status: Accepted. The refusals store and the bootstrap slate shipped and are wired into `api/brand-brain/index.js`. Status corrected from Proposed on 2026-09-09. One half is no longer live: `rejectsDirection` has been uncalled since 2026-08-31, so no refusal compiles into an image prompt. The governed record, the proposer role, and the ruling surface stand. The step 4 consumption switch was overtaken by the prompt subtraction work and is not currently running.
 - Date: 2026-08-17
 - Owner: Higher Roads
 - Absorbs: the candidate-not-erase deferred item; the ADR 0016 step 4 pause

@@ -1,6 +1,7 @@
 # ADR 0013: Govern copy through derived claims and a copy audit
 
 - Status: Accepted (mechanism test passed 2026-08-09; amended 2026-08-10 after first beta-client output, see Revision: 2026-08-10)
+- Open as of 2026-09-09: the amended mechanism test, criteria 5 and 6, has still not been run. There is no evaluation memo for it. The regulated case is now MycoPop copy; Dialog Health is not a current prospect, so the healthcare framing throughout this record is historical.
 - Date: 2026-08-09
 - Owner: Higher Roads
 - Supersedes: Nothing

@@ -6,6 +6,18 @@
 - Supersedes: The blanket generative-typography exclusion recorded in the Design Studio primer and enforced as universal text safety in the compiled prompt, in part (see "The position being revised")
 - Related: ADR 0013 (derived claims and copy audit), ADR 0012 (products as governed records), ADR 0010 (feedback through candidate rules), ADR 0005 (presets are stage configuration)
 
+## Current position, as of 2026-09-09
+
+This record changed position three times in two days and the status line above is hard to read. The short version:
+
+Copy is a first-class output of a production job. That shipped on 2026-08-10 and is running.
+
+Display copy is rendered into images. The 2026-08-10 revision banned that permanently and the 2026-08-11 revision reversed the ban. Rendering is the current position.
+
+Read-back verification was specified and never built. A person is the check, and the compiled record carries `verified: false`.
+
+Device screens show abstract content unless supplied as a protected asset, after a render fabricated clinical instructions from an invented organization.
+
 ## Context
 
 Direct buyer feedback from the active beta client established that governed imagery alone does not clear the value bar. The unit of value in the buyer's workflow is the finished piece: image plus copy, ready to use. Producing one half leaves the buyer assembling the other, and the timesaver claim fails at their desk regardless of image quality. This confirms the position recorded at sprint close: the visual production is the demo, the copy production is the daily use case.

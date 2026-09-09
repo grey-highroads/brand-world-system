@@ -1,6 +1,6 @@
 # ADR 0015: Build render quality on synthesized people, an authored scene, and what the brand is not
 
-- Status: Proposed. Steps 1, 2, 4, and 5 shipped 2026-08-14. One rejection corrected by the session findings below.
+- Status: Accepted. Steps 1, 2, 4, and 5 shipped 2026-08-14. Step 3 has not shipped: the `reviewQuestion` type enum in `src/brand-brain/schema.js` still carries no value for inferred entries, so inference has no review surface. One rejection corrected by the session findings below. Status corrected from Proposed on 2026-09-09; the record was ruled and built and the label lagged.
 - Date: 2026-08-14
 - Owner: Higher Roads
 - Supersedes: The 2026-08-14 draft of this ADR, which scoped the problem to Lived World inference alone

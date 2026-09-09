@@ -1,6 +1,6 @@
 # ADR 0016: Articulate visual grammar as a brain artifact and evaluate renders against it
 
-- Status: Proposed
+- Status: Accepted, with part 4 tabled. Parts 1, 2, 3, and 5 shipped: the `visualGrammar` artifact with the `ambition` origin, the substitution rule in synthesis, the retirement of `livedWorld.rejects` from the image path, and the writer's consumption of the grammar's five descriptive sections. Part 4, the render evaluation, was never built and is tabled by owner ruling on 2026-09-09. See the owner ruling at the end of this record. Status corrected from Proposed.
 - Date: 2026-08-15
 - Owner: Higher Roads
 - Related: ADR 0015 (render quality on people, scene, and rejects), ADR 0013 (copy audit as the evaluation precedent), ADR 0010 (production feedback through candidate rules), ADR 0009 (update from an approved baseline)
@@ -139,3 +139,11 @@ Step 1 gates step 2. Step 3 gates step 4. Step 5 needs the schema shape from ste
 **Substitution crosses the line it was meant to respect.** Authoring the brand's own version of a referenced aesthetic sits one step from reproducing the reference. The guardrail still compiles, the evaluation checks for readable third-party marks, and the ungoverned exhibit stays in the record as the case where crossing looks like success.
 
 **Image quality remains unestablished.** ADR 0015's measured effects were payload and authored-scene share, not image quality, and one render has run the completed path. This ADR adds the standard and the measurement loop. It does not assume the direction is proven, and the prototype gate exists so the shape is tested against real suggestion sets before the schema carries it.
+
+## Owner ruling, 2026-09-09
+
+**The visual grammar is a key artifact and stays central.** It is one of the pieces that makes scenes better, and the work to improve scene writing builds on it rather than around it.
+
+**Part 4, the render evaluation, is tabled.** Not rejected on quality grounds. Useful critique of an image needs a back-and-forth with a person, and that conversation is not being built into the application. A one-shot model verdict on a frame is not worth the cost or the failure surface without it.
+
+**Judging scene directions before rendering is not a revival of part 4.** The direction-first questions in `../direction-2026-09-09-world-first.md` are a reminder and a workflow step for whoever is writing, not a gate that blocks a render. Nothing in that work reopens automated grading, and it does not need this record's evaluation machinery.

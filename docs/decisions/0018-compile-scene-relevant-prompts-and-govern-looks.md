@@ -1,6 +1,7 @@
 # ADR 0018: Compile scene-relevant prompts and govern looks as a brand slate
 
-- Status: Accepted. Owner ruled on all five decisions 2026-08-17; rulings recorded inline.
+- Status: Accepted as rulings. The rulings below stand. The code does not all match them: scene-relevance filtering describes intent rather than current behavior, and the September subtraction work overtook it. The look library shipped and the picker shipped on 2026-08-18, against decision 1 as originally written and per the amendment at the end of this record. Read the amendment log before acting on anything above it.
+- Date note: the phase 1 word count gate is recorded as failed and mis-specified. See the outcome note of 2026-08-18.
 - Date: 2026-08-17
 - Deciders: Grey rules. Chief architect drafts and verifies. Jim optional second reader on look language.
 - Number note: VERIFIED 2026-08-17 against docs/decisions/ at head; 0017 is the latest record and 0018 is free.
