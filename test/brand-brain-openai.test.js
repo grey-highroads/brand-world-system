@@ -15,8 +15,8 @@ import {
   buildOpenAIImageGenerationRequest,
   chooseOpenAIImageEndpoint,
 } from "../src/renderers/openai-images.js";
-import { PASS_IDS, brandBrainSchema, passSchemas } from "../src/brand-brain/schema.js";
-import { assembleBrainFromPasses, readSynthesisProgress } from "../src/brand-brain/service.js";
+import { DEFAULT_REACH, PASS_IDS, REACH_LEVELS, brandBrainSchema, passSchemas } from "../src/brand-brain/schema.js";
+import { assembleBrainFromPasses, readSynthesisProgress, worldArtifacts } from "../src/brand-brain/service.js";
 import { assertSafeRemoteUrl, mergeIncrementalSources, selectApprovedBaseline } from "../scripts/dev-server.js";
 
 test("Chat Completions synthesis preserves authority, normalized document text, and image evidence", () => {
@@ -164,11 +164,11 @@ test("portable document parsing does not depend on macOS metadata tools", async 
 });
 
 // ---------------------------------------------------------------------------
-// Four-pass synthesis (2026-09-07)
+// Eight-pass synthesis (four passes 2026-09-07, eight under ADR 0019 2026-09-09)
 // ---------------------------------------------------------------------------
 
 // A store with in-progress state, which is where the half-built brain lives
-// between passes. Nothing reaches `stored` until the fourth pass finishes.
+// between passes. Nothing reaches `stored` until the eighth pass finishes.
 function passStore(initial = null) {
   let stored = initial;
   let inProgress = null;
@@ -198,22 +198,38 @@ function passOutput(passId) {
       dossier: { readBody: "Fallow finds character in useful rooms." },
     },
     2: {
-      livedWorld: { people: [{ id: "person-1", name: "Dana", who: "27, runs the front of a bike shop." }] },
+      livedWorld: { cast: { description: "People who fix things for a living.", examples: [{ name: "Dana", who: "27, runs the front of a bike shop." }] } },
       reviewQuestions: [{ id: "q-2", type: "other" }],
     },
     3: {
-      storyArchitecture: { moments: [{ id: "moment-1", title: "Coming in the door", who: ["person-1"] }] },
+      storyArchitecture: { moments: [{ id: "moment-1", title: "Coming in the door", who: "One person, arriving alone.", situation: "Shaking rain off a jacket." }] },
       reviewQuestions: [],
     },
     4: {
       visualGrammar: { sections: { people: [{ id: "people-1", statement: "Hands show use." }] } },
       reviewQuestions: [{ id: "q-2", type: "other" }, { id: "q-4", type: "other" }],
     },
+    5: {
+      dossier: { readBody: "Fallow wants to be the brand of the repaired thing." },
+      reviewQuestions: [{ id: "q-5", type: "other" }],
+    },
+    6: {
+      livedWorld: { cast: { description: "People who repair rather than replace.", examples: [{ name: "Ola", who: "34, reupholsters chairs out of a garage." }] } },
+      reviewQuestions: [],
+    },
+    7: {
+      storyArchitecture: { moments: [{ id: "moment-e1", title: "The last staple", who: "Two people, one working and one watching.", situation: "Pulling the last staple from a chair seat." }] },
+      reviewQuestions: [],
+    },
+    8: {
+      visualGrammar: { sections: { people: [{ id: "people-e1", statement: "Sleeves rolled, forearms marked by the work." }] } },
+      reviewQuestions: [{ id: "q-2", type: "other" }],
+    },
   }[passId];
 }
 
 // Runs every pass the way the client does: pass 1 carries the sources, the rest
-// carry only the request id.
+// carry only the request id, and the evolved passes carry the reach level.
 async function runAllPasses(store, options = {}) {
   const seen = [];
   let last = null;
@@ -235,6 +251,8 @@ async function runAllPasses(store, options = {}) {
               },
             ],
           }
+        : pass >= 5
+        ? { pass, requestId: "synthesis-pass-test", reach: options.reach }
         : { pass, requestId: "synthesis-pass-test" },
       {
         store,
@@ -250,49 +268,89 @@ async function runAllPasses(store, options = {}) {
   return { seen, last };
 }
 
-test("four passes assemble one brain with the shape a single call used to return", async () => {
+test("eight passes assemble one brain with two worlds and guidance at the root", async () => {
   const store = passStore();
   const { seen, last } = await runAllPasses(store);
 
-  assert.deepEqual(seen.map((call) => call.passId), [1, 2, 3, 4]);
+  assert.deepEqual(seen.map((call) => call.passId), [1, 2, 3, 4, 5, 6, 7, 8]);
   assert.equal(last.complete, true);
-  assert.equal(store.saved().result.brandName, "Fallow");
-  assert.equal(store.saved().result.artifacts.livedWorld.people[0].name, "Dana");
-  assert.equal(store.saved().result.artifacts.storyArchitecture.moments[0].id, "moment-1");
-  assert.equal(store.saved().result.artifacts.visualGrammar.sections.people[0].id, "people-1");
-  assert.equal(store.saved().result.artifacts.dossier.readBody, "Fallow finds character in useful rooms.");
+  const result = store.saved().result;
+  assert.equal(result.brandName, "Fallow");
+  assert.deepEqual(Object.keys(result.artifacts).sort(), ["evolved", "today"]);
+  assert.equal(result.artifacts.today.livedWorld.cast.examples[0].name, "Dana");
+  assert.equal(result.artifacts.today.storyArchitecture.moments[0].id, "moment-1");
+  assert.equal(result.artifacts.today.visualGrammar.sections.people[0].id, "people-1");
+  assert.equal(result.artifacts.today.dossier.readBody, "Fallow finds character in useful rooms.");
+  assert.equal(result.artifacts.evolved.dossier.readBody, "Fallow wants to be the brand of the repaired thing.");
+  assert.equal(result.artifacts.evolved.livedWorld.cast.examples[0].name, "Ola");
+  assert.equal(result.artifacts.evolved.storyArchitecture.moments[0].id, "moment-e1");
+  assert.equal(result.artifacts.evolved.visualGrammar.sections.people[0].id, "people-e1");
+  // Guidance sections and brand fields are written once, in pass 1, and stay
+  // at the root rather than under either world.
+  assert.equal(result.guidanceSections.length, 6);
+  assert.equal("guidanceSections" in result.artifacts.today, false);
+  assert.equal("dossier" in result.artifacts, false);
   assert.equal(store.saved().synthesisRequestId, "synthesis-pass-test");
   assert.equal(store.saved().sources[0].id, "approved-note");
+  // The reach the evolved world was built at is recorded on the saved payload.
+  assert.equal(store.saved().reach, DEFAULT_REACH);
 
-  // The saved shape is what it was. responseId and model carry pass 1's values,
-  // usage sums across passes, and the per-pass ids are the one addition.
+  // responseId and model carry pass 1's values, usage sums across passes, and
+  // the per-pass ids are recorded.
   assert.equal(store.saved().responseId, "chatcmpl-1");
   assert.equal(store.saved().model, "gpt-5.6");
-  assert.deepEqual(store.saved().usage, { total_tokens: 100 });
-  assert.deepEqual(store.saved().passes.map((entry) => entry.pass), [1, 2, 3, 4]);
+  assert.deepEqual(store.saved().usage, { total_tokens: 360 });
+  assert.deepEqual(store.saved().passes.map((entry) => entry.pass), [1, 2, 3, 4, 5, 6, 7, 8]);
   assert.equal(store.saved().passes[1].label, "the people and their days");
+  assert.equal(store.saved().passes[5].label, "the people it is reaching for");
 
-  // Review questions from every pass survive, deduplicated by id: pass 4 raised
-  // q-2 again, and it appears once.
-  assert.deepEqual(store.saved().result.reviewQuestions.map((q) => q.id), ["q-1", "q-2", "q-4"]);
+  // Review questions from every pass survive, deduplicated by id: passes 4 and
+  // 8 raised q-2 again, and it appears once.
+  assert.deepEqual(result.reviewQuestions.map((q) => q.id), ["q-1", "q-2", "q-4", "q-5"]);
 
   // The in-progress record is gone once the synthesis finishes.
   assert.equal(store.inProgress(), null);
 });
 
-test("each pass receives what the passes before it wrote", async () => {
+test("each pass receives what the passes before it wrote, and every evolved pass receives the whole today world", async () => {
   const store = passStore();
   const { seen } = await runAllPasses(store);
   const call = (passId) => seen.find((entry) => entry.passId === passId);
 
   assert.deepEqual(Object.keys(call(1).priorPasses), []);
   assert.deepEqual(Object.keys(call(2).priorPasses), ["1"]);
-  // Pass 3 places known people into moments. It receives the Lived World, so
-  // the ids its moments name are ids that already exist.
-  assert.equal(call(3).priorPasses[2].livedWorld.people[0].id, "person-1");
+  // Pass 3 places the cast into moments. It receives the Lived World.
+  assert.equal(call(3).priorPasses[2].livedWorld.cast.examples[0].name, "Dana");
   // Pass 4 describes the physical world of those moments, so it receives them.
   assert.equal(call(4).priorPasses[3].storyArchitecture.moments[0].title, "Coming in the door");
-  assert.equal(call(4).priorPasses[2].livedWorld.people[0].name, "Dana");
+  assert.equal(call(4).priorPasses[2].livedWorld.cast.examples[0].name, "Dana");
+  // Every evolved pass receives the full today world, passes 1 through 4, plus
+  // the evolved passes before it and nothing after it.
+  assert.deepEqual(Object.keys(call(5).priorPasses), ["1", "2", "3", "4"]);
+  assert.deepEqual(Object.keys(call(6).priorPasses), ["1", "2", "3", "4", "5"]);
+  assert.deepEqual(Object.keys(call(7).priorPasses), ["1", "2", "3", "4", "5", "6"]);
+  assert.deepEqual(Object.keys(call(8).priorPasses), ["1", "2", "3", "4", "5", "6", "7"]);
+  assert.equal(call(8).priorPasses[4].visualGrammar.sections.people[0].id, "people-1");
+  assert.equal(call(8).priorPasses[7].storyArchitecture.moments[0].id, "moment-e1");
+  // And the prior-pass text names the world each earlier pass belongs to.
+  const request = buildPassRequest(6, { sources: [], priorPasses: call(6).priorPasses });
+  const text = request.messages[1].content[0].text;
+  assert.match(text, /ALREADY WRITTEN, PASS 2, the brand today, the people and their days/);
+  assert.match(text, /ALREADY WRITTEN, PASS 5, the brand world, evolved, the brand as it wants to be seen/);
+});
+
+test("the reach level travels on the evolved passes only, and defaults when a request carries none", async () => {
+  const store = passStore();
+  const { seen } = await runAllPasses(store, { reach: "a new world" });
+  for (const call of seen) {
+    if (call.passId >= 5) assert.equal(call.reach, "a new world", `pass ${call.passId} carries the reach`);
+    else assert.equal(call.reach, undefined, `pass ${call.passId} carries no reach`);
+  }
+  assert.equal(store.saved().reach, "a new world");
+
+  const unknown = passStore();
+  const run = await runAllPasses(unknown, { reach: "sixty percent" });
+  assert.equal(run.seen.find((call) => call.passId === 5).reach, DEFAULT_REACH);
 });
 
 test("nothing is saved before the last pass, and the half-built brain is not returned", async () => {
@@ -322,18 +380,22 @@ test("nothing is saved before the last pass, and the half-built brain is not ret
 });
 
 test("a failed pass saves nothing, names the pass, and clears the half-built work", async () => {
-  const store = passStore();
-  await assert.rejects(
-    () => runAllPasses(store, { failOn: 3 }),
-    (error) => {
-      assert.equal(error.pass, 3);
-      assert.match(error.message, /the model call failed/);
-      return true;
-    },
-  );
-  assert.equal(store.saved(), null, "a failed synthesis writes no brain");
-  assert.equal(store.inProgress(), null, "a failed synthesis leaves no half-built work");
-  assert.deepEqual(store.backups(), [], "nothing was replaced, so nothing was backed up");
+  for (const failOn of [3, 7]) {
+    const store = passStore();
+    await assert.rejects(
+      () => runAllPasses(store, { failOn }),
+      (error) => {
+        assert.equal(error.pass, failOn);
+        assert.match(error.message, /the model call failed/);
+        return true;
+      },
+    );
+    // A failed evolved pass saves nothing either: the finished today world goes
+    // with it rather than being saved half a brain.
+    assert.equal(store.saved(), null, `a synthesis failing on pass ${failOn} writes no brain`);
+    assert.equal(store.inProgress(), null, "a failed synthesis leaves no half-built work");
+    assert.deepEqual(store.backups(), [], "nothing was replaced, so nothing was backed up");
+  }
 });
 
 test("a later pass without a synthesis in progress is refused rather than started halfway", async () => {
@@ -350,16 +412,24 @@ test("a later pass without a synthesis in progress is refused rather than starte
   assert.equal(store.saved(), null);
 });
 
-test("incremental synthesis hands each pass its own slice of the approved baseline", async () => {
+test("incremental synthesis hands each pass its own slice of the approved baseline, by world", async () => {
   const baseline = {
     brandName: "Fallow",
     guidanceSections: [{ id: "foundation" }],
     reviewQuestions: [],
     artifacts: {
-      dossier: { readBody: "approved dossier" },
-      livedWorld: { people: [{ id: "person-9", name: "Approved Dana" }] },
-      storyArchitecture: { moments: [{ id: "moment-9" }] },
-      visualGrammar: { sections: {} },
+      today: {
+        dossier: { readBody: "approved dossier" },
+        livedWorld: { cast: { description: "approved cast", examples: [{ name: "Approved Dana" }] } },
+        storyArchitecture: { moments: [{ id: "moment-9" }] },
+        visualGrammar: { sections: {} },
+      },
+      evolved: {
+        dossier: { readBody: "approved evolved dossier" },
+        livedWorld: { cast: { description: "approved evolved cast", examples: [{ name: "Approved Ola" }] } },
+        storyArchitecture: { moments: [{ id: "moment-e9" }] },
+        visualGrammar: { sections: { people: [] } },
+      },
     },
   };
   const store = passStore({ approvedResult: baseline, brain: { approvedVersion: 3 }, sources: [] });
@@ -368,11 +438,17 @@ test("incremental synthesis hands each pass its own slice of the approved baseli
   const call = (passId) => seen.find((entry) => entry.passId === passId);
   assert.equal(call(1).baseline.dossier.readBody, "approved dossier");
   assert.equal(call(1).baseline.brandName, "Fallow");
-  assert.equal(call(2).baseline.livedWorld.people[0].id, "person-9");
+  assert.equal(call(2).baseline.livedWorld.cast.examples[0].name, "Approved Dana");
   assert.equal(call(3).baseline.storyArchitecture.moments[0].id, "moment-9");
   assert.deepEqual(Object.keys(call(4).baseline), ["visualGrammar"]);
+  // The world axis: the evolved passes are handed the evolved slices.
+  assert.deepEqual(call(5).baseline, { dossier: { readBody: "approved evolved dossier" } });
+  assert.equal(call(6).baseline.livedWorld.cast.examples[0].name, "Approved Ola");
+  assert.equal(call(7).baseline.storyArchitecture.moments[0].id, "moment-e9");
+  assert.deepEqual(Object.keys(call(8).baseline), ["visualGrammar"]);
   // A pass sees only its own slice, so pass 2 cannot quietly rewrite guidance.
   assert.equal("guidanceSections" in call(2).baseline, false);
+  assert.equal("brandName" in call(5).baseline, false);
 
   assert.equal(store.saved().kind, "incremental-synthesis");
   assert.equal(store.saved().baselineVersion, 3);
@@ -387,38 +463,69 @@ test("a baseline that predates an artifact runs that pass as a first synthesis o
   // There is genuinely nothing to update, so the pass is not handed an empty
   // baseline to copy fields from.
   assert.equal(seen.find((entry) => entry.passId === 3).baseline, null);
+  // A single artifacts object with no world under it is a brain saved before
+  // ADR 0019. It reads as the today world, and it has no evolved world.
+  for (const passId of [5, 6, 7, 8]) {
+    assert.equal(seen.find((entry) => entry.passId === passId).baseline, null, `pass ${passId} has no evolved slice to update`);
+  }
 });
 
-test("a rebuild backs the existing brain up once, on the pass that replaces it", async () => {
+test("a brain saved before the two worlds reads as today with no evolved world", () => {
+  const legacy = { artifacts: { dossier: { readBody: "legacy" }, livedWorld: { people: [] } } };
+  assert.equal(worldArtifacts(legacy, "today").dossier.readBody, "legacy");
+  assert.equal(worldArtifacts(legacy, "evolved"), null);
+  const current = { artifacts: { today: { dossier: { readBody: "t" } }, evolved: { dossier: { readBody: "e" } } } };
+  assert.equal(worldArtifacts(current, "today").dossier.readBody, "t");
+  assert.equal(worldArtifacts(current, "evolved").dossier.readBody, "e");
+  assert.equal(worldArtifacts(null, "today"), null);
+});
+
+test("a rebuild backs the existing brain up once, on the final pass that replaces it", async () => {
   const store = passStore({ result: { brandName: "Previous" }, sources: [] });
-  await runAllPasses(store);
+  const { seen } = await runAllPasses(store);
   assert.equal(store.backups().length, 1);
   assert.equal(store.backups()[0].result.brandName, "Previous");
+  assert.equal(seen.length, 8);
 });
 
-test("each pass answers to its own slice of the schema, and the slices cover the brain", () => {
-  assert.deepEqual(PASS_IDS, [1, 2, 3, 4]);
+test("each pass answers to its own slice of the schema, and the slices cover both worlds", () => {
+  assert.deepEqual(PASS_IDS, [1, 2, 3, 4, 5, 6, 7, 8]);
   const sliceKeys = PASS_IDS.flatMap((id) => Object.keys(passSchemas[id].properties));
   for (const key of ["dossier", "livedWorld", "storyArchitecture", "visualGrammar"]) {
-    assert.ok(sliceKeys.includes(key), `${key} is written by some pass`);
+    assert.equal(sliceKeys.filter((k) => k === key).length, 2, `${key} is written once per world`);
   }
   for (const key of Object.keys(brandBrainSchema.properties)) {
     if (key === "artifacts") continue;
     assert.ok(sliceKeys.includes(key), `${key} is written by some pass`);
   }
-  // Only pass 1 writes the guidance sections, so no later pass can rewrite them.
+  // Only pass 1 writes the guidance sections and the brand fields, so no later
+  // pass, evolved passes included, can rewrite them.
   assert.deepEqual(PASS_IDS.filter((id) => "guidanceSections" in passSchemas[id].properties), [1]);
+  assert.deepEqual(PASS_IDS.filter((id) => "brandName" in passSchemas[id].properties), [1]);
+  // The pass 1 evolved slice is the dossier plus review questions and nothing else.
+  assert.deepEqual(Object.keys(passSchemas[5].properties).sort(), ["dossier", "reviewQuestions"]);
+  // Evolved passes 2 through 4 reuse the today slices.
+  assert.equal(passSchemas[6], passSchemas[2] === passSchemas[6] ? passSchemas[2] : passSchemas[6]);
+  assert.deepEqual(passSchemas[6], passSchemas[2]);
+  assert.deepEqual(passSchemas[7], passSchemas[3]);
+  assert.deepEqual(passSchemas[8], passSchemas[4]);
 });
 
 test("the assembled brain has every top-level key brandBrainSchema names", () => {
-  const assembled = assembleBrainFromPasses({ 1: passOutput(1), 2: passOutput(2), 3: passOutput(3), 4: passOutput(4) });
+  const assembled = assembleBrainFromPasses(Object.fromEntries(PASS_IDS.map((id) => [id, passOutput(id)])));
   assert.deepEqual(Object.keys(assembled).sort(), Object.keys(brandBrainSchema.properties).sort());
   assert.deepEqual(
     Object.keys(assembled.artifacts).sort(),
     Object.keys(brandBrainSchema.properties.artifacts.properties).sort(),
   );
-  // Four passes can raise up to eight questions each, so the assembled cap is
-  // four times the pass cap. Nothing is dropped on merge.
+  for (const world of ["today", "evolved"]) {
+    assert.deepEqual(
+      Object.keys(assembled.artifacts[world]).sort(),
+      Object.keys(brandBrainSchema.properties.artifacts.properties[world].properties).sort(),
+    );
+  }
+  // The assembled review question cap is four times the pass cap and is left
+  // where it was. Nothing is dropped on merge.
   assert.equal(brandBrainSchema.properties.reviewQuestions.maxItems, 32);
   assert.equal(passSchemas[1].properties.reviewQuestions.maxItems, 8);
 });
@@ -431,7 +538,7 @@ test("a pass request carries only its own pass instruction and schema", () => {
   assert.equal(request.response_format.json_schema.name, "brand_brain_pass_3");
   assert.equal(request.response_format.json_schema.schema, passSchemas[3]);
   const instruction = request.messages[0].content;
-  assert.match(instruction, /This is pass 3 of 4/);
+  assert.match(instruction, /This is pass 3 of 8/);
   assert.match(instruction, /Story Architecture:/);
   // The Lived World and Visual Grammar rules belong to other passes and are not
   // sent here. The whole point of the split is that a call is told what it is
@@ -439,8 +546,8 @@ test("a pass request carries only its own pass instruction and schema", () => {
   assert.doesNotMatch(instruction, /Where the rejects come from:/);
   assert.doesNotMatch(instruction, /Camera entries are settings:/);
   const text = request.messages[1].content[0].text;
-  assert.match(text, /ALREADY WRITTEN, PASS 2, the people and their days/);
-  assert.match(text, /person-1/);
+  assert.match(text, /ALREADY WRITTEN, PASS 2, the brand today, the people and their days/);
+  assert.match(text, /Dana/);
   // Pass 3 places people into moments from what the earlier passes wrote, so it
   // is sent the source register but not the source images.
   assert.equal(request.messages[1].content.length, 1);
@@ -448,7 +555,7 @@ test("a pass request carries only its own pass instruction and schema", () => {
 });
 
 test("passes that read the sources directly still receive the images", () => {
-  for (const passId of [1, 2, 4]) {
+  for (const passId of [1, 2, 4, 5, 6, 8]) {
     const request = buildPassRequest(passId, {
       sources: [{ id: "s1", name: "Source", files: [{ kind: "image", name: "a.png", type: "image/png", data: "data:image/png;base64,AAAA" }] }],
       priorPasses: {},
@@ -532,50 +639,150 @@ test("incremental synthesis keeps the stored approved baseline and merges only n
 // See docs/findings-2026-09-07-world-artifacts.md.
 // ---------------------------------------------------------------------------
 
-test("the Lived World schema asks for several people rather than one portrait", () => {
-  const lived = brandBrainSchema.properties.artifacts.properties.livedWorld;
+test("the Lived World schema asks for a cast rather than a roster", () => {
+  const lived = brandBrainSchema.properties.artifacts.properties.today.properties.livedWorld;
   assert.equal("person" in lived.properties, false, "the single person string is gone");
-  const people = lived.properties.people;
-  assert.equal(people.type, "array");
-  assert.equal(people.minItems, 2);
-  assert.equal(people.maxItems, 5);
-  assert.deepEqual(people.items.required, ["id", "name", "who", "basis"]);
-  assert.equal(people.items.additionalProperties, false);
-  // A person entry has to be castable, so the description says so rather than
-  // leaving the model to decide that a segment counts.
-  assert.match(people.items.properties.who.description, /audience description is not a person/);
-  assert.ok(lived.required.includes("people"));
-  assert.equal(lived.required.includes("person"), false);
+  assert.equal("people" in lived.properties, false, "the counted people list is gone");
+  const cast = lived.properties.cast;
+  assert.deepEqual(cast.required, ["description", "examples"]);
+  assert.equal(cast.additionalProperties, false);
+  assert.match(cast.properties.description.description, /twenty pictures could cast twenty different people/);
+  const examples = cast.properties.examples;
+  assert.equal(examples.type, "array");
+  assert.equal(examples.minItems, 1);
+  assert.equal("maxItems" in examples, false, "there is no ceiling on examples");
+  assert.match(examples.description, /not a roster/);
+  // An example carries no id: nothing downstream refers to one, because nobody
+  // recurs across a brand's pictures.
+  assert.deepEqual(examples.items.required, ["name", "who", "basis"]);
+  assert.equal(examples.items.additionalProperties, false);
+  assert.match(examples.items.properties.who.description, /audience description is not a person/);
+  assert.ok(lived.required.includes("cast"));
+  // Both worlds share the definition.
+  assert.deepEqual(brandBrainSchema.properties.artifacts.properties.evolved.properties.livedWorld, lived);
 });
 
-test("a Story Architecture moment names when, where, who, and what is being done", () => {
-  const moments = brandBrainSchema.properties.artifacts.properties.storyArchitecture.properties.moments;
+test("a Story Architecture moment names when, where, who is there, and the situation underway", () => {
+  const moments = brandBrainSchema.properties.artifacts.properties.today.properties.storyArchitecture.properties.moments;
   assert.equal(moments.minItems, 6);
-  assert.equal(moments.maxItems, 12);
-  assert.deepEqual(moments.items.required, ["id", "title", "when", "where", "who", "doing", "feeling", "basis"]);
-  // The product beat is gone. A moment that exists to show the product is the
-  // failure this change was made to stop.
-  for (const gone of ["product", "index", "scale", "role", "action"]) {
+  assert.equal("maxItems" in moments, false, "there is no ceiling on moments");
+  assert.deepEqual(moments.items.required, ["id", "title", "when", "where", "who", "situation", "feeling", "basis"]);
+  // The product beat is gone, and so is the script.
+  for (const gone of ["product", "index", "scale", "role", "action", "doing"]) {
     assert.equal(gone in moments.items.properties, false, `the ${gone} field is gone from a moment`);
   }
-  // who is a list of Lived World person ids, at least one.
-  assert.equal(moments.items.properties.who.type, "array");
-  assert.equal(moments.items.properties.who.minItems, 1);
-  assert.match(moments.items.properties.who.description, /by their ids/);
-  assert.equal(moments.items.properties.basis.properties.origin.enum.includes("ambition"), true,
-    "the shared basis object still permits ambition; the instructions are what forbid it here");
+  // who is prose describing who is there, not a list of ids.
+  assert.equal(moments.items.properties.who.type, "string");
+  assert.match(moments.items.properties.who.description, /rather than a list of names or ids/);
+  assert.match(moments.items.properties.situation.description, /a situation and not a sequence/);
+  assert.equal(moments.items.properties.basis.properties.origin.enum.includes("ambition"), true);
 });
 
-test("the synthesis instructions brief Story Architecture and the Lived World people", () => {
-  const instructions = [1, 2, 3, 4].map(passInstructions).join("\n\n");
-  assert.match(instructions, /Story Architecture:/);
-  assert.match(instructions, /it is an ad, and it belongs nowhere in this artifact/);
-  assert.match(instructions, /names the people present by their Lived World ids|by their Lived World ids/);
-  // The Lived World now briefs people, and says plainly what a segment looks
-  // like, because "a late 20s professional" is what the old shape produced.
-  assert.match(instructions, /is a segment/);
-  assert.match(instructions, /each one particular enough to put in a room/);
-  assert.doesNotMatch(instructions, /It is a portrait of a person and their days/);
+test("the grammar's people section is casting range", () => {
+  const people = brandBrainSchema.properties.artifacts.properties.today.properties.visualGrammar.properties.sections.properties.people;
+  assert.match(people.description, /range of who appears, not one entry per named person/);
+});
+
+test("the synthesis instructions brief a cast and situations, and the today passes keep the fence", () => {
+  const today = [1, 2, 3, 4].map((id) => passInstructions(id));
+  const evolved = [5, 6, 7, 8].map((id) => passInstructions(id));
+  const all = [...today, ...evolved].join("\n\n");
+  assert.match(all, /Story Architecture:/);
+  assert.match(all, /it is an ad, and it belongs nowhere in this artifact/);
+  assert.match(all, /is a segment/);
+  assert.doesNotMatch(all, /It is a portrait of a person and their days/);
+  // The cast, not characters. The Dana sentence stays as the example of
+  // specificity; the instruction to write several such people is gone, and the
+  // id requirement with it.
+  assert.match(today[1], /"Dana, 27, runs the front of a bike shop and talks with her hands" is a person/);
+  assert.match(today[1], /No person recurs across this brand's pictures/);
+  assert.doesNotMatch(today[1], /The people carry ids/);
+  assert.doesNotMatch(all, /by their Lived World ids/);
+  // Situations, not scripts.
+  assert.match(today[2], /"situation" is one thing underway/);
+  assert.match(today[2], /a photographer arriving at any minute of it finds a different picture/);
+  assert.doesNotMatch(all, /"doing" is what is happening/);
+  // The grammar people section describes range.
+  assert.match(today[3], /It describes the range of who appears, not one entry per named person/);
+
+  // The fence sentences, verbatim, on the today passes 2 and 3 and not on the
+  // evolved ones, which carry the ambition test instead.
+  const livedFence = `The schema also permits "ambition" as an origin. Never use it in the Lived World. It belongs to the visual grammar artifact and the rules for when it applies elsewhere are not written yet, so a Lived World entry is "evidence" or "inference" and nothing else.`;
+  const storyFence = `, and it is never "ambition"`;
+  const ambitionTest = `An entry carries "basis.origin" of "ambition" when it would not say what it says with the aspiration sources removed`;
+  assert.ok(today[1].includes(livedFence), "today pass 2 carries the Lived World fence verbatim");
+  assert.ok(today[2].includes(storyFence), "today pass 3 carries the Story Architecture fence");
+  assert.ok(!today[1].includes(ambitionTest) && !today[2].includes(ambitionTest), "today passes do not carry the ambition test");
+  assert.ok(!evolved[1].includes(livedFence), "evolved pass 2 does not carry the Lived World fence");
+  assert.ok(!evolved[2].includes(storyFence), "evolved pass 3 does not carry the Story Architecture fence");
+  assert.ok(evolved[1].includes(ambitionTest) && evolved[2].includes(ambitionTest), "evolved passes 2 and 3 carry the ambition test");
+  // The rejects rule keeps its fence in both runs.
+  const rejectsFence = `Rejects carry an origin of "evidence" or "inference" and never "ambition"`;
+  assert.ok(today[3].includes(rejectsFence) && evolved[3].includes(rejectsFence));
+  // Apart from the fence, the pass 2 and pass 3 rules are the same text on
+  // both runs. Nothing else in those blocks changed between the worlds.
+  const rulesBlock = (instruction, heading) => instruction.slice(instruction.indexOf(heading), instruction.indexOf("Review question language:"));
+  const withoutFence = (block, fence) => block.replace(fence, "").split("\n").filter((line) => line !== "- " && !line.includes(ambitionTest)).join("\n");
+  assert.equal(withoutFence(rulesBlock(today[1], "Lived World:"), livedFence), withoutFence(rulesBlock(evolved[1], "Lived World:"), livedFence));
+  assert.equal(withoutFence(rulesBlock(today[2], "Story Architecture:"), storyFence), withoutFence(rulesBlock(evolved[2], "Story Architecture:"), storyFence));
+});
+
+test("the influence sentence sits in the authority rules every pass carries", () => {
+  const influence = "Influence sets how far a direction source reaches, not how strongly it is written.";
+  for (const id of PASS_IDS) {
+    const instruction = passInstructions(id);
+    assert.ok(instruction.includes(influence), `pass ${id} carries the influence sentence`);
+    // Once, in the authority rules, and no longer inside the grammar block.
+    assert.equal(instruction.split(influence).length - 1, 1, `pass ${id} carries it exactly once`);
+  }
+  assert.ok(passInstructions(4).indexOf(influence) < passInstructions(4).indexOf("Visual Grammar:"));
+});
+
+test("the evolved passes carry the reach sentence for the requested level and only that one", () => {
+  const openings = {
+    "a few touches": "Reach for this evolved world: a few touches.",
+    "a clear direction": "Reach for this evolved world: a clear direction.",
+    "a new world": "Reach for this evolved world: a new world.",
+  };
+  assert.deepEqual(REACH_LEVELS, Object.keys(openings));
+  for (const level of REACH_LEVELS) {
+    for (const id of [5, 6, 7, 8]) {
+      const instruction = passInstructions(id, { reach: level });
+      for (const [other, opening] of Object.entries(openings)) {
+        assert.equal(instruction.includes(opening), other === level, `pass ${id} at "${level}" carries ${other === level ? "" : "no "}sentence for "${other}"`);
+      }
+      // The reach sentence follows the pass task and precedes the authority rules.
+      assert.ok(instruction.indexOf(openings[level]) > instruction.indexOf(`This is pass ${id} of 8`));
+      assert.ok(instruction.indexOf(openings[level]) < instruction.indexOf("Authority rules:"));
+    }
+  }
+  // A missing or unknown level falls back to the default rather than to no sentence.
+  assert.ok(passInstructions(6).includes(openings[DEFAULT_REACH]));
+  assert.ok(passInstructions(6, { reach: "half" }).includes(openings[DEFAULT_REACH]));
+  // Today passes carry none.
+  for (const id of [1, 2, 3, 4]) {
+    assert.doesNotMatch(passInstructions(id, { reach: "a new world" }), /Reach for this evolved world/);
+  }
+  // And the request builder passes the level through.
+  const request = buildPassRequest(7, { sources: [], priorPasses: {}, reach: "a few touches" });
+  assert.match(request.messages[0].content, /Reach for this evolved world: a few touches/);
+});
+
+test("the evolved pass tasks say which run they are and that the today world is finished", () => {
+  for (const id of [5, 6, 7, 8]) {
+    const instruction = passInstructions(id);
+    assert.match(instruction, new RegExp(`This is pass ${id} of 8`));
+    assert.match(instruction, /write the brand evolved/);
+    assert.match(instruction, /The brand today is finished and is supplied below as data: passes 1 through 4/);
+  }
+  assert.match(passInstructions(5), /Write the Brand Dossier for the evolved world, and any review questions it raises\. Nothing else\./);
+  assert.match(passInstructions(5), /Do not write the brand name, the brand description, the synthesis summary, the clean asset count, or the guidance sections/);
+  assert.match(passInstructions(6), /Pass 5, the evolved dossier, is also finished and supplied/);
+  assert.match(passInstructions(7), /Passes 5 and 6, the evolved dossier and the evolved Lived World, are also finished and supplied/);
+  assert.match(passInstructions(8), /Passes 5, 6 and 7, the evolved dossier, Lived World and Story Architecture, are also finished and supplied/);
+  for (const id of [1, 2, 3, 4]) {
+    assert.match(passInstructions(id), /write the brand today/);
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -610,6 +817,7 @@ test("the in-progress read reports the completed pass and nothing else", async (
     inProgress: true,
     completedPass: 1,
     nextPass: 2,
+    totalPasses: 8,
   });
   // The half-built brain stays on the server. Nothing in the reply carries it.
   const serialized = JSON.stringify(progress);
