@@ -50,19 +50,26 @@ Model progress makes this stronger rather than weaker. The constraint on reachin
 
 A hosted studio with two client brands onboarded, one B2B and one emerging consumer packaged goods, chosen to be unalike so the schema would have to hold across both.
 
-- **Brand brain.** Source intake, synthesis into a structured brand model, review, approval, versioning, and incremental update from an approved baseline. Every statement carries where it came from and whether a person approved it.
-- **Brand world.** The person the brand serves as a synthesized artifact: environments, life patterns, wants, tensions, and refusals, each entry recording whether it was observed or reasoned toward.
-- **Visual grammar,** the durable account of how the brand looks in camera terms, with aspiration carried as its own origin alongside evidence and inference.
-- **Production compiler.** A deterministic library that resolves canon, scope, and policy into a portable generation package, under versioned schema contracts.
-- **Products as governed records,** with a candidate and approved lifecycle and evidence-fidelity discipline.
-- **Governed copy,** derived from scoped brand claims and audited against them before it ships.
-- **Refusals.** Brand prohibitions decomposed, assigned, and compiled into the generation as things to avoid.
-- **Look library.** Fourteen named looks compiled as a governed world block, with a stated photorealistic ban and a human texture floor.
-- **Renderer,** with deterministic composition of protected assets onto generated backgrounds.
+Each capability below carries a status. **Running** means it executes on the live path. **Partial** means it executes with a stated limit. **Recorded** means the system stores and surfaces it but it does not currently affect generation. **Target-state** means it is specified and not built.
+
+- **Brand brain. Running.** Source intake, synthesis into a structured brand model, review, approval, versioning, and incremental update from an approved baseline. Every statement carries where it came from and whether a person approved it. Synthesis runs as four ordered passes, so each artifact reads what the earlier ones wrote.
+- **Brand world. Running.** The person the brand serves as a synthesized artifact: environments, life patterns, wants, tensions, and refusals, each entry recording whether it was observed or reasoned toward.
+- **Visual grammar. Running.** The durable account of how the brand looks in camera terms, with aspiration carried as its own origin alongside evidence and inference. The render evaluation that reads a frame against it is target-state.
+- **Scene authorship. Running.** The writer reads the brain artifacts and authors the render prompt as one piece of prose. The compiler attaches the output format, attaches the locked asset, and records provenance.
+- **Production compiler. Partial.** A deterministic library that resolves canon, scope, and policy into a portable generation package, under versioned schema contracts. Several of its blocks are retained in code but no longer called on the scene path, following the prompt subtraction work of August and September. Every removal is listed in `docs/findings-2026-09-07-writer-authors-the-prompt.md` so any return is a decision rather than a drift.
+- **Products as governed records. Running.** Candidate and approved lifecycle with evidence-fidelity discipline.
+- **Governed copy. Running.** Derived from scoped brand claims and audited against them before it ships.
+- **Refusals. Recorded.** Brand prohibitions are decomposed into governed records with a human ruling, and synthesis proposes rather than authors them. They do not currently compile into scene prompts. `rejectsDirection` has been uncalled since 2026-08-31.
+- **Look library. Running.** Fourteen named looks, compiled as the capture section of the prompt, with a stated photorealistic ban and a human texture floor. The per-brand slate layer described in ADR 0018 is target-state.
+- **Renderers. Running.** Two engines, OpenAI and Seedream, behind an owner-facing switcher, with the compiled prompt deliberately identical for both.
+- **Protected asset fidelity. Partial.** The approved asset is supplied to the render as a reference for a generative edit, and fidelity is confirmed by human review. A separate place-on-background path performs browser compositing, and the model can still return the complete image afterward. Deterministic overlay applied after all generative work, with measurable checks on the final artifact, is target-state.
+- **Image evaluation. Target-state.** The result screen presents element-level findings and generates human-verification prompts. It does not inspect the returned image, measure locked-asset fidelity, detect drift, or read back rendered text.
 
 ## What this is not
 
-Not a prompt builder. Not a general creative platform. Not a replacement for a DAM or a project tool. It does not publish without human approval, and it does not promise pixel-perfect reproduction through prompt instructions, which is exactly why exact assets are composited rather than generated.
+Not a prompt builder. Not a general creative platform. Not a replacement for a DAM or a project tool. It does not publish without human approval.
+
+It does not currently guarantee exact reproduction of a protected asset. The asset conditions the render as a reference and a person confirms the result. The deterministic path is designed and not built, and until it is, fidelity is a human judgment rather than a system property.
 
 The engineering is not enterprise hardened and does not claim to be. No role-based access control, no single sign-on, no formal service commitment, and test coverage is fixture-driven rather than exhaustive. Those gaps are tracked, not discovered.
 
@@ -107,7 +114,11 @@ New here, read [`docs/product-primer.md`](docs/product-primer.md). It is the pla
 
 ## Current work
 
-ADR 0018, compiling scene-relevant prompts and governing looks as a brand slate. ADR 0016 remains proposed after its parity runs came back partial, with people and guardrails both judged unstable. ADR 0017 step 2 is registered and parked. Open items are in [`docs/deferred-work.md`](docs/deferred-work.md).
+The current focus is the quality of the world itself and the craft of scene authorship, on the basis that the writer now authors the prompt and the artifacts are what determine whether its output is generic.
+
+Near-term work is a moment library authored in code, a testable scene-writing module, and a flagship brand world for MycoPop built from declared aspiration rather than from sparse published evidence.
+
+ADR 0018 is accepted and its phase 1 subtraction is largely reflected in the current compile path. ADR 0015 and ADR 0016 remain proposed, with ADR 0016's parity runs partial and people and guardrails both judged unstable. ADR 0017 step 2 is registered and parked. Open items are in [`docs/deferred-work.md`](docs/deferred-work.md).
 
 Run it from the repository root:
 
