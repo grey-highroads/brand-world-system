@@ -83,7 +83,8 @@ function prototypeSession(options = {}) {
   }
 
   function finishIntervals() {
-    for (let pass = 0; pass < 6; pass += 1) {
+    // Eight synthesis steps since ADR 0019, so ten rounds clears them all.
+    for (let pass = 0; pass < 10; pass += 1) {
       [...intervals.values()].forEach((callback) => callback());
     }
   }
@@ -273,7 +274,11 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   // as the old-shape reader case.
   assert.match(session.appRoot.innerHTML, /Places a camera could walk into/);
   assert.match(session.appRoot.innerHTML, /Role in the story/);
-  assert.match(session.appRoot.innerHTML, /Why these four/);
+  assert.match(session.appRoot.innerHTML, /Why these moments/);
+  // The sample brain predates the two worlds. It renders as the brand today
+  // and nothing else: no evolved heading, no evolved approve.
+  assert.match(session.appRoot.innerHTML, /The brand today/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /The brand world, evolved/);
   session.click("toggle-guidance-comment", { target: "story:artifact:rhythm" });
   session.input("guidance-comment-draft", "Make the transition into the shared evening more specific.");
   session.click("save-guidance-comment", { target: "story:artifact:rhythm", section: "story", label: "Story Architecture" });
@@ -294,9 +299,14 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v3/);
   assert.match(session.appRoot.innerHTML, /Included in v3/);
 
-  session.click("approve-brain-artifact");
+  // A legacy brain has one approve, and it is the today approve.
+  assert.match(session.appRoot.innerHTML, /data-action="approve-brain-today">Approve for production/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /approve-brain-evolved/);
+  session.click("approve-brain-today");
   assert.match(session.appRoot.innerHTML, /Ready for production/);
   assert.match(session.appRoot.innerHTML, /Go to Design Studio/);
+  assert.equal(session.evaluate("state.brain.evolvedStatus"), "not-created");
+  assert.equal(session.evaluate('Object.keys(state.brain.approvedResult.artifacts).join(",")'), "today");
 
   session.click("navigate-brain", { screen: "brain-history" });
   assert.match(session.appRoot.innerHTML, /Brand Brain v3 approved/);
@@ -412,6 +422,38 @@ test("the scene and its craft paragraph join with a sentence between them", () =
 // See docs/findings-2026-09-07-pass-recovery.md.
 // ---------------------------------------------------------------------------
 
+// A two-world synthesis result in the ADR 0019 shape, small enough to read.
+function twoWorldResult() {
+  const dossier = (readBody) => ({
+    description: "d", sourceCount: 1, categories: ["a", "b"], read: ["x", "y", "z"], readBody, audience: "a", desiredFeeling: "f",
+    productTruth: "p", proof: ["a", "b"], palette: [{ name: "Oat", role: "Ground", color: "#d9d0bd" }], materials: ["wood"], culturalCodes: "c",
+    guardrails: [{ title: "Never clinical", body: "b" }],
+  });
+  const lived = (description, name) => ({
+    description: "l", sourceCount: 1, categories: ["a", "b"],
+    cast: { description, examples: [{ name, who: "who", basis: { origin: "ambition", derivedFrom: "the retro deck", confidence: "Medium" } }] },
+    wants: ["w"], rejects: ["r"], tensions: ["t"], patterns: [], emotions: ["e"], social: [], environments: [], belongs: "b", opens: "o",
+  });
+  const story = (situation) => ({
+    description: "s", sourceCount: 1, categories: ["a", "b"], rhythm: "r",
+    moments: [{ id: "m-1", title: "The last staple", when: "Evening", where: "A garage", who: "Two people, one working and one watching.", situation, feeling: "f", basis: { origin: "inference", derivedFrom: "d", confidence: "Low" } }],
+    why: "w", continuity: ["c"],
+  });
+  const grammar = { description: "g", sourceCount: 1, categories: ["a", "b"], sections: { people: [], objects: [], places: [], light: [], camera: [], rejects: [] } };
+  return {
+    brandName: "Fallow",
+    brandDescription: "A quiet home goods brand",
+    synthesisSummary: "Ordinary moments, considered.",
+    cleanAssetCount: 0,
+    guidanceSections: ["foundation", "identity", "world", "voice", "creative", "rules"].map((id) => ({ id, name: id, summary: "s", prose: ["p"], principles: ["q"], evidence: [], artifacts: [], productionUse: "u", sourceCount: 1 })),
+    reviewQuestions: [],
+    artifacts: {
+      today: { dossier: dossier("Today read."), livedWorld: lived("People who fix things.", "Dana"), storyArchitecture: story("Pulling a staple."), visualGrammar: grammar },
+      evolved: { dossier: dossier("Evolved read."), livedWorld: lived("People who repair rather than replace.", "Ola"), storyArchitecture: story("Pulling the last staple from a chair seat."), visualGrammar: grammar },
+    },
+  };
+}
+
 function jsonReply(payload, ok = true) {
   return {
     ok,
@@ -433,8 +475,8 @@ function synthesisServer({ dropReplyOnPass = null, failOnPass = null } = {}) {
       calls.push({ kind: "progress", url: String(url) });
       const requestId = new URL(String(url), "http://localhost").searchParams.get("requestId");
       return jsonReply(
-        completedPass > 0 && completedPass < 4
-          ? { requestId, inProgress: true, completedPass, nextPass: completedPass + 1 }
+        completedPass > 0 && completedPass < 8
+          ? { requestId, inProgress: true, completedPass, nextPass: completedPass + 1, totalPasses: 8 }
           : { requestId, inProgress: false, completedPass: 0 },
       );
     }
@@ -445,7 +487,7 @@ function synthesisServer({ dropReplyOnPass = null, failOnPass = null } = {}) {
       return jsonReply({ saved: null });
     }
     const payload = JSON.parse(init.body);
-    calls.push({ kind: "pass", pass: payload.pass, requestId: payload.requestId });
+    calls.push({ kind: "pass", pass: payload.pass, requestId: payload.requestId, reach: payload.reach });
     if (payload.pass === failOnPass) {
       return jsonReply({ error: `Pass ${payload.pass}, the people and their days: the model call failed` }, false);
     }
@@ -454,20 +496,13 @@ function synthesisServer({ dropReplyOnPass = null, failOnPass = null } = {}) {
       // The work is done and recorded. The connection dies before the reply.
       throw new TypeError("Failed to fetch");
     }
-    if (payload.pass < 4) return jsonReply({ pass: payload.pass, nextPass: payload.pass + 1, complete: false });
+    if (payload.pass < 8) return jsonReply({ pass: payload.pass, nextPass: payload.pass + 1, complete: false });
     return jsonReply({
       complete: true,
-      result: {
-        brandName: "Fallow",
-        brandDescription: "A quiet home goods brand",
-        synthesisSummary: "Ordinary moments, considered.",
-        guidanceSections: [],
-        reviewQuestions: [],
-        artifacts: {},
-      },
+      result: twoWorldResult(),
       model: "gpt-5.6",
-      responseId: "chatcmpl-4",
-      savedAt: "2026-09-07T22:10:00.000Z",
+      responseId: "chatcmpl-8",
+      savedAt: "2026-09-09T22:10:00.000Z",
     });
   };
   return { fetchImpl, calls, passCalls: () => calls.filter((c) => c.kind === "pass").map((c) => c.pass) };
@@ -480,22 +515,87 @@ async function runSynthesis(server) {
   return session;
 }
 
-for (const droppedPass of [1, 2, 3]) {
+for (const droppedPass of [1, 2, 3, 5, 7]) {
   test(`a dropped connection on pass ${droppedPass} continues to the next pass without the person acting`, async () => {
     const server = synthesisServer({ dropReplyOnPass: droppedPass });
     const session = await runSynthesis(server);
 
     // Every pass ran exactly once. The dropped pass was polled for, not retried:
     // retrying a pass the server may still be running is the thing to avoid.
-    assert.deepEqual(server.passCalls(), [1, 2, 3, 4]);
+    assert.deepEqual(server.passCalls(), [1, 2, 3, 4, 5, 6, 7, 8]);
     assert.ok(
       server.calls.some((call) => call.kind === "progress"),
       "the client asked the in-progress read which pass had finished",
     );
     assert.equal(session.evaluate("state.brain.processingError"), "");
-    assert.equal(session.evaluate("state.brain.synthesisResponseId"), "chatcmpl-4");
+    assert.equal(session.evaluate("state.brain.synthesisResponseId"), "chatcmpl-8");
   });
 }
+
+test("the evolved passes carry the reach constant and the today passes carry none", async () => {
+  const server = synthesisServer();
+  await runSynthesis(server);
+  const passes = server.calls.filter((c) => c.kind === "pass");
+  assert.deepEqual(passes.map((c) => c.reach), [undefined, undefined, undefined, undefined, "a clear direction", "a clear direction", "a clear direction", "a clear direction"]);
+});
+
+test("both worlds render, today first, and each approve writes to its own world and version", async () => {
+  const server = synthesisServer();
+  const session = await runSynthesis(server);
+  session.evaluate("state.brain.cleanApproved = true");
+  session.click("finish-brain-review");
+  assert.equal(session.evaluate("state.brain.artifactStatus"), "draft");
+  assert.equal(session.evaluate("state.brain.evolvedStatus"), "draft");
+
+  session.click("set-guidance-view", { view: "artifacts" });
+  const html = session.appRoot.innerHTML;
+  assert.ok(html.indexOf("The brand today") < html.indexOf("The brand world, evolved"), "today renders first");
+  assert.match(html, /Does this describe the brand as it is now\?/);
+  assert.match(html, /Is this where the brand is going\?/);
+  // Each world shows its own dossier by default, and the cast reader shows the
+  // description then the examples with their basis note.
+  assert.match(html, /Today read\./);
+  assert.match(html, /Evolved read\./);
+  session.click("select-brain-artifact", { id: "evolved-lived" });
+  assert.match(session.appRoot.innerHTML, /People who repair rather than replace\./);
+  assert.match(session.appRoot.innerHTML, /Examples to cast from/);
+  assert.match(session.appRoot.innerHTML, /A direction you're reaching for/);
+  // Selecting an evolved tab leaves the today reader on its dossier.
+  assert.match(session.appRoot.innerHTML, /Today read\./);
+  assert.equal(session.evaluate("state.brain.selectedBrainArtifactId"), "dossier");
+  session.click("select-brain-artifact", { id: "evolved-story" });
+  assert.match(session.appRoot.innerHTML, /Pulling the last staple from a chair seat\./);
+  assert.match(session.appRoot.innerHTML, /Two people, one working and one watching\./);
+  assert.match(session.appRoot.innerHTML, /Why these moments/);
+
+  // Two approve actions. The evolved one does nothing until today is approved.
+  session.click("set-guidance-view", { view: "guidance" });
+  assert.match(session.appRoot.innerHTML, /Approve the brand today/);
+  session.click("approve-brain-evolved");
+  assert.equal(session.evaluate("state.brain.evolvedStatus"), "draft");
+  assert.equal(session.evaluate("state.brain.approvedResult"), null);
+
+  session.click("approve-brain-today");
+  assert.equal(session.evaluate("state.brain.artifactStatus"), "ready");
+  assert.equal(session.evaluate("state.brain.approvedVersion"), 1);
+  assert.equal(session.evaluate("state.brain.evolvedStatus"), "draft");
+  assert.equal(session.evaluate("state.brain.evolvedApprovedVersion"), 0);
+  assert.equal(session.evaluate('Object.keys(state.brain.approvedResult.artifacts).join(",")'), "today");
+  assert.equal(session.evaluate("state.brain.approvedResult.guidanceSections.length"), 6);
+  assert.match(session.appRoot.innerHTML, /The brand today is approved/);
+  assert.match(session.appRoot.innerHTML, /data-action="approve-brain-evolved"/);
+
+  session.click("approve-brain-evolved");
+  assert.equal(session.evaluate("state.brain.evolvedStatus"), "ready");
+  assert.equal(session.evaluate("state.brain.evolvedApprovedVersion"), 1);
+  assert.equal(session.evaluate('Object.keys(state.brain.approvedResult.artifacts).sort().join(",")'), "evolved,today");
+  assert.equal(session.evaluate("state.brain.approvedResult.artifacts.evolved.dossier.readBody"), "Evolved read.");
+  assert.equal(session.evaluate("state.brain.approvedResult.artifacts.today.dossier.readBody"), "Today read.");
+  assert.match(session.appRoot.innerHTML, /Design Studio can use this version/);
+  // The persisted snapshot carries both statuses.
+  const saveCall = server.calls.filter((c) => c.kind === "other" && c.url === "/api/brand-brain/save").length;
+  assert.ok(saveCall > 0, "state was persisted");
+});
 
 test("a server error with a body fails immediately and names the pass", async () => {
   const server = synthesisServer({ failOnPass: 2 });

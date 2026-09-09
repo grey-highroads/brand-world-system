@@ -642,7 +642,8 @@ function renderEngineLabel(id) {
 
 // One step per synthesis pass since 2026-09-07. The screen used to advance on a
 // timer while one long call ran, so the step it showed was a guess. Each step is
-// now a request that has either finished or is running.
+// now a request that has either finished or is running. Eight steps since ADR
+// 0019: four for the brand today, four for the brand world, evolved.
 const synthesisSteps = [
   {
     title: "Reading your sources",
@@ -660,9 +661,32 @@ const synthesisSteps = [
     title: "Describing the pictures",
     detail: "Building the Visual Grammar: the rooms, the light, and the camera behind those moments.",
   },
+  {
+    title: "The brand as it wants to be seen",
+    detail: "Rewriting the Brand Dossier from every source, including the directions you are reaching for.",
+  },
+  {
+    title: "The people it is reaching for",
+    detail: "Building the evolved Lived World: who belongs in the world the brand is growing into.",
+  },
+  {
+    title: "Moments in that world",
+    detail: "Writing the evolved Story Architecture: situations in that world a camera could walk into.",
+  },
+  {
+    title: "The pictures in that world",
+    detail: "Building the evolved Visual Grammar: the rooms, the light, and the camera in the world the brand is reaching for.",
+  },
 ];
 
-const SYNTHESIS_PASSES = [1, 2, 3, 4];
+const SYNTHESIS_PASSES = [1, 2, 3, 4, 5, 6, 7, 8];
+// The first pass that writes the brand evolved. Passes from here on carry the
+// reach level.
+const FIRST_EVOLVED_PASS = 5;
+// How far the aspiration sources may change the evolved world. Until the
+// control exists on screen this constant is what every synthesis sends. The
+// three levels are "a few touches", "a clear direction", and "a new world".
+const SYNTHESIS_REACH = "a clear direction";
 
 let guidanceSections = [
   {
@@ -1483,10 +1507,18 @@ const state = {
     rebuildAfterRemoval: false,
     approvedVersion: 0,
     approvedResult: null,
+    // The brand world, evolved, has its own status and its own approved
+    // version (ADR 0019). artifactStatus and approvedVersion above belong to
+    // the brand today, so every existing "is the brain ready" check keeps
+    // meaning what it meant: production can use this brain. The evolved world
+    // is ready only when it has been approved on its own.
+    evolvedStatus: "not-created",
+    evolvedApprovedVersion: 0,
     pendingSourceIds: [],
     affectedGuidanceIds: [],
     candidateBaseVersion: 0,
     selectedGuidanceId: "foundation",
+    selectedEvolvedArtifactId: "evolved-dossier",
     guidanceView: "guidance",
     selectedBrainArtifactId: "dossier",
     selectedArtifactId: "",
@@ -3260,7 +3292,7 @@ function renderBrainProcessing() {
             <span>
               <span class="brain-status ${complete ? "success" : error ? "danger" : "governed"}">${complete ? "Ready" : error ? "Needs attention" : "In progress"}</span>
               <h2>${complete ? (incremental ? "Candidate update prepared" : "Synthesis complete") : error ? "The source batch was not changed" : synthesisSteps[activeStep]?.title ?? synthesisSteps[0].title}</h2>
-              <p>${complete ? incremental ? `${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area has" : "areas have"} a proposed change. ${brainExceptions.length ? `${brainExceptions.length} ${brainExceptions.length === 1 ? "question needs" : "questions need"} your judgment.` : "No additional questions need a decision."}` : `OpenAI prepared six guidance sections and three working artifacts. ${brainExceptions.length ? `It also found ${brainExceptions.length} ${brainExceptions.length === 1 ? "question" : "questions"} that need your judgment.` : "It found no questions that require a decision."}` : error ? escapeHtml(error) : synthesisSteps[activeStep]?.detail ?? synthesisSteps[0].detail}</p>
+              <p>${complete ? incremental ? `${state.brain.affectedGuidanceIds.length || "No"} guidance ${state.brain.affectedGuidanceIds.length === 1 ? "area has" : "areas have"} a proposed change. ${brainExceptions.length ? `${brainExceptions.length} ${brainExceptions.length === 1 ? "question needs" : "questions need"} your judgment.` : "No additional questions need a decision."}` : `OpenAI prepared six guidance sections and two worlds: the brand today and the brand world, evolved. ${brainExceptions.length ? `It also found ${brainExceptions.length} ${brainExceptions.length === 1 ? "question" : "questions"} that need your judgment.` : "It found no questions that require a decision."}` : error ? escapeHtml(error) : synthesisSteps[activeStep]?.detail ?? synthesisSteps[0].detail}</p>
             </span>
           </div>
           <div class="brain-progress-track" aria-label="Synthesis progress"><span style="width: ${progress}%"></span></div>
@@ -3416,18 +3448,26 @@ function basisNote(item) {
 }
 
 function renderLivedArtifact(artifact) {
-  // Brains synthesized before 2026-09-07 carry one `person` string instead of a
-  // `people` list. Both render. Nothing migrates a saved brain: it keeps its
-  // shape until the owner re-synthesizes, and until then this shows what it has.
+  // Since ADR 0019 the Lived World carries a cast: one description of who
+  // belongs, then example people to cast from. Brains synthesized on
+  // 2026-09-07 carry a `people` list instead, and brains before that one
+  // `person` string. All three render. Nothing migrates a saved brain: it keeps
+  // its shape until the owner re-synthesizes, and until then this shows what it
+  // has.
+  const cast = artifact.cast && typeof artifact.cast === "object" ? artifact.cast : null;
+  const examples = Array.isArray(cast?.examples) ? cast.examples : [];
   const people = Array.isArray(artifact.people) ? artifact.people : [];
-  const peopleBody = people.length
-    ? `<div class="artifact-people">${people.map((item) => `<article><h4>${escapeHtml(item.name || "")}</h4><p>${escapeHtml(item.who || "")}</p>${basisNote(item)}</article>`).join("")}</div>`
+  const peopleCards = (items) => `<div class="artifact-people">${items.map((item) => `<article><h4>${escapeHtml(item.name || "")}</h4><p>${escapeHtml(item.who || "")}</p>${basisNote(item)}</article>`).join("")}</div>`;
+  const peopleBody = cast
+    ? `<p class="artifact-lead-copy">${escapeHtml(cast.description || "")}</p>${examples.length ? `<p class="section-label">Examples to cast from. Nobody appears in more than one picture.</p>${peopleCards(examples)}` : ""}`
+    : people.length
+    ? peopleCards(people)
     : artifact.person
     ? `<p class="artifact-lead-copy">${escapeHtml(artifact.person)}</p>`
     : `<p class="artifact-grammar-empty">This brain was built before the Lived World held people. Re-synthesize it to get them.</p>`;
   return `
     <section class="artifact-module artifact-person-module">
-      ${artifactSectionHeading(artifact, people.length ? "The people" : "The person", "Lives the brand can honestly belong in", "person")}
+      ${artifactSectionHeading(artifact, cast ? "The cast" : people.length ? "The people" : "The person", cast ? "Who belongs in this world" : "Lives the brand can honestly belong in", "person")}
       ${peopleBody}
     </section>
     <div class="artifact-split">
@@ -3464,12 +3504,13 @@ function renderLivedArtifact(artifact) {
   `;
 }
 
-// One moment, in either shape. Since 2026-09-07 a moment names when, where, who
-// and what is being done. Brains synthesized before that carry an index, a
-// scale, a narrative role and a product beat instead, and those still render so
-// a saved brain reads correctly until the owner re-synthesizes it. The `who`
-// ids resolve to names through the Lived World artifact beside this one; an id
-// with no match shows as itself rather than disappearing.
+// One moment, in any of three shapes. Since ADR 0019 a moment names when,
+// where, who is there as prose, and the situation underway. The 2026-09-07
+// shape carried `who` as a list of Lived World person ids and `doing`, and
+// brains before that carry an index, a scale, a narrative role and a product
+// beat. All three render so a saved brain reads correctly until the owner
+// re-synthesizes it. Legacy `who` ids resolve to names through the today Lived
+// World's people list; an id with no match shows as itself.
 function renderStoryMoment(item) {
   const lived = brainArtifacts.find((entry) => entry.id === "lived");
   const people = Array.isArray(lived?.people) ? lived.people : [];
@@ -3477,11 +3518,11 @@ function renderStoryMoment(item) {
     const match = people.find((entry) => entry.id === id);
     return match?.name || id;
   };
-  const isNewShape = Boolean(item.doing || item.where || item.when);
+  const isNewShape = Boolean(item.situation || item.doing || item.where || item.when);
   if (isNewShape) {
-    const who = (Array.isArray(item.who) ? item.who : []).map(nameFor).filter(Boolean);
+    const who = typeof item.who === "string" ? item.who : (Array.isArray(item.who) ? item.who : []).map(nameFor).filter(Boolean).join(", ");
     const stamp = [item.when, item.where].filter(Boolean).join(" · ");
-    return `<article><header><small>${escapeHtml(stamp)}</small></header><h4>${escapeHtml(item.title || "")}</h4><p>${escapeHtml(item.doing || "")}</p><dl>${who.length ? `<div><dt>Who is there</dt><dd>${escapeHtml(who.join(", "))}</dd></div>` : ""}${item.feeling ? `<div><dt>What it means to them</dt><dd>${escapeHtml(item.feeling)}</dd></div>` : ""}</dl>${basisNote(item)}</article>`;
+    return `<article><header><small>${escapeHtml(stamp)}</small></header><h4>${escapeHtml(item.title || "")}</h4><p>${escapeHtml(item.situation || item.doing || "")}</p><dl>${who ? `<div><dt>Who is there</dt><dd>${escapeHtml(who)}</dd></div>` : ""}${item.feeling ? `<div><dt>What it means to them</dt><dd>${escapeHtml(item.feeling)}</dd></div>` : ""}</dl>${basisNote(item)}</article>`;
   }
   const stamp = [item.time, item.scale].filter(Boolean).join(" · ");
   return `<article><header>${item.index ? `<span>${escapeHtml(item.index)}</span>` : ""}<small>${escapeHtml(stamp)}</small></header><h4>${escapeHtml(item.title || "")}</h4><p>${escapeHtml(item.action || "")}</p><dl>${item.feeling ? `<div><dt>Feels</dt><dd>${escapeHtml(item.feeling)}</dd></div>` : ""}${item.role ? `<div><dt>Role in the story</dt><dd>${escapeHtml(item.role)}</dd></div>` : ""}${item.product ? `<div><dt>Product</dt><dd>${escapeHtml(item.product)}</dd></div>` : ""}</dl></article>`;
@@ -3499,7 +3540,7 @@ function renderStoryArtifact(artifact) {
     </section>
     <div class="artifact-split">
       <section class="artifact-module artifact-highlight-module">
-        ${artifactSectionHeading(artifact, "Why these four", "The reasoning behind the sequence", "why")}
+        ${artifactSectionHeading(artifact, "Why these moments", "The reasoning behind the set", "why")}
         <p>${escapeHtml(artifact.why)}</p>
       </section>
       <section class="artifact-module">
@@ -3549,22 +3590,63 @@ const artifactBodyRenderers = {
   grammar: renderGrammarArtifact,
 };
 
-function renderBrainArtifactReader() {
-  const artifact = brainArtifacts.find((item) => item.id === state.brain.selectedBrainArtifactId) ?? brainArtifacts[0];
-  const renderBody = artifactBodyRenderers[artifact.id];
+// The two worlds a brain carries since ADR 0019, and the plain names they are
+// reviewed under. A brain saved before then has only the today world, and the
+// evolved heading does not appear.
+const BRAIN_WORLDS = [
+  { id: "today", heading: "The brand today", lead: "Does this describe the brand as it is now?" },
+  { id: "evolved", heading: "The brand world, evolved", lead: "Is this where the brand is going?" },
+];
+
+function artifactsForWorld(worldId) {
+  return brainArtifacts.filter((item) => (item.world || "today") === worldId);
+}
+
+function selectedArtifactFor(worldId) {
+  const items = artifactsForWorld(worldId);
+  const selectedId = worldId === "evolved" ? state.brain.selectedEvolvedArtifactId : state.brain.selectedBrainArtifactId;
+  return items.find((item) => item.id === selectedId) ?? items[0];
+}
+
+// A tab click selects within the world the artifact belongs to, so reading the
+// evolved grammar does not move the today reader off its dossier.
+function selectBrainArtifact(id) {
+  const artifact = brainArtifacts.find((item) => item.id === id);
+  if (artifact && artifact.world === "evolved") state.brain.selectedEvolvedArtifactId = id;
+  else state.brain.selectedBrainArtifactId = id;
+}
+
+function renderWorldArtifactReader(world) {
+  const items = artifactsForWorld(world.id);
+  if (!items.length) return "";
+  const artifact = selectedArtifactFor(world.id);
+  const renderBody = artifactBodyRenderers[artifact.reader || artifact.id];
   const body = renderBody ? renderBody(artifact) : `<p class="artifact-grammar-empty">This artifact does not have a reader yet.</p>`;
+  const status = world.id === "evolved" ? state.brain.evolvedStatus : state.brain.artifactStatus;
+  const approvedVersion = world.id === "evolved" ? state.brain.evolvedApprovedVersion : state.brain.approvedVersion;
   return `
-    <nav class="brain-artifact-tabs" role="tablist" aria-label="Brand Brain artifacts">
-      ${brainArtifacts.map((item) => `<button class="artifact-${item.id} ${item.id === artifact.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === artifact.id}" data-action="select-brain-artifact" data-id="${item.id}"><span>${item.number}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.short)}</small></button>`).join("")}
-    </nav>
-    <article class="card brain-artifact-reader artifact-${artifact.id}">
-      <header class="brain-artifact-reader-header">
-        <span><span class="section-label">Artifact ${artifact.number}</span><h2>${escapeHtml(artifact.name)}</h2><p>${escapeHtml(artifact.description)}</p></span>
-        <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div></dl>
-      </header>
-      <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
-      <div class="brain-artifact-body">${body}</div>
-    </article>
+    <section class="brain-world-reader brain-world-${world.id}">
+      <div class="artifact-section-heading brain-world-heading"><span><span class="section-label">${escapeHtml(world.lead)}</span><h2>${escapeHtml(world.heading)}</h2></span><span class="brain-status ${status === "ready" ? "success" : "governed"}">${status === "ready" ? `Approved v${approvedVersion}` : "Needs approval"}</span></div>
+      <nav class="brain-artifact-tabs" role="tablist" aria-label="${escapeHtml(world.heading)} artifacts">
+        ${items.map((item) => `<button class="artifact-${item.reader || item.id} ${item.id === artifact.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === artifact.id}" data-action="select-brain-artifact" data-id="${item.id}"><span>${item.number}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.short)}</small></button>`).join("")}
+      </nav>
+      <article class="card brain-artifact-reader artifact-${artifact.reader || artifact.id}">
+        <header class="brain-artifact-reader-header">
+          <span><span class="section-label">Artifact ${artifact.number}</span><h2>${escapeHtml(artifact.name)}</h2><p>${escapeHtml(artifact.description)}</p></span>
+          <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div></dl>
+        </header>
+        <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+        <div class="brain-artifact-body">${body}</div>
+      </article>
+    </section>
+  `;
+}
+
+// Both worlds, today first, each under a plain heading. The evolved block is
+// absent when the brain has no evolved world.
+function renderBrainArtifactReader() {
+  return `
+    ${BRAIN_WORLDS.map(renderWorldArtifactReader).join("")}
     ${grammarAbsentNote()}
   `;
 }
@@ -3638,6 +3720,8 @@ function renderBrainGuidance() {
   }
 
   const ready = state.brain.artifactStatus === "ready";
+  const hasEvolved = state.brain.evolvedStatus !== "not-created";
+  const evolvedWaiting = ready && state.brain.evolvedStatus === "draft";
   const candidateUpdate = !ready && state.brain.approvedResult && state.brain.approvedVersion < state.brain.artifactVersion;
   const section = guidanceSections.find((item) => item.id === state.brain.selectedGuidanceId) ?? guidanceSections[0];
   const commentCount = state.brain.guidanceComments.filter((comment) => !comment.resolved).length;
@@ -3692,13 +3776,23 @@ function renderBrainGuidance() {
         <aside class="brain-guidance-rail">
           <section class="card brain-artifact-decision">
             <span class="section-label">${ready ? "Current status" : "Review status"}</span>
-            <h2>${ready ? "Design Studio can use this version" : commentCount ? `${commentCount} inline ${commentCount === 1 ? "comment" : "comments"} saved` : "Is this Brand Brain ready?"}</h2>
-            <p>${ready ? "New work in the Design Studio uses this exact version. Later edits create a new one." : "Approve this stored version, comment directly on a passage, or leave overall feedback."}</p>
+            <h2>${ready ? (evolvedWaiting ? "The brand today is approved" : "Design Studio can use this version") : commentCount ? `${commentCount} inline ${commentCount === 1 ? "comment" : "comments"} saved` : "Is this Brand Brain ready?"}</h2>
+            <p>${ready
+              ? (evolvedWaiting
+                ? "Production writes from the brand today until the brand world, evolved, is approved on its own. Read it under Artifacts, then decide whether it is where the brand is going."
+                : "New work in the Design Studio uses this exact version. Later edits create a new one.")
+              : hasEvolved
+                ? "Two decisions. Approve the brand today if it describes the brand accurately. Then approve the brand world, evolved, if it is where the brand is going. Comment directly on a passage or leave overall feedback if either needs work."
+                : "Approve this stored version, comment directly on a passage, or leave overall feedback."}</p>
             ${
               ready
-                ? `<button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Go to Design Studio</button>`
+                ? `
+                  ${evolvedWaiting ? `<button class="button primary" type="button" data-action="approve-brain-evolved">Approve the brand world, evolved</button>` : ""}
+                  <button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Go to Design Studio</button>
+                `
                 : `
-                  <button class="button primary" type="button" data-action="approve-brain-artifact">Approve for production</button>
+                  <button class="button primary" type="button" data-action="approve-brain-today">${hasEvolved ? "Approve the brand today" : "Approve for production"}</button>
+                  ${hasEvolved ? `<button class="button secondary" type="button" disabled title="Approve the brand today first">Approve the brand world, evolved</button>` : ""}
                   ${commentCount ? `<button class="button secondary" type="button" data-action="create-comment-revision">Prepare revision from inline feedback</button>` : ""}
                   <button class="button" type="button" data-action="toggle-brain-feedback">Leave overall feedback</button>
                 `
@@ -7331,6 +7425,8 @@ async function persistBrainState() {
       artifactVersion: state.brain.artifactVersion,
       artifactStatus: state.brain.artifactStatus,
       approvedVersion: state.brain.approvedVersion,
+      evolvedStatus: state.brain.evolvedStatus,
+      evolvedApprovedVersion: state.brain.evolvedApprovedVersion,
       revisionPending: state.brain.revisionPending,
       pendingSourceIds: state.brain.pendingSourceIds,
       affectedGuidanceIds: state.brain.affectedGuidanceIds,
@@ -7367,22 +7463,48 @@ function changedGuidanceIds(baseline, result) {
   return result.guidanceSections.filter((section) => JSON.stringify(previous.get(section.id)) !== JSON.stringify(section)).map((section) => section.id);
 }
 
+// The world artifacts of a synthesis result, by world. A result saved before
+// ADR 0019 carries one artifacts object with no world under it; that is the
+// today world, and there is no evolved world.
+function worldArtifactsOf(result, worldId) {
+  const artifacts = result?.artifacts;
+  if (!artifacts || typeof artifacts !== "object") return null;
+  if (artifacts.today || artifacts.evolved) return artifacts[worldId] || null;
+  return worldId === "today" ? artifacts : null;
+}
+
+// One reader entry per artifact per world. Today's entries keep the ids the
+// rest of the app looks up ("dossier", "lived", "story", "grammar"); evolved
+// entries are prefixed and carry `reader` so the same body renderer is used.
+function brainArtifactsFrom(result) {
+  const entries = [];
+  for (const worldId of ["today", "evolved"]) {
+    const world = worldArtifactsOf(result, worldId);
+    if (!world) continue;
+    const prefix = worldId === "evolved" ? "evolved-" : "";
+    const add = (reader, number, name, short, artifact) => {
+      if (!artifact) return;
+      entries.push({ id: `${prefix}${reader}`, reader, world: worldId, number, name, short, ...artifact });
+    };
+    add("dossier", "01", "Brand Dossier", "The strategic read", world.dossier);
+    add("lived", "02", "Lived World", worldId === "evolved" ? "The people it is reaching for" : "The people and their days", world.livedWorld);
+    add("story", "03", "Story Architecture", "The moments production can build", world.storyArchitecture);
+    // Brains synthesized before the visual grammar existed have no artifact to
+    // show, so they get no tab. A husk entry here renders a tab whose reader
+    // throws on missing fields and freezes navigation. The tab appears when
+    // the brain is re-synthesized, not before.
+    add("grammar", "04", "Visual Grammar", "What the camera can see", world.visualGrammar);
+  }
+  return entries;
+}
+
 function applySynthesisResult(result, options = {}) {
   const incremental = Boolean(options.baseline);
   currentSynthesisResult = result;
   state.brandName = result.brandName || state.brandName;
   state.brandDescription = result.brandDescription || state.brandDescription;
   guidanceSections = normalizeGuidanceSections(result.guidanceSections);
-  brainArtifacts = [
-    { id: "dossier", number: "01", name: "Brand Dossier", short: "The strategic read", ...result.artifacts.dossier },
-    { id: "lived", number: "02", name: "Lived World", short: "The person and their life", ...result.artifacts.livedWorld },
-    { id: "story", number: "03", name: "Story Architecture", short: "The moments production can build", ...result.artifacts.storyArchitecture },
-    // Brains synthesized before the visual grammar existed have no artifact to
-    // show, so they get no tab. A husk entry here renders a tab whose reader
-    // throws on missing fields and freezes navigation. The tab appears when
-    // the brain is re-synthesized under step 3 instructions, not before.
-    ...(result.artifacts.visualGrammar ? [{ id: "grammar", number: "04", name: "Visual Grammar", short: "What the camera can see", ...result.artifacts.visualGrammar }] : []),
-  ];
+  brainArtifacts = brainArtifactsFrom(result);
   brainExceptions = result.reviewQuestions.map((question, index) => ({
     ...question,
     id: question.id || `review-${index + 1}`,
@@ -7418,10 +7540,13 @@ function applySynthesisResult(result, options = {}) {
     state.brain.pendingSourceIds = [];
     state.brain.affectedGuidanceIds = [];
     state.brain.candidateBaseVersion = 0;
+    state.brain.evolvedStatus = "not-created";
+    state.brain.evolvedApprovedVersion = 0;
   }
   state.brain.selectedGuidanceId = "foundation";
   state.brain.guidanceView = "guidance";
   state.brain.selectedBrainArtifactId = "dossier";
+  state.brain.selectedEvolvedArtifactId = "evolved-dossier";
 }
 
 async function callProtectionsApi(payload) {
@@ -7540,6 +7665,8 @@ async function hydrateStoredBrain() {
       state.brain.artifactVersion = saved.brain.artifactVersion || 1;
       state.brain.artifactStatus = saved.brain.artifactStatus || "not-created";
       state.brain.approvedVersion = saved.brain.approvedVersion || state.brain.approvedVersion;
+      state.brain.evolvedStatus = saved.brain.evolvedStatus || "not-created";
+      state.brain.evolvedApprovedVersion = saved.brain.evolvedApprovedVersion || 0;
       state.brain.revisionPending = saved.brain.revisionPending ?? state.brain.revisionPending;
       state.brain.pendingSourceIds = saved.brain.pendingSourceIds || [];
       state.brain.affectedGuidanceIds = saved.brain.affectedGuidanceIds || state.brain.affectedGuidanceIds;
@@ -7711,6 +7838,8 @@ async function startBrainSynthesis() {
     state.brain.affectedGuidanceIds = [];
     state.brain.pendingSourceIds = [];
     state.brain.artifactStatus = "draft";
+    state.brain.evolvedStatus = "not-created";
+    state.brain.evolvedApprovedVersion = 0;
   }
   state.brain.revisionPending = incremental;
   state.brain.selectedExceptionId = brainExceptions[0]?.id ?? "";
@@ -7756,6 +7885,8 @@ async function startBrainSynthesis() {
             baselineVersion: incremental ? state.brain.approvedVersion : undefined,
             requestId,
           }
+        : pass >= FIRST_EVOLVED_PASS
+        ? { pass, requestId, reach: SYNTHESIS_REACH }
         : { pass, requestId };
       let response = null;
       try {
@@ -10017,6 +10148,9 @@ root.addEventListener("click", (event) => {
     syncProductionReferences();
     state.brain.pendingSourceIds = [];
     state.brain.artifactStatus = "draft";
+    // The evolved world becomes a draft alongside the today world when the
+    // brain has one. A brain saved before ADR 0019 has none.
+    state.brain.evolvedStatus = worldArtifactsOf(currentSynthesisResult, "evolved") ? "draft" : "not-created";
     state.brain.stage = "draft";
     state.brain.selectedGuidanceId = "foundation";
     state.brain.guidanceView = "guidance";
@@ -10024,11 +10158,25 @@ root.addEventListener("click", (event) => {
     void persistBrainState();
     navigate("brain-guidance");
   }
-  if (action === "approve-brain-artifact" && state.brain.artifactStatus === "draft") {
+  // Two approve actions since ADR 0019. Approving the brand today is a truth
+  // check: does this describe us. Approving the brand world, evolved, is a
+  // direction decision: is this where we are going. Each copies its own world
+  // into approvedResult.artifacts.<world> and carries its own approved version.
+  // The brand fields, the guidance sections, and the review questions go with
+  // today, which is why the evolved approve waits for the today approve.
+  if (action === "approve-brain-today" && state.brain.artifactStatus === "draft") {
+    const snapshot = JSON.parse(JSON.stringify(currentSynthesisResult));
+    const today = worldArtifactsOf(snapshot, "today");
+    const previouslyApprovedEvolved = worldArtifactsOf(state.brain.approvedResult, "evolved");
+    const { artifacts: _artifacts, ...root } = snapshot;
+    state.brain.approvedResult = {
+      ...root,
+      artifacts: previouslyApprovedEvolved && state.brain.evolvedStatus === "ready"
+        ? { today, evolved: previouslyApprovedEvolved }
+        : { today },
+    };
     state.brain.artifactStatus = "ready";
     state.brain.stage = "ready";
-    state.brain.approvedResult = JSON.parse(JSON.stringify(currentSynthesisResult));
-    const previousVersion = state.brain.approvedVersion;
     state.brain.approvedVersion = state.brain.artifactVersion;
     state.brain.pendingSourceIds = [];
     state.brain.affectedGuidanceIds = [];
@@ -10040,9 +10188,24 @@ root.addEventListener("click", (event) => {
     const impactNote = affectedCount > 0
       ? ` ${affectedCount} existing ${affectedCount === 1 ? "output uses" : "outputs use"} an earlier version.`
       : "";
-    recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved`, `This exact stored version is now available to future production work.${impactNote}`, "complete");
+    const evolvedWaiting = state.brain.evolvedStatus === "draft";
+    recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved: the brand today`, `This exact stored version is now available to future production work.${evolvedWaiting ? " The brand world, evolved, still needs its own approval before production reads it." : ""}${impactNote}`, "complete");
     void persistBrainState();
-    setToast(`Brand Brain v${state.brain.artifactVersion} is ready for production${impactNote}`);
+    setToast(`The brand today, v${state.brain.artifactVersion}, is ready for production${impactNote}`);
+  }
+  if (action === "approve-brain-evolved" && state.brain.evolvedStatus === "draft" && state.brain.artifactStatus === "ready") {
+    const evolved = worldArtifactsOf(JSON.parse(JSON.stringify(currentSynthesisResult)), "evolved");
+    if (evolved) {
+      state.brain.approvedResult = {
+        ...(state.brain.approvedResult || {}),
+        artifacts: { ...(state.brain.approvedResult?.artifacts || {}), evolved },
+      };
+      state.brain.evolvedStatus = "ready";
+      state.brain.evolvedApprovedVersion = state.brain.artifactVersion;
+      recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved: the brand world, evolved`, "Production now writes from the evolved world. The brand today stays approved as the truth check beside it.", "complete");
+      void persistBrainState();
+      setToast(`The brand world, evolved, v${state.brain.artifactVersion}, is what production writes from now`);
+    }
   }
   if (action === "toggle-brain-feedback") {
     state.brain.feedbackOpen = !state.brain.feedbackOpen;
@@ -10085,13 +10248,13 @@ root.addEventListener("click", (event) => {
   }
   if (action === "open-brain-artifact") {
     state.brain.guidanceView = "artifacts";
-    state.brain.selectedBrainArtifactId = target.dataset.id;
+    selectBrainArtifact(target.dataset.id);
     state.brain.commentTarget = "";
     state.brain.commentDraft = "";
     render();
   }
   if (action === "select-brain-artifact") {
-    state.brain.selectedBrainArtifactId = target.dataset.id;
+    selectBrainArtifact(target.dataset.id);
     state.brain.commentTarget = "";
     state.brain.commentDraft = "";
     render();
