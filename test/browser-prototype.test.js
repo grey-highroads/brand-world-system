@@ -252,16 +252,29 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("finish-brain-review");
   assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v1/);
   assert.match(session.appRoot.innerHTML, /Draft for review/);
+  assert.match(session.appRoot.innerHTML, /Begin guidance review/);
+  assert.match(session.appRoot.innerHTML, /Six sections shape production/);
+  assert.match(session.appRoot.innerHTML, /data-action="open-guidance-artifacts"/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /What the Brand Brain understands/);
+
+  session.click("start-guidance-review");
+  assert.match(session.appRoot.innerHTML, /guidance-focus-shell/);
+  assert.match(session.appRoot.innerHTML, /Exit review/);
+  assert.match(session.appRoot.innerHTML, /Section 1 of 6/);
   assert.match(session.appRoot.innerHTML, /What the Brand Brain understands/);
   assert.match(session.appRoot.innerHTML, /Why the system reached this view/);
-  assert.match(session.appRoot.innerHTML, /Brand foundation dossier/);
   assert.match(session.appRoot.innerHTML, /Comment on this/);
-  assert.match(session.appRoot.innerHTML, /category-foundation active/);
-  assert.match(session.appRoot.innerHTML, /category-identity/);
-  assert.match(session.appRoot.innerHTML, /category-rules/);
+  assert.match(session.appRoot.innerHTML, /data-action="next-guidance-section"/);
 
-  session.click("open-brain-artifact", { id: "dossier" });
+  session.click("next-guidance-section");
+  assert.match(session.appRoot.innerHTML, /Section 2 of 6/);
+  session.click("exit-guidance-review");
+  assert.match(session.appRoot.innerHTML, /Continue guidance review/);
+  assert.match(session.appRoot.innerHTML, /1 of 6 reviewed/);
+
+  session.click("open-guidance-artifacts");
   assert.match(session.appRoot.innerHTML, /Brand Dossier/);
+  assert.match(session.appRoot.innerHTML, /Back to Brand guidance/);
   assert.match(session.appRoot.innerHTML, /A person, not a segment/);
   assert.match(session.appRoot.innerHTML, /Pulled from approved identity/);
   assert.match(session.appRoot.innerHTML, /Never optimized/);
@@ -288,7 +301,10 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Make the transition into the shared evening more specific/);
 
   session.click("set-guidance-view", { view: "guidance" });
-  assert.match(session.appRoot.innerHTML, /1 inline comment saved/);
+  session.click("start-guidance-review");
+  for (let index = 0; index < 5; index += 1) session.click("next-guidance-section");
+  assert.match(session.appRoot.innerHTML, /Guidance review complete/);
+  assert.match(session.appRoot.innerHTML, /1 inline comment is saved/);
   session.click("create-comment-revision");
   assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v2/);
 
@@ -296,13 +312,15 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.input("guidance-comment-draft", "Make the role of flavor more prominent.");
   session.click("save-guidance-comment", { target: "foundation:prose:0", section: "foundation" });
   assert.match(session.appRoot.innerHTML, /Make the role of flavor more prominent/);
-  assert.match(session.appRoot.innerHTML, /1 inline comment saved/);
 
+  for (let index = 0; index < 6; index += 1) session.click("next-guidance-section");
+  assert.match(session.appRoot.innerHTML, /1 inline comment is saved/);
   session.click("create-comment-revision");
   assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v3/);
   assert.match(session.appRoot.innerHTML, /Included in v3/);
 
   // A legacy brain has one approve, and it is the today approve.
+  for (let index = 0; index < 6; index += 1) session.click("next-guidance-section");
   assert.match(session.appRoot.innerHTML, /data-action="approve-brain-today">Approve for production/);
   assert.doesNotMatch(session.appRoot.innerHTML, /approve-brain-evolved/);
   session.click("approve-brain-today");
@@ -333,9 +351,13 @@ test("shared visual polish layer centralizes spacing, surfaces, and semantic sta
   const index = fs.readFileSync(path.join(rootPath, "app/index.html"), "utf8");
   const styles = fs.readFileSync(path.join(rootPath, "app/styles.css"), "utf8");
   const polish = fs.readFileSync(path.join(rootPath, "app/polish.css"), "utf8");
+  const guidanceFocus = fs.readFileSync(path.join(rootPath, "app/guidance-focus.css"), "utf8");
   const app = fs.readFileSync(path.join(rootPath, "app/app.js"), "utf8");
 
   assert.match(index, /polish\.css/);
+  assert.match(index, /guidance-focus\.css/);
+  assert.match(guidanceFocus, /\.guidance-home-status/);
+  assert.match(guidanceFocus, /\.guidance-review-workspace/);
   assert.match(polish, /--section-gap: var\(--space-6\)/);
   assert.match(polish, /--card-padding: var\(--space-5\)/);
   assert.match(polish, /\.surface-accent-governed/);
@@ -550,7 +572,7 @@ test("both worlds render, today first, and each approve writes to its own world 
   assert.equal(session.evaluate("state.brain.artifactStatus"), "draft");
   assert.equal(session.evaluate("state.brain.evolvedStatus"), "draft");
 
-  session.click("set-guidance-view", { view: "artifacts" });
+  session.click("open-guidance-artifacts");
   const html = session.appRoot.innerHTML;
   assert.ok(html.indexOf("The brand today") < html.indexOf("The brand world, evolved"), "today renders first");
   assert.match(html, /Does this describe the brand as it is now\?/);
@@ -573,6 +595,8 @@ test("both worlds render, today first, and each approve writes to its own world 
 
   // Two approve actions. The evolved one does nothing until today is approved.
   session.click("set-guidance-view", { view: "guidance" });
+  session.click("start-guidance-review");
+  for (let index = 0; index < 6; index += 1) session.click("next-guidance-section");
   assert.match(session.appRoot.innerHTML, /Approve the brand today/);
   session.click("approve-brain-evolved");
   assert.equal(session.evaluate("state.brain.evolvedStatus"), "draft");
@@ -594,7 +618,7 @@ test("both worlds render, today first, and each approve writes to its own world 
   assert.equal(session.evaluate('Object.keys(state.brain.approvedResult.artifacts).sort().join(",")'), "evolved,today");
   assert.equal(session.evaluate("state.brain.approvedResult.artifacts.evolved.dossier.readBody"), "Evolved read.");
   assert.equal(session.evaluate("state.brain.approvedResult.artifacts.today.dossier.readBody"), "Today read.");
-  assert.match(session.appRoot.innerHTML, /Design Studio can use this version/);
+  assert.match(session.appRoot.innerHTML, /Guidance is ready for production/);
   // The persisted snapshot carries both statuses.
   const saveCall = server.calls.filter((c) => c.kind === "other" && c.url === "/api/brand-brain/save").length;
   assert.ok(saveCall > 0, "state was persisted");
