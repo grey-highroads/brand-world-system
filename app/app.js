@@ -1447,6 +1447,12 @@ const state = {
     sceneSuggestError: "",
     sceneSourcesOpen: false,
     sceneField: "brief",
+    // The last set of directions the writer offered, kept after one is
+    // chosen. Until 2026-09-10 the app kept the chosen direction and the other
+    // two were gone the moment the person picked, and the unchosen directions
+    // are the corpus. The whole set rides the job record with the chosen id,
+    // what the meaning check stripped, and the model that wrote them.
+    directions: null,
     websiteProductId: "",
   },
   brain: {
@@ -7234,6 +7240,7 @@ function renderResult() {
                   </div>`
                 : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
                    ${sceneRenderFigure(job)}
+                   ${directionsOfferedPanel(job)}
                    ${renderedCopyCheckPanel(job)}
                    ${producedCopyPanel(job)}`
               : `<div class="generation-state ${failed ? "error" : ""}"><div class="production-spinner" aria-hidden="true"></div><h3>${failed ? "The image was not generated" : `${escapeHtml(renderEngineLabel(job?.engine || state.studio.renderEngine))} is rendering the image`}</h3><p>${escapeHtml(state.production.error || job?.error || "The reviewed prompt and approved Brand Brain are saved with this job.")}</p>${failed ? '<button class="button primary" type="button" data-action="retry-generate">Try again</button>' : ""}</div>`
@@ -8295,6 +8302,9 @@ function productionRequest(jobId) {
     displayFields: state.studio.renderCopyIntoImage ? state.studio.displayFields : undefined,
     copyDirection: state.studio.copyDirection || undefined,
     engine: state.studio.renderEngine || "openai",
+    // The directions the writer offered for this brief, if any were, with the
+    // chosen id. The server puts them on the job record as they arrive.
+    directions: state.studio.directions || undefined,
     references: state.references.map((item) => ({
       id: item.id,
       role: item.role,
@@ -8500,8 +8510,10 @@ async function startProductionGeneration() {
     jobId,
     status: "working",
     model: "gpt-image-2",
+    directions: state.studio.directions || null,
     generationPackage: state.production.package,
   };
+  state.production.directionsOpen = false;
   navigate("result");
   try {
     const response = await fetch("/api/production/generate", {
@@ -8673,6 +8685,7 @@ async function openOutputForReview(outputId) {
       engine: payload.package?.engine || record?.engine || null,
       engineLabel: payload.package?.engineLabel || record?.engineLabel || null,
       endpoint: payload.package?.endpoint || null,
+      directions: payload.package?.directions || null,
       generationPackage,
     };
     state.production.package = generationPackage;
@@ -9011,6 +9024,13 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="studio-brief-input"]')) {
     state.studio.brief = event.target.value;
+    // A chosen direction the person then edits stays the chosen one on the
+    // record, marked edited. The compiled prompt on the package is what went
+    // to the render; the record says which offered direction it started from.
+    if (state.studio.directions?.chosenId) {
+      const chosen = state.studio.directions.offered.find((entry) => entry.id === state.studio.directions.chosenId);
+      state.studio.directions.chosenEdited = Boolean(chosen) && chosen.brief !== event.target.value;
+    }
     // The studio screens write the brief here rather than through
     // scene-input, and until 2026-08-19 this path cleared nothing, so an
     // applied suggestion's composition, lighting, and props survived every
@@ -9462,6 +9482,7 @@ root.addEventListener("click", (event) => {
     state.studio.sceneSuggestionsDrewOn = [];
     state.studio.sceneSuggestError = "";
     state.studio.sceneSourcesOpen = false;
+    state.studio.directions = null;
     state.studio.platforms = [];
     state.studio.activeFormats = [];
     state.studio.textOverlay = false;
@@ -9645,6 +9666,11 @@ root.addEventListener("click", (event) => {
     render();
     return;
   }
+  if (action === "toggle-directions-offered") {
+    state.production.directionsOpen = !state.production.directionsOpen;
+    render();
+    return;
+  }
   if (action === "use-scene-suggestion") {
     const option = state.studio.sceneSuggestions[Number(target.dataset.index)];
     // A body-less option would write an empty brief, clear the panel, and drop
@@ -9656,6 +9682,10 @@ root.addEventListener("click", (event) => {
     }
     if (option) {
       state.studio[state.studio.sceneField || "brief"] = option.brief || "";
+      if (state.studio.directions) {
+        state.studio.directions.chosenId = option.id || null;
+        state.studio.directions.chosenEdited = false;
+      }
       // As of 2026-09-07 an option carries a label and one piece of prose, and
       // that prose is the whole direction. The three writes that used to sit
       // here set sceneComposition, sceneLighting, and sceneProps from the
@@ -10650,6 +10680,43 @@ function outputImageSrc(output) {
 // product is placed into it by a second call. The scene render is kept so the
 // reviewer can see what the placement changed. Records made by a single call
 // carry no scene image and show nothing here.
+// The three directions the writer offered for this job, the chosen one
+// marked, and what the meaning check stripped from each. Closed by default:
+// the person reviewing an image wants the image first, and the alternatives
+// are for the corpus. Absent on a job whose brief was written by hand.
+function directionsOfferedPanel(job) {
+  const directions = job?.directions;
+  const offered = Array.isArray(directions?.offered) ? directions.offered : [];
+  if (!offered.length) return "";
+  const open = Boolean(state.production.directionsOpen);
+  const strippedFor = (id) => (Array.isArray(directions.stripped) ? directions.stripped : []).filter((entry) => entry.directionId === id);
+  return `<section class="directions-offered">
+    <button class="studio-add-link" type="button" data-action="toggle-directions-offered">${open ? "Hide directions offered" : "Directions offered"}</button>
+    ${open ? `
+    <ol class="directions-offered-list">
+      ${offered.map((entry) => {
+        const chosen = entry.id === directions.chosenId;
+        const cut = strippedFor(entry.id);
+        return `<li class="directions-offered-item ${chosen ? "chosen" : ""}">
+          <div class="directions-offered-header">
+            <strong>${escapeHtml(entry.label || "Untitled")}</strong>
+            ${chosen ? `<span class="mini-pill">Chosen${directions.chosenEdited ? ", then edited" : ""}</span>` : ""}
+            ${entry.flagged ? `<span class="mini-pill pill-warning">Under three sentences after the check</span>` : ""}
+          </div>
+          <p>${escapeHtml(entry.brief)}</p>
+          ${cut.length ? `<p class="directions-offered-stripped"><span class="section-label">Stripped before it reached you</span>${cut.map((item) => `<span>${escapeHtml(item.sentence)}</span>`).join("")}</p>` : ""}
+        </li>`;
+      }).join("")}
+    </ol>
+    <p class="directions-offered-meta">${escapeHtml([
+      directions.model ? `Written by ${directions.model}` : "",
+      directions.world ? `from the ${directions.world} world` : "",
+      directions.regenerated ? `${directions.regenerated} written twice` : "",
+    ].filter(Boolean).join(", "))}</p>
+    ` : ""}
+  </section>`;
+}
+
 function sceneRenderFigure(job) {
   const sceneImageId = job?.generationPackage?.twoCall?.sceneImageId || "";
   if (!sceneImageId) return "";
@@ -10971,6 +11038,33 @@ function mergeStoredCampaign(record) {
 // Upload the file to Blob first, then record it on the product record. The
 // two-step matches how source files already work: the browser puts the bytes
 // in storage directly and the server only ever handles the reference.
+// The record of what the writer offered, shaped for the job. Only the scene
+// kinds write directions worth keeping; a surface or an element brief is two
+// sentences and is not the corpus.
+function offeredDirections(payload, kind) {
+  const offered = (payload?.options || [])
+    .filter((option) => option && option.id)
+    .map((option) => ({
+      id: option.id,
+      label: option.label || "",
+      brief: option.brief || "",
+      flagged: option.flagged ? true : undefined,
+    }));
+  if (!offered.length || !["scene", "scene_no_people"].includes(kind)) return null;
+  return {
+    kind,
+    offered,
+    chosenId: null,
+    chosenEdited: false,
+    stripped: Array.isArray(payload.stripped) ? payload.stripped : [],
+    regenerated: Number(payload.regenerated) || 0,
+    model: payload.model || null,
+    world: payload.world || null,
+    momentIds: Array.isArray(payload.momentIds) ? payload.momentIds : [],
+    offeredAt: new Date().toISOString(),
+  };
+}
+
 async function suggestSceneBriefs(kind = "scene", field = "brief") {
   state.studio.sceneSuggesting = true;
   state.studio.sceneSuggestError = "";
@@ -11021,6 +11115,7 @@ async function suggestSceneBriefs(kind = "scene", field = "brief") {
     state.studio.sceneSuggestions = payload.options || [];
     state.studio.sceneSuggestionsDrewOn = payload.drewOn || [];
     state.studio.sceneSourcesOpen = false;
+    state.studio.directions = offeredDirections(payload, kind);
   } catch (error) {
     state.studio.sceneSuggestions = [];
     state.studio.sceneSuggestError = error.message || "The suggestions could not be built.";

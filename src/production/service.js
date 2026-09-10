@@ -485,6 +485,45 @@ function resolveCopyOutputs(requested) {
     .slice(0, 4);
 }
 
+// The offered-directions record, checked for shape and bounded in size before
+// it is written. The browser is the only writer of it and the server does
+// not trust that; an id and three strings per direction is all it keeps.
+export function offeredDirectionsRecord(value) {
+  if (!value || typeof value !== "object" || !Array.isArray(value.offered)) return null;
+  const clean = (input, limit) => String(input == null ? "" : input).slice(0, limit);
+  const offered = value.offered
+    .filter((entry) => entry && typeof entry === "object" && clean(entry.id, 80))
+    .slice(0, 3)
+    .map((entry) => ({
+      id: clean(entry.id, 80),
+      label: clean(entry.label, 200),
+      brief: clean(entry.brief, 4000),
+      ...(entry.flagged ? { flagged: true } : {}),
+    }));
+  if (!offered.length) return null;
+  const stripped = (Array.isArray(value.stripped) ? value.stripped : [])
+    .filter((entry) => entry && typeof entry === "object")
+    .slice(0, 30)
+    .map((entry) => ({
+      directionId: clean(entry.directionId, 80),
+      sentence: clean(entry.sentence, 1000),
+      attempt: Number(entry.attempt) === 2 ? 2 : 1,
+    }));
+  const chosenId = clean(value.chosenId, 80);
+  return {
+    kind: clean(value.kind, 40) || "scene",
+    offered,
+    chosenId: offered.some((entry) => entry.id === chosenId) ? chosenId : null,
+    chosenEdited: Boolean(value.chosenEdited),
+    stripped,
+    regenerated: Number(value.regenerated) || 0,
+    model: clean(value.model, 80) || null,
+    world: clean(value.world, 40) || null,
+    momentIds: (Array.isArray(value.momentIds) ? value.momentIds : []).map((id) => clean(id, 120)).filter(Boolean).slice(0, 3),
+    offeredAt: clean(value.offeredAt, 40) || null,
+  };
+}
+
 function publicJob(job, imageUrl) {
   if (!job) return null;
   return {
@@ -577,6 +616,13 @@ export async function generateProductionImage(body, options) {
     engineLabel: engine.label,
     model: engine.model,
     endpoint: engine.chooseEndpoint(allReferenceEntries),
+    // The directions the scene writer offered for this brief, all of them,
+    // with the chosen id, the sentences the meaning check stripped, and the
+    // model that wrote them. Recorded as the browser sent them; the compiled
+    // prompt of the chosen one is on the package. Null for a hand-written
+    // brief. Added 2026-09-10 so the unchosen directions survive, because
+    // they are the corpus.
+    directions: offeredDirectionsRecord(body.directions),
     generationPackage,
   };
   await options.productionStore.write(working);
@@ -722,6 +768,7 @@ export async function generateProductionImage(body, options) {
       try {
         await options.productionStore.writeOutputPackage(jobId, {
           generationPackage,
+          directions: working.directions,
           engine: engine.name,
           engineLabel: engine.label,
           model: engine.model,

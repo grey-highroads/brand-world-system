@@ -821,3 +821,46 @@ test("a compiled scene prompt is byte identical to the base commit", () => {
   });
   assert.equal(explicit.prompt, pkg.prompt);
 });
+
+// ---------------------------------------------------------------------------
+// The offered-directions record on the job (2026-09-10)
+// ---------------------------------------------------------------------------
+
+test("the job record keeps three directions, the chosen id, and the stripped sentences, and nothing it was not given", async () => {
+  const { offeredDirectionsRecord } = await import("../src/production/service.js");
+  const offered = [1, 2, 3].map((index) => ({ id: `direction-abc123-${index}`, label: `Option ${index}`, brief: `Brief ${index}.` }));
+  const record = offeredDirectionsRecord({
+    kind: "scene_no_people",
+    offered: [...offered, { id: "direction-abc123-4", label: "Too many", brief: "x" }],
+    chosenId: "direction-abc123-2",
+    chosenEdited: 1,
+    stripped: [{ directionId: "direction-abc123-2", sentence: "A nod to the hour.", attempt: "2" }, { directionId: "direction-abc123-1", sentence: "It captures.", attempt: "junk" }],
+    regenerated: "1",
+    model: "gpt-5.6",
+    world: "evolved",
+    momentIds: ["m-1", "", "m-2"],
+    offeredAt: "2026-09-10T00:00:00.000Z",
+    extra: "dropped",
+  });
+  assert.deepEqual(record, {
+    kind: "scene_no_people",
+    offered,
+    chosenId: "direction-abc123-2",
+    chosenEdited: true,
+    stripped: [
+      { directionId: "direction-abc123-2", sentence: "A nod to the hour.", attempt: 2 },
+      { directionId: "direction-abc123-1", sentence: "It captures.", attempt: 1 },
+    ],
+    regenerated: 1,
+    model: "gpt-5.6",
+    world: "evolved",
+    momentIds: ["m-1", "m-2"],
+    offeredAt: "2026-09-10T00:00:00.000Z",
+  });
+  // A chosen id that names no offered direction is not kept as chosen.
+  assert.equal(offeredDirectionsRecord({ offered, chosenId: "direction-elsewhere" }).chosenId, null);
+  // A hand-written brief sends nothing and records nothing.
+  for (const value of [undefined, null, "text", {}, { offered: [] }, { offered: [{ label: "no id" }] }]) {
+    assert.equal(offeredDirectionsRecord(value), null);
+  }
+});

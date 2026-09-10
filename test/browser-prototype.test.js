@@ -55,6 +55,9 @@ function prototypeSession(options = {}) {
       createElement() {
         return { click() {}, remove() {}, select() {}, style: {} };
       },
+      getElementById() {
+        return null;
+      },
       body: { append() {} },
       execCommand() {},
     },
@@ -616,4 +619,110 @@ test("the in-progress read never returns the half-built brain", async () => {
   // The client asks for one thing and is given one thing. The contract on the
   // server side is covered in test/brand-brain-openai.test.js.
   assert.doesNotMatch(progressCall.url, /result|artifacts|passResults/);
+});
+
+// ---------------------------------------------------------------------------
+// All three directions ride the job record (2026-09-10)
+//
+// The writer offers three directions; until this change the app kept the
+// chosen one and the other two were gone the moment the person picked. The
+// unchosen directions are the corpus. See
+// docs/findings-2026-09-10-writer-behavior-and-meaning.md.
+// ---------------------------------------------------------------------------
+
+const jsonHeaders = { get: (name) => (name === "content-type" ? "application/json" : "") };
+
+function offeredSet() {
+  return {
+    options: [
+      { id: "direction-abc123-1", label: "Back room", brief: "Two friends in a venue back room. One tapes a cable. One reads a setlist." },
+      { id: "direction-abc123-2", label: "After service", brief: "A cook wipes the pass. A can sits on the edge of the counter." },
+      { id: "direction-abc123-3", label: "Shop at opening", brief: "A worker unlocks the door. Parts hang on hooks.", flagged: true },
+    ],
+    drewOn: ["Lived World"],
+    model: "gpt-4o",
+    world: "evolved",
+    momentIds: ["m-1", "m-2", "m-3"],
+    stripped: [{ directionId: "direction-abc123-2", sentence: "A quiet nod to the end of service.", attempt: 1 }],
+    regenerated: 1,
+  };
+}
+
+test("the job record carries three directions and the chosen id, and the result screen shows them with the chosen one marked", async () => {
+  let generateBody = null;
+  const session = prototypeSession({
+    fetch: async (url, init) => {
+      if (String(url).includes("/api/production/generate-copy")) {
+        return { ok: true, headers: jsonHeaders, async json() { return offeredSet(); } };
+      }
+      if (String(url) === "/api/production/generate") {
+        generateBody = JSON.parse(init.body);
+        return { ok: true, headers: jsonHeaders, async json() { return { job: { jobId: generateBody.jobId, status: "working", generationPackage: generateBody.brief ? { brainVersion: 1, output: { format: "4:5 portrait" } } : null } }; } };
+      }
+      return { ok: true, headers: jsonHeaders, async json() { return {}; } };
+    },
+  });
+
+  // Ask the writer, then choose the second direction.
+  await session.evaluateAsync('suggestSceneBriefs("scene", "brief")');
+  assert.equal(session.evaluate("state.studio.directions.offered.length"), 3);
+  assert.equal(session.evaluate("state.studio.directions.chosenId"), null);
+  session.click("use-scene-suggestion", { index: "1" });
+  assert.equal(session.evaluate("state.studio.directions.chosenId"), "direction-abc123-2");
+  assert.equal(session.evaluate("state.studio.brief"), "A cook wipes the pass. A can sits on the edge of the counter.");
+  // The other two survive the choice.
+  assert.deepEqual(session.evaluate("state.studio.directions.offered.map((d) => d.id)"), ["direction-abc123-1", "direction-abc123-2", "direction-abc123-3"]);
+  assert.equal(session.evaluate("state.studio.directions.stripped.length"), 1);
+  assert.equal(session.evaluate("state.studio.directions.model"), "gpt-4o");
+
+  // A hand edit after choosing is recorded, not erased.
+  session.input("studio-brief-input", "A cook wipes the pass. A can sits on the edge of the counter. Steam rises off the flat top.");
+  assert.equal(session.evaluate("state.studio.directions.chosenEdited"), true);
+  assert.equal(session.evaluate("state.studio.directions.chosenId"), "direction-abc123-2");
+
+  // The render request carries the whole set.
+  const request = session.evaluate('JSON.stringify(productionRequest("render-9"))');
+  const parsed = JSON.parse(request);
+  assert.equal(parsed.directions.offered.length, 3);
+  assert.equal(parsed.directions.chosenId, "direction-abc123-2");
+  assert.equal(parsed.directions.chosenEdited, true);
+  assert.deepEqual(parsed.directions.stripped, offeredSet().stripped);
+
+  // And the result screen renders them, closed, then open with the chosen one
+  // marked and the stripped sentence under its direction.
+  session.evaluate('state.screen = "result"');
+  session.evaluate('state.production.job = { jobId: "render-9", status: "complete", imageUrl: "https://example.test/out.png", engine: "openai", model: "gpt-image-2", directions: JSON.parse(JSON.stringify(state.studio.directions)), generationPackage: { brainVersion: 1, output: { format: "4:5 portrait" }, brief: { scene: "x" } } }');
+  session.evaluate('state.production.status = "complete"');
+  session.evaluate("render()");
+  assert.match(session.appRoot.innerHTML, /data-action="toggle-directions-offered"[^>]*>Directions offered</);
+  assert.doesNotMatch(session.appRoot.innerHTML, /After service/);
+  session.click("toggle-directions-offered");
+  const html = session.appRoot.innerHTML;
+  assert.match(html, /Hide directions offered/);
+  assert.match(html, /Back room/);
+  assert.match(html, /After service/);
+  assert.match(html, /Shop at opening/);
+  assert.match(html, /directions-offered-item chosen"[\s\S]*?After service[\s\S]*?Chosen, then edited/);
+  assert.doesNotMatch(html, /Back room[\s\S]{0,300}Chosen/);
+  assert.match(html, /Stripped before it reached you[\s\S]*?A quiet nod to the end of service\./);
+  assert.match(html, /Under three sentences after the check/);
+  assert.match(html, /Written by gpt-4o, from the evolved world, 1 written twice/);
+
+  // A hand-written brief has no directions and no disclosure.
+  session.evaluate("state.production.job.directions = null");
+  session.evaluate("render()");
+  assert.doesNotMatch(session.appRoot.innerHTML, /Directions offered/);
+});
+
+test("switching studio category drops the offered directions with the brief", async () => {
+  const session = prototypeSession({
+    fetch: async () => ({ ok: true, headers: jsonHeaders, async json() { return offeredSet(); } }),
+  });
+  await session.evaluateAsync('suggestSceneBriefs("scene", "brief")');
+  assert.equal(session.evaluate("state.studio.directions.offered.length"), 3);
+  session.click("select-studio-category", { id: "website" });
+  assert.equal(session.evaluate("state.studio.directions"), null);
+  // The short kinds never produce a record.
+  await session.evaluateAsync('suggestSceneBriefs("template_surface", "brief")');
+  assert.equal(session.evaluate("state.studio.directions"), null);
 });
