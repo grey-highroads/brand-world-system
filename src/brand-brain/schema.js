@@ -445,4 +445,4 @@ export const PASS_LABELS = {
 // screen the app sends DEFAULT_REACH, and the server falls back to it when a
 // request carries none.
 export const REACH_LEVELS = ["a few touches", "a clear direction", "a new world"];
-export const DEFAULT_REACH = "a clear direction";
+export const DEFAULT_REACH = "a new world";

@@ -686,7 +686,7 @@ const FIRST_EVOLVED_PASS = 5;
 // How far the aspiration sources may change the evolved world. Until the
 // control exists on screen this constant is what every synthesis sends. The
 // three levels are "a few touches", "a clear direction", and "a new world".
-const SYNTHESIS_REACH = "a clear direction";
+const SYNTHESIS_REACH = "a new world";
 
 let guidanceSections = [
   {

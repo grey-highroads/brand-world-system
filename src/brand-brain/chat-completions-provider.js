@@ -23,7 +23,23 @@ export const DEFAULT_BRAND_BRAIN_MODEL = "gpt-5.6";
 // saying how far the aspiration sources may change the world. And the evolved
 // pass tasks say which run they are. Everything else is the same text.
 
-const HEADER = `You are the synthesis engine for Brand World System. Build an evidence-backed Brand Brain from only the supplied sources.`;
+const HEADER = {
+  today: `You are the synthesis engine for Brand World System. Build an evidence-backed Brand Brain from only the supplied sources.`,
+  evolved: `You are the synthesis engine for Brand World System. This run authors the brand evolved: the world this brand is reaching for, built from its own current material, the direction sources it supplied, and what you know about the category it sells in and the aesthetic it is reaching toward. You are writing a world for photographers and writers to work inside, not a research report.`,
+};
+
+// The evolved run is authoring, not auditing (owner ruling, 2026-09-09). The
+// today run proves what the sources support. The evolved run brings taste and
+// category knowledge to a direction the sources only sketch, and labels every
+// authored entry ambition so a reviewer can tell reach from evidence.
+const EVOLVED_AUTHORING = `Authoring rules for the brand evolved:
+- This run authors the world the brand is reaching for. It is not an audit of the sources and it is not research. The sources marked as a direction tell you which way the brand is going. They do not limit you to the words and pictures in them.
+- You know this category and you know the aesthetic the direction sources name. Bring that knowledge. If the direction is a retro aesthetic, you know which decades it draws on, what people wore, what their rooms and objects looked like, how the light fell, and what was fun about it. If the brand is a consumer drink, you know what its world looks like when the marketing is done well: particular people in real places doing things worth looking at, styled so the direction shows and nothing tries too hard. Write that world in full.
+- Everything you bring this way is an ambition. Label it ambition and write it at full strength. The origin keeps the reviewer honest; the writing is what makes the world usable.
+- The brand's own current material still governs what the brand is: its name, its products, what it claims, what it refuses. Do not invent brand facts. Author the world around them freely.
+- A thin direction source is not a reason to write a thin world. A moodboard and a paragraph are enough to know the direction; the rest is yours to author. Do not raise a review question asking for more direction material unless the direction sources contradict each other or contradict a brand fact.
+- Write people, rooms, objects, clothes, light, and moments a photographer could shoot next week: specific, physical, and particular to this brand's direction. Nothing generic to the category, and no third-party property, character, title, screen, or package design.`;
+
 
 const AUTHORITY_RULES = `Authority rules:
 - Protected brand assets are canonical files. Describe their role and handling, but never reinterpret, redraw, or replace them.
@@ -39,7 +55,7 @@ const AUTHORITY_RULES = `Authority rules:
 - Each source carries "aspiration": "current" means the source describes how the brand shows up today; "aspiration" means it describes a direction the brand is reaching for. Aspirational sources shape creative direction, aesthetic targets, tone goals, and world-building, but their contents must never be recorded as fact about the brand today.
 - When an aspirational source differs from current evidence, keep both readings: state today's reality as fact and the aspiration as declared direction, naming the source for each. That difference is intentional, so do not raise a contradiction review question for it on its own.`;
 
-const WRITING_RULES = `Writing rules:
+const WRITING_RULES_TODAY = `Writing rules:
 - Write plainly for marketers and people responsible for a brand.
 - Make claims specific and trace every material conclusion to named supplied sources.
 - Distinguish fact, approved guidance, and inference in the wording.
@@ -58,6 +74,18 @@ const REVIEW_QUESTION_LANGUAGE = `Review question language:
 - Never use these words in a question's summary, method, or rationale: canonical, declared, baseline, provenance, aspiration, lockup, architecture guidance, unresolved, evidence supports, verification. Say the same thing in ordinary words.
 - Keep each of summary, method, and rationale to one or two sentences. If a point needs more, it belongs in the evidence quotes instead.
 - Name real things, not their categories. Write "the RCS slide background" rather than "the supplied background-template asset."`;
+
+const WRITING_RULES_EVOLVED = WRITING_RULES_TODAY
+  .replace(
+    "- Make claims specific and trace every material conclusion to named supplied sources.",
+    "- Make claims specific. Trace what rests on a source to that source; label what you authored as ambition and name the direction source and the knowledge it rests on in derivedFrom.",
+  )
+  .replace(
+    "- When evidence is thin or conflicting, create a review question rather than filling the gap.",
+    "- When the brand's own current material is thin or conflicting on a fact about the brand today, create a review question. When the direction is thin, author the world; that is this run's job.",
+  );
+
+const WRITING_RULES = { today: WRITING_RULES_TODAY, evolved: WRITING_RULES_EVOLVED };
 
 // The Lived World rules are built from parts so the today run and the evolved
 // run share every line except the one that fences "ambition" out.
@@ -113,7 +141,7 @@ const STORY_ARCHITECTURE_RULES = {
   evolved: [STORY_ARCHITECTURE_OPENING, STORY_ARCHITECTURE_BASIS.evolved].join("\n"),
 };
 
-const VISUAL_GRAMMAR_RULES = [
+const VISUAL_GRAMMAR_PARTS = [
   `Visual Grammar:
 - The visual grammar describes the physical world of the brand's pictures: who is in frame, what the things in it are and what era they belong to, what the rooms are made of, how the light behaves, what the camera is set to, and what territory the brand refuses. Everything in it is something a camera could record.
 - Six sections: people, objects, places, light, camera, rejects. Each entry carries an id, a label, a statement, and a basis. The section descriptions in the schema are binding; these instructions add to them and never contradict them.
@@ -148,15 +176,29 @@ const VISUAL_GRAMMAR_RULES = [
 - Where a brand kit, logo master, or other canonical identity asset was supplied, write the reject that protects it: canonical artwork is photographed or placed, never redrawn, recolored, approximated, or rebuilt from a screenshot.
 - Where a source is someone else's work supplied as a direction, write two rejects rather than one. Refuse the readable third-party property, and refuse the borrowed territory arriving as a graphic layer laid over a photograph, such as overlays, filters, or interface elements added afterward, because the substitution rule asks for physical objects and light instead.
 - Rejects carry an origin of "evidence" or "inference" and never "ambition". A reject is a rule rather than a fact about the brand or a declared aim, and a rule is in force today even when the material that motivated it is aspirational. A reject motivated by a direction source records that source in derivedFrom and is no less in force for it.`,
-].join("\n\n");
+];
+
+const VISUAL_GRAMMAR_RULES = {
+  today: VISUAL_GRAMMAR_PARTS.join("\n\n"),
+  evolved: VISUAL_GRAMMAR_PARTS.map((part) => part
+    .replace(
+      "- Nothing else produces an ambition. Thin evidence does not. A confident guess does not. A statement you reasoned out from brand facts is \"inference\" no matter how far the reasoning ran.",
+      "- An entry you authored from category or aesthetic knowledge, per the authoring rules for this run, is also an ambition, and its derivedFrom names the direction source it serves and the knowledge it rests on. A statement reasoned only from the brand's own current facts is \"inference\".",
+    )
+    .replace("`Honesty over quantity:", "`The full world:")
+    .replace(
+      "- Where the sources document little or nothing about lighting, write fewer light entries. Where they document nothing about a section at all, write one honest entry rather than a full set of invented ones.\n- A thin section is correct output when the brand is thin in that area. The interface tells the reader that nothing is there yet because the sources did not support writing it. Do not make that sentence a lie by filling the section.",
+      "- Every section is written in full. Where the direction sources say nothing about a section, author it from the direction and from what you know of the aesthetic, and label it ambition. A thin section is a failure of this run, not honesty.\n- The camera section describes how this brand's pictures are made so they look like this brand's and nobody else's: the stock or sensor character, the glass, the distance, the light, and the permitted imperfections. Settings still, never mood words. A camera section any brand could use is not finished.",
+    )).join("\n\n"),
+};
 
 // How far the aspiration sources may change the evolved world. One sentence,
 // sent only to evolved passes, chosen by the reach level on the request. The
 // levels are the owner's words (ADR 0019).
 const REACH_SENTENCES = {
-  "a few touches": `Reach for this evolved world: a few touches. The aspiration sources may add texture to a world that is otherwise the brand today. The people, the places, and the moments stay as the today world wrote them, and the aspiration shows in the objects, the light, and the detail.`,
-  "a clear direction": `Reach for this evolved world: a clear direction. The aspiration sources may change who the people are, what the rooms are made of, and what the moments are, wherever the sources support it. The today world is the starting point, not the limit.`,
-  "a new world": `Reach for this evolved world: a new world. The aspiration sources set the world. Read the today world for brand facts and for what the brand refuses, and for nothing else.`,
+  "a few touches": `Reach for this evolved world: a few touches. Keep the people, the places, and the moments as the today world wrote them, and bring the direction into the objects, the clothes, the light, and the detail.`,
+  "a clear direction": `Reach for this evolved world: a clear direction. Recast the people, rebuild the rooms, and rewrite the moments in the direction the sources point, keeping what the today world got right about how these people live. The today world is the starting point, not the limit.`,
+  "a new world": `Reach for this evolved world: a new world. The direction sets the world and you author it in full: who these people are, where they are, what they wear, what the rooms hold, how the light falls, what is fun. Read the today world for brand facts and for what the brand refuses, and for nothing else.`,
 };
 
 export function reachSentence(reach) {
@@ -220,15 +262,17 @@ function passRules(passId) {
     1: "",
     2: LIVED_WORLD_RULES[world],
     3: STORY_ARCHITECTURE_RULES[world],
-    4: VISUAL_GRAMMAR_RULES,
+    4: VISUAL_GRAMMAR_RULES[world],
   }[passStep(passId)];
 }
 
 export function passInstructions(passId, options = {}) {
   const task = PASS_TASKS[passId];
   if (!task) throw new Error(`There is no synthesis pass ${passId}.`);
-  const reach = passWorld(passId) === "evolved" ? reachSentence(options.reach) : "";
-  return [HEADER, task, reach, AUTHORITY_RULES, WRITING_RULES, passRules(passId), REVIEW_QUESTION_LANGUAGE]
+  const world = passWorld(passId);
+  const reach = world === "evolved" ? reachSentence(options.reach) : "";
+  const authoring = world === "evolved" ? EVOLVED_AUTHORING : "";
+  return [HEADER[world], task, reach, authoring, AUTHORITY_RULES, WRITING_RULES[world], passRules(passId), REVIEW_QUESTION_LANGUAGE]
     .filter(Boolean)
     .join("\n\n");
 }

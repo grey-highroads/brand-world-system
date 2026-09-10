@@ -845,3 +845,27 @@ test("a finished synthesis reports nothing in progress, because its record is cl
   await runAllPasses(store);
   assert.equal((await readSynthesisProgress("synthesis-pass-test", { store })).inProgress, false);
 });
+
+// The evolved run authors; the today run audits (owner ruling, 2026-09-09).
+test("the evolved passes carry the authoring rules and the today passes carry none", () => {
+  const opening = "Authoring rules for the brand evolved:";
+  const know = "You know this category and you know the aesthetic the direction sources name. Bring that knowledge.";
+  for (const id of [5, 6, 7, 8]) {
+    const instruction = passInstructions(id);
+    assert.ok(instruction.includes(opening) && instruction.includes(know), `pass ${id} carries the authoring rules`);
+    assert.ok(instruction.indexOf(opening) < instruction.indexOf("Authority rules:"), "authoring precedes authority");
+    assert.doesNotMatch(instruction, /Build an evidence-backed Brand Brain from only the supplied sources/);
+    assert.doesNotMatch(instruction, /create a review question rather than filling the gap/);
+  }
+  for (const id of [1, 2, 3, 4]) {
+    const instruction = passInstructions(id);
+    assert.doesNotMatch(instruction, /Authoring rules for the brand evolved/);
+    assert.match(instruction, /Build an evidence-backed Brand Brain from only the supplied sources/);
+  }
+  // The grammar's thin-is-honest posture belongs to the today run only.
+  assert.match(passInstructions(4), /A thin section is correct output/);
+  assert.doesNotMatch(passInstructions(8), /A thin section is correct output/);
+  assert.match(passInstructions(8), /A thin section is a failure of this run/);
+  assert.match(passInstructions(8), /A camera section any brand could use is not finished/);
+  assert.equal(DEFAULT_REACH, "a new world");
+});

@@ -536,7 +536,7 @@ test("the evolved passes carry the reach constant and the today passes carry non
   const server = synthesisServer();
   await runSynthesis(server);
   const passes = server.calls.filter((c) => c.kind === "pass");
-  assert.deepEqual(passes.map((c) => c.reach), [undefined, undefined, undefined, undefined, "a clear direction", "a clear direction", "a clear direction", "a clear direction"]);
+  assert.deepEqual(passes.map((c) => c.reach), [undefined, undefined, undefined, undefined, "a new world", "a new world", "a new world", "a new world"]);
 });
 
 test("both worlds render, today first, and each approve writes to its own world and version", async () => {

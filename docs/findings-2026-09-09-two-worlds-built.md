@@ -39,8 +39,24 @@ The people, places, moments and dossier of the evolved world carry the retro dir
 
 ## Left for the next brief
 
-The save route still writes whatever the browser sends (`api/brand-brain/save.js:15`), and with two approved worlds that gap is wider. Re-synthesis still drops product images; re-attach the isolated can before rendering. The reach control on screen. The intake piles and the "not this" role.
+The save route still writes whatever the browser sends (`api/brand-brain/save.js:15`), and with two approved worlds that gap is wider. The owner rebuilt MycoPop three times on 2026-09-09 and the attached product images survived every time, so the 09-07 findings that said re-synthesis drops them are stale; treat that defect as closed unless it recurs. The reach control on screen. The intake piles and the "not this" role.
 
 ## Suite
 
 Before: 218 tests, 217 pass, 1 ambient failure. After: 232 tests, 231 pass, the same ambient failure.
+
+## Amendment, 2026-09-09, same day: the evolved run authors
+
+The first rebuild through this code came back with the retro direction read as "people who like machines": a cast of exhibit technicians and synthesizer repairers, an electronics bench, a living room with an old computer in the corner, and the same 28 mm f/5.6 neutral camera as the today world. Twenty-seven ambition entries and no decade, no wardrobe, no fun. The writer then rendered "Fixing the slipped chain" faithfully, which is the moment it was handed.
+
+Cause: the evolved run still carried the today run's posture. The header said build an evidence-backed brain from only the supplied sources. The writing rules said a thin area gets a review question, not content. The grammar rules said a thin section is correct output and that a confident guess never produces an ambition. So the model read one pixel-art screenshot and a short primer as the only permitted vocabulary and refused to bring what it knows about a retro aesthetic or a consumer drink's world.
+
+Owner ruling: the evolved run is authoring, not research. Changes, all in `src/brand-brain/chat-completions-provider.js` and applied to passes 5 through 8 only:
+
+- A separate header for the evolved run.
+- An authoring rules block between the reach sentence and the authority rules: bring category and aesthetic knowledge, label all of it ambition, do not invent brand facts, a thin direction source is not a reason for a thin world.
+- The writing rules' "review question rather than filling the gap" applies to brand facts only on the evolved run.
+- The grammar's "Honesty over quantity" becomes "The full world" on the evolved run: every section written in full, and a camera section any brand could use is not finished.
+- The reach sentences rewritten as authoring latitude. Default reach is now "a new world" in `schema.js#DEFAULT_REACH` and `app.js#SYNTHESIS_REACH`.
+
+The today run is unchanged, byte for byte, and the test that pins the pass 2 and 3 rule blocks equal across worlds still passes. Suite: 233 tests, 232 pass, the ambient fixture.
