@@ -8,6 +8,7 @@ import { produceCopy, auditProducedCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "../../src/production/looks.js";
 import { selectWorldArtifacts } from "../../src/brand-brain/world.js";
+import crypto from "node:crypto";
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -484,6 +485,117 @@ export default async function handler(request, response) {
 // See docs/findings-2026-09-07-moment-selection.md.
 export const SCENE_MOMENT_COUNT = 3;
 
+// The model that writes directions. Synthesis runs on gpt-5.6 and the writer
+// ran on gpt-4o, and nobody decided that on record. The environment now
+// carries the choice, defaulting to what ran before so nothing changes until
+// the owner sets it, and every direction records the model that wrote it so
+// the two can be compared in the corpus.
+export const DEFAULT_WRITER_MODEL = "gpt-4o";
+export function writerModel(env = process.env) {
+  const configured = String(env?.OPENAI_WRITER_MODEL || "").trim();
+  return configured || DEFAULT_WRITER_MODEL;
+}
+
+// The heading the look's behavior sentence arrives under, in context.
+export const LOOK_BEHAVIOR_HEADING = "HOW THIS BRAND'S PICTURES ARE TAKEN";
+
+// The one sentence about the look that stays in RULES. Written 2026-09-08 into
+// the task's third paragraph; moved here 2026-09-10 when the look's optical
+// description left the rules. This is the rule. The look is data.
+export const LENS_RULE = "A direction is what was in front of the lens rather than how the film rendered it, so the color cast, the grain, the contrast, the focus and the lens are all set elsewhere in this prompt and do not belong in the prose.";
+
+// The meaning rule, 2026-09-10. It replaces the sentence that said a sentence
+// about what the picture means is a sentence to cut. The writer had that
+// sentence since 2026-09-07 and ended every direction on a meaning sentence
+// anyway. This version says what every sentence is instead of what one kind
+// of sentence is not, and says what happens to a sentence that fails.
+export const MEANING_RULE = "A direction is what a camera recorded and nothing else. Every sentence names something visible: a person, an object, a surface, a light source, a gesture, a distance. A sentence about what the moment feels like, what it means, what it says, what it evokes, or what atmosphere it creates is deleted, not softened. The last sentence of a direction is a thing in the frame, not a summary.";
+
+// Two sentences the writer produced on 2026-09-09, each with its fix, so the
+// model has the shape and not only the rule. Verbatim from the job that
+// produced them; the brand name in the first pair is the brand they were
+// written against.
+export const MEANING_EXAMPLE_PAIRS = [
+  {
+    fails: "A MycoPop sits on the edge of the counter, condensation pooling at its base, a quiet nod to the end of a busy service.",
+    passes: "A MycoPop sits on the edge of the counter, condensation pooling at its base.",
+  },
+  {
+    fails: "Hanging parts and tools sway gently as the air stirs, creating a dynamic yet calm atmosphere.",
+    passes: "Hanging parts and tools sway on their hooks.",
+  },
+];
+export const MEANING_EXAMPLES = [
+  "Two sentences that fail that rule, each followed by the sentence that replaces it.",
+  ...MEANING_EXAMPLE_PAIRS.map((pair) => `Fails: "${pair.fails}" Passes: "${pair.passes}"`),
+].join(" ");
+
+// The wardrobe and surfaces line, 2026-09-10. The evolved world writes clothes
+// down to the socks and rooms down to the laminate, and the writer reads the
+// cast description and the examples. The line says to match that specificity
+// and no more. Nothing here says which decade; the world carries it or it
+// does not.
+export const WARDROBE_LINE = "Write what the people are wearing and what is on the surfaces to the specificity the world gives, and no more.";
+export const SURFACES_LINE = "Write what is on the surfaces, and any clothing left in the room, to the specificity the world gives, and no more.";
+
+// The meaning check. A direction that comes back from the model is split into
+// sentences, and a sentence containing any of these is stripped before the
+// direction reaches the browser. The list is the tells from the directions of
+// 2026-09-08 and 2026-09-09, and it grows from the corpus. Deliberately not
+// clever: a list and a splitter. It will miss some, and the ones it misses
+// show up in docs/writer-corpus.md; the ones it catches never reach a render.
+export const MEANING_TELLS = [
+  "atmosphere",
+  "atmospheric",
+  "a nod to",
+  "nod to",
+  "captures",
+  "captured",
+  "engrossed",
+  "seamlessly",
+  "hive of",
+  "sense of",
+  "speaks to",
+  "evokes",
+  "evoking",
+  "marking the",
+  "symbolizing",
+  "embodying",
+  "a testament",
+  "a reminder",
+];
+
+// A direction cut to fewer sentences than this by the check is written again,
+// once. Three is the floor a 120-word direction cannot sensibly sit under.
+export const MEANING_CHECK_MIN_SENTENCES = 3;
+
+export function splitSentences(prose) {
+  return String(prose == null ? "" : prose)
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/(?<=[.!?]["')\]]?)\s+(?=[A-Z0-9"'(\[])/)
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+}
+
+export function sentenceHasTell(sentence) {
+  const lower = String(sentence || "").toLowerCase();
+  return MEANING_TELLS.some((tell) => new RegExp(`(^|[^a-z])${tell.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^a-z]|$)`).test(lower));
+}
+
+// Strips every sentence carrying a tell. Returns the kept prose and the
+// sentences that were removed, in order, so the job record can carry them.
+export function stripMeaningSentences(prose) {
+  const sentences = splitSentences(prose);
+  const kept = [];
+  const stripped = [];
+  for (const sentence of sentences) {
+    if (sentenceHasTell(sentence)) stripped.push(sentence);
+    else kept.push(sentence);
+  }
+  return { text: kept.join(" "), stripped, sentenceCount: kept.length };
+}
+
 export function selectMoments(moments, random = Math.random) {
   const pool = Array.isArray(moments) ? moments.filter(Boolean) : [];
   if (pool.length <= SCENE_MOMENT_COUNT) return pool.slice();
@@ -506,7 +618,7 @@ export function selectMoments(moments, random = Math.random) {
 // decides, here and in the compiler; nothing else asks which world.
 export { selectWorldArtifacts };
 
-export async function handleSceneBrief({ body, brain, product, apiKey, response, random = Math.random }) {
+export async function handleSceneBrief({ body, brain, product, apiKey, response, random = Math.random, env = process.env }) {
   // Three artifacts are the whole of what the writer reads, as of 2026-09-07.
   // The guidance sections went first: they are prose summaries of the same
   // material, and sending both gave the writer two answers to every question.
@@ -700,6 +812,35 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
     if (images.some((i) => i.kind === "isolated")) drewOn.push("Product image on the record");
   }
 
+  // The look is chosen before the scene is written, so the scene is authored
+  // for the medium rather than handed to it afterward. The look owns capture
+  // character; the scene owns content.
+  //
+  // A peopleless scene with no look chosen resolves the default here rather
+  // than at compile time. Resolving it only in the compiler meant the direction
+  // was written with no medium in the prompt at all and then compiled against
+  // one, which is the conflict shape ADR 0018 exists to remove. A look that
+  // reaches the writer decides the setting before the prose is written, and a
+  // look that arrives afterward can only contradict it.
+  const lookBrief = resolveLook(body.look)
+    || (peopleless ? resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK) : null);
+
+  // What the writer receives of the look, as of 2026-09-10: one sentence about
+  // the people and the room, and nothing about the film. The look's optical
+  // description used to arrive whole in the RULES block below, and from
+  // 2026-09-08 every direction paraphrased it back into the scene prose while
+  // ignoring the one thing that should have changed the frame, which is that
+  // drugstore flash means subjects face the camera. Rules outrank tasks in the
+  // same prompt, so the instruction not to transcribe the look, one clause in
+  // the task, lost to the look itself sitting in the rules. The optical
+  // description compiles into the Capture section after the writer is done,
+  // so the writer restating it was pure loss. It now sits in context, after
+  // the world, as data rather than as a rule. See
+  // docs/findings-2026-09-10-writer-behavior-and-meaning.md.
+  if (writesAScene && lookBrief && text(lookBrief.behavior)) {
+    context.push(`${LOOK_BEHAVIOR_HEADING}\n${text(lookBrief.behavior)}`);
+  }
+
   // Each studio category asks for a different kind of artifact, so the task
   // line and the rules change with it. Everything else is shared.
   const kinds = {
@@ -752,12 +893,22 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       // of owner testing, while scale without direct interaction has been
       // holding. The wording is positive placement rather than a prohibition,
       // because a negative leaves the writer nowhere to put the can.
+      //
+      // Three changes on 2026-09-10, from four sentences the writer produced
+      // on 2026-09-09. The lens sentence left the third paragraph for the
+      // RULES block, where it is a rule beside the look's data. The meaning
+      // sentence in the third paragraph became MEANING_RULE, and the pairs in
+      // MEANING_EXAMPLES became a paragraph of their own after it, so the task
+      // is five paragraphs. The second paragraph gained WARDROBE_LINE. See
+      // docs/findings-2026-09-10-writer-behavior-and-meaning.md.
       task: [
         "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment. The moment says who is there, where, when and what is going on. Yours is what a camera saw at one instant of that, and the same moment an hour later, on another day, or a few minutes either side is a different photograph. Write the photograph, not the moment.",
         "",
-        "Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are cast from the description in THE LIVED WORLD: write particular people who belong there, with what they are doing and how they carry themselves, and do not describe anyone by their job or their age bracket. Nobody in this frame has appeared in another picture of this brand, so do not use an example's name and do not write an example as themselves.",
+        `Take the moment's people, its place, and its time, and write what a camera in that room would see. The people are cast from the description in THE LIVED WORLD: write particular people who belong there, with what they are doing and how they carry themselves, and do not describe anyone by their job or their age bracket. Nobody in this frame has appeared in another picture of this brand, so do not use an example's name and do not write an example as themselves. ${WARDROBE_LINE}`,
         "",
-        "A good direction puts those people in that place doing separate concrete things. A direction is one instant, so every person is in the middle of one thing rather than several in a row. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means or how it should feel is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color cast, the grain, the contrast, the focus and the lens are all set elsewhere in this prompt and do not belong in the prose.",
+        `A good direction puts those people in that place doing separate concrete things. A direction is one instant, so every person is in the middle of one thing rather than several in a row. It names a few objects that belong there. It describes light by where it comes from and how it behaves on what it hits. ${MEANING_RULE}`,
+        "",
+        MEANING_EXAMPLES,
         "",
         "Where a product is named below, it is present in the scene as one object among several, mentioned once, and it is never the subject. It is not what the moment is about. The product sits where someone set it down and left it, on a surface in the room, and no one in the frame is holding or touching it.",
       ].join("\n"),
@@ -766,7 +917,11 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
     // moments, same world and visual grammar, and the camera arrives when
     // nobody is in the frame. The task text is the owner's, approved as
     // written, and test/scene-brief.test.js matches it against the string, so
-    // an edit here fails the suite.
+    // an edit here fails the suite. The 2026-09-10 changes to the scene kind
+    // above were applied here in the same places: the lens sentence out to
+    // RULES, the meaning sentence replaced by MEANING_RULE, the examples as a
+    // paragraph after it, and SURFACES_LINE on the second paragraph, because
+    // nobody in this frame is wearing anything.
     //
     // The prose never says the room is empty. Two hand pulls on 2026-09-08
     // returned empty frames from complete description with no prohibition and
@@ -781,9 +936,11 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       task: [
         "You write the direction for one photograph. Below are three moments from this brand's world, and you write one direction from each. A direction is one photograph taken inside a moment, at a point when nobody is in the frame. The moment says who is there, where, when and what is going on. Yours is what a camera saw in that place a few minutes before they arrived, a few minutes after they left, or at an hour when the room is theirs but empty.",
         "",
-        "The people are still the reason the room looks the way it does. They are the kind of people THE LIVED WORLD describes, and nobody in particular: the room belongs to someone cast from that description who has appeared in no other picture of this brand. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add.",
+        `The people are still the reason the room looks the way it does. They are the kind of people THE LIVED WORLD describes, and nobody in particular: the room belongs to someone cast from that description who has appeared in no other picture of this brand. Write what their activity left behind: a chair at the angle someone pushed it to, tools laid out in the order they were being used, a cup with something still in it, a surface worn where hands go. Use the moment's place and its time. Do not write a person into the frame, do not write a hand or part of a body, and do not say that the room is empty. Describe what is there completely enough that there is nothing left to add. ${SURFACES_LINE}`,
         "",
-        "Name one thing in the frame that is not the product and give it size and position, so the eye has somewhere to land first. Without a person the frame has no natural subject, and whatever is largest and most contrasted becomes one. A direction is one instant, so the room is in one state rather than several. It names a few objects that belong there and gives each one a state and the reason it is in that state. It describes light by where it comes from and how it behaves on what it hits. Every sentence is something the camera can record, so a sentence about what the picture means is a sentence to cut. A direction is what was in front of the lens rather than how the film rendered it, so the color, the grain, the contrast, the focus and the lens are set elsewhere in this prompt and do not belong in the prose.",
+        `Name one thing in the frame that is not the product and give it size and position, so the eye has somewhere to land first. Without a person the frame has no natural subject, and whatever is largest and most contrasted becomes one. A direction is one instant, so the room is in one state rather than several. It names a few objects that belong there and gives each one a state and the reason it is in that state. It describes light by where it comes from and how it behaves on what it hits. ${MEANING_RULE}`,
+        "",
+        MEANING_EXAMPLES,
         "",
         "Where a product is named below, it appears once. It sits where someone set it down on a surface in the room, and it is never the subject and never centered.",
         "",
@@ -811,19 +968,6 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   };
   const kind = kinds[requestedKind] || kinds.scene;
 
-  // The look is chosen before the scene is written, so the scene is authored
-  // for the medium rather than handed to it afterward. The look owns capture
-  // character; the scene owns content.
-  //
-  // A peopleless scene with no look chosen resolves the default here rather
-  // than at compile time. Resolving it only in the compiler meant the direction
-  // was written with no medium in the prompt at all and then compiled against
-  // one, which is the conflict shape ADR 0018 exists to remove. A look that
-  // reaches the writer decides the setting before the prose is written, and a
-  // look that arrives afterward can only contradict it.
-  const lookBrief = resolveLook(body.look)
-    || (peopleless ? resolveLook(SCENE_NO_PEOPLE_DEFAULT_LOOK) : null);
-
   // ADR 0018. A look that requires a condition to exist has to decide the
   // setting, and it was losing to the earned-environments rule that used to sit
   // below because that rule sat in the system prompt and the look was only in
@@ -834,23 +978,25 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   //
   // The world rules that sat here were cut on 2026-09-07. See the comment block
   // above this function for their wording and the record of what produced them.
+  //
+  // The medium's own line left this block on 2026-09-10; the comment above the
+  // behavior block in context says why. What remains here is the environment
+  // precedence, which is a rule, and the peopleless suspension.
   const lookRules = lookBrief
     ? [
-        `This image is made with a specific photographic medium and the direction has to be something that medium can actually produce: ${lookBrief.line}`,
         lookBrief.environment === "binding"
-          ? `That medium requires ${lookBrief.requires}. Set the scene somewhere that condition holds. Choose the brand's earned environment that can be photographed this way, or the moment in an earned environment when that condition is true, and if no earned environment can carry it, say so in the label rather than setting the scene somewhere the medium would not work. This requirement outranks the preference for a familiar setting.`
-          : "That medium works in any setting, so the environment stays governed by the brand's earned environments.",
-        // Several look lines describe faces, skin, hair, and how a subject
-        // holds the camera. `neutral` and `color_slide_1975` are the clearest
-        // cases, and on this kind those sentences describe nothing. Precedence
-        // is stated rather than left for the writer to work out, which is the
-        // same shape as the fix that made a binding look decide the setting.
+          ? `This photograph is made in a medium that requires ${lookBrief.requires}. Set the scene somewhere that condition holds. Choose the brand's earned environment that can be photographed this way, or the moment in an earned environment when that condition is true, and if no earned environment can carry it, say so in the label rather than setting the scene somewhere the medium would not work. This requirement outranks the preference for a familiar setting.`
+          : "This photograph is made in a medium that works in any setting, so the environment stays governed by the brand's earned environments.",
+        // The behavior sentence describes how people face and hold the camera,
+        // and on this kind those clauses describe nothing. Precedence is stated
+        // rather than left for the writer to work out, which is the same shape
+        // as the fix that made a binding look decide the setting.
         //
-        // Untested as of 2026-09-08. If a person appears in a render on a
-        // face-heavy look, this sentence is not enough and the fallback is
-        // filtering the look list for this kind.
+        // Untested as of 2026-09-08 in its earlier wording. If a person
+        // appears in a render on a face-heavy look, this sentence is not
+        // enough and the fallback is filtering the look list for this kind.
         peopleless
-          ? "Nobody is in the frame, so anything that medium says about how a subject behaves on camera, how a face or skin renders, or how a person holds themselves does not apply here. Its color, its contrast, its grain, and how it holds or loses focus apply in full."
+          ? `Nobody is in the frame, so anything under ${LOOK_BEHAVIOR_HEADING} about how a person faces, holds, or knows about the camera does not apply here. The distance it keeps and the hour it implies apply in full.`
           : "",
       ].filter(Boolean)
     : [];
@@ -863,6 +1009,10 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
     "RULES:",
     ...lookRules.map((rule) => `- ${rule}`),
     ...(kind.rules || []).map((rule) => `- ${rule}`),
+    // The sentence from 2026-09-08, moved from the third task paragraph into
+    // the rules on 2026-09-10. The rule is that a direction describes what
+    // was in front of the lens; the look is data, and now arrives as data.
+    ...(writesAScene ? [`- ${LENS_RULE}`] : []),
     "- No em dashes. No fragment stacks. Plain declarative sentences.",
     "- Write physical facts, not perceptual targets. A camera can be told where a light sits, which surfaces it strikes, how many people are present and which way they face, what is cropped, and what is dry or worn and why. It cannot be told to make something feel authentic, cinematic, elevated, atmospheric, or unposed. Every sentence that does not change what is in front of the lens is a sentence the frame will ignore.",
     ...(writesAScene
@@ -881,28 +1031,35 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
     body.hint ? `The user has started describing it: ${body.hint}` : "Propose three directions the brand could credibly take.",
   ].filter(Boolean).join("\n");
 
-  const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
-    body: JSON.stringify({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: systemPrompt },
-        { role: "user", content: userPrompt },
-      ],
-      max_tokens: writesAScene ? 2200 : 800,
-      temperature: 0.9,
-    }),
-  });
-  if (!chatResponse.ok) {
-    const errorBody = await chatResponse.text();
-    throw new Error(`OpenAI returned status ${chatResponse.status}: ${errorBody.slice(0, 200)}`);
-  }
-  const chatData = await chatResponse.json();
-  const raw = chatData.choices?.[0]?.message?.content?.trim() || "";
+  const model = writerModel(env);
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userPrompt },
+  ];
+  const ask = async (conversation, maxTokens) => {
+    const chatResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model,
+        messages: conversation,
+        max_tokens: maxTokens,
+        temperature: 0.9,
+      }),
+    });
+    if (!chatResponse.ok) {
+      const errorBody = await chatResponse.text();
+      throw new Error(`OpenAI returned status ${chatResponse.status}: ${errorBody.slice(0, 200)}`);
+    }
+    const chatData = await chatResponse.json();
+    return chatData.choices?.[0]?.message?.content?.trim() || "";
+  };
+  const parseJson = (raw) => JSON.parse(raw.replace(/```json|```/g, "").trim());
+
+  const raw = await ask(messages, writesAScene ? 2200 : 800);
   let options = [];
   try {
-    const parsed = JSON.parse(raw.replace(/```json|```/g, "").trim());
+    const parsed = parseJson(raw);
     options = Array.isArray(parsed.options) ? parsed.options.slice(0, 3) : [];
     // Kept from the four-field shape. A model that emits world instead of
     // brief used to produce a card with a heading and no body, and accepting
@@ -920,6 +1077,66 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   options = options.filter((option) => option && String(option.brief || "").trim());
   if (!options.length) throw new Error("No suggestions came back. Try again.");
 
+  // Every direction gets an id here, so the job record can say which of the
+  // three was chosen and which sentences were stripped from which.
+  const batch = crypto.randomBytes(3).toString("hex");
+  options = options.map((option, index) => ({
+    id: `direction-${batch}-${index + 1}`,
+    label: text(option.label),
+    brief: text(option.brief),
+  }));
+
+  // The meaning check, on scene kinds only. The template and sales kinds write
+  // two or three sentences about a surface or an object, and a check that
+  // strips a sentence from those leaves nothing worth rendering.
+  //
+  // A direction the check cuts below the floor is written again once, in the
+  // same conversation, naming what was cut. If the second attempt also lands
+  // under the floor it is returned stripped and flagged rather than looped.
+  const stripped = [];
+  let regenerated = 0;
+  if (writesAScene) {
+    const checked = [];
+    for (const option of options) {
+      let result = stripMeaningSentences(option.brief);
+      let current = { ...option, brief: result.text };
+      let flagged = false;
+      for (const sentence of result.stripped) stripped.push({ directionId: option.id, sentence, attempt: 1 });
+      if (result.stripped.length && result.sentenceCount < MEANING_CHECK_MIN_SENTENCES) {
+        regenerated += 1;
+        try {
+          const retryRaw = await ask([
+            ...messages,
+            { role: "assistant", content: raw },
+            {
+              role: "user",
+              content: [
+                `The direction labelled "${option.label}" lost these sentences because each one told the reader what the picture means rather than what the camera recorded:`,
+                ...result.stripped.map((sentence) => `- ${sentence}`),
+                "Write that direction again, for the same moment, as one piece of prose between 120 and 220 words in which every sentence names something visible and the last sentence is a thing in the frame.",
+                'Return only JSON: {"label":"three or four words","brief":"the direction"}. No markdown fences, no preamble.',
+              ].join("\n"),
+            },
+          ], 1200);
+          const retry = parseJson(retryRaw);
+          const retryBrief = text(retry?.brief || retry?.option?.brief);
+          if (retryBrief) {
+            result = stripMeaningSentences(retryBrief);
+            for (const sentence of result.stripped) stripped.push({ directionId: option.id, sentence, attempt: 2 });
+            current = { ...option, label: text(retry?.label || retry?.option?.label) || option.label, brief: result.text };
+          }
+        } catch {
+          // The first attempt, stripped, is what goes back. A failed retry is
+          // not worth failing the whole set over.
+        }
+        flagged = result.sentenceCount < MEANING_CHECK_MIN_SENTENCES;
+      }
+      if (String(current.brief).trim()) checked.push(flagged ? { ...current, flagged: true } : current);
+    }
+    options = checked;
+    if (!options.length) throw new Error("Every direction was cut by the meaning check. Try again.");
+  }
+
   // The grammar entries that fed the writer travel back with the suggestions, so
   // the job can record which statements shaped the scene and an ambition entry
   // keeps its label all the way to the result screen.
@@ -930,11 +1147,16 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   sendJson(response, 200, {
     options,
     drewOn,
-    model: "gpt-4o",
+    model,
     // Which world briefed the writer, so a result can say whether it came
     // from the brand today or the brand evolved.
     world,
     grammarEntries: grammarEntries.length ? grammarEntries : undefined,
     momentIds: momentIds.length ? momentIds : undefined,
+    // What the meaning check removed, by direction, and how many directions
+    // were written a second time. Both ride the job record if a direction is
+    // chosen, and the corpus is built from them.
+    stripped,
+    regenerated,
   });
 }
