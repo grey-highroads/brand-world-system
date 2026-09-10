@@ -79,7 +79,8 @@ function prepareShell(workspace) {
 
   workspace.classList.add("review-focus-active");
   const description = workspace.querySelector(":scope > .page-header .page-description");
-  if (description) description.textContent = "Make the few decisions where your judgment changes the brand.";
+  const focusedDescription = "Make the few decisions where your judgment changes the brand.";
+  if (description && description.textContent !== focusedDescription) description.textContent = focusedDescription;
 }
 
 function markPassiveProtections(workspace) {
