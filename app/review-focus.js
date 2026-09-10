@@ -17,6 +17,7 @@ const resolvedSignals = new Set([
 ]);
 
 let pendingAdvance = null;
+let reviewingCompleted = false;
 let applying = false;
 
 function reviewWorkspace() {
@@ -57,6 +58,8 @@ function cleanShell() {
   document.querySelector(".app-shell")?.classList.remove("review-focus-shell");
   document.querySelector(".review-focus-exit")?.remove();
   document.querySelector(".review-focus-drawer-scrim")?.remove();
+  reviewingCompleted = false;
+  pendingAdvance = null;
 }
 
 function prepareShell(workspace) {
@@ -156,6 +159,7 @@ function buildSlide(workspace) {
 function buildUnderbar(workspace, items) {
   if (!items.length || workspace.querySelector(".review-focus-underbar")) return;
   const active = activeQueueIndex(items);
+  const reviewReady = Boolean(workspace.querySelector(".brain-review-finish.ready"));
   const underbar = document.createElement("div");
   underbar.className = "review-focus-underbar";
   underbar.innerHTML = `
@@ -163,12 +167,15 @@ function buildUnderbar(workspace, items) {
       <button class="review-focus-nav-button" type="button" data-review-back ${active === 0 ? "disabled" : ""}>‹ Previous</button>
       <button class="review-focus-nav-button" type="button" data-review-next ${active === items.length - 1 ? "disabled" : ""}>Next ›</button>
     </div>
-    <span class="review-focus-save-note">Choices save immediately. You can return and change one.</span>
+    ${reviewingCompleted && reviewReady
+      ? '<button class="review-focus-nav-button" type="button" data-review-done>Done reviewing</button>'
+      : '<span class="review-focus-save-note">Choices save immediately. You can return and change one.</span>'}
   `;
   workspace.querySelector(".brain-review-grid")?.after(underbar);
 }
 
 function buildCompletion(workspace, items) {
+  if (reviewingCompleted) return false;
   const finish = workspace.querySelector(".brain-review-finish.ready");
   if (!finish || workspace.querySelector(".review-focus-complete")) return false;
 
@@ -307,7 +314,16 @@ document.addEventListener("click", (event) => {
     return;
   }
 
+  if (target.closest("[data-review-done]")) {
+    event.preventDefault();
+    event.stopPropagation();
+    reviewingCompleted = false;
+    applyReviewFocus();
+    return;
+  }
+
   if (target.closest(".review-focus-drawer .brain-queue-item")) {
+    reviewingCompleted = true;
     document.querySelector(".review-focus-drawer-scrim")?.remove();
   }
 }, true);
