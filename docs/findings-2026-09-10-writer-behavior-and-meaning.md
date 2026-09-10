@@ -42,6 +42,7 @@ Two corrections to the brief. The job record lives in `service.js`, which the br
 
 - No CSS for the disclosure. It renders with the existing `studio-add-link`, `mini-pill`, and `section-label` classes and plain list items. `app/styles.css` was not on the file list.
 - The behavior sentences are drafts. The language tuning is the owner's.
+- `neutral` is still misnamed, and now visibly so. Its behavior sentence says one person holds the camera's gaze from across a room on a long lens, in a room nobody tidied, lit by one positioned light. That describes what the look does, so the sentence stays. It is a specific look wearing the wrong name, which the deferred register already records; the sentence puts the mismatch on the writer's page where a reader can see it.
 - The outputs log entry (`recordOutput` in `app.js`) does not carry directions; the saved package does, and review reads from the package.
 
 ## Tests
