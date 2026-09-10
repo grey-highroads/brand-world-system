@@ -321,23 +321,24 @@
     const drawerScrim = document.getElementById('drawerScrim');
     const queue = document.getElementById('queue');
     const toast = document.getElementById('toast');
+    const allAnswered = () => answers.every(answer => answer !== null);
 
     function renderProgress() {
-      if (answers.every(Boolean)) { progress.innerHTML = ''; return; }
+      if (allAnswered()) { progress.innerHTML = ''; return; }
       progress.innerHTML = `
         <div class="progress-row">
           <span class="progress-label">Decision ${index + 1} of ${decisions.length}</span>
           <button class="all-link" id="openDrawer" type="button">View all decisions</button>
         </div>
         <div class="segments" aria-hidden="true">
-          ${decisions.map((_, i) => `<i class="${answers[i] ? 'done' : i === index ? 'current' : ''}"></i>`).join('')}
+          ${decisions.map((_, i) => `<i class="${answers[i] !== null ? 'done' : i === index ? 'current' : ''}"></i>`).join('')}
         </div>`;
       document.getElementById('openDrawer').onclick = openDrawer;
     }
 
     function renderDecision() {
       renderProgress();
-      if (answers.every(Boolean)) { renderComplete(); return; }
+      if (allAnswered()) { renderComplete(); return; }
       const d = decisions[index];
       stage.innerHTML = `
         <section class="decision">
@@ -405,7 +406,7 @@
       queue.querySelectorAll('[data-index]').forEach(btn => btn.onclick = () => {
         index = Number(btn.dataset.index);
         closeDrawer();
-        if (answers.every(Boolean)) answers[index] = null;
+        if (allAnswered()) answers[index] = null;
         renderDecision();
       });
     }
