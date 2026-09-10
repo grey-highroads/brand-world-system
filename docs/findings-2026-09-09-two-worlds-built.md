@@ -60,3 +60,9 @@ Owner ruling: the evolved run is authoring, not research. Changes, all in `src/b
 - The reach sentences rewritten as authoring latitude. Default reach is now "a new world" in `schema.js#DEFAULT_REACH` and `app.js#SYNTHESIS_REACH`.
 
 The today run is unchanged, byte for byte, and the test that pins the pass 2 and 3 rule blocks equal across worlds still passes. Suite: 233 tests, 232 pass, the ambient fixture.
+
+## Amendment, 2026-09-09, later: rebuild the evolved world alone
+
+A full rebuild costs eight model calls, and the today passes were unchanged by the authoring rewrite above. So `mode: "evolved"` on pass 5 starts a synthesis at the evolved passes: `service.js#runEvolvedStart` seeds pass results 1 to 4 from the stored brain's approved today world, rehydrates the stored sources, and runs passes 5 to 8 at the reach on the request. The final save has `kind: "evolved-synthesis"`, carries the today world over unchanged, keeps `approvedResult.artifacts.today`, drops `approvedResult.artifacts.evolved`, and sets `brain.evolvedStatus` to draft with the stage left at ready, so the writer reads today until the new evolved world is approved on its own. It backs up the stored brain first like any other replace.
+
+In the app, "Rebuild the brand world, evolved" on the guidance rail once today is approved. `startEvolvedRebuild` drives passes 5 to 8 with the same recovery the full loop uses and lands on the Artifacts tab with the evolved Lived World selected. Two tests pin it. Suite: 235 tests, 234 pass, the ambient fixture.

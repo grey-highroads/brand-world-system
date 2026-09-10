@@ -3789,6 +3789,7 @@ function renderBrainGuidance() {
                 ? `
                   ${evolvedWaiting ? `<button class="button primary" type="button" data-action="approve-brain-evolved">Approve the brand world, evolved</button>` : ""}
                   <button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Go to Design Studio</button>
+                  <button class="button secondary" type="button" data-action="rebuild-evolved-world" title="Runs only the four evolved passes. The brand today stays as approved.">Rebuild the brand world, evolved</button>
                 `
                 : `
                   <button class="button primary" type="button" data-action="approve-brain-today">${hasEvolved ? "Approve the brand today" : "Approve for production"}</button>
@@ -7962,6 +7963,102 @@ async function startBrainSynthesis() {
   }
 }
 
+// Rebuild only the brand world, evolved (2026-09-09). The four today passes
+// are not run; the server seeds them from the stored brain and runs passes 5
+// to 8. Half the cost of a full rebuild, and the path a reach change or an
+// authoring change takes. The today approval stands throughout. The prior
+// evolved approval is withdrawn when the new candidate lands, so production
+// reads today until the new world is approved on its own.
+async function startEvolvedRebuild() {
+  if (state.brain.artifactStatus !== "ready") {
+    setToast("Approve the brand today first");
+    return;
+  }
+  if (state.brain.stage === "processing" && !state.brain.processingComplete) {
+    navigate("brain-processing");
+    return;
+  }
+  state.brain.stage = "processing";
+  state.brain.processingComplete = false;
+  state.brain.processingError = "";
+  state.brain.processingStep = FIRST_EVOLVED_PASS - 1;
+  navigate("brain-processing");
+  if (typeof fetch !== "function") return;
+
+  const requestId = newRequestId("synthesis");
+  state.brain.synthesisRequestId = requestId;
+  const evolvedPasses = SYNTHESIS_PASSES.filter((pass) => pass >= FIRST_EVOLVED_PASS);
+  const lastPass = evolvedPasses[evolvedPasses.length - 1];
+  let runningPass = evolvedPasses[0];
+  try {
+    let body = null;
+    for (const pass of evolvedPasses) {
+      runningPass = pass;
+      state.brain.processingStep = pass - 1;
+      if (state.screen === "brain-processing") render();
+      const payload = pass === evolvedPasses[0]
+        ? { pass, mode: "evolved", requestId, reach: SYNTHESIS_REACH }
+        : { pass, requestId, reach: SYNTHESIS_REACH };
+      let response = null;
+      try {
+        response = await fetch("/api/brand-brain/synthesize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+      } catch (networkError) {
+        if (pass === lastPass) throw networkError;
+        const completed = await waitForSynthesisPass(requestId, pass);
+        if (!completed) throw networkError;
+        body = null;
+        continue;
+      }
+      body = await readApiJson(response);
+      if (!response.ok) throw new Error(body.error || "The brand world, evolved, could not be rebuilt.");
+    }
+    if (!body?.result) throw new Error("The rebuild came back without a result. Try again.");
+    applyEvolvedRebuild(body, requestId);
+  } catch (error) {
+    const recovered = runningPass === lastPass ? await recoverBrainSynthesis(requestId) : null;
+    if (recovered) {
+      applyEvolvedRebuild(recovered, requestId);
+      setToast("The rebuilt evolved world was recovered after the connection dropped");
+    } else {
+      state.brain.processingError = `${error.message || "The rebuild response was lost."} The approved brain is unchanged. Try again when the connection is stable.`;
+      state.brain.processingComplete = true;
+      state.brain.stage = "ready";
+    }
+  } finally {
+    if (state.screen.startsWith("brain")) render();
+  }
+}
+
+function applyEvolvedRebuild(body, requestId) {
+  currentSynthesisResult = body.result;
+  brainArtifacts = brainArtifactsFrom(body.result);
+  brainExceptions = (body.result.reviewQuestions || []).map((question, index) => ({
+    ...question,
+    id: question.id || `review-${index + 1}`,
+    scope: (question.scope ?? []).map((entry) => [entry.label, entry.value]),
+  }));
+  if (body.approvedResult) state.brain.approvedResult = body.approvedResult;
+  state.brain.evolvedStatus = "draft";
+  state.brain.evolvedApprovedVersion = 0;
+  state.brain.processingComplete = true;
+  state.brain.processingError = "";
+  state.brain.processingStep = synthesisSteps.length;
+  state.brain.stage = "ready";
+  state.brain.synthesisModel = body.model || "OpenAI";
+  state.brain.synthesisResponseId = body.responseId || "";
+  state.brain.synthesisRequestId = body.synthesisRequestId || requestId;
+  state.brain.savedAt = body.savedAt || "";
+  state.brain.guidanceView = "artifacts";
+  state.brain.selectedEvolvedArtifactId = "evolved-lived";
+  recordBrainHistory("The brand world, evolved, was rebuilt", "Only the four evolved passes ran. The brand today is unchanged and stays approved. Production writes from the brand today until the new evolved world is approved.", "complete");
+  void persistBrainState();
+  navigate("brain-guidance");
+}
+
 function setToast(message) {
   state.toast = message;
   render();
@@ -10127,6 +10224,7 @@ root.addEventListener("click", (event) => {
   if (action === "seed-protections" && !protections.busyId) void seedProtections();
   if (action === "retry-protections") void hydrateProtections(true);
   if (action === "start-brain-synthesis") startBrainSynthesis();
+  if (action === "rebuild-evolved-world") void startEvolvedRebuild();
   if (action === "retry-brain-synthesis") startBrainSynthesis();
   if (action === "select-brain-exception") {
     state.brain.selectedExceptionId = target.dataset.id;

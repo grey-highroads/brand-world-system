@@ -869,3 +869,66 @@ test("the evolved passes carry the authoring rules and the today passes carry no
   assert.match(passInstructions(8), /A camera section any brand could use is not finished/);
   assert.equal(DEFAULT_REACH, "a new world");
 });
+
+// ---------------------------------------------------------------------------
+// Evolved-only rebuild (2026-09-09)
+// ---------------------------------------------------------------------------
+
+// The today world did not change, so the four today passes are seeded from
+// the stored brain and only passes 5 to 8 run. The today approval stands; the
+// prior evolved approval is withdrawn so the new world gets its own decision.
+test("an evolved-only rebuild runs four passes on the stored today world and keeps today approved", async () => {
+  const store = passStore();
+  await runAllPasses(store, { reach: "a clear direction" });
+  const full = store.saved();
+  // Approve both worlds the way the app does.
+  const approved = { ...full.result, artifacts: { today: full.result.artifacts.today, evolved: full.result.artifacts.evolved } };
+  await store.write({ ...full, approvedResult: approved, brain: { stage: "ready", artifactStatus: "ready", approvedVersion: 1, evolvedStatus: "ready", evolvedApprovedVersion: 1 } });
+
+  const seen = [];
+  let last = null;
+  for (const pass of [5, 6, 7, 8]) {
+    last = await synthesizeBrandBrain(
+      pass === 5
+        ? { pass, mode: "evolved", requestId: "evolved-rebuild-test", reach: "a new world" }
+        : { pass, requestId: "evolved-rebuild-test", reach: "a new world" },
+      {
+        store,
+        env: { OPENAI_API_KEY: "test-only" },
+        async synthesize(call) {
+          seen.push(call);
+          return { result: { ...passOutput(call.passId), ...(call.passId === 6 ? { livedWorld: { cast: { description: "New people.", examples: [{ name: "Rae", who: "Rae, 29." }] } } } : {}) }, responseId: `r-${call.passId}`, model: "test" };
+        },
+      },
+    );
+  }
+  assert.deepEqual(seen.map((c) => c.passId), [5, 6, 7, 8], "only the evolved passes ran");
+  // Each evolved pass saw the stored today world as passes 1 through 4.
+  for (const call of seen) {
+    assert.equal(call.priorPasses[2].livedWorld, full.result.artifacts.today.livedWorld, `pass ${call.passId} reads the stored today Lived World`);
+    assert.equal(call.reach, "a new world");
+    assert.ok(Array.isArray(call.sources) && call.sources.length, "the stored sources were rehydrated");
+  }
+  assert.equal(last.complete, true);
+  const saved = store.saved();
+  assert.equal(saved.kind, "evolved-synthesis");
+  assert.equal(saved.reach, "a new world");
+  assert.deepEqual(saved.result.artifacts.today, full.result.artifacts.today, "the today world is carried over unchanged");
+  assert.equal(saved.result.artifacts.evolved.livedWorld.cast.description, "New people.");
+  // Today stays approved; the old evolved approval is gone.
+  assert.deepEqual(saved.approvedResult.artifacts.today, full.result.artifacts.today);
+  assert.equal(saved.approvedResult.artifacts.evolved, undefined);
+  assert.equal(saved.brain.artifactStatus, "ready");
+  assert.equal(saved.brain.evolvedStatus, "draft");
+  assert.equal(saved.brain.evolvedApprovedVersion, 0);
+  assert.equal(saved.brain.stage, "ready");
+  assert.equal(store.backups().length, 1, "the rebuild backed up the stored brain like any other replace");
+});
+
+test("an evolved-only rebuild refuses when there is no stored today world", async () => {
+  const store = passStore();
+  await assert.rejects(
+    synthesizeBrandBrain({ pass: 5, mode: "evolved", requestId: "x" }, { store, env: { OPENAI_API_KEY: "test-only" }, async synthesize() { throw new Error("must not be called"); } }),
+    /no brand today/,
+  );
+});

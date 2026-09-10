@@ -53,6 +53,83 @@ export async function saveBrandBrainSnapshot(snapshot, store) {
 
 const FIRST_PASS = PASS_IDS[0];
 const FINAL_PASS = PASS_IDS[PASS_IDS.length - 1];
+const FIRST_EVOLVED_PASS = PASS_IDS.find((id) => passWorld(id) === "evolved");
+
+// An evolved-only rebuild (2026-09-09). The today world did not change, so the
+// four today passes are not run again; their results are seeded from the
+// stored brain and the four evolved passes run against them. Half the cost of
+// a full rebuild, and the path every reach change or authoring change takes.
+function todayPassResultsFrom(saved) {
+  const root = saved?.approvedResult || saved?.result;
+  if (!root) return null;
+  const today = worldArtifacts(root, "today") || worldArtifacts(saved?.result, "today");
+  if (!today?.livedWorld || !today?.storyArchitecture || !today?.visualGrammar) return null;
+  return {
+    1: {
+      brandName: root.brandName,
+      brandDescription: root.brandDescription,
+      synthesisSummary: root.synthesisSummary,
+      cleanAssetCount: root.cleanAssetCount,
+      guidanceSections: root.guidanceSections,
+      reviewQuestions: root.reviewQuestions || [],
+      dossier: today.dossier,
+    },
+    2: { livedWorld: today.livedWorld },
+    3: { storyArchitecture: today.storyArchitecture },
+    4: { visualGrammar: today.visualGrammar },
+  };
+}
+
+async function runEvolvedStart(body, options) {
+  const store = options.store;
+  const fetchImpl = options.fetchImpl || fetch;
+  const synthesize = options.synthesize || synthesizePassWithChatCompletions;
+  const stored = await store.read();
+  const todayResults = todayPassResultsFrom(stored);
+  if (!todayResults) {
+    const error = new Error("There is no brand today to build the evolved world on. Build the Brand Brain first.");
+    error.status = 409;
+    throw error;
+  }
+  const sources = await rehydrateSources(stored.sources, store);
+  if (!sources.length) {
+    const error = new Error("The stored brain has no sources to read. Build the Brand Brain first.");
+    error.status = 409;
+    throw error;
+  }
+  const reach = reachFor(body);
+  const pass = await synthesize({
+    apiKey: options.env.OPENAI_API_KEY,
+    model: options.env.OPENAI_MODEL,
+    passId: FIRST_EVOLVED_PASS,
+    sources,
+    priorPasses: todayResults,
+    baseline: null,
+    baselineVersion: null,
+    reach,
+    fetchImpl,
+  });
+  const inProgress = {
+    kind: "synthesis-in-progress",
+    synthesisRequestId: typeof body.requestId === "string" ? body.requestId.slice(0, 120) : null,
+    mode: "evolved",
+    dryRun: false,
+    baselineVersion: null,
+    baseline: null,
+    baselineStoredVersion: stored?.brain?.approvedVersion || null,
+    storedBrain: stored?.brain || null,
+    storedApprovedResult: stored?.approvedResult || null,
+    sources: stored.sources,
+    synthesisSources: strippedForStorage(sources),
+    passResults: { ...todayResults, [FIRST_EVOLVED_PASS]: pass.result },
+    passes: [{ pass: FIRST_EVOLVED_PASS, responseId: pass.responseId, model: pass.model, usage: pass.usage || null }],
+    reach,
+    nextPass: FIRST_EVOLVED_PASS + 1,
+    startedAt: new Date().toISOString(),
+  };
+  await store.writeInProgress(inProgress);
+  return passProgress(inProgress);
+}
 
 function passError(passId, message, status = 400) {
   const error = new Error(`Pass ${passId}, ${PASS_LABELS[passId]}: ${message}`);
@@ -232,6 +309,7 @@ export async function synthesizeBrandBrain(body, options) {
   }
   const store = options.store;
   try {
+    if (body.mode === "evolved" && passId === FIRST_EVOLVED_PASS) return await runEvolvedStart(body, options);
     return passId === FIRST_PASS
       ? await runFirstPass(body, options)
       : await runLaterPass(passId, body, options);
@@ -354,16 +432,24 @@ async function runLaterPass(passId, body, options) {
   }
 
   const incremental = inProgress.mode === "incremental";
+  const evolvedOnly = inProgress.mode === "evolved";
   const firstPassEntry = passes.find((entry) => entry.pass === FIRST_PASS) || passes[0];
+  // An evolved-only rebuild keeps the approved today world and replaces only
+  // the evolved candidate. The prior evolved approval is withdrawn: the new
+  // world needs its own decision, and the writer reads today until it gets one.
+  const priorApproved = evolvedOnly ? inProgress.storedApprovedResult : null;
+  const evolvedApprovedResult = priorApproved
+    ? { ...priorApproved, artifacts: { today: worldArtifacts(priorApproved, "today") || undefined } }
+    : null;
   const saved = {
-    kind: incremental ? "incremental-synthesis" : "synthesis",
+    kind: incremental ? "incremental-synthesis" : evolvedOnly ? "evolved-synthesis" : "synthesis",
     synthesisRequestId: inProgress.synthesisRequestId,
     sources: inProgress.sources,
     result: assembleBrainFromPasses(passResults),
     // The reach the evolved world was built at. The writer never reads it;
     // it is the record of how far the aspiration sources were allowed to go.
     reach: reachRecord.reach || null,
-    approvedResult: inProgress.baseline,
+    approvedResult: evolvedOnly ? evolvedApprovedResult : inProgress.baseline,
     baselineVersion: incremental ? inProgress.baselineVersion || inProgress.baselineStoredVersion || null : null,
     responseId: firstPassEntry?.responseId || null,
     model: firstPassEntry?.model || null,
@@ -371,7 +457,15 @@ async function runLaterPass(passId, body, options) {
     // Per-pass provenance. The saved shape above is what it always was; this is
     // the one addition, and nothing reads it to decide anything.
     passes: passes.map((entry) => ({ pass: entry.pass, label: PASS_LABELS[entry.pass], responseId: entry.responseId, model: entry.model, usage: entry.usage })),
-    brain: incremental
+    brain: evolvedOnly
+      ? {
+          ...(inProgress.storedBrain || {}),
+          stage: "ready",
+          processingComplete: true,
+          evolvedStatus: "draft",
+          evolvedApprovedVersion: 0,
+        }
+      : incremental
       ? {
           ...(inProgress.storedBrain || {}),
           stage: "review",
