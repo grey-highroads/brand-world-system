@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "targets": {
+    "brand-brain-needs-review": {
+      "targetKind": "existing-ui",
+      "projectId": "48e84143-282e-489c-86fc-f6c0dce4c1eb",
+      "baselineDraftId": "802c6679-629b-4cab-90a0-4edd03f42ecb",
+      "activeDraftId": "802c6679-629b-4cab-90a0-4edd03f42ecb",
+      "designSystemPath": ".superdesign/design-system.md",
+      "referenceIds": [
+        "6bb2d410-ff61-471b-8c6f-6186578e5dac"
+      ],
+      "contextFiles": [
+        ".superdesign/design-system.md",
+        "app/review-focus.js",
+        "app/review-focus.css",
+        "app/app.js:1530:1670",
+        "app/app.js:5820:6060",
+        "app/app.js:10267:10281",
+        "app/styles.css:1:360",
+        "app/styles.css:4892:5330",
+        "app/polish.css:1:220",
+        "app/polish.css:531:710"
+      ],
+      "fingerprints": {
+        ".superdesign/design-system.md": "366f3d3357d794e3b0471b4eba5159018d07ad53a60adb260876253779e940fc",
+        "app/review-focus.js": "65c3eecc05547e961fb2ab845754480cb19982282c916c402e14c4601851ae30",
+        "app/review-focus.css": "61b63ddc1aca5a8a71119f96e262d8db09b2b79239e239406c2c70ba641b26ee",
+        "app/app.js": "a81774e61d5c10cd61e2e930abf1fdabe401ed532b082357426f7d51452a085d",
+        "app/styles.css": "89ad12b2516e90a7614b6a34870441f5ec28f764f43b781560f69e1d5f98ed05",
+        "app/polish.css": "dfb4e6adbad83cfd2ca7f92357996908db1b0b06cd3e56f753b310936cb3ff1e"
+      },
+      "components": [
+        {
+          "name": "AppShell",
+          "id": "5cd4ae48-ac2f-4280-a3f0-a78005a8c137",
+          "sourcePath": "app/app.js"
+        }
+      ],
+      "drafts": {
+        "802c6679-629b-4cab-90a0-4edd03f42ecb": {
+          "title": "Refined Brand Brain Needs Review",
+          "visualDirection": "compact focus mode with automatic advance and completion as the final slide",
+          "currentVersion": 2
+        }
+      },
+      "updatedAt": "2026-09-10T17:04:00Z"
+    }
+  }
+}

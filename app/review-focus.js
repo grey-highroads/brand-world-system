@@ -19,6 +19,8 @@ const resolvedSignals = new Set([
 let pendingAdvance = null;
 let reviewingCompleted = false;
 let applying = false;
+let advanceTimer = null;
+const advanceDelay = 420;
 
 function reviewWorkspace() {
   const workspace = document.querySelector(".brain-workspace");
@@ -55,6 +57,8 @@ function nextUnresolved(items, fromId) {
 }
 
 function cleanShell() {
+  if (advanceTimer) window.clearTimeout(advanceTimer);
+  advanceTimer = null;
   document.querySelector(".app-shell")?.classList.remove("review-focus-shell");
   document.querySelector(".review-focus-exit")?.remove();
   document.querySelector(".review-focus-drawer-scrim")?.remove();
@@ -165,23 +169,24 @@ function buildUnderbar(workspace, items) {
   underbar.className = "review-focus-underbar";
   underbar.innerHTML = `
     <div class="review-focus-underbar-nav">
-      <button class="review-focus-nav-button" type="button" data-review-back ${active === 0 ? "disabled" : ""}>‹ Previous</button>
-      <button class="review-focus-nav-button" type="button" data-review-next ${active === items.length - 1 ? "disabled" : ""}>Next ›</button>
+      <button class="review-focus-nav-button" type="button" data-review-back ${active === 0 ? "disabled" : ""}><span aria-hidden="true">‹</span> Previous</button>
+      <button class="review-focus-nav-button" type="button" data-review-next ${active === items.length - 1 && !reviewReady ? "disabled" : ""}>Next <span aria-hidden="true">›</span></button>
     </div>
     ${reviewingCompleted && reviewReady
-      ? '<button class="review-focus-nav-button" type="button" data-review-done>Done reviewing</button>'
+      ? '<span class="review-focus-save-note">All decisions are saved. Next returns to completion.</span>'
       : '<span class="review-focus-save-note">Choices save immediately. You can return and change one.</span>'}
   `;
-  workspace.querySelector(".brain-review-grid")?.after(underbar);
+  workspace.querySelector(".review-focus-slide")?.append(underbar);
 }
 
 function buildCompletion(workspace, items) {
   if (reviewingCompleted) return false;
   const finish = workspace.querySelector(".brain-review-finish.ready");
-  if (!finish || workspace.querySelector(".review-focus-complete")) return false;
+  const slide = workspace.querySelector(".review-focus-slide");
+  if (!finish || !slide || workspace.querySelector(".review-focus-complete")) return false;
 
   const finalAction = finish.querySelector("button");
-  const complete = document.createElement("section");
+  const complete = document.createElement("div");
   complete.className = "review-focus-complete";
   complete.innerHTML = `
     <span class="review-focus-complete-mark" aria-hidden="true">✓</span>
@@ -190,21 +195,22 @@ function buildCompletion(workspace, items) {
     <div class="review-focus-complete-actions"></div>
   `;
   const actions = complete.querySelector(".review-focus-complete-actions");
-  if (finalAction) actions.append(finalAction);
-  const review = document.createElement("button");
-  review.type = "button";
-  review.className = "button";
-  review.dataset.reviewAll = "";
-  review.textContent = "Review decisions";
-  actions.append(review);
+  if (finalAction) {
+    finalAction.className = "button primary";
+    finalAction.textContent = "Close review";
+    actions.append(finalAction);
+  }
 
   const progress = workspace.querySelector(".review-focus-progress");
-  const grid = workspace.querySelector(".brain-review-grid");
-  const underbar = workspace.querySelector(".review-focus-underbar");
-  if (progress) progress.hidden = true;
-  if (grid) grid.hidden = true;
-  if (underbar) underbar.hidden = true;
-  finish.before(complete);
+  const progressLabel = progress?.querySelector(".review-focus-progress-head span");
+  if (progressLabel) progressLabel.textContent = "Review complete";
+
+  const footer = document.createElement("div");
+  footer.className = "review-focus-underbar review-focus-complete-footer";
+  footer.innerHTML = '<button class="review-focus-nav-button" type="button" data-review-last><span aria-hidden="true">‹</span> Review last decision</button>';
+
+  slide.classList.add("review-focus-complete-slide");
+  slide.replaceChildren(complete, footer);
   return true;
 }
 
@@ -250,10 +256,18 @@ function applyReviewFocus() {
     if (pendingAdvance) {
       const next = nextUnresolved(items, pendingAdvance.id);
       pendingAdvance = null;
-      if (next) {
-        next.click();
-        return;
-      }
+      if (advanceTimer) window.clearTimeout(advanceTimer);
+
+      buildProgress(workspace, items);
+      buildSlide(workspace);
+      buildUnderbar(workspace, items);
+
+      advanceTimer = window.setTimeout(() => {
+        advanceTimer = null;
+        if (next?.isConnected) next.click();
+        else applyReviewFocus();
+      }, advanceDelay);
+      return;
     }
 
     buildProgress(workspace, items);
@@ -270,8 +284,16 @@ function navigateRelative(direction) {
   if (!workspace) return;
   const items = queueItems(workspace);
   if (!items.length) return;
+  if (advanceTimer) window.clearTimeout(advanceTimer);
+  advanceTimer = null;
+  pendingAdvance = null;
   const active = activeQueueIndex(items);
   const nextIndex = active + direction;
+  if (nextIndex >= items.length && workspace.querySelector(".brain-review-finish.ready")) {
+    reviewingCompleted = false;
+    applyReviewFocus();
+    return;
+  }
   if (nextIndex < 0 || nextIndex >= items.length) return;
   items[nextIndex].click();
 }
@@ -289,6 +311,9 @@ document.addEventListener("click", (event) => {
   if (target.closest("[data-review-all]")) {
     event.preventDefault();
     event.stopPropagation();
+    if (advanceTimer) window.clearTimeout(advanceTimer);
+    advanceTimer = null;
+    pendingAdvance = null;
     const workspace = reviewWorkspace();
     if (workspace) buildDrawer(workspace);
     return;
@@ -315,11 +340,13 @@ document.addEventListener("click", (event) => {
     return;
   }
 
-  if (target.closest("[data-review-done]")) {
+  if (target.closest("[data-review-last]")) {
     event.preventDefault();
     event.stopPropagation();
-    reviewingCompleted = false;
-    applyReviewFocus();
+    const workspace = reviewWorkspace();
+    const items = workspace ? queueItems(workspace) : [];
+    reviewingCompleted = true;
+    items.at(-1)?.click();
     return;
   }
 
