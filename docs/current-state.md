@@ -168,45 +168,43 @@ Client-namespaced blob storage under `brand-world-system/clients/${clientId}` (`
 
 ## 2. The writer
 
-### 2.1 `api/production/generate-copy.js` (911 lines, read completely)
+### 2.1 `api/production/generate-copy.js` (1,159 lines at the `writer` merge of 2026-09-10; read completely at `9b179465` and re-numbered after that session's edits)
 
-One serverless function carrying five actions plus a default. The dispatch is on `body.action`: `scene_brief` at `:47`, `segments` at `:59`, `audit_copy` at `:70`, `copy_type` at `:100`, and everything else falls through to LinkedIn post generation at `:143-311`. The comment at `:52-58` says the actions are stacked here because the function count sat at the Vercel Hobby ceiling. That constraint is stale, per section 5.
+One serverless function carrying five actions plus a default. The dispatch is on `body.action`: `scene_brief` at `:48`, `segments` at `:60`, `audit_copy` at `:71`, `copy_type` at `:101`, and everything else falls through to LinkedIn post generation. The comment at `:53-59` says the actions are stacked here because the function count sat at the Vercel Hobby ceiling. That constraint is stale, per section 5.
 
-**`handleSceneBrief` is exported at `generate-copy.js:502`**, with signature `({ body, brain, product, apiKey, response, random = Math.random })`. Pass 1's line number is correct.
+**`handleSceneBrief` is exported at `generate-copy.js:621`**, with signature `({ body, brain, product, apiKey, response, random = Math.random, env = process.env })`. `env` was added 2026-09-10 so a test can set the writer model.
 
 **Everything it reads from the brain.** Three artifacts and nothing else:
 
 | Block | Line | Source |
 | --- | --- | --- |
-| `BRAND:` name and description | `:547` | brain root |
-| `THE LIVED WORLD` | `:565-593` | `artifacts.livedWorld` |
-| `THE STORY` | `:619-627` | `artifacts.storyArchitecture` |
-| `THE VISUAL GRAMMAR` | `:636-665` | `artifacts.visualGrammar`, five sections |
-| `CAMPAIGN:` | `:667-670` | `body.campaign` |
-| `PRODUCT:` | `:674-679` | product record, name only |
+| `BRAND:` name and description | `:666` | brain root |
+| `THE LIVED WORLD` | `:690` | `artifacts.livedWorld` |
+| `THE STORY` | `:753` | `artifacts.storyArchitecture` |
+| `THE VISUAL GRAMMAR` | `:798` | `artifacts.visualGrammar`, five sections |
+| `CAMPAIGN:` | `:802` | `body.campaign` |
+| `PRODUCT:` | `:809` | product record, name only |
+| `HOW THIS BRAND'S PICTURES ARE TAKEN` | `:841` | the resolved look's `behavior` sentence, scene kinds only, absent with no look |
 
-**What is withheld, verified by absence in the file:** the guidance sections (read at `:144-147` for the LinkedIn path only, never inside `handleSceneBrief`), the whole dossier, the grammar's `rejects` section (the label list at `:642-646` has five entries and omits it), product `visual_direction` and `exclusions`. The product line at `:675` is one sentence: the name, and that it is present in the scene. The comment at `:671-673` gives the reason. Pass 1 is confirmed on every item.
+**What is withheld, verified by absence in the file:** the guidance sections, the whole dossier, the grammar's `rejects` section, product `visual_direction` and `exclusions`, and since 2026-09-10 the look's optical `line`. The product line at `:809` is one sentence: the name, and that it is present in the scene.
 
-**Three moments, chosen at random.** `SCENE_MOMENT_COUNT = 3` at `:484`; `selectMoments` at `:486-500` is a partial Fisher-Yates over a copy with an injectable `random`. Called at `:597`. Selected ids return to the client as `momentIds` at `:902,908`.
+**Three moments, chosen at random.** `SCENE_MOMENT_COUNT = 3` at `:486`; `selectMoments` at `:599`; called at `:725`. Selected ids return to the client as `momentIds` at `:1155`.
 
-**The task text.** Pass 1 says about 252 words. Counted at head: **324 words for the `scene` kind** (`:728-736`) and **414 words for `scene_no_people`** (`:754-764`). Pass 1's figure is either pre-09-08 or a miscount. Corrected.
+**The task text.** Scene kind at `:904-914`, five paragraphs: the second ends on `WARDROBE_LINE`, the third ends on `MEANING_RULE`, the fourth is `MEANING_EXAMPLES`. Peopleless kind at `:936-947`, six paragraphs, with `SURFACES_LINE` in place of the wardrobe line. The constants sit at `:500-528`. The lens sentence is no longer in either task; it is `LENS_RULE` at `:505`, appended to `RULES:` for scene kinds at `:1015`.
 
-**The output shape is one prose block, not four fields.** `:847` asks for exactly three options, each `{label, brief}`, the brief between 120 and 220 words. The four-field shape is gone.
+**The output shape is one prose block.** `:1024` asks for exactly three options, each `{label, brief}`, the brief between 120 and 220 words.
 
-**This closes pass 1's open defect 6.** `package.js:479-481` still reads `brief.sceneComposition`, `sceneLighting`, and `sceneProps` and still compiles them as labelled clauses at `package.js:648-650`. Nothing writes them any more. `app/app.js:1325` initializes all three to empty string, the apply-suggestion handler at `app/app.js:9421-9435` explicitly no longer sets them (comment at `:9423-9429`), and `retireSceneDetail` at `app/app.js:11189-11193` clears them on every other path. So the three clauses are a dead branch reachable only by a hand-typed field or a direct API call. Not a join defect. Dead code on both sides.
+**Dead branch, unchanged.** `package.js` still reads `brief.sceneComposition`, `sceneLighting`, and `sceneProps`; nothing writes them. See the 2026-09-09 read for the account.
 
-**Model and settings for the scene writer:** `gpt-4o`, `temperature: 0.9`, `max_tokens: 2200` for a scene and 800 otherwise, at `generate-copy.js:861-867`. The LinkedIn path uses `gpt-4o` at `temperature: 0.7` at `:263-269`.
+**Model and settings for the scene writer:** `writerModel(env)` at `:494`, which reads `OPENAI_WRITER_MODEL` and defaults to `gpt-4o`; `temperature: 0.9` at `:1047`; `max_tokens` 2200 for a scene and 800 otherwise. The LinkedIn path still uses `gpt-4o` at `temperature: 0.7`.
 
-**The look reaches the writer in full, as a rule.** `lookBrief` resolves at `:797-798` with the same `SCENE_NO_PEOPLE_DEFAULT_LOOK` fallback the compiler uses. `lookRules[0]` at `:812` injects the look's entire `line` into the system prompt under `RULES:`.
+**The look reaches the writer as one behavior sentence, in context.** `lookBrief` resolves at `:825` with the `SCENE_NO_PEOPLE_DEFAULT_LOOK` fallback. Its `behavior` field goes into context at `:841`. `lookRules` at `:985` holds the environment precedence and, on the peopleless kind, the suspension sentence. No look's optical line appears in the system prompt, and `test/scene-brief.test.js` checks every entry in `LOOKS` against the RULES block.
 
-**This is the mechanical cause of your first recorded craft failure.** The writer transcribes the look because the look's full optical description is in its RULES block at `:812`, while the instruction not to transcribe it is one clause inside paragraph three of the task at `:733`. A rule outranks a task paragraph in the same prompt. The third `lookRules` entry that used to forbid this was cut at `c8664ba3` and its wording is preserved at `:460-464`. The comment at `:701-717` records the owner's reasoning for not restoring it. **Recorded as a finding, not a recommendation:** the constraint currently sits in the weaker of the two positions in the same prompt.
+**The meaning check.** `MEANING_TELLS` at `:547`, `stripMeaningSentences` at `:588`, applied at `:1098` to scene kinds only. A direction cut below three sentences is written again once in the same conversation; a second failure is returned stripped and `flagged`. Every option carries an `id` from `:1082`. The response at `:1147` carries `options`, `drewOn`, `model`, `world`, `grammarEntries`, `momentIds`, `stripped`, and `regenerated`.
 
-**A binding look outranks the earned environment**, `:813-814`. An agnostic look states the environment stays governed by earned environments, `:815`. On the peopleless kind an extra sentence at `:826` tells the writer to ignore whatever the look says about faces and subject behavior; the comment at `:822-824` marks it untested as of 2026-09-08.
+**Defect, unhardened lookup, still open.** `const kind = kinds[requestedKind] || kinds.scene;` at `:969`, with `requestedKind` from the request body at `:645`. Recorded in section 6.
 
-**Defect, unhardened lookup.** `const kind = kinds[requestedKind] || kinds.scene;` at `generate-copy.js:785`, where `requestedKind` is `String(body.kind || "scene")` at `:526`, arriving unvalidated from the request body. This is a bare lookup on an object literal, so an inherited property name resolves and passes the truthiness fallback. `src/lookup.js` exists for exactly this and is imported by `package.js:16`, `looks.js:1`, and `display-budget.js:1`. `generate-copy.js` does not import it. Consequence at head is a scene brief compiled with an empty task rather than a crash, so severity is low, but it is the same class of defect the repo hardened twice elsewhere. **Recorded in section 6.**
-
-**Ambition labels travel to the writer.** `:658` appends "(declared ambition for this brand)" to any grammar entry whose `basis.origin` is `ambition`, and `:657` records every grammar entry into `grammarEntries`, returned to the client at `:907`. This is the seam ADR 0016 built.
-
+**What the app does with the response.** `app/app.js` reads `options`, `drewOn`, and since 2026-09-10 the whole payload into `state.studio.directions` (`offeredDirections`, `app.js:11044`). `grammarEntries` reaches nothing in the app. The directions record travels on the render request (`app.js:8307`) to `working.directions` in `src/production/service.js:625`, through `offeredDirectionsRecord` at `service.js:491`. See `docs/findings-2026-09-10-writer-behavior-and-meaning.md`.
 
 ---
 
