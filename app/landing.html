@@ -486,18 +486,91 @@
 
       /* Section: CTA close */
       .cta-close {
-        text-align: center;
+        background: var(--ink-900);
+        border-top: 1px solid var(--paper-200);
         padding: 120px 32px;
+      }
+
+      .cta-close .band-inner {
+        display: grid;
+        grid-template-columns: minmax(0, 0.9fr) minmax(420px, 1.1fr);
+        gap: clamp(56px, 8vw, 112px);
+        align-items: start;
       }
 
       .cta-close h2 {
         max-width: 620px;
-        margin: 0 auto 16px;
+        margin-bottom: 16px;
         text-wrap: balance;
       }
 
       .cta-close .band-caption {
-        margin: 0 auto 32px;
+        max-width: 460px;
+      }
+
+      .contact-kicker {
+        display: block;
+        margin-bottom: 16px;
+        color: var(--coral);
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .contact-form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 28px 24px;
+        padding-top: 6px;
+      }
+
+      .contact-field {
+        display: grid;
+        gap: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .contact-field-full {
+        grid-column: 1 / -1;
+      }
+
+      .contact-field input,
+      .contact-field textarea {
+        width: 100%;
+        padding: 10px 0 12px;
+        color: var(--text);
+        background: transparent;
+        border: 0;
+        border-bottom: 1px solid var(--paper-300);
+        border-radius: 0;
+        font: 400 16px/1.5 var(--sans);
+        resize: vertical;
+        transition: border-color 0.15s;
+      }
+
+      .contact-field textarea {
+        min-height: 124px;
+      }
+
+      .contact-field input::placeholder,
+      .contact-field textarea::placeholder {
+        color: #7f8997;
+      }
+
+      .contact-field input:focus,
+      .contact-field textarea:focus {
+        outline: none;
+        border-color: var(--coral);
+      }
+
+      .contact-submit {
+        grid-column: 1 / -1;
+        justify-self: start;
+        border: 0;
+        cursor: pointer;
       }
 
       /* ── Footer ──────────────────────────────────────────── */
@@ -543,11 +616,15 @@
         .method-card,
         .method-card + .method-card { padding: 24px 0; border-left: 0; border-bottom: 1px solid var(--paper-200); }
         .workflow-grid { grid-template-columns: 1fr; gap: 16px; }
+        .cta-close .band-inner { grid-template-columns: 1fr; gap: 48px; }
         .site-header { padding: 12px 16px; }
       }
 
       @media (max-width: 560px) {
         .signal-line { gap: 10px 18px; }
+        .contact-form { grid-template-columns: 1fr; }
+        .contact-field-full,
+        .contact-submit { grid-column: 1; }
       }
     </style>
   </head>
@@ -565,7 +642,7 @@
       </nav>
       <div class="site-actions">
         <button class="login-trigger" onclick="openLogin()">Client login</button>
-        <a class="conversation-link" href="mailto:connect@higher-roads.com?subject=Brand%20World%20System">Start a conversation</a>
+        <a class="conversation-link" href="#contact">Start a conversation</a>
       </div>
     </header>
 
@@ -606,7 +683,7 @@
           We help companies turn their brand strategy into a living visual world. Our platform learns the choices, references, products, and creative signals that make your brand recognizable, then helps every new asset feel like it belongs.
         </p>
         <div class="cta-row">
-          <a class="cta-btn" href="mailto:connect@higher-roads.com?subject=Brand%20World%20System">Start a conversation</a>
+          <a class="cta-btn" href="#contact">Start a conversation</a>
           <a class="cta-secondary" href="#world">See what a world contains</a>
         </div>
       </div>
@@ -691,11 +768,29 @@
     </section>
 
     <!-- ▌ CTA CLOSE ─────────────────────────────────────── -->
-    <section class="band cta-close">
+    <section class="band cta-close" id="contact">
       <div class="band-inner">
-        <h2>Your brand doesn't need another document. It needs a creative partner that understands what makes your brand yours.</h2>
-        <p class="band-caption">If the vision is clear but the everyday work still falls short of it, we should talk.</p>
-        <a class="cta-btn" href="mailto:connect@higher-roads.com?subject=Brand%20World%20System">Start a conversation</a>
+        <div class="contact-copy">
+          <span class="contact-kicker">Start a conversation</span>
+          <h2>Your brand doesn't need another document. It needs a creative partner that understands what makes your brand yours.</h2>
+          <p class="band-caption">If the vision is clear but the everyday work still falls short of it, we should talk.</p>
+        </div>
+        <form class="contact-form" action="https://formspree.io/f/xrerprnv" method="POST">
+          <input type="hidden" name="_subject" value="Brand World System inquiry" />
+          <label class="contact-field">
+            Your name
+            <input type="text" name="name" autocomplete="name" placeholder="Name" required />
+          </label>
+          <label class="contact-field">
+            Your email
+            <input type="email" name="email" autocomplete="email" placeholder="you@company.com" required />
+          </label>
+          <label class="contact-field contact-field-full">
+            What are you working on?
+            <textarea name="message" rows="5" placeholder="Tell us about the brand, where it is today, and what you want it to become." required></textarea>
+          </label>
+          <button class="cta-btn contact-submit" type="submit">Get in touch</button>
+        </form>
       </div>
     </section>
 
