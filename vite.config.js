@@ -11,7 +11,6 @@ export default defineConfig({
         main: resolve(__dirname, "app/index.html"),
         landing: resolve(__dirname, "app/landing.html"),
         place: resolve(__dirname, "app/place.html"),
-        review: resolve(__dirname, "app/needs-review.html"),
       },
     },
   },
