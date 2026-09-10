@@ -932,3 +932,22 @@ test("an evolved-only rebuild refuses when there is no stored today world", asyn
     /no brand today/,
   );
 });
+
+test("an evolved-only rebuild can carry new direction sources, merged over the stored set", async () => {
+  const store = passStore();
+  await runAllPasses(store, { reach: "a clear direction" });
+  const full = store.saved();
+  await store.write({ ...full, approvedResult: { ...full.result }, brain: { stage: "ready", artifactStatus: "ready", approvedVersion: 1 } });
+  const seen = [];
+  for (const pass of [5, 6, 7, 8]) {
+    await synthesizeBrandBrain(
+      pass === 5
+        ? { pass, mode: "evolved", requestId: "evolved-src-test", reach: "a new world", sources: [{ id: "direction-note", name: "Direction note", authority: "brand-evidence", aspiration: "aspiration", influence: "Strong", content: "Cool people doing cool things.", files: [] }] }
+        : { pass, requestId: "evolved-src-test", reach: "a new world" },
+      { store, env: { OPENAI_API_KEY: "test-only" }, async synthesize(call) { seen.push(call); return { result: passOutput(call.passId), responseId: `r-${call.passId}`, model: "test" }; } },
+    );
+  }
+  const ids = seen[0].sources.map((source) => source.id);
+  assert.ok(ids.includes("approved-note") && ids.includes("direction-note"), `pass 5 read stored and new sources: ${ids.join(", ")}`);
+  assert.ok(store.saved().sources.some((source) => source.id === "direction-note"), "the new source is stored with the brain");
+});

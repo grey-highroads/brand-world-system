@@ -7812,6 +7812,12 @@ async function startBrainSynthesis() {
   const requestSources = incremental
     ? state.brain.sources.filter((source) => state.brain.pendingSourceIds.includes(source.id) && !source.templateMeta && !source.productMeta)
     : state.brain.sources.filter((source) => !source.templateMeta && !source.productMeta);
+  // An update made only of direction sources does not change the brand today,
+  // so it does not re-run the today passes. It goes to the evolved-only path
+  // with the new sources riding the request (2026-09-09).
+  if (incremental && state.brain.artifactStatus === "ready" && requestSources.length && requestSources.every((source) => source.aspiration === "aspiration")) {
+    return startEvolvedRebuild(requestSources);
+  }
   if (!requestSources.length) {
     // Only templates or product briefs were added. These are stored alongside
     // the brain but excluded from brain synthesis (templates are production
@@ -7969,7 +7975,7 @@ async function startBrainSynthesis() {
 // authoring change takes. The today approval stands throughout. The prior
 // evolved approval is withdrawn when the new candidate lands, so production
 // reads today until the new world is approved on its own.
-async function startEvolvedRebuild() {
+async function startEvolvedRebuild(newSources = []) {
   if (state.brain.artifactStatus !== "ready") {
     setToast("Approve the brand today first");
     return;
@@ -7997,7 +8003,7 @@ async function startEvolvedRebuild() {
       state.brain.processingStep = pass - 1;
       if (state.screen === "brain-processing") render();
       const payload = pass === evolvedPasses[0]
-        ? { pass, mode: "evolved", requestId, reach: SYNTHESIS_REACH }
+        ? { pass, mode: "evolved", requestId, reach: SYNTHESIS_REACH, sources: newSources.length ? newSources : undefined }
         : { pass, requestId, reach: SYNTHESIS_REACH };
       let response = null;
       try {
@@ -8042,6 +8048,8 @@ function applyEvolvedRebuild(body, requestId) {
     scope: (question.scope ?? []).map((entry) => [entry.label, entry.value]),
   }));
   if (body.approvedResult) state.brain.approvedResult = body.approvedResult;
+  state.brain.pendingSourceIds = [];
+  state.brain.revisionPending = false;
   state.brain.evolvedStatus = "draft";
   state.brain.evolvedApprovedVersion = 0;
   state.brain.processingComplete = true;

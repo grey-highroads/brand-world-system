@@ -91,7 +91,15 @@ async function runEvolvedStart(body, options) {
     error.status = 409;
     throw error;
   }
-  const sources = await rehydrateSources(stored.sources, store);
+  // New sources may ride the request, the way an update carries them. They
+  // are normalized like any intake and merged over the stored set, so a
+  // direction source added after approval reaches the evolved passes without
+  // re-running the today passes.
+  const incoming = Array.isArray(body.sources) && body.sources.length
+    ? await normalizeSourcesForSynthesis(await enrichUrlSources(body.sources, fetchImpl), { readStoredFile: store.readSourceFile?.bind(store) })
+    : [];
+  const previous = await rehydrateSources(stored.sources, store);
+  const sources = mergeIncrementalSources(previous, incoming);
   if (!sources.length) {
     const error = new Error("The stored brain has no sources to read. Build the Brand Brain first.");
     error.status = 409;
@@ -119,7 +127,7 @@ async function runEvolvedStart(body, options) {
     baselineStoredVersion: stored?.brain?.approvedVersion || null,
     storedBrain: stored?.brain || null,
     storedApprovedResult: stored?.approvedResult || null,
-    sources: stored.sources,
+    sources: persistedSources(sources),
     synthesisSources: strippedForStorage(sources),
     passResults: { ...todayResults, [FIRST_EVOLVED_PASS]: pass.result },
     passes: [{ pass: FIRST_EVOLVED_PASS, responseId: pass.responseId, model: pass.model, usage: pass.usage || null }],
