@@ -2853,14 +2853,6 @@ select {
 
 .source-entry-form label,
 .source-entry-row label,
-.brain-feedback-form label {
-  display: grid;
-  gap: 5px;
-  color: var(--text);
-  font-size: 10px;
-  font-weight: 700;
-}
-
 .source-entry-row {
   display: grid;
   grid-template-columns: minmax(140px, 0.65fr) minmax(0, 1.35fr);
@@ -2868,10 +2860,6 @@ select {
 }
 
 .source-entry-form textarea,
-.brain-feedback-form textarea {
-  min-height: 118px;
-}
-
 .source-entry-form .button {
   width: fit-content;
 }
@@ -3952,26 +3940,6 @@ select {
   overflow-wrap: break-word;
 }
 
-.artifact-feedback {
-  display: grid;
-  justify-items: end;
-  flex: 0 1 auto;
-  min-width: 0;
-  max-width: 200px;
-}
-
-.artifact-feedback > span {
-  color: var(--muted);
-  font-size: 9px;
-}
-
-.artifact-feedback .guidance-comment-form,
-.artifact-feedback .guidance-saved-comment {
-  width: min(420px, 42vw);
-  justify-self: end;
-  text-align: left;
-}
-
 .artifact-lead-copy {
   max-width: 980px !important;
   color: var(--text) !important;
@@ -4410,29 +4378,11 @@ select {
   transition: 150ms ease;
 }
 
-.guidance-prose-block:hover,
-.guidance-prose-block:has(.guidance-comment-form) {
-  background: #27313e;
-  border-color: var(--paper-200);
-}
-
 .guidance-prose-block > p {
   margin: 0;
   color: #d9dee5;
   font-size: 12px;
   line-height: 1.78;
-}
-
-.guidance-prose-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  min-height: 24px;
-}
-
-.guidance-prose-actions > span {
-  color: var(--muted);
-  font-size: 8px;
 }
 
 .text-button {
@@ -4443,56 +4393,6 @@ select {
   border: 0;
   font-size: 9px;
   font-weight: 750;
-}
-
-.guidance-comment-form {
-  display: grid;
-  gap: 9px;
-  padding: 12px;
-  margin-top: 5px;
-  background: var(--ink-900);
-  border: 1px solid rgb(114 184 215 / 0.2);
-  border-radius: 4px;
-}
-
-.guidance-comment-form label {
-  display: grid;
-  gap: 5px;
-  color: var(--text);
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.guidance-comment-form textarea {
-  min-height: 82px;
-}
-
-.guidance-comment-form .button {
-  width: fit-content;
-}
-
-.guidance-saved-comment {
-  display: grid;
-  gap: 3px;
-  padding: 9px 11px;
-  margin-top: 6px;
-  background: rgb(179 164 229 / 0.08);
-  border-left: 2px solid var(--lavender);
-}
-
-.guidance-saved-comment strong {
-  color: var(--lavender-ink);
-  font-size: 8px;
-}
-
-.guidance-saved-comment span {
-  color: var(--text);
-  font-size: 9px;
-}
-
-.guidance-saved-comment.resolved {
-  opacity: 0.72;
-  border-left-color: var(--success);
 }
 
 .guidance-principles {
@@ -4748,19 +4648,6 @@ select {
 .brain-artifact-decision > .button {
   width: 100%;
   margin-top: 7px;
-}
-
-.brain-feedback-form {
-  display: grid;
-  gap: 10px;
-  padding-top: 14px;
-  margin-top: 14px;
-  border-top: 1px solid var(--paper-200);
-}
-
-.brain-history-card {
-  max-width: 920px;
-  padding: 20px;
 }
 
 .brain-history-list {
@@ -5857,17 +5744,6 @@ select {
 
   .artifact-section-heading {
     flex-direction: column;
-  }
-
-  .artifact-feedback {
-    justify-items: start;
-    width: 100%;
-  }
-
-  .artifact-feedback .guidance-comment-form,
-  .artifact-feedback .guidance-saved-comment {
-    width: 100%;
-    justify-self: start;
   }
 
   .artifact-code-module {

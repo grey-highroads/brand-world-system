@@ -113,7 +113,6 @@
 .brain-queue-item,
 .brain-evidence-card,
 .brain-decision-action,
-.guidance-comment-form,
 .guidance-principles li,
 .artifact-module {
   background: var(--surface-inset);
@@ -657,10 +656,6 @@ select,
 .brain-section-count,
 .brain-artifact-meta strong,
 .guidance-section-heading > small,
-.guidance-prose-actions > span,
-.guidance-comment-form label,
-.guidance-saved-comment strong,
-.guidance-saved-comment span,
 .guidance-principles li span,
 .guidance-evidence-list strong,
 .guidance-evidence-list small,

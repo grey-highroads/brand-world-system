@@ -1530,11 +1530,7 @@ const state = {
     guidanceReviewedIds: [],
     selectedBrainArtifactId: "dossier",
     selectedArtifactId: "",
-    commentTarget: "",
-    commentDraft: "",
     guidanceComments: [],
-    feedbackOpen: false,
-    feedbackDraft: "",
     history: [],
   },
   toast: "",
@@ -1914,10 +1910,6 @@ function resetSourceComposer() {
   state.brain.intakeDoor = "";
   state.brain.intakeKind = "";
   state.brain.intakeSlotId = "";
-}
-
-function commentsForTarget(target) {
-  return state.brain.guidanceComments.filter((comment) => comment.target === target);
 }
 
 function brainSectionNav() {
@@ -3349,28 +3341,8 @@ function renderBrainProcessing() {
   );
 }
 
-function guidanceCommentBlock(section, paragraph, index) {
-  const target = `${section.id}:prose:${index}`;
-  const comments = commentsForTarget(target);
-  const open = state.brain.commentTarget === target;
-  return `
-    <div class="guidance-prose-block">
-      <p>${escapeHtml(paragraph)}</p>
-      <div class="guidance-prose-actions">
-        <button class="text-button" type="button" data-action="toggle-guidance-comment" data-target="${target}">${open ? "Close comment" : "Comment on this"}</button>
-        ${comments.length ? `<span>${comments.length} ${comments.length === 1 ? "comment" : "comments"}</span>` : ""}
-      </div>
-      ${comments.map((comment) => `<div class="guidance-saved-comment ${comment.resolved ? "resolved" : ""}"><strong>${comment.resolved ? `Included in v${comment.resolvedVersion}` : "Your feedback"}</strong><span>${escapeHtml(comment.text)}</span></div>`).join("")}
-      ${
-        open
-          ? `<div class="guidance-comment-form">
-              <label><span>What should change here?</span><textarea data-action="guidance-comment-draft" placeholder="Point to what feels wrong, incomplete, or unclear.">${escapeHtml(state.brain.commentDraft)}</textarea></label>
-              <button class="button secondary" type="button" data-action="save-guidance-comment" data-target="${target}" data-section="${section.id}">Save comment</button>
-            </div>`
-          : ""
-      }
-    </div>
-  `;
+function guidanceProseBlock(paragraph) {
+  return `<div class="guidance-prose-block"><p>${escapeHtml(paragraph)}</p></div>`;
 }
 
 function guidanceArtifactCard(section, artifact, index) {
@@ -3388,22 +3360,8 @@ function guidanceArtifactCard(section, artifact, index) {
   `;
 }
 
-function artifactFeedback(artifact, sectionId) {
-  const target = `${artifact.id}:artifact:${sectionId}`;
-  const comments = commentsForTarget(target);
-  const open = state.brain.commentTarget === target;
-  return `
-    <div class="artifact-feedback">
-      <button class="text-button" type="button" data-action="toggle-guidance-comment" data-target="${target}">${open ? "Close comment" : "Comment on this section"}</button>
-      ${comments.length ? `<span>${comments.length} ${comments.length === 1 ? "comment" : "comments"}</span>` : ""}
-      ${comments.map((comment) => `<div class="guidance-saved-comment ${comment.resolved ? "resolved" : ""}"><strong>${comment.resolved ? `Included in v${comment.resolvedVersion}` : "Your feedback"}</strong><span>${escapeHtml(comment.text)}</span></div>`).join("")}
-      ${open ? `<div class="guidance-comment-form"><label><span>What should change here?</span><textarea data-action="guidance-comment-draft" placeholder="Point to what feels wrong, incomplete, or unclear.">${escapeHtml(state.brain.commentDraft)}</textarea></label><button class="button secondary" type="button" data-action="save-guidance-comment" data-target="${target}" data-section="${artifact.id}" data-label="${escapeHtml(artifact.name)}">Save comment</button></div>` : ""}
-    </div>
-  `;
-}
-
-function artifactSectionHeading(artifact, label, title, sectionId) {
-  return `<div class="artifact-section-heading"><span><span class="section-label">${escapeHtml(label)}</span><h3>${escapeHtml(title)}</h3></span>${artifactFeedback(artifact, sectionId)}</div>`;
+function artifactSectionHeading(artifact, label, title) {
+  return `<div class="artifact-section-heading"><span><span class="section-label">${escapeHtml(label)}</span><h3>${escapeHtml(title)}</h3></span></div>`;
 }
 
 function renderDossierArtifact(artifact) {
@@ -3590,12 +3548,7 @@ function renderGrammarArtifact(artifact, options = {}) {
   return grammarSectionMeta
     .map(([id, label, title]) => {
       const entries = Array.isArray(sections[id]) ? sections[id] : [];
-      // The sample preview renders without the comment affordance. Feedback
-      // buttons there would write into the real client's stored comments, and
-      // a sample is not a thing anyone should be able to give feedback on.
-      const heading = options.readOnly
-        ? `<div class="artifact-section-heading"><span><span class="section-label">${escapeHtml(label)}</span><h3>${escapeHtml(title)}</h3></span></div>`
-        : artifactSectionHeading(artifact, label, title, id);
+      const heading = artifactSectionHeading(artifact, label, title);
       const body = entries.length
         ? `<div class="artifact-grammar-entries">${entries.map((item) => `<article><strong>${escapeHtml(item.label || "")}</strong><p>${escapeHtml(item.statement || "")}</p>${basisNote(item)}</article>`).join("")}</div>`
         : `<p class="artifact-grammar-empty">Nothing here yet. The sources did not give the Brand Brain enough to write this without inventing it.</p>`;
@@ -3743,7 +3696,7 @@ function renderGuidanceHome() {
 
   return brainWorkspace(
     "Brand guidance",
-    "Read what the Brand Brain understands, section by section, and comment where it needs to change.",
+    "Read what the Brand Brain understands, section by section.",
     `
       <section class="guidance-home-sections" aria-labelledby="guidance-sections-title">
         <div class="guidance-home-section-heading">
@@ -3781,8 +3734,8 @@ function renderGuidanceSectionDocument(section, ready) {
       </header>
 
       <section class="guidance-document-section">
-        <div class="guidance-section-heading"><span><h3>What the Brand Brain understands</h3></span><small>Comments are saved with this draft.</small></div>
-        <div class="guidance-prose">${section.prose.map((paragraph, index) => guidanceCommentBlock(section, paragraph, index)).join("")}</div>
+        <div class="guidance-section-heading"><span><h3>What the Brand Brain understands</h3></span></div>
+        <div class="guidance-prose">${section.prose.map(guidanceProseBlock).join("")}</div>
       </section>
 
       <section class="guidance-document-section">
@@ -3804,7 +3757,7 @@ function renderGuidanceSectionDocument(section, ready) {
 
       <footer class="guidance-review-footer">
         <button class="button secondary guidance-review-nav" type="button" data-action="previous-guidance-section" ${sectionIndex === 0 ? "disabled" : ""}><span aria-hidden="true">←</span> Previous</button>
-        <span>Your progress and comments are saved as you move between sections.</span>
+        <span>Your progress is saved as you move between sections.</span>
         <button class="button primary guidance-review-nav" type="button" data-action="next-guidance-section">${sectionIndex === guidanceSections.length - 1 ? "Finish review" : "Next section"}<span aria-hidden="true">→</span></button>
       </footer>
     </article>
@@ -3815,7 +3768,6 @@ function renderGuidanceReviewComplete() {
   const ready = state.brain.artifactStatus === "ready";
   const hasEvolved = state.brain.evolvedStatus !== "not-created";
   const evolvedWaiting = ready && state.brain.evolvedStatus === "draft";
-  const commentCount = state.brain.guidanceComments.filter((comment) => !comment.resolved).length;
   const title = ready
     ? evolvedWaiting ? "The brand today is approved" : "Guidance is ready for production"
     : "Guidance review complete";
@@ -3823,9 +3775,7 @@ function renderGuidanceReviewComplete() {
     ? evolvedWaiting
       ? "Production can use the brand today. Approve the evolved world separately if it is where the brand is going."
       : "This exact stored version is now available to Design Studio."
-    : commentCount
-      ? `${commentCount} inline ${commentCount === 1 ? "comment is" : "comments are"} saved with this draft. Approve it or prepare a revision from that feedback.`
-      : "All six sections have been reviewed. Approve this stored version when it accurately describes the brand.";
+    : "All six sections have been reviewed. Approve this stored version when it accurately describes the brand.";
 
   return `
     <section class="card guidance-review-complete">
@@ -3838,14 +3788,8 @@ function renderGuidanceReviewComplete() {
           ? evolvedWaiting
             ? `<button class="button primary" type="button" data-action="approve-brain-evolved">Approve the brand world, evolved</button><button class="button secondary" type="button" data-action="exit-guidance-review">Close review</button>`
             : `<button class="button primary" type="button" data-action="exit-guidance-review">Close review</button><button class="button secondary" type="button" data-action="navigate-brain" data-screen="chooser">Go to Design Studio</button>`
-          : `<button class="button primary" type="button" data-action="approve-brain-today">${hasEvolved ? "Approve the brand today" : "Approve for production"}</button>${commentCount ? `<button class="button secondary" type="button" data-action="create-comment-revision">Prepare revision from inline feedback</button>` : ""}<button class="button secondary" type="button" data-action="exit-guidance-review">Close review</button><button class="text-button" type="button" data-action="toggle-brain-feedback">Leave overall feedback</button>`}
+          : `<button class="button primary" type="button" data-action="approve-brain-today">${hasEvolved ? "Approve the brand today" : "Approve for production"}</button><button class="button secondary" type="button" data-action="exit-guidance-review">Close review</button>`}
       </div>
-      ${state.brain.feedbackOpen && !ready ? `
-        <div class="brain-feedback-form guidance-review-feedback">
-          <label><span>What should change overall?</span><textarea data-action="brain-feedback" placeholder="Explain what feels incomplete, inaccurate, or unclear.">${escapeHtml(state.brain.feedbackDraft)}</textarea></label>
-          <button class="button secondary" type="button" data-action="create-brain-revision">Prepare a revised draft</button>
-        </div>
-      ` : ""}
       <button class="guidance-review-last" type="button" data-action="previous-guidance-section"><span aria-hidden="true">←</span> Review last section</button>
     </section>
   `;
@@ -3896,7 +3840,7 @@ function renderBrainArtifacts() {
   }
   return brainWorkspace(
     "Artifacts",
-    "Read the dossier, lived world, story architecture, and visual grammar for each world. Comment on any passage.",
+    "Read the dossier, lived world, story architecture, and visual grammar for each world.",
     renderBrainArtifactReader(),
     "brain-artifacts-workspace",
   );
@@ -7835,11 +7779,7 @@ function loadSampleSources() {
   state.brain.selectedBrainArtifactId = "dossier";
   state.brain.selectedSourceId = "";
   state.brain.selectedArtifactId = "";
-  state.brain.commentTarget = "";
-  state.brain.commentDraft = "";
   state.brain.guidanceComments = [];
-  state.brain.feedbackOpen = false;
-  state.brain.feedbackDraft = "";
   state.brain.history = [];
   recordBrainHistory("SLAKE source batch added", "50 items from the website, strategy decks, campaign archive, and stakeholder material were collected.", "complete");
   navigate("brain-sources");
@@ -9090,12 +9030,6 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="brain-source-item-exclusions"]')) {
     const source = state.brain.sources.find((item) => item.id === event.target.dataset.id);
     if (source) source.exclusions = event.target.value;
-  }
-  if (event.target.matches('[data-action="guidance-comment-draft"]')) {
-    state.brain.commentDraft = event.target.value;
-  }
-  if (event.target.matches('[data-action="brain-feedback"]')) {
-    state.brain.feedbackDraft = event.target.value;
   }
   if (event.target.matches('[data-action="promotion-rationale"]')) {
     state.brain.promotionRationale = event.target.value;
@@ -10460,28 +10394,6 @@ root.addEventListener("click", (event) => {
       setToast(`The brand world, evolved, v${state.brain.artifactVersion}, is what production writes from now`);
     }
   }
-  if (action === "toggle-brain-feedback") {
-    state.brain.feedbackOpen = !state.brain.feedbackOpen;
-    render();
-  }
-  if (action === "create-brain-revision") {
-    const feedback = state.brain.feedbackDraft.trim();
-    if (!feedback) {
-      setToast("Describe what should change first");
-    } else {
-      state.brain.artifactVersion += 1;
-      state.brain.artifactStatus = "draft";
-      state.brain.stage = "draft";
-      state.brain.feedbackOpen = false;
-      state.brain.feedbackDraft = "";
-      state.brain.selectedGuidanceId = "foundation";
-      state.brain.guidanceReviewComplete = false;
-      state.brain.guidanceReviewedIds = [];
-      recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} prepared`, `A revised draft was created from feedback: ${feedback}`, "governed");
-      void persistBrainState();
-      setToast(`Brand Brain v${state.brain.artifactVersion} draft prepared`);
-    }
-  }
   if (action === "start-guidance-review") {
     const reviewed = guidanceReviewedSet();
     state.brain.guidanceReviewActive = true;
@@ -10497,8 +10409,6 @@ root.addEventListener("click", (event) => {
     state.brain.guidanceReviewActive = true;
     state.brain.guidanceReviewComplete = false;
     state.brain.selectedArtifactId = "";
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     navigate("brain-guidance");
   }
   if (action === "exit-guidance-review") {
@@ -10515,8 +10425,6 @@ root.addEventListener("click", (event) => {
     } else {
       state.brain.selectedGuidanceId = guidanceSections[index + 1].id;
     }
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     void persistBrainState();
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -10529,8 +10437,6 @@ root.addEventListener("click", (event) => {
       const index = guidanceSections.findIndex((item) => item.id === state.brain.selectedGuidanceId);
       if (index > 0) state.brain.selectedGuidanceId = guidanceSections[index - 1].id;
     }
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     render();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -10539,73 +10445,24 @@ root.addEventListener("click", (event) => {
     state.brain.guidanceReviewActive = true;
     state.brain.guidanceReviewComplete = false;
     state.brain.selectedArtifactId = "";
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     navigate("brain-guidance");
   }
   if (action === "select-guidance-tab") {
     state.brain.selectedGuidanceId = target.dataset.id;
     state.brain.selectedArtifactId = "";
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     render();
   }
   if (action === "open-brain-artifact") {
     selectBrainArtifact(target.dataset.id);
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     navigate("brain-artifacts");
   }
   if (action === "select-brain-artifact") {
     selectBrainArtifact(target.dataset.id);
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
     render();
   }
   if (action === "toggle-guidance-artifact") {
     state.brain.selectedArtifactId = state.brain.selectedArtifactId === target.dataset.id ? "" : target.dataset.id;
     render();
-  }
-  if (action === "toggle-guidance-comment") {
-    state.brain.commentTarget = state.brain.commentTarget === target.dataset.target ? "" : target.dataset.target;
-    state.brain.commentDraft = "";
-    render();
-  }
-  if (action === "save-guidance-comment") {
-    const feedback = state.brain.commentDraft.trim();
-    if (!feedback) {
-      setToast("Write your comment first");
-    } else {
-      state.brain.guidanceComments.push({
-        target: target.dataset.target,
-        sectionId: target.dataset.section,
-        text: feedback,
-        version: state.brain.artifactVersion,
-        resolved: false,
-      });
-      state.brain.commentTarget = "";
-      state.brain.commentDraft = "";
-      recordBrainHistory("Inline feedback saved", `Feedback was attached to ${target.dataset.label || guidanceSections.find((item) => item.id === target.dataset.section)?.name || "Brand guidance"}.`, "governed");
-      void persistBrainState();
-      setToast("Comment saved with this passage");
-    }
-  }
-  if (action === "create-comment-revision") {
-    const activeComments = state.brain.guidanceComments.filter((comment) => !comment.resolved);
-    if (activeComments.length) {
-      state.brain.artifactVersion += 1;
-      state.brain.artifactStatus = "draft";
-      state.brain.selectedGuidanceId = "foundation";
-      state.brain.guidanceReviewComplete = false;
-      state.brain.guidanceReviewedIds = [];
-      activeComments.forEach((comment) => {
-        comment.resolved = true;
-        comment.resolvedVersion = state.brain.artifactVersion;
-      });
-      recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} prepared`, `${activeComments.length} inline ${activeComments.length === 1 ? "comment was" : "comments were"} carried into the revised draft.`, "governed");
-      void persistBrainState();
-      setToast(`Brand Brain v${state.brain.artifactVersion} draft prepared`);
-    }
   }
   if (action === "review-canon-promotion") navigate("brain-canon");
   if (action === "back-to-brain") navigate("brain");

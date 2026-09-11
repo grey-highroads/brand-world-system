@@ -374,12 +374,6 @@
   font-size: 11px;
 }
 
-.guidance-review-feedback {
-  width: min(620px, 100%);
-  margin-top: 20px;
-  text-align: left;
-}
-
 .guidance-review-last {
   position: absolute;
   bottom: 18px;

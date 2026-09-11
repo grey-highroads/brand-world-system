@@ -262,7 +262,6 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Section 1 of 6/);
   assert.match(session.appRoot.innerHTML, /What the Brand Brain understands/);
   assert.match(session.appRoot.innerHTML, /Why the system reached this view/);
-  assert.match(session.appRoot.innerHTML, /Comment on this/);
   assert.match(session.appRoot.innerHTML, /data-action="next-guidance-section"/);
 
   session.click("next-guidance-section");
@@ -293,32 +292,19 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   // and nothing else: no evolved heading, no evolved approve.
   assert.match(session.appRoot.innerHTML, /The brand today/);
   assert.doesNotMatch(session.appRoot.innerHTML, /The brand world, evolved/);
-  session.click("toggle-guidance-comment", { target: "story:artifact:rhythm" });
-  session.input("guidance-comment-draft", "Make the transition into the shared evening more specific.");
-  session.click("save-guidance-comment", { target: "story:artifact:rhythm", section: "story", label: "Story Architecture" });
-  assert.match(session.appRoot.innerHTML, /Make the transition into the shared evening more specific/);
+  // Inline comments were removed on 2026-09-11. The reader and the guidance
+  // review carry no comment controls; steering the brain goes through Sources.
+  assert.doesNotMatch(session.appRoot.innerHTML, /Comment on this/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /toggle-guidance-comment/);
 
   session.click("navigate-brain", { screen: "brain-guidance" });
   session.click("start-guidance-review");
-  for (let index = 0; index < 5; index += 1) session.click("next-guidance-section");
-  assert.match(session.appRoot.innerHTML, /Guidance review complete/);
-  assert.match(session.appRoot.innerHTML, /1 inline comment is saved/);
-  session.click("create-comment-revision");
-  assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v2/);
-
-  session.click("toggle-guidance-comment", { target: "foundation:prose:0" });
-  session.input("guidance-comment-draft", "Make the role of flavor more prominent.");
-  session.click("save-guidance-comment", { target: "foundation:prose:0", section: "foundation" });
-  assert.match(session.appRoot.innerHTML, /Make the role of flavor more prominent/);
-
   for (let index = 0; index < 6; index += 1) session.click("next-guidance-section");
-  assert.match(session.appRoot.innerHTML, /1 inline comment is saved/);
-  session.click("create-comment-revision");
-  assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v3/);
-  assert.match(session.appRoot.innerHTML, /Included in v3/);
+  assert.match(session.appRoot.innerHTML, /Guidance review complete/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /Leave overall feedback/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /inline feedback/);
 
   // A legacy brain has one approve, and it is the today approve.
-  for (let index = 0; index < 6; index += 1) session.click("next-guidance-section");
   assert.match(session.appRoot.innerHTML, /data-action="approve-brain-today">Approve for production/);
   assert.doesNotMatch(session.appRoot.innerHTML, /approve-brain-evolved/);
   session.click("approve-brain-today");
@@ -336,18 +322,18 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("finish-brain-review");
   assert.equal(session.evaluate("state.screen"), "brain-guidance");
   assert.equal(session.evaluate("state.brain.artifactStatus"), "ready");
-  assert.equal(session.evaluate("state.brain.artifactVersion"), 3);
+  assert.equal(session.evaluate("state.brain.artifactVersion"), 1);
   assert.equal(session.evaluate("state.brain.guidanceReviewedIds.length"), 6);
   assert.equal(session.evaluate("state.brain.history.length"), historyBefore);
   assert.match(session.appRoot.innerHTML, /Ready for production/);
   assert.match(session.appRoot.innerHTML, /6 of 6 reviewed/);
 
   session.click("navigate-brain", { screen: "brain-history" });
-  assert.match(session.appRoot.innerHTML, /Brand Brain v3 approved/);
+  assert.match(session.appRoot.innerHTML, /Brand Brain v1 approved/);
   assert.match(session.appRoot.innerHTML, /SLAKE source batch added/);
 
   session.click("navigate-brain", { screen: "brain-sources" });
-  assert.match(session.appRoot.innerHTML, /Active v3/);
+  assert.match(session.appRoot.innerHTML, /Active v1/);
   session.click("open-context-intake");
   session.click("set-source-form", { kind: "url" });
   session.click("set-source-provenance", { value: "ours" });
