@@ -3643,6 +3643,16 @@ const artifactContents = {
   grammar: ["People", "Places", "Objects", "Light", "Camera", "Refused territory"],
 };
 
+// Library copy is editorial navigation, not a preview of the generated body.
+// Generated artifact descriptions vary in length and belong inside the reader;
+// keeping these summaries fixed protects the hierarchy of the collection view.
+const artifactLibraryDescriptions = {
+  dossier: "A focused, evidence-backed reading of the brand foundation, audience, product truth, cultural codes, and creative guardrails.",
+  lived: "The people, pressures, rhythms, and environments where the brand can honestly belong.",
+  story: "A connected sequence of moments production can turn into a deliberate narrative.",
+  grammar: "The observable choices for people, places, objects, light, camera, and refused territory.",
+};
+
 function artifactReaderKey(artifact) {
   return artifact?.reader || artifact?.id?.replace(/^evolved-/, "") || "dossier";
 }
@@ -3679,7 +3689,7 @@ function renderArtifactCollectionItem(artifact, worldId) {
       <span class="artifact-library-number">${escapeHtml(artifact.number)}</span>
       <span class="artifact-library-item-copy">
         <strong>${escapeHtml(artifact.name)}</strong>
-        <small>${escapeHtml(artifact.description)}</small>
+        <small>${escapeHtml(artifactLibraryDescriptions[key] || artifact.short || "Open this artifact.")}</small>
       </span>
       <span class="artifact-library-item-meta"><em class="${artifactWorldStatus(worldId) === "ready" ? "ready" : "draft"}">${artifactWorldStatus(worldId) === "ready" ? "Complete" : "Draft"}</em><small>${artifactReadingTimes[key] || 6} min</small></span>
       <span class="artifact-library-arrow" aria-hidden="true">↗</span>
@@ -3697,7 +3707,7 @@ function renderArtifactLibrary() {
   const status = artifactWorldStatus(world.id);
   const worldCopy = world.id === "evolved"
     ? "The future ambition is held separately from current truth until it is reviewed and approved."
-    : "Current truth records the approved brand as it operates now, ready to guide production.";
+    : "Current truth records the approved brand as it operates now. Evolved world holds the future ambition separately until it is reviewed.";
 
   return `
     <section class="artifact-library-hero">
@@ -3738,7 +3748,7 @@ function renderArtifactLibrary() {
           <div>
             <span class="artifact-library-label">Featured artifact</span>
             <h2>${escapeHtml(dossier?.name || "Brand Dossier")}</h2>
-            <p>${escapeHtml(dossier?.description || "The strategic read for this brand world.")}</p>
+            <p>${escapeHtml(artifactLibraryDescriptions[dossierKey] || "The strategic read for this brand world.")}</p>
           </div>
           <span class="artifact-library-item-meta"><em class="${status === "ready" ? "ready" : "draft"}">${status === "ready" ? "Complete" : "Draft"}</em><small>${artifactReadingTimes[dossierKey] || 8} min read</small></span>
         </div>

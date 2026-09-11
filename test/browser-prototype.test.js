@@ -274,6 +274,9 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Brand Intelligence Library/);
   assert.match(session.appRoot.innerHTML, /SLAKE Brand Intelligence/);
   assert.match(session.appRoot.innerHTML, /Brand Dossier/);
+  assert.match(session.appRoot.innerHTML, /A focused, evidence-backed reading of the brand foundation/);
+  assert.match(session.appRoot.innerHTML, /The people, pressures, rhythms, and environments where the brand can honestly belong/);
+  assert.match(session.appRoot.innerHTML, /The observable choices for people, places, objects, light, camera, and refused territory/);
   assert.match(session.appRoot.innerHTML, /Inside this dossier/);
   assert.match(session.appRoot.innerHTML, /Export complete PDF/);
   assert.doesNotMatch(session.appRoot.innerHTML, /A person, not a segment/);
@@ -593,12 +596,17 @@ test("both worlds render, today first, and each approve writes to its own world 
   assert.ok(html.indexOf("Brand today") < html.indexOf("Evolved world"), "the today world switch renders first");
   assert.match(html, /Brand Intelligence Library/);
   assert.match(html, /Current truth records the approved brand/);
+  assert.match(html, /A focused, evidence-backed reading of the brand foundation/);
+  assert.match(html, /The people, pressures, rhythms, and environments where the brand can honestly belong/);
+  assert.doesNotMatch(html, /<small>l<\/small>/);
   assert.match(html, /data-id="dossier" data-world="today"/);
   assert.doesNotMatch(html, /Evolved read\./);
   assert.doesNotMatch(html, /People who repair rather than replace\./);
 
   session.click("select-artifact-world", { world: "evolved" });
   assert.match(session.appRoot.innerHTML, /data-id="evolved-dossier" data-world="evolved"/);
+  assert.match(session.appRoot.innerHTML, /A connected sequence of moments production can turn into a deliberate narrative/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /<small>s<\/small>/);
   assert.doesNotMatch(session.appRoot.innerHTML, /Today read\./);
   session.click("open-artifact-reader", { id: "evolved-dossier", world: "evolved" });
   assert.match(session.appRoot.innerHTML, /Evolved read\./);
