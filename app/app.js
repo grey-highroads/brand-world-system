@@ -3735,47 +3735,19 @@ function renderGuidanceHome() {
   const ready = state.brain.artifactStatus === "ready";
   const reviewed = guidanceReviewedSet();
   const reviewedCount = ready ? guidanceSections.length : reviewed.size;
-  const candidateUpdate = !ready && state.brain.approvedResult && state.brain.approvedVersion < state.brain.artifactVersion;
-  const primaryLabel = ready
-    ? "Open guidance"
-    : reviewedCount === guidanceSections.length
-      ? "Finish guidance review"
-      : reviewedCount
-        ? "Continue guidance review"
-        : "Begin guidance review";
-  const statusLabel = ready ? "Production ready" : candidateUpdate ? "Candidate update" : "Draft for review";
-  const statusCopy = ready
-    ? `This exact version is available to Design Studio. You can return to the guidance or inspect its supporting artifacts at any time.`
-    : candidateUpdate
-      ? `The approved v${state.brain.approvedVersion} stays available to production while you review this candidate.`
-      : `The intake synthesis is complete. This version incorporates ${brainResolvedCount()} review decisions and is waiting for your final guidance review.`;
 
   return brainWorkspace(
     "Brand guidance",
-    "Review, approve, and return to the Brand Brain's production guidance.",
+    "Read what the Brand Brain understands, section by section, and comment where it needs to change.",
     `
-      <section class="card guidance-home-status">
-        <div class="guidance-home-status-copy">
-          <div class="guidance-home-kicker"><span class="brain-status ${ready ? "success" : "governed"}">${statusLabel}</span><span>Prepared from ${brainSourceCount()} sources</span></div>
-          <h2>${escapeHtml(state.brandName)} Brand Brain v${state.brain.artifactVersion} ${ready ? "is ready for production" : "is ready"}</h2>
-          <p>${statusCopy}</p>
-          <div class="guidance-home-actions">
-            <button class="button primary guidance-home-primary" type="button" data-action="start-guidance-review">${primaryLabel}<span aria-hidden="true">→</span></button>
-            <button class="button secondary" type="button" data-action="open-guidance-artifacts">View artifacts</button>
-            <button class="text-button guidance-home-history" type="button" data-action="navigate-brain" data-screen="brain-history">What changed in this version?</button>
-          </div>
-        </div>
-        <dl class="guidance-home-metrics">
-          <div><dt>Sections</dt><dd>${guidanceSections.length}</dd></div>
-          <div><dt>Sources</dt><dd>${brainSourceCount()}</dd></div>
-          <div><dt>Decisions</dt><dd>${brainResolvedCount()}</dd></div>
-        </dl>
-      </section>
-
       <section class="guidance-home-sections" aria-labelledby="guidance-sections-title">
         <div class="guidance-home-section-heading">
           <span><span class="section-label">Guidance overview</span><h2 id="guidance-sections-title">Six sections shape production</h2></span>
-          <span>${reviewedCount} of ${guidanceSections.length} reviewed</span>
+          <span class="guidance-home-section-links">
+            <span>${reviewedCount} of ${guidanceSections.length} reviewed</span>
+            <button class="text-button" type="button" data-action="open-guidance-artifacts">View artifacts</button>
+            <button class="text-button" type="button" data-action="navigate-brain" data-screen="brain-history">What changed in this version?</button>
+          </span>
         </div>
         <div class="guidance-home-grid">
           ${guidanceSections.map((section, index) => {

@@ -250,9 +250,8 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Your Brand Brain draft is ready/);
 
   session.click("finish-brain-review");
-  assert.match(session.appRoot.innerHTML, /SLAKE Brand Brain v1/);
-  assert.match(session.appRoot.innerHTML, /Draft for review/);
-  assert.match(session.appRoot.innerHTML, /Begin guidance review/);
+  assert.match(session.appRoot.innerHTML, /In progress/);
+  assert.match(session.appRoot.innerHTML, /0 of 6 reviewed/);
   assert.match(session.appRoot.innerHTML, /Six sections shape production/);
   assert.match(session.appRoot.innerHTML, /data-action="open-guidance-artifacts"/);
   assert.doesNotMatch(session.appRoot.innerHTML, /What the Brand Brain understands/);
@@ -269,7 +268,6 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("next-guidance-section");
   assert.match(session.appRoot.innerHTML, /Section 2 of 6/);
   session.click("exit-guidance-review");
-  assert.match(session.appRoot.innerHTML, /Continue guidance review/);
   assert.match(session.appRoot.innerHTML, /1 of 6 reviewed/);
 
   session.click("open-guidance-artifacts");
@@ -341,8 +339,8 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.equal(session.evaluate("state.brain.artifactVersion"), 3);
   assert.equal(session.evaluate("state.brain.guidanceReviewedIds.length"), 6);
   assert.equal(session.evaluate("state.brain.history.length"), historyBefore);
-  assert.match(session.appRoot.innerHTML, /Production ready/);
-  assert.doesNotMatch(session.appRoot.innerHTML, /Begin guidance review/);
+  assert.match(session.appRoot.innerHTML, /Ready for production/);
+  assert.match(session.appRoot.innerHTML, /6 of 6 reviewed/);
 
   session.click("navigate-brain", { screen: "brain-history" });
   assert.match(session.appRoot.innerHTML, /Brand Brain v3 approved/);
@@ -371,7 +369,7 @@ test("shared visual polish layer centralizes spacing, surfaces, and semantic sta
 
   assert.match(index, /polish\.css/);
   assert.match(index, /guidance-focus\.css/);
-  assert.match(guidanceFocus, /\.guidance-home-status/);
+  assert.match(guidanceFocus, /\.guidance-home-section-links/);
   assert.match(guidanceFocus, /\.guidance-review-workspace/);
   assert.match(polish, /--section-gap: var\(--space-6\)/);
   assert.match(polish, /--card-padding: var\(--space-5\)/);

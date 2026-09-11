@@ -1,96 +1,9 @@
 /* Brand Guidance home and focused section review. */
 
-.guidance-home-status {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 32px;
-  align-items: start;
-  padding: 24px;
-  margin-bottom: 24px;
-  border-color: rgb(145 136 199 / 0.4);
-}
-
-.guidance-home-status-copy {
-  min-width: 0;
-}
-
-.guidance-home-kicker {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-  color: var(--muted);
-  font-size: 11px;
-  font-weight: 650;
-}
-
-.guidance-home-status h2 {
-  margin: 12px 0 0;
-  font-size: clamp(20px, 2.4vw, 24px);
-  letter-spacing: -0.02em;
-}
-
-.guidance-home-status-copy > p {
-  max-width: 650px;
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-.guidance-home-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-top: 20px;
-}
-
-.guidance-home-primary {
-  min-width: 202px;
-}
-
-.guidance-home-primary span,
 .guidance-review-next span,
 .guidance-review-nav span {
   font-size: 17px;
   line-height: 1;
-}
-
-.guidance-home-history {
-  min-height: 40px;
-  padding: 0 6px;
-  font-size: 11px;
-}
-
-.guidance-home-metrics {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(72px, 1fr));
-  gap: 20px;
-  min-width: 270px;
-  margin: 0;
-}
-
-.guidance-home-metrics div {
-  display: grid;
-  gap: 2px;
-  text-align: center;
-}
-
-.guidance-home-metrics dt {
-  order: 2;
-  color: var(--muted);
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.guidance-home-metrics dd {
-  margin: 0;
-  color: var(--text);
-  font-size: 20px;
-  font-weight: 750;
 }
 
 .guidance-home-sections {
@@ -110,8 +23,17 @@
   font-size: 18px;
 }
 
-.guidance-home-section-heading > span:last-child {
+.guidance-home-section-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  align-items: center;
   color: var(--muted);
+  font-size: 11px;
+}
+
+.guidance-home-section-links .text-button {
+  padding: 0;
   font-size: 11px;
 }
 
@@ -481,19 +403,6 @@
   color: var(--text);
 }
 
-@media (max-width: 900px) {
-  .guidance-home-status {
-    grid-template-columns: 1fr;
-  }
-
-  .guidance-home-metrics {
-    width: 100%;
-    min-width: 0;
-    padding-top: 18px;
-    border-top: 1px solid var(--border-subtle);
-  }
-}
-
 @media (max-width: 720px) {
   .guidance-home-grid {
     grid-template-columns: 1fr;
@@ -548,18 +457,8 @@
 }
 
 @media (max-width: 520px) {
-  .guidance-home-status,
   .guidance-home-section {
     padding: 16px;
-  }
-
-  .guidance-home-actions,
-  .guidance-home-actions .button {
-    width: 100%;
-  }
-
-  .guidance-home-metrics {
-    gap: 8px;
   }
 
   .guidance-review-progress-copy {
