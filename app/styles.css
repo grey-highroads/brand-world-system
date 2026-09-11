@@ -530,7 +530,8 @@ select:focus-visible {
 .studio-platform-grid > .card + .card,
 .mode-grid > .card + .card,
 .field-grid > .card + .card,
-.brain-evidence-grid > .card + .card {
+.brain-evidence-grid > .card + .card,
+.guidance-home-grid > .card + .card {
   margin-top: 0;
 }
 
@@ -8265,7 +8266,7 @@ button.ws-attention-item:hover {
   color: var(--muted);
 }
 
-/* Sources landing — Section Rhythm. Each section owns one job, one semantic
+/* Sources landing, section rhythm. Each section owns one job, one semantic
    accent, and one progress cue. Detailed records stay in the library. */
 .source-rhythm-stack {
   display: grid;
