@@ -1529,6 +1529,8 @@ const state = {
     guidanceReviewComplete: false,
     guidanceReviewedIds: [],
     selectedBrainArtifactId: "dossier",
+    selectedArtifactWorld: "today",
+    artifactReaderActive: false,
     selectedArtifactId: "",
     guidanceComments: [],
     history: [],
@@ -3620,12 +3622,150 @@ function renderWorldArtifactReader(world) {
   `;
 }
 
-// Both worlds, today first, each under a plain heading. The evolved block is
-// absent when the brain has no evolved world.
-function renderBrainArtifactReader() {
+const artifactReadingTimes = {
+  dossier: 8,
+  lived: 7,
+  story: 6,
+  grammar: 9,
+};
+
+const artifactContents = {
+  dossier: [
+    "The strategic read",
+    "Audience and emotional outcome",
+    "Product truth and proof",
+    "Palette, materials, and codes",
+    "Creative guardrails",
+    "Source trail",
+  ],
+  lived: ["The person", "Wants and refusals", "Daily pressures", "Emotional rhythm", "Social modes", "Earned environments"],
+  story: ["Narrative rhythm", "Story moments", "Product role", "Emotional movement", "Continuity rules", "Why the sequence works"],
+  grammar: ["People", "Places", "Objects", "Light", "Camera", "Refused territory"],
+};
+
+function artifactReaderKey(artifact) {
+  return artifact?.reader || artifact?.id?.replace(/^evolved-/, "") || "dossier";
+}
+
+function artifactWorldsAvailable() {
+  return BRAIN_WORLDS.filter((world) => artifactsForWorld(world.id).length);
+}
+
+function selectedArtifactWorld() {
+  const available = artifactWorldsAvailable();
+  return available.find((world) => world.id === state.brain.selectedArtifactWorld) || available[0] || BRAIN_WORLDS[0];
+}
+
+function artifactWorldStatus(worldId) {
+  return worldId === "evolved" ? state.brain.evolvedStatus : state.brain.artifactStatus;
+}
+
+function artifactWorldVersion(worldId) {
+  const approved = worldId === "evolved" ? state.brain.evolvedApprovedVersion : state.brain.approvedVersion;
+  return approved || state.brain.artifactVersion;
+}
+
+function artifactAvailabilityLabel(worldId) {
+  const status = artifactWorldStatus(worldId);
+  if (status === "ready") return "Available to production";
+  if (status === "draft") return "Draft awaiting approval";
+  return "In development";
+}
+
+function renderArtifactCollectionItem(artifact, worldId) {
+  const key = artifactReaderKey(artifact);
   return `
-    ${BRAIN_WORLDS.map(renderWorldArtifactReader).join("")}
-    ${grammarAbsentNote()}
+    <button class="artifact-library-item artifact-library-${key}" type="button" data-action="open-artifact-reader" data-id="${escapeHtml(artifact.id)}" data-world="${worldId}">
+      <span class="artifact-library-number">${escapeHtml(artifact.number)}</span>
+      <span class="artifact-library-item-copy">
+        <strong>${escapeHtml(artifact.name)}</strong>
+        <small>${escapeHtml(artifact.description)}</small>
+      </span>
+      <span class="artifact-library-item-meta"><em class="${artifactWorldStatus(worldId) === "ready" ? "ready" : "draft"}">${artifactWorldStatus(worldId) === "ready" ? "Complete" : "Draft"}</em><small>${artifactReadingTimes[key] || 6} min</small></span>
+      <span class="artifact-library-arrow" aria-hidden="true">↗</span>
+    </button>
+  `;
+}
+
+function renderArtifactLibrary() {
+  const world = selectedArtifactWorld();
+  const items = artifactsForWorld(world.id);
+  const dossier = items.find((item) => artifactReaderKey(item) === "dossier") || items[0];
+  const companions = items.filter((item) => item.id !== dossier?.id);
+  const dossierKey = artifactReaderKey(dossier);
+  const contents = artifactContents[dossierKey] || artifactContents.dossier;
+  const status = artifactWorldStatus(world.id);
+  const worldCopy = world.id === "evolved"
+    ? "The future ambition is held separately from current truth until it is reviewed and approved."
+    : "Current truth records the approved brand as it operates now, ready to guide production.";
+
+  return `
+    <section class="artifact-library-hero">
+      <div class="artifact-library-cover">
+        <span class="artifact-library-kicker"><i></i>Brand Intelligence Library</span>
+        <h1>${escapeHtml(state.brandName)} Brand Intelligence</h1>
+        <p>A governed strategic reference for understanding the brand, shaping its world, and turning evidence into more consistent creative decisions.</p>
+        <div class="artifact-library-version">
+          <span><strong>${status === "ready" ? "Approved version" : "Current version"}</strong> ${artifactWorldVersion(world.id)}</span>
+          <span><strong>Last updated</strong> ${escapeHtml(brainCreatedLabel())}</span>
+          <span class="${status === "ready" ? "ready" : "draft"}"><i></i>${artifactAvailabilityLabel(world.id)}</span>
+        </div>
+      </div>
+      <aside class="artifact-library-actions">
+        <div>
+          <span>Begin with the strategic read</span>
+          <h2>${escapeHtml(dossier?.name || "Brand Dossier")}</h2>
+          <p>The concise point of view on what ${escapeHtml(state.brandName)} is, who it serves, and what must remain true.</p>
+        </div>
+        <div>
+          <button class="button primary" type="button" data-action="open-artifact-reader" data-id="${escapeHtml(dossier?.id || "dossier")}" data-world="${world.id}">Open Brand Dossier <span aria-hidden="true">→</span></button>
+          <button class="button secondary" type="button" data-action="export-artifacts-pdf">Export complete PDF <span aria-hidden="true">↓</span></button>
+        </div>
+      </aside>
+    </section>
+
+    <section class="artifact-library-worlds">
+      <div class="artifact-library-world-switch" role="tablist" aria-label="Brand world">
+        ${artifactWorldsAvailable().map((item) => `<button class="${item.id === world.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === world.id}" data-action="select-artifact-world" data-world="${item.id}">${item.id === "today" ? "Brand today" : "Evolved world"}</button>`).join("")}
+      </div>
+      <p>${worldCopy}</p>
+    </section>
+
+    <section class="artifact-library-grid">
+      <article class="artifact-library-featured">
+        <div class="artifact-library-featured-heading">
+          <span class="artifact-library-number">${escapeHtml(dossier?.number || "01")}</span>
+          <div>
+            <span class="artifact-library-label">Featured artifact</span>
+            <h2>${escapeHtml(dossier?.name || "Brand Dossier")}</h2>
+            <p>${escapeHtml(dossier?.description || "The strategic read for this brand world.")}</p>
+          </div>
+          <span class="artifact-library-item-meta"><em class="${status === "ready" ? "ready" : "draft"}">${status === "ready" ? "Complete" : "Draft"}</em><small>${artifactReadingTimes[dossierKey] || 8} min read</small></span>
+        </div>
+        <div class="artifact-library-contents">
+          <div><h3>Inside this dossier</h3><button class="text-button" type="button" data-action="open-artifact-reader" data-id="${escapeHtml(dossier?.id || "dossier")}" data-world="${world.id}">Open artifact <span aria-hidden="true">↗</span></button></div>
+          <ol>${contents.map((item, index) => `<li><span>${String(index + 1).padStart(2, "0")}</span>${escapeHtml(item)}</li>`).join("")}</ol>
+        </div>
+      </article>
+
+      <section class="artifact-library-collection" aria-labelledby="artifact-collection-heading">
+        <div class="artifact-library-collection-heading"><h2 id="artifact-collection-heading">The collection</h2><span>${items.length} artifacts</span></div>
+        ${companions.map((artifact) => renderArtifactCollectionItem(artifact, world.id)).join("")}
+        <button class="artifact-library-methodology" type="button" data-action="navigate-brain" data-screen="brain-sources"><span aria-hidden="true">▤</span> Sources and methodology <span aria-hidden="true">→</span></button>
+      </section>
+    </section>
+  `;
+}
+
+function renderArtifactReaderScreen() {
+  const world = selectedArtifactWorld();
+  return `
+    <div class="artifact-reader-toolbar">
+      <button class="button secondary" type="button" data-action="back-to-artifact-library"><span aria-hidden="true">←</span> All artifacts</button>
+      <span>${world.id === "today" ? "Brand today" : "Evolved world"}</span>
+    </div>
+    ${renderWorldArtifactReader(world)}
+    ${world.id === "today" ? grammarAbsentNote() : ""}
   `;
 }
 
@@ -3839,10 +3979,10 @@ function renderBrainArtifacts() {
     );
   }
   return brainWorkspace(
-    "Artifacts",
-    "Read the dossier, lived world, story architecture, and visual grammar for each world.",
-    renderBrainArtifactReader(),
-    "brain-artifacts-workspace",
+    state.brain.artifactReaderActive ? "Artifact reader" : "Artifacts",
+    state.brain.artifactReaderActive ? "A focused reading view for one brand world." : "Your governed brand intelligence, organized for reading, sharing, and production.",
+    state.brain.artifactReaderActive ? renderArtifactReaderScreen() : renderArtifactLibrary(),
+    state.brain.artifactReaderActive ? "brain-artifacts-workspace artifact-reader-workspace" : "brain-artifacts-workspace artifact-library-workspace",
   );
 }
 
@@ -7445,6 +7585,7 @@ function navigate(screen) {
     state.brain.guidanceReviewActive = false;
     state.brain.guidanceReviewComplete = false;
   }
+  if (screen !== "brain-artifacts") state.brain.artifactReaderActive = false;
   state.screen = screen;
   render();
   window.scrollTo({ top: 0, behavior: "smooth" });
@@ -10038,7 +10179,10 @@ root.addEventListener("click", (event) => {
     void createCampaignFromDraft(id, draft);
   }
   if (action === "brand-brain") navigate("brain-overview");
-  if (action === "navigate-brain") navigate(target.dataset.screen);
+  if (action === "navigate-brain") {
+    if (target.dataset.screen === "brain-artifacts") state.brain.artifactReaderActive = false;
+    navigate(target.dataset.screen);
+  }
   if (action === "begin-brain-onboarding") {
     state.brain.stage = "intake";
     navigate("brain-sources");
@@ -10454,8 +10598,28 @@ root.addEventListener("click", (event) => {
   }
   if (action === "open-brain-artifact") {
     selectBrainArtifact(target.dataset.id);
+    const artifact = brainArtifacts.find((item) => item.id === target.dataset.id);
+    state.brain.selectedArtifactWorld = artifact?.world || "today";
+    state.brain.artifactReaderActive = true;
     navigate("brain-artifacts");
   }
+  if (action === "select-artifact-world") {
+    state.brain.selectedArtifactWorld = target.dataset.world;
+    render();
+  }
+  if (action === "open-artifact-reader") {
+    selectBrainArtifact(target.dataset.id);
+    state.brain.selectedArtifactWorld = target.dataset.world || brainArtifacts.find((item) => item.id === target.dataset.id)?.world || "today";
+    state.brain.artifactReaderActive = true;
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  if (action === "back-to-artifact-library") {
+    state.brain.artifactReaderActive = false;
+    render();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  if (action === "export-artifacts-pdf") setToast("PDF export will follow the artifact reader design");
   if (action === "select-brain-artifact") {
     selectBrainArtifact(target.dataset.id);
     render();

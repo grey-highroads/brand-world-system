@@ -271,7 +271,15 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
 
   session.click("navigate-brain", { screen: "brain-artifacts" });
   assert.match(session.appRoot.innerHTML, /Brand brain \/ Artifacts/);
+  assert.match(session.appRoot.innerHTML, /Brand Intelligence Library/);
+  assert.match(session.appRoot.innerHTML, /SLAKE Brand Intelligence/);
   assert.match(session.appRoot.innerHTML, /Brand Dossier/);
+  assert.match(session.appRoot.innerHTML, /Inside this dossier/);
+  assert.match(session.appRoot.innerHTML, /Export complete PDF/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /A person, not a segment/);
+
+  session.click("open-artifact-reader", { id: "dossier", world: "today" });
+  assert.match(session.appRoot.innerHTML, /All artifacts/);
   assert.match(session.appRoot.innerHTML, /A person, not a segment/);
   assert.match(session.appRoot.innerHTML, /Pulled from approved identity/);
   assert.match(session.appRoot.innerHTML, /Never optimized/);
@@ -296,6 +304,11 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   // review carry no comment controls; steering the brain goes through Sources.
   assert.doesNotMatch(session.appRoot.innerHTML, /Comment on this/);
   assert.doesNotMatch(session.appRoot.innerHTML, /toggle-guidance-comment/);
+
+  // The Artifacts tab itself always returns to the library landing.
+  session.click("navigate-brain", { screen: "brain-artifacts" });
+  assert.match(session.appRoot.innerHTML, /Brand Intelligence Library/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /Places a camera could walk into/);
 
   session.click("navigate-brain", { screen: "brain-guidance" });
   session.click("start-guidance-review");
@@ -351,12 +364,16 @@ test("shared visual polish layer centralizes spacing, surfaces, and semantic sta
   const styles = fs.readFileSync(path.join(rootPath, "app/styles.css"), "utf8");
   const polish = fs.readFileSync(path.join(rootPath, "app/polish.css"), "utf8");
   const guidanceFocus = fs.readFileSync(path.join(rootPath, "app/guidance-focus.css"), "utf8");
+  const artifactsFocus = fs.readFileSync(path.join(rootPath, "app/artifacts-focus.css"), "utf8");
   const app = fs.readFileSync(path.join(rootPath, "app/app.js"), "utf8");
 
   assert.match(index, /polish\.css/);
   assert.match(index, /guidance-focus\.css/);
+  assert.match(index, /artifacts-focus\.css/);
   assert.match(guidanceFocus, /\.guidance-home-section-links/);
   assert.match(guidanceFocus, /\.guidance-review-workspace/);
+  assert.match(artifactsFocus, /\.artifact-library-hero/);
+  assert.match(artifactsFocus, /\.artifact-library-world-switch/);
   assert.match(polish, /--section-gap: var\(--space-6\)/);
   assert.match(polish, /--card-padding: var\(--space-5\)/);
   assert.match(polish, /\.surface-accent-governed/);
@@ -573,19 +590,27 @@ test("both worlds render, today first, and each approve writes to its own world 
 
   session.click("navigate-brain", { screen: "brain-artifacts" });
   const html = session.appRoot.innerHTML;
-  assert.ok(html.indexOf("The brand today") < html.indexOf("The brand world, evolved"), "today renders first");
-  assert.match(html, /Does this describe the brand as it is now\?/);
-  assert.match(html, /Is this where the brand is going\?/);
-  // Each world shows its own dossier by default, and the cast reader shows the
-  // description then the examples with their basis note.
-  assert.match(html, /Today read\./);
-  assert.match(html, /Evolved read\./);
-  session.click("select-brain-artifact", { id: "evolved-lived" });
+  assert.ok(html.indexOf("Brand today") < html.indexOf("Evolved world"), "the today world switch renders first");
+  assert.match(html, /Brand Intelligence Library/);
+  assert.match(html, /Current truth records the approved brand/);
+  assert.match(html, /data-id="dossier" data-world="today"/);
+  assert.doesNotMatch(html, /Evolved read\./);
+  assert.doesNotMatch(html, /People who repair rather than replace\./);
+
+  session.click("select-artifact-world", { world: "evolved" });
+  assert.match(session.appRoot.innerHTML, /data-id="evolved-dossier" data-world="evolved"/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /Today read\./);
+  session.click("open-artifact-reader", { id: "evolved-dossier", world: "evolved" });
+  assert.match(session.appRoot.innerHTML, /Evolved read\./);
+  assert.doesNotMatch(session.appRoot.innerHTML, /Today read\./);
+  session.click("back-to-artifact-library");
+  session.click("open-artifact-reader", { id: "evolved-lived", world: "evolved" });
   assert.match(session.appRoot.innerHTML, /People who repair rather than replace\./);
   assert.match(session.appRoot.innerHTML, /Examples to cast from/);
   assert.match(session.appRoot.innerHTML, /A direction you're reaching for/);
-  // Selecting an evolved tab leaves the today reader on its dossier.
-  assert.match(session.appRoot.innerHTML, /Today read\./);
+  // Opening an evolved artifact leaves the today selection untouched while
+  // showing only the chosen world's reader.
+  assert.doesNotMatch(session.appRoot.innerHTML, /Today read\./);
   assert.equal(session.evaluate("state.brain.selectedBrainArtifactId"), "dossier");
   session.click("select-brain-artifact", { id: "evolved-story" });
   assert.match(session.appRoot.innerHTML, /Pulling the last staple from a chair seat\./);
