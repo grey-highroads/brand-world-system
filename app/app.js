@@ -1757,6 +1757,13 @@ function brainSourceCount() {
   return state.brain.sources.reduce((total, source) => total + (Number(source.count) || 0), 0);
 }
 
+// Whether finishing the Needs review pass would create a new stored draft.
+// True for a brain with no draft yet and for a proposed update awaiting its
+// candidate; false once the draft exists.
+function brainFinishCreatesDraft() {
+  return state.brain.artifactStatus === "not-created" || Boolean(state.brain.revisionPending);
+}
+
 function brainResolvedCount() {
   return brainExceptions.filter((item) => state.brain.resolutions[item.id]).length;
 }
@@ -6140,7 +6147,7 @@ function renderBrandBrain() {
           <strong>${reviewComplete ? (incrementalReview ? `Candidate v${state.brain.approvedVersion + 1} is ready to read` : "Your Brand Brain draft is ready") : incrementalReview ? "Finish review without changing the active version" : "Finish review to prepare your stored draft"}</strong>
           <span>${state.brain.cleanApproved ? `${brainResolvedCount()} of ${brainExceptions.length} review decisions saved` : `Approve ${brainBatch.cleanCount} clean assets and resolve ${brainExceptions.length - brainResolvedCount()} review items`}</span>
         </span>
-        <button class="button ${reviewComplete ? "secondary" : ""}" type="button" data-action="finish-brain-review" ${reviewComplete ? "" : "disabled"}>${incrementalReview ? "Review candidate update" : "Review Brand Brain draft"}</button>
+        <button class="button ${reviewComplete ? "secondary" : ""}" type="button" data-action="finish-brain-review" data-creates-draft="${brainFinishCreatesDraft() ? "true" : "false"}" ${reviewComplete ? "" : "disabled"}>${incrementalReview ? "Review candidate update" : "Review Brand Brain draft"}</button>
       </section>
     `,
   );
@@ -10391,6 +10398,14 @@ root.addEventListener("click", (event) => {
     setToast("Decision saved");
   }
   if (action === "finish-brain-review" && state.brain.cleanApproved && brainResolvedCount() === brainExceptions.length) {
+    // Finishing the review creates the stored draft once. A draft that already
+    // exists, approved or not, is left alone, and the button only returns to
+    // Brand guidance. Before this guard (2026-09-11) every click reset an
+    // approved brain to a draft and wiped the guidance review progress.
+    if (!brainFinishCreatesDraft()) {
+      navigate("brain-guidance");
+      return;
+    }
     if (state.brain.revisionPending) state.brain.artifactVersion += 1;
     state.brain.revisionPending = false;
     syncProductionReferences();

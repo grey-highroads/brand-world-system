@@ -329,6 +329,21 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.equal(session.evaluate("state.brain.evolvedStatus"), "not-created");
   assert.equal(session.evaluate('Object.keys(state.brain.approvedResult.artifacts).join(",")'), "today");
 
+  // Returning to Needs review after approval and finishing it again leaves the
+  // approved version alone. Before 2026-09-11 this reset the brain to a draft
+  // and wiped the guidance review progress on every visit.
+  session.click("navigate-brain", { screen: "brain" });
+  assert.match(session.appRoot.innerHTML, /data-creates-draft="false"/);
+  const historyBefore = session.evaluate("state.brain.history.length");
+  session.click("finish-brain-review");
+  assert.equal(session.evaluate("state.screen"), "brain-guidance");
+  assert.equal(session.evaluate("state.brain.artifactStatus"), "ready");
+  assert.equal(session.evaluate("state.brain.artifactVersion"), 3);
+  assert.equal(session.evaluate("state.brain.guidanceReviewedIds.length"), 6);
+  assert.equal(session.evaluate("state.brain.history.length"), historyBefore);
+  assert.match(session.appRoot.innerHTML, /Production ready/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /Begin guidance review/);
+
   session.click("navigate-brain", { screen: "brain-history" });
   assert.match(session.appRoot.innerHTML, /Brand Brain v3 approved/);
   assert.match(session.appRoot.innerHTML, /SLAKE source batch added/);

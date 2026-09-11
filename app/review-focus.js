@@ -197,7 +197,10 @@ function buildCompletion(workspace, items) {
   const actions = complete.querySelector(".review-focus-complete-actions");
   if (finalAction) {
     finalAction.className = "button primary";
-    finalAction.textContent = "Close review";
+    // The finish button creates the stored draft on the first pass. Once the
+    // draft exists the same button only returns to Brand guidance, so it is
+    // labelled as an exit rather than as the step that creates the draft.
+    if (finalAction.dataset.createsDraft !== "true") finalAction.textContent = "Close review";
     actions.append(finalAction);
   }
 
@@ -254,7 +257,10 @@ function applyReviewFocus() {
     if (!items.length) return;
 
     if (pendingAdvance) {
-      const next = nextUnresolved(items, pendingAdvance.id);
+      // Hold the next item's id, not its node. The app re-renders the whole
+      // screen (a clearing toast is enough), and a node captured here is
+      // detached by the time the timer fires.
+      const nextId = nextUnresolved(items, pendingAdvance.id)?.dataset.id || "";
       pendingAdvance = null;
       if (advanceTimer) window.clearTimeout(advanceTimer);
 
@@ -264,7 +270,8 @@ function applyReviewFocus() {
 
       advanceTimer = window.setTimeout(() => {
         advanceTimer = null;
-        if (next?.isConnected) next.click();
+        const target = nextId ? reviewWorkspace()?.querySelector(`.brain-review-grid > .brain-queue .brain-queue-item[data-id="${CSS.escape(nextId)}"]`) : null;
+        if (target) target.click();
         else applyReviewFocus();
       }, advanceDelay);
       return;
@@ -351,7 +358,13 @@ document.addEventListener("click", (event) => {
   }
 
   if (target.closest(".review-focus-drawer .brain-queue-item")) {
-    reviewingCompleted = true;
+    // Picking from the drawer only counts as revisiting a finished review when
+    // the review is finished. Mid-review it must not block the completion
+    // slide from appearing after the last decision.
+    if (advanceTimer) window.clearTimeout(advanceTimer);
+    advanceTimer = null;
+    pendingAdvance = null;
+    reviewingCompleted = Boolean(reviewWorkspace()?.querySelector(".brain-review-finish.ready"));
     document.querySelector(".review-focus-drawer-scrim")?.remove();
   }
 }, true);
