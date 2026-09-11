@@ -1525,7 +1525,6 @@ const state = {
     candidateBaseVersion: 0,
     selectedGuidanceId: "foundation",
     selectedEvolvedArtifactId: "evolved-dossier",
-    guidanceView: "guidance",
     guidanceReviewActive: false,
     guidanceReviewComplete: false,
     guidanceReviewedIds: [],
@@ -1563,6 +1562,7 @@ function currentCrumb() {
   if (state.screen === "brain-guidance") return state.brain.guidanceReviewActive
     ? "Brand brain / Brand guidance / Draft review"
     : "Brand brain / Brand guidance";
+  if (state.screen === "brain-artifacts") return "Brand brain / Artifacts";
   if (state.screen === "brain-grammar-sample") return "Brand brain / Brand guidance / Visual Grammar sample";
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
@@ -1933,6 +1933,11 @@ function brainSectionNav() {
       label: "Brand guidance",
       screen: "brain-guidance",
       count: state.brain.artifactStatus === "not-created" ? 0 : `v${state.brain.artifactVersion}`,
+    },
+    {
+      label: "Artifacts",
+      screen: "brain-artifacts",
+      count: state.brain.artifactStatus === "not-created" ? 0 : brainArtifacts.length,
     },
     { label: "History", screen: "brain-history", count: state.brain.history.length },
   ];
@@ -3745,7 +3750,6 @@ function renderGuidanceHome() {
           <span><span class="section-label">Guidance overview</span><h2 id="guidance-sections-title">Six sections shape production</h2></span>
           <span class="guidance-home-section-links">
             <span>${reviewedCount} of ${guidanceSections.length} reviewed</span>
-            <button class="text-button" type="button" data-action="open-guidance-artifacts">View artifacts</button>
             <button class="text-button" type="button" data-action="navigate-brain" data-screen="brain-history">What changed in this version?</button>
           </span>
         </div>
@@ -3874,12 +3878,27 @@ function renderGuidanceReview() {
   );
 }
 
-function renderGuidanceArtifacts() {
+function renderBrainArtifacts() {
+  if (state.brain.artifactStatus === "not-created") {
+    return brainWorkspace(
+      "Artifacts",
+      "The dossier, lived world, story architecture, and visual grammar the Brand Brain writes from will appear here.",
+      `
+        <section class="card brain-guidance-empty">
+          <span class="brain-empty-mark small" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="eyebrow">Not ready yet</span>
+          <h2>Complete onboarding to build the first artifacts</h2>
+          <p>Add sources and let the system organize them. The artifacts are written during synthesis and stored with each version.</p>
+          <button class="button primary" type="button" data-action="navigate-brain" data-screen="brain-sources">Add sources</button>
+        </section>
+      `,
+    );
+  }
   return brainWorkspace(
-    "Brand guidance artifacts",
-    "Open the dossiers, lived worlds, and story structures built from this guidance.",
-    `<div class="guidance-artifacts-homebar"><button class="button secondary" type="button" data-action="show-guidance-home"><span aria-hidden="true">←</span> Back to Brand guidance</button><button class="button primary" type="button" data-action="start-guidance-review">Open guidance review</button></div>${renderBrainArtifactReader()}`,
-    "guidance-artifacts-workspace",
+    "Artifacts",
+    "Read the dossier, lived world, story architecture, and visual grammar for each world. Comment on any passage.",
+    renderBrainArtifactReader(),
+    "brain-artifacts-workspace",
   );
 }
 
@@ -3902,7 +3921,6 @@ function renderBrainGuidance() {
   }
 
   if (state.brain.guidanceReviewActive) return renderGuidanceReview();
-  if (state.brain.guidanceView === "artifacts") return renderGuidanceArtifacts();
   return renderGuidanceHome();
 }
 
@@ -7462,6 +7480,7 @@ function render() {
   else if (state.screen === "brain-processing") root.innerHTML = renderBrainProcessing();
   else if (state.screen === "brain") root.innerHTML = renderBrandBrain();
   else if (state.screen === "brain-guidance") root.innerHTML = renderBrainGuidance();
+  else if (state.screen === "brain-artifacts") root.innerHTML = renderBrainArtifacts();
   else if (state.screen === "brain-grammar-sample") root.innerHTML = renderGrammarSample();
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
@@ -7636,7 +7655,6 @@ function applySynthesisResult(result, options = {}) {
     state.brain.evolvedApprovedVersion = 0;
   }
   state.brain.selectedGuidanceId = "foundation";
-  state.brain.guidanceView = "guidance";
   state.brain.guidanceReviewActive = false;
   state.brain.guidanceReviewComplete = false;
   state.brain.guidanceReviewedIds = [];
@@ -7811,7 +7829,6 @@ function loadSampleSources() {
   state.brain.affectedGuidanceIds = [];
   state.brain.candidateBaseVersion = 0;
   state.brain.selectedGuidanceId = "foundation";
-  state.brain.guidanceView = "guidance";
   state.brain.guidanceReviewActive = false;
   state.brain.guidanceReviewComplete = false;
   state.brain.guidanceReviewedIds = [];
@@ -8158,11 +8175,10 @@ function applyEvolvedRebuild(body, requestId) {
   state.brain.synthesisResponseId = body.responseId || "";
   state.brain.synthesisRequestId = body.synthesisRequestId || requestId;
   state.brain.savedAt = body.savedAt || "";
-  state.brain.guidanceView = "artifacts";
   state.brain.selectedEvolvedArtifactId = "evolved-lived";
   recordBrainHistory("The brand world, evolved, was rebuilt", "Only the four evolved passes ran. The brand today is unchanged and stays approved. Production writes from the brand today until the new evolved world is approved.", "complete");
   void persistBrainState();
-  navigate("brain-guidance");
+  navigate("brain-artifacts");
 }
 
 function setToast(message) {
@@ -10388,7 +10404,6 @@ root.addEventListener("click", (event) => {
     state.brain.evolvedStatus = worldArtifactsOf(currentSynthesisResult, "evolved") ? "draft" : "not-created";
     state.brain.stage = "draft";
     state.brain.selectedGuidanceId = "foundation";
-    state.brain.guidanceView = "guidance";
     state.brain.guidanceReviewActive = false;
     state.brain.guidanceReviewComplete = false;
     state.brain.guidanceReviewedIds = [];
@@ -10469,7 +10484,6 @@ root.addEventListener("click", (event) => {
   }
   if (action === "start-guidance-review") {
     const reviewed = guidanceReviewedSet();
-    state.brain.guidanceView = "guidance";
     state.brain.guidanceReviewActive = true;
     state.brain.guidanceReviewComplete = state.brain.artifactStatus !== "ready" && reviewed.size === guidanceSections.length;
     if (!state.brain.guidanceReviewComplete) {
@@ -10480,7 +10494,6 @@ root.addEventListener("click", (event) => {
   }
   if (action === "start-guidance-section") {
     state.brain.selectedGuidanceId = target.dataset.id;
-    state.brain.guidanceView = "guidance";
     state.brain.guidanceReviewActive = true;
     state.brain.guidanceReviewComplete = false;
     state.brain.selectedArtifactId = "";
@@ -10488,16 +10501,9 @@ root.addEventListener("click", (event) => {
     state.brain.commentDraft = "";
     navigate("brain-guidance");
   }
-  if (action === "exit-guidance-review" || action === "show-guidance-home") {
+  if (action === "exit-guidance-review") {
     state.brain.guidanceReviewActive = false;
     state.brain.guidanceReviewComplete = false;
-    state.brain.guidanceView = "guidance";
-    navigate("brain-guidance");
-  }
-  if (action === "open-guidance-artifacts") {
-    state.brain.guidanceReviewActive = false;
-    state.brain.guidanceReviewComplete = false;
-    state.brain.guidanceView = "artifacts";
     navigate("brain-guidance");
   }
   if (action === "next-guidance-section") {
@@ -10532,7 +10538,6 @@ root.addEventListener("click", (event) => {
     state.brain.selectedGuidanceId = target.dataset.id;
     state.brain.guidanceReviewActive = true;
     state.brain.guidanceReviewComplete = false;
-    state.brain.guidanceView = "guidance";
     state.brain.selectedArtifactId = "";
     state.brain.commentTarget = "";
     state.brain.commentDraft = "";
@@ -10545,18 +10550,11 @@ root.addEventListener("click", (event) => {
     state.brain.commentDraft = "";
     render();
   }
-  if (action === "set-guidance-view") {
-    state.brain.guidanceView = target.dataset.view;
-    state.brain.commentTarget = "";
-    state.brain.commentDraft = "";
-    render();
-  }
   if (action === "open-brain-artifact") {
-    state.brain.guidanceView = "artifacts";
     selectBrainArtifact(target.dataset.id);
     state.brain.commentTarget = "";
     state.brain.commentDraft = "";
-    render();
+    navigate("brain-artifacts");
   }
   if (action === "select-brain-artifact") {
     selectBrainArtifact(target.dataset.id);

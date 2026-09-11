@@ -253,7 +253,7 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /In progress/);
   assert.match(session.appRoot.innerHTML, /0 of 6 reviewed/);
   assert.match(session.appRoot.innerHTML, /Six sections shape production/);
-  assert.match(session.appRoot.innerHTML, /data-action="open-guidance-artifacts"/);
+  assert.match(session.appRoot.innerHTML, /data-screen="brain-artifacts"/);
   assert.doesNotMatch(session.appRoot.innerHTML, /What the Brand Brain understands/);
 
   session.click("start-guidance-review");
@@ -270,9 +270,9 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("exit-guidance-review");
   assert.match(session.appRoot.innerHTML, /1 of 6 reviewed/);
 
-  session.click("open-guidance-artifacts");
+  session.click("navigate-brain", { screen: "brain-artifacts" });
+  assert.match(session.appRoot.innerHTML, /Brand brain \/ Artifacts/);
   assert.match(session.appRoot.innerHTML, /Brand Dossier/);
-  assert.match(session.appRoot.innerHTML, /Back to Brand guidance/);
   assert.match(session.appRoot.innerHTML, /A person, not a segment/);
   assert.match(session.appRoot.innerHTML, /Pulled from approved identity/);
   assert.match(session.appRoot.innerHTML, /Never optimized/);
@@ -298,7 +298,7 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   session.click("save-guidance-comment", { target: "story:artifact:rhythm", section: "story", label: "Story Architecture" });
   assert.match(session.appRoot.innerHTML, /Make the transition into the shared evening more specific/);
 
-  session.click("set-guidance-view", { view: "guidance" });
+  session.click("navigate-brain", { screen: "brain-guidance" });
   session.click("start-guidance-review");
   for (let index = 0; index < 5; index += 1) session.click("next-guidance-section");
   assert.match(session.appRoot.innerHTML, /Guidance review complete/);
@@ -585,7 +585,7 @@ test("both worlds render, today first, and each approve writes to its own world 
   assert.equal(session.evaluate("state.brain.artifactStatus"), "draft");
   assert.equal(session.evaluate("state.brain.evolvedStatus"), "draft");
 
-  session.click("open-guidance-artifacts");
+  session.click("navigate-brain", { screen: "brain-artifacts" });
   const html = session.appRoot.innerHTML;
   assert.ok(html.indexOf("The brand today") < html.indexOf("The brand world, evolved"), "today renders first");
   assert.match(html, /Does this describe the brand as it is now\?/);
@@ -607,7 +607,7 @@ test("both worlds render, today first, and each approve writes to its own world 
   assert.match(session.appRoot.innerHTML, /Why these moments/);
 
   // Two approve actions. The evolved one does nothing until today is approved.
-  session.click("set-guidance-view", { view: "guidance" });
+  session.click("navigate-brain", { screen: "brain-guidance" });
   session.click("start-guidance-review");
   for (let index = 0; index < 6; index += 1) session.click("next-guidance-section");
   assert.match(session.appRoot.innerHTML, /Approve the brand today/);

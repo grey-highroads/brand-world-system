@@ -125,13 +125,6 @@
   line-height: 1.55;
 }
 
-.guidance-artifacts-homebar {
-  display: flex;
-  gap: 10px;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
 /* Focused review shell */
 
 .app-shell.guidance-focus-shell {
@@ -408,8 +401,7 @@
     grid-template-columns: 1fr;
   }
 
-  .guidance-home-section-heading,
-  .guidance-artifacts-homebar {
+  .guidance-home-section-heading {
     align-items: flex-start;
     flex-direction: column;
   }
