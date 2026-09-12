@@ -3841,6 +3841,235 @@ select {
   min-width: 0;
 }
 
+/* Artifact readers share one restrained editorial shell. Individual artifacts
+   keep their own content structures, but navigation and hierarchy stay fixed. */
+.artifact-reader-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.brain-world-heading {
+  align-items: center;
+  padding-bottom: 16px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid var(--paper-200);
+}
+
+.brain-world-heading h2 {
+  margin: 7px 0 0;
+  font-size: 25px;
+  letter-spacing: -0.025em;
+}
+
+.brain-artifact-tabs {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.brain-artifact-tabs button,
+.brain-artifact-tabs .artifact-lived,
+.brain-artifact-tabs .artifact-story,
+.brain-artifact-tabs .artifact-grammar {
+  --artifact-color: var(--paper-300);
+  grid-template-columns: 28px minmax(0, 1fr);
+  min-height: 70px;
+  padding: 12px;
+  background: var(--paper-50);
+  border: 1px solid var(--paper-200);
+  border-top-width: 1px;
+}
+
+.brain-artifact-tabs button > span {
+  color: var(--muted);
+}
+
+.brain-artifact-tabs button.active {
+  background: #293441;
+  border-color: var(--paper-300);
+  box-shadow: var(--shadow-sm);
+}
+
+.brain-artifact-tabs button.active > span {
+  color: var(--text);
+}
+
+.artifact-reader-layout {
+  display: grid;
+  grid-template-columns: 236px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.artifact-reader-contents {
+  position: sticky;
+  top: 74px;
+  overflow: hidden;
+  background: var(--paper-50);
+  border: 1px solid var(--paper-200);
+  border-radius: 5px;
+  box-shadow: var(--shadow-sm);
+}
+
+.artifact-reader-contents header {
+  padding: 20px;
+  border-bottom: 1px solid var(--paper-200);
+}
+
+.artifact-reader-contents header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.6;
+}
+
+.artifact-reader-contents nav {
+  display: grid;
+  padding: 8px;
+}
+
+.artifact-reader-contents nav a {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  align-items: center;
+  padding: 10px 12px;
+  color: var(--muted);
+  border-left: 2px solid transparent;
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.artifact-reader-contents nav a:hover {
+  color: var(--text);
+  background: #27313e;
+}
+
+.artifact-reader-contents nav a.active {
+  color: var(--text);
+  background: #27313e;
+  border-left-color: var(--coral);
+}
+
+.artifact-reader-contents nav a span {
+  color: var(--muted);
+  font-size: 9px;
+}
+
+.artifact-reader-contents nav a strong {
+  font-weight: 600;
+}
+
+.artifact-reader-contents dl {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+  margin: 0;
+  border-top: 1px solid var(--paper-200);
+  font-size: 10px;
+}
+
+.artifact-reader-contents dl div {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.artifact-reader-contents dt {
+  color: var(--muted);
+}
+
+.artifact-reader-contents dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 700;
+  text-align: right;
+}
+
+.brain-artifact-reader {
+  --artifact-color: var(--paper-300);
+}
+
+.brain-artifact-reader.artifact-lived,
+.brain-artifact-reader.artifact-story,
+.brain-artifact-reader.artifact-grammar {
+  --artifact-color: var(--paper-300);
+}
+
+.brain-artifact-reader-header {
+  align-items: flex-start;
+  padding: 32px;
+  border-top: 0;
+}
+
+.brain-artifact-reader-header h2 {
+  font-size: 30px;
+}
+
+.brain-artifact-reader-header p {
+  max-width: 780px;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.brain-artifact-category-trail {
+  gap: 12px;
+  padding: 12px 32px;
+}
+
+.brain-artifact-category-trail span {
+  padding: 0;
+  color: #c7ccd3;
+  background: none;
+  border: 0;
+  border-radius: 0;
+}
+
+.brain-artifact-category-trail span + span::before {
+  margin-right: 12px;
+  color: var(--muted);
+  content: "/";
+}
+
+.artifact-section-anchor {
+  scroll-margin-top: 84px;
+}
+
+@media (max-width: 1040px) {
+  .brain-artifact-tabs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .artifact-reader-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .artifact-reader-contents {
+    position: static;
+  }
+
+  .artifact-reader-contents nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .artifact-reader-actions {
+    align-items: stretch;
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .artifact-reader-actions .button {
+    width: 100%;
+  }
+
+  .brain-artifact-tabs,
+  .artifact-reader-contents nav {
+    grid-template-columns: 1fr;
+  }
+}
+
 .artifact-module {
   padding: 25px 0;
   border-bottom: 1px solid var(--paper-200);
@@ -9238,4 +9467,3 @@ button.ws-attention-item:hover {
 .field-error {
   color: var(--danger);
 }
-

@@ -3445,8 +3445,9 @@ function guidanceArtifactCard(section, artifact, index) {
   `;
 }
 
-function artifactSectionHeading(artifact, label, title) {
-  return `<div class="artifact-section-heading"><span><span class="section-label">${escapeHtml(label)}</span><h3>${escapeHtml(title)}</h3></span></div>`;
+function artifactSectionHeading(artifact, label, title, anchorId = "") {
+  const id = anchorId ? ` id="artifact-section-${escapeHtml(anchorId)}"` : "";
+  return `<div${id} class="artifact-section-heading artifact-section-anchor"><span><span class="section-label">${escapeHtml(label)}</span><h3>${escapeHtml(title)}</h3></span></div>`;
 }
 
 function renderDossierArtifact(artifact) {
@@ -3633,7 +3634,7 @@ function renderGrammarArtifact(artifact, options = {}) {
   return grammarSectionMeta
     .map(([id, label, title]) => {
       const entries = Array.isArray(sections[id]) ? sections[id] : [];
-      const heading = artifactSectionHeading(artifact, label, title);
+      const heading = artifactSectionHeading(artifact, label, title, id);
       const body = entries.length
         ? `<div class="artifact-grammar-entries">${entries.map((item) => `<article><strong>${escapeHtml(item.label || "")}</strong><p>${escapeHtml(item.statement || "")}</p>${basisNote(item)}</article>`).join("")}</div>`
         : `<p class="artifact-grammar-empty">Nothing here yet. The sources did not give the Brand Brain enough to write this without inventing it.</p>`;
@@ -3679,6 +3680,41 @@ function selectBrainArtifact(id) {
   else state.brain.selectedBrainArtifactId = id;
 }
 
+const artifactReaderContents = {
+  dossier: [
+    ["read", "Strategic read"],
+    ["audience", "Audience"],
+    ["product-truth", "Product truth"],
+    ["palette", "Palette and materials"],
+    ["culture", "World codes"],
+    ["guardrails", "Guardrails"],
+  ],
+  lived: [
+    ["person", "Who belongs here"],
+    ["wants", "Wants and refusals"],
+    ["tensions", "Useful contradictions"],
+    ["patterns", "A day from the inside"],
+    ["social", "Alone and together"],
+    ["environments", "Earned environments"],
+    ["belongs", "Brand role"],
+  ],
+  story: [
+    ["rhythm", "Governing rhythm"],
+    ["moments", "Story moments"],
+    ["why", "Why the sequence works"],
+    ["continuity", "Continuity"],
+  ],
+  grammar: grammarSectionMeta.map(([id, label]) => [id, label === "Refused" ? "Refused territory" : label]),
+};
+
+function renderArtifactContents(artifact) {
+  const key = artifact.reader || artifact.id.replace(/^evolved-/, "");
+  const contents = artifactReaderContents[key] || [];
+  return contents
+    .map(([id, label], index) => `<a href="#artifact-section-${escapeHtml(id)}" class="${index === 0 ? "active" : ""}"><span>${String(index + 1).padStart(2, "0")}</span><strong>${escapeHtml(label)}</strong></a>`)
+    .join("");
+}
+
 function renderWorldArtifactReader(world) {
   const items = artifactsForWorld(world.id);
   if (!items.length) return "";
@@ -3687,20 +3723,27 @@ function renderWorldArtifactReader(world) {
   const body = renderBody ? renderBody(artifact) : `<p class="artifact-grammar-empty">This artifact does not have a reader yet.</p>`;
   const status = world.id === "evolved" ? state.brain.evolvedStatus : state.brain.artifactStatus;
   const approvedVersion = world.id === "evolved" ? state.brain.evolvedApprovedVersion : state.brain.approvedVersion;
+  const statusLabel = status === "ready" ? `Approved v${approvedVersion}` : "Needs approval";
   return `
     <section class="brain-world-reader brain-world-${world.id}">
-      <div class="artifact-section-heading brain-world-heading"><span><span class="section-label">${escapeHtml(world.lead)}</span><h2>${escapeHtml(world.heading)}</h2></span><span class="brain-status ${status === "ready" ? "success" : "governed"}">${status === "ready" ? `Approved v${approvedVersion}` : "Needs approval"}</span></div>
+      <div class="artifact-section-heading brain-world-heading"><span><span class="section-label">${escapeHtml(world.lead)}</span><h2>${escapeHtml(world.heading)}</h2></span><span class="artifact-reader-actions"><span class="brain-status ${status === "ready" ? "success" : "governed"}">${statusLabel}</span><button class="button primary" type="button" data-action="export-artifact-pdf">Export PDF <span aria-hidden="true">↓</span></button></span></div>
       <nav class="brain-artifact-tabs" role="tablist" aria-label="${escapeHtml(world.heading)} artifacts">
         ${items.map((item) => `<button class="artifact-${item.reader || item.id} ${item.id === artifact.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === artifact.id}" data-action="select-brain-artifact" data-id="${item.id}"><span>${item.number}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.short)}</small></button>`).join("")}
       </nav>
-      <article class="card brain-artifact-reader artifact-${artifact.reader || artifact.id}">
-        <header class="brain-artifact-reader-header">
-          <span><span class="section-label">Artifact ${artifact.number}</span><h2>${escapeHtml(artifact.name)}</h2><p>${escapeHtml(artifact.description)}</p></span>
-          <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div></dl>
-        </header>
-        <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
-        <div class="brain-artifact-body">${body}</div>
-      </article>
+      <div class="artifact-reader-layout">
+        <aside class="artifact-reader-contents">
+          <header><span class="section-label">In this artifact</span><p>${escapeHtml(artifact.description)}</p></header>
+          <nav aria-label="${escapeHtml(artifact.name)} contents">${renderArtifactContents(artifact)}</nav>
+          <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div><div><dt>Status</dt><dd>${escapeHtml(statusLabel)}</dd></div></dl>
+        </aside>
+        <article class="card brain-artifact-reader artifact-${artifact.reader || artifact.id}">
+          <header class="brain-artifact-reader-header">
+            <span><span class="section-label">Artifact ${artifact.number}</span><h2>${escapeHtml(artifact.name)}</h2><p>${escapeHtml(artifact.description)}</p></span>
+          </header>
+          <div class="brain-artifact-category-trail"><strong>Built across</strong>${(artifact.categories || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("")}</div>
+          <div class="brain-artifact-body">${body}</div>
+        </article>
+      </div>
     </section>
   `;
 }
@@ -10741,6 +10784,7 @@ root.addEventListener("click", (event) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   if (action === "export-artifacts-pdf") setToast("PDF export will follow the artifact reader design");
+  if (action === "export-artifact-pdf") setToast("Artifact PDF export is coming next");
   if (action === "select-brain-artifact") {
     selectBrainArtifact(target.dataset.id);
     render();
