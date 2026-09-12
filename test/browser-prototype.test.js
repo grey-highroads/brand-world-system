@@ -385,6 +385,7 @@ test("shared visual polish layer centralizes spacing, surfaces, and semantic sta
   assert.match(guidanceFocus, /\.guidance-review-workspace/);
   assert.match(artifactsFocus, /\.artifact-library-hero/);
   assert.match(artifactsFocus, /\.artifact-library-world-switch/);
+  assert.match(artifactsFocus, /\.artifact-reader-workspace \.brain-artifact-reader[\s\S]*?background: transparent;[\s\S]*?border: 0;/);
   assert.match(polish, /--section-gap: var\(--space-6\)/);
   assert.match(polish, /--card-padding: var\(--space-5\)/);
   assert.match(polish, /\.surface-accent-governed/);

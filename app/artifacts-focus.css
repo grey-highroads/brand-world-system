@@ -411,6 +411,46 @@
   margin-top: 0;
 }
 
+/* Let the artifact read as editorial content on the page canvas. The chapter
+   rail remains a discrete navigation surface; the document itself does not. */
+.artifact-reader-workspace .brain-artifact-reader {
+  overflow: visible;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+
+.artifact-reader-workspace .brain-artifact-reader-header {
+  padding: 26px 0;
+  background: transparent;
+}
+
+.artifact-reader-workspace .brain-artifact-category-trail {
+  padding-right: 0;
+  padding-left: 0;
+  background: transparent;
+}
+
+.artifact-reader-workspace .brain-artifact-body {
+  padding-right: 0;
+  padding-left: 0;
+}
+
+.artifact-reader-workspace .artifact-module,
+.artifact-reader-workspace .artifact-highlight-module,
+.artifact-reader-workspace .artifact-code-module {
+  background: transparent;
+  border-radius: 0;
+}
+
+.artifact-reader-workspace .artifact-code-module {
+  padding-right: 0;
+  padding-left: 0;
+  margin-right: 0;
+  margin-left: 0;
+}
+
 .artifact-reader-worlds {
   display: flex;
   align-items: center;
