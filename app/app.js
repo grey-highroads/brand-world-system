@@ -3724,13 +3724,17 @@ function renderWorldArtifactReader(world) {
   const statusLabel = status === "ready" ? `Approved v${approvedVersion}` : "Needs approval";
   return `
     <section class="brain-world-reader brain-world-${world.id}">
-      <div class="artifact-section-heading brain-world-heading"><span><h2>${escapeHtml(world.heading)}</h2></span></div>
+      <div class="artifact-reader-worlds">
+        <span class="section-label">Brand world</span>
+        <div class="artifact-library-world-switch" role="tablist" aria-label="Brand world">
+          ${artifactWorldsAvailable().map((item) => `<button class="${item.id === world.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === world.id}" data-action="select-artifact-world" data-world="${item.id}">${item.id === "today" ? "The brand today" : "The brand, evolved"}</button>`).join("")}
+        </div>
+      </div>
       <nav class="brain-artifact-tabs" role="tablist" aria-label="${escapeHtml(world.heading)} artifacts">
         ${items.map((item) => `<button class="artifact-${item.reader || item.id} ${item.id === artifact.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === artifact.id}" data-action="select-brain-artifact" data-id="${item.id}"><span>${item.number}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.short)}</small></button>`).join("")}
       </nav>
       <div class="artifact-reader-layout">
         <aside class="artifact-reader-contents">
-          <header><span class="section-label">In this artifact</span><p>${escapeHtml(artifact.description)}</p></header>
           <nav aria-label="${escapeHtml(artifact.name)} contents">${renderArtifactContents(artifact)}</nav>
           <dl><div><dt>Built from</dt><dd>${artifact.sourceCount || 0} sources</dd></div><div><dt>Guidance used</dt><dd>${(artifact.categories || []).length} sections</dd></div><div><dt>Version</dt><dd>${state.brain.artifactVersion}</dd></div><div><dt>Status</dt><dd>${escapeHtml(statusLabel)}</dd></div></dl>
         </aside>
@@ -10762,7 +10766,12 @@ root.addEventListener("click", (event) => {
     navigate("brain-artifacts");
   }
   if (action === "select-artifact-world") {
-    state.brain.selectedArtifactWorld = target.dataset.world;
+    const currentWorld = selectedArtifactWorld();
+    const currentArtifact = selectedArtifactFor(currentWorld.id);
+    const targetWorld = target.dataset.world;
+    const matchingArtifact = artifactsForWorld(targetWorld).find((artifact) => artifactReaderKey(artifact) === artifactReaderKey(currentArtifact));
+    if (matchingArtifact) selectBrainArtifact(matchingArtifact.id);
+    state.brain.selectedArtifactWorld = targetWorld;
     render();
   }
   if (action === "open-artifact-reader") {

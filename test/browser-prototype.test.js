@@ -285,6 +285,8 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.doesNotMatch(session.appRoot.innerHTML, /data-action="back-to-artifact-library"/);
   assert.doesNotMatch(session.appRoot.innerHTML, /Does this describe the brand as it is now\?/);
   assert.doesNotMatch(session.appRoot.innerHTML, /artifact-reader-actions/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /<aside class="artifact-reader-contents">\s*<header>/);
+  assert.match(session.appRoot.innerHTML, />The brand today<\/button>/);
   assert.match(session.appRoot.innerHTML, /A person, not a segment/);
   assert.match(session.appRoot.innerHTML, /Pulled from approved identity/);
   assert.match(session.appRoot.innerHTML, /Never optimized/);
@@ -663,10 +665,17 @@ test("both worlds render, today first, and each approve writes to its own world 
   assert.match(session.appRoot.innerHTML, /People who repair rather than replace\./);
   assert.match(session.appRoot.innerHTML, /Examples to cast from/);
   assert.match(session.appRoot.innerHTML, /A direction you're reaching for/);
+  assert.match(session.appRoot.innerHTML, />The brand today<\/button>/);
+  assert.match(session.appRoot.innerHTML, />The brand, evolved<\/button>/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /<aside class="artifact-reader-contents">\s*<header>/);
   // Opening an evolved artifact leaves the today selection untouched while
   // showing only the chosen world's reader.
   assert.doesNotMatch(session.appRoot.innerHTML, /Today read\./);
   assert.equal(session.evaluate("state.brain.selectedBrainArtifactId"), "dossier");
+  session.click("select-artifact-world", { world: "today" });
+  assert.equal(session.evaluate("state.brain.selectedBrainArtifactId"), "lived");
+  assert.match(session.appRoot.innerHTML, /People who fix things\./);
+  session.click("select-artifact-world", { world: "evolved" });
   session.click("select-brain-artifact", { id: "evolved-story" });
   assert.match(session.appRoot.innerHTML, /Pulling the last staple from a chair seat\./);
   assert.match(session.appRoot.innerHTML, /Two people, one working and one watching\./);
