@@ -4261,7 +4261,7 @@ function renderWorkspace() {
       <div class="ws-output-grid">
         ${recentOutputs.map((o) => `
           <button class="ws-output-card" type="button" data-action="preview-output" data-id="${o.id}">
-            ${o.imageUrl
+            ${outputHasImage(o)
               ? `<span class="ws-output-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
               : `<span class="ws-output-thumb ws-thumb-empty"></span>`}
             <span class="ws-output-info">
@@ -4402,7 +4402,7 @@ function renderChooser() {
         <div class="ws-output-grid">
           ${recentOutputs.map((o) => `
             <button class="ws-output-card" type="button" data-action="preview-output" data-id="${o.id}">
-              ${o.imageUrl
+              ${outputHasImage(o)
                 ? `<span class="ws-output-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.ws-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
                 : `<span class="ws-output-thumb ws-thumb-empty"></span>`}
               <span class="ws-output-info">
@@ -5379,7 +5379,7 @@ function renderCampaigns() {
   const campaignCards = campaigns.map((campaign) => {
     const outputs = outputsForCampaign(campaign.id);
     const approvedCount = outputs.filter((o) => o.status === "approved").length;
-    const thumbs = outputs.filter((o) => o.imageUrl).slice(0, 4);
+    const thumbs = outputs.filter(outputHasImage).slice(0, 4);
     return `
       <button class="card chooser-card" type="button" data-action="open-campaign" data-id="${escapeHtml(campaign.id)}">
         <div class="card-header">
@@ -6048,7 +6048,7 @@ function renderCampaignWorkspace() {
           <div class="campaign-output-grid">
             ${campaignOutputs.map((o) => `
               <button class="campaign-output-card" type="button" data-action="preview-output" data-id="${o.id}">
-                ${o.imageUrl
+                ${outputHasImage(o)
                   ? `<span class="campaign-output-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.campaign-output-thumb').classList.add('ws-thumb-missing'); this.remove();"></span>`
                   : `<span class="campaign-output-thumb ws-thumb-empty"></span>`}
                 <span class="campaign-output-info">
@@ -6667,7 +6667,7 @@ function renderBrief() {
             <div class="recent-strip">
               ${recentOutputs.map((o) => `
                 <div class="recent-item">
-                  ${o.imageUrl
+                  ${outputHasImage(o)
                     ? `<button class="output-thumb output-thumb-button" type="button" data-action="preview-output" data-id="${o.id}" aria-label="Preview ${escapeHtml(o.label)}"><img src="${escapeHtml(outputImageSrc(o))}" alt="" onerror="this.closest('.output-thumb').classList.add('output-thumb-missing'); this.remove();"></button>`
                     : `<span class="output-thumb"></span>`}
                   <span class="recent-item-body">
@@ -10980,6 +10980,16 @@ function clientSwitcherMenu() {
 // nothing in the browser or in a saved record can go stale. Records made
 // before per-job image paths existed have no reachable image; those fall back
 // to the missing state rather than to a dead link.
+// The durable fact about an output's image is hadImage, written when the
+// render finished and carried on the saved log. imageUrl is a presigned URL
+// that expires in fifteen minutes and is never persisted, so it is present on
+// a record only briefly after a render. Thumbnails decide from hadImage and
+// let the stable image route mint the URL; deciding from imageUrl left every
+// list showing empty tiles whenever the transient field was absent.
+function outputHasImage(output) {
+  return Boolean(output && (output.hadImage || output.imageUrl));
+}
+
 function outputImageSrc(output) {
   if (!output) return "";
   const id = output.id || output.jobId || "";

@@ -427,6 +427,12 @@ test("the Library shows the whole output log, newest first, with filters from th
   assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 9);
   // The sidebar item is live and marked current.
   assert.match(session.appRoot.innerHTML, /data-action="library"[^>]*aria-current="page"/);
+  // A thumbnail is drawn from hadImage, the durable fact, never from the
+  // transient presigned imageUrl. Every card above has hadImage and no
+  // imageUrl, and every card asks the stable image route for its picture.
+  assert.equal((session.appRoot.innerHTML.match(/action=image&amp;outputId=out-\d/g) || []).length, 9);
+  session.click("chooser");
+  assert.equal((session.appRoot.innerHTML.match(/ws-output-thumb"><img/g) || []).length, 6);
   // Sign out sits at the bottom of the nav on every screen.
   assert.match(session.appRoot.innerHTML, /class="sidebar-signout">\s*<button class="sidebar-signout-button" type="button" data-action="sign-out">Sign out<\/button>/);
 });

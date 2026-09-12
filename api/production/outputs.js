@@ -2,9 +2,6 @@ import { createVercelBlobProductionStore } from "../../src/production/store.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 const MAX_OUTPUTS = 200;
-// Signing is per-image work. Only the most recent outputs are ever shown as
-// thumbnails, so bound how many URLs one read mints.
-const MAX_SIGNED_IMAGES = 60;
 
 export default async function handler(request, response) {
   if (!requireBrandWorldAccess(request, response)) return;
@@ -95,22 +92,12 @@ export default async function handler(request, response) {
 
       const saved = await store.readOutputs();
       const outputs = saved?.outputs || [];
-      // Presigned image URLs live for fifteen minutes, so any URL persisted in
-      // the log is stale by the time it is read back. Mint a fresh one per
-      // output instead. hadImage marks records that produced an image, so we
-      // do not sign paths for outputs that never had one.
-      const refreshed = await Promise.all(
-        outputs.slice(0, MAX_SIGNED_IMAGES).map(async (output) => {
-          if (!store.outputImageUrl) return output;
-          if (!output.hadImage && !output.imageUrl) return output;
-          try {
-            return { ...output, imageUrl: await store.outputImageUrl(output.id) };
-          } catch {
-            return { ...output, imageUrl: null };
-          }
-        }),
-      );
-      sendJson(response, 200, { outputs: [...refreshed, ...outputs.slice(MAX_SIGNED_IMAGES)] });
+      // No image URLs are minted here. Every <img> in the app points at the
+      // stable image route above, which signs one URL per request, and the
+      // list decides whether an output has an image from hadImage on the
+      // record. Minting sixty URLs per read was work nothing used, and when
+      // it failed silently the lists drew empty tiles for every output.
+      sendJson(response, 200, { outputs });
     } catch (error) {
       sendPublicError(response, error);
     }
