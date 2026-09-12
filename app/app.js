@@ -4573,14 +4573,12 @@ function renderStudioSetup() {
   const campaigns = state.campaigns || [];
   const platforms = state.studio.platforms;
   const activeFormats = state.studio.activeFormats;
-  const activeCount = activeFormats.length;
-  const hasFormats = activeCount > 0;
+  const hasFormats = activeFormats.length > 0;
 
-  // Build format groups by platform
+  // Build the format group for the selected platform
   const formatGroupsHtml = platforms.map((platformId) => {
     const platform = studioPlatformFormats[platformId];
     if (!platform) return "";
-    const platformHasActive = platform.formats.some((f) => activeFormats.includes(f.id));
     return `
       <div class="studio-format-group">
         <span class="studio-format-group-label">${escapeHtml(platform.label)}</span>
@@ -4595,14 +4593,13 @@ function renderStudioSetup() {
             `;
           }).join("")}
         </div>
-        ${!platformHasActive ? `<span class="studio-format-warning">No formats selected for ${escapeHtml(platform.label)}. Pick at least one, or deselect the platform.</span>` : ""}
       </div>
     `;
   }).join("");
 
   return shell(`
     <section class="workspace">
-      ${pageHeader(cat.name, "Describe what you need and pick platforms. The system handles sizes, safe zones, and composition for each format.")}
+      ${pageHeader(cat.name, "Describe what you need and pick a platform and format. The system handles the size, safe zones, and composition for that shape.")}
 
       <div class="content-grid">
         <div>
@@ -4669,8 +4666,7 @@ function renderStudioSetup() {
                 <div class="field full">
                   <div class="studio-formats-panel">
                     <div class="studio-formats-header">
-                      <span class="section-label">Output formats</span>
-                      <span class="mini-pill">${activeCount} ${activeCount === 1 ? "image" : "images"}</span>
+                      <span class="section-label">Output format</span>
                     </div>
                     ${formatGroupsHtml}
                   </div>
@@ -4793,7 +4789,6 @@ function renderTemplateSetup(cat) {
   const formatGroupsHtml = targetUses.map((useId) => {
     const use = studioTemplateFormats[useId];
     if (!use) return "";
-    const useHasActive = use.formats.some((f) => templateFormats.includes(f.id));
     return `
       <div class="studio-format-group">
         <span class="studio-format-group-label">${escapeHtml(use.label)}</span>
@@ -4808,7 +4803,6 @@ function renderTemplateSetup(cat) {
             `;
           }).join("")}
         </div>
-        ${!useHasActive ? `<span class="studio-format-warning">No formats selected for ${escapeHtml(use.label)}. Pick at least one, or deselect the use.</span>` : ""}
       </div>
     `;
   }).join("");
@@ -4838,7 +4832,7 @@ function renderTemplateSetup(cat) {
 
               <div class="field full">
                 <label>Where will this be used?</label>
-                <span class="field-note">Pick one or more. Drives output sizes and composition rules.</span>
+                <span class="field-note">Pick one. Drives the output size and composition rules.</span>
                 <div class="studio-platform-grid">
                   ${Object.entries(studioTemplateFormats).map(([id, u]) => `
                     <button class="studio-platform-chip ${targetUses.includes(id) ? "selected" : ""}" type="button" data-action="toggle-template-use" data-id="${id}">
@@ -4852,8 +4846,7 @@ function renderTemplateSetup(cat) {
                 <div class="field full">
                   <div class="studio-formats-panel">
                     <div class="studio-formats-header">
-                      <span class="section-label">Output formats</span>
-                      <span class="mini-pill">${templateFormats.length} ${templateFormats.length === 1 ? "image" : "images"}</span>
+                      <span class="section-label">Output format</span>
                     </div>
                     ${formatGroupsHtml}
                   </div>
@@ -9864,25 +9857,25 @@ root.addEventListener("click", (event) => {
     navigate("brief");
   }
   if (action === "toggle-studio-platform") {
+    // Single-select: a run produces one image (ruling 2026-09-12). Selecting a
+    // platform selects its default format; selecting another platform swaps
+    // both. Clicking the selected platform clears the selection.
     const platformId = target.dataset.id;
-    const platforms = state.studio.platforms;
-    const idx = platforms.indexOf(platformId);
-    if (idx >= 0) {
-      platforms.splice(idx, 1);
-      const platformFormats = studioPlatformFormats[platformId]?.formats || [];
-      state.studio.activeFormats = state.studio.activeFormats.filter((fid) => !platformFormats.some((f) => f.id === fid));
+    if (state.studio.platforms[0] === platformId) {
+      state.studio.platforms = [];
+      state.studio.activeFormats = [];
     } else {
-      platforms.push(platformId);
+      state.studio.platforms = [platformId];
       const platformFormats = studioPlatformFormats[platformId]?.formats || [];
-      platformFormats.forEach((f) => { if (f.default && !state.studio.activeFormats.includes(f.id)) state.studio.activeFormats.push(f.id); });
+      const defaultFormat = platformFormats.find((f) => f.default) || platformFormats[0];
+      state.studio.activeFormats = defaultFormat ? [defaultFormat.id] : [];
     }
     render();
   }
   if (action === "toggle-studio-format") {
-    const fid = target.dataset.id;
-    const idx = state.studio.activeFormats.indexOf(fid);
-    if (idx >= 0) state.studio.activeFormats.splice(idx, 1);
-    else state.studio.activeFormats.push(fid);
+    // Single-select within the platform: clicking a format swaps to it. The
+    // selected format cannot be cleared, so a platform always has one.
+    state.studio.activeFormats = [target.dataset.id];
     render();
   }
   if (action === "toggle-studio-text-overlay") {
@@ -9940,7 +9933,6 @@ root.addEventListener("click", (event) => {
     state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
     state.activeCampaignId = state.studio.campaignId || null;
     state.brief.scene = state.studio.brief;
-    // Use the first active format for the legacy single-format path
     const firstFormat = state.studio.activeFormats[0];
     if (firstFormat) {
       for (const [platformId, platform] of Object.entries(studioPlatformFormats)) {
@@ -9958,27 +9950,25 @@ root.addEventListener("click", (event) => {
     void prepareProductionPreflight();
   }
   if (action === "toggle-template-use") {
+    // Single-select: a run produces one image (ruling 2026-09-12). Selecting a
+    // use selects its default format; selecting another use swaps both.
+    // Clicking the selected use clears the selection.
     const useId = target.dataset.id;
-    const uses = state.studio.targetUses;
-    const idx = uses.indexOf(useId);
-    if (idx >= 0) {
-      uses.splice(idx, 1);
-      // Remove formats belonging to this use
-      const useFormats = studioTemplateFormats[useId]?.formats || [];
-      state.studio.templateFormats = state.studio.templateFormats.filter((fid) => !useFormats.some((f) => f.id === fid));
+    if (state.studio.targetUses[0] === useId) {
+      state.studio.targetUses = [];
+      state.studio.templateFormats = [];
     } else {
-      uses.push(useId);
-      // Add default formats for this use
+      state.studio.targetUses = [useId];
       const useFormats = studioTemplateFormats[useId]?.formats || [];
-      useFormats.forEach((f) => { if (f.default && !state.studio.templateFormats.includes(f.id)) state.studio.templateFormats.push(f.id); });
+      const defaultFormat = useFormats.find((f) => f.default) || useFormats[0];
+      state.studio.templateFormats = defaultFormat ? [defaultFormat.id] : [];
     }
     render();
   }
   if (action === "toggle-template-format") {
-    const fid = target.dataset.id;
-    const idx = state.studio.templateFormats.indexOf(fid);
-    if (idx >= 0) state.studio.templateFormats.splice(idx, 1);
-    else state.studio.templateFormats.push(fid);
+    // Single-select within the use: clicking a format swaps to it. The
+    // selected format cannot be cleared, so a use always has one.
+    state.studio.templateFormats = [target.dataset.id];
     render();
   }
   if (action === "template-continue-preflight") {
@@ -9987,7 +9977,6 @@ root.addEventListener("click", (event) => {
     state.creativeMode = state.studio.campaignId ? "campaign" : "explore";
     state.activeCampaignId = state.studio.campaignId || null;
     state.brief.scene = state.studio.brief;
-    // Use the first active template format for the legacy single-format path
     const firstTplFormat = state.studio.templateFormats[0];
     if (firstTplFormat) {
       for (const [useId, use] of Object.entries(studioTemplateFormats)) {

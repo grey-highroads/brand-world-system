@@ -37,7 +37,6 @@ const templateProductionInstructions = {
     "Keep the surface abstract, environmental, or textural. Do not include people, products, devices, or narrative scenes.",
     "Do not render any text, lettering, pseudo-text, or letter-like marks anywhere in the image.",
     "Design elements (gradients, geometric shapes, subtle patterns, light effects) should support the brand palette and feel without competing with content that will be layered on top.",
-    "The surface should crop well across different aspect ratios if multiple formats are being produced.",
     "Evaluate this template as a foundation: does it make everything placed on top of it look better and more branded?",
   ].join(" "),
 };
