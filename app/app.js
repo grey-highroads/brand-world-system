@@ -2042,8 +2042,6 @@ function brainSectionNav() {
 }
 
 function brainStatusBar() {
-  // Readiness is a notification, not overview content, so it sits above the
-  // tabs and follows the user across every Brand Brain screen.
   if (state.brain.stage === "empty") return "";
   const ready = state.brain.artifactStatus === "ready";
   const next = brainOverviewAction();
@@ -2157,7 +2155,7 @@ function brainWorkspace(title, description, content, className = "") {
   return shell(`
     <section class="workspace brain-workspace ${className}">
       ${pageHeader(title, description)}
-      ${brainStatusBar()}
+      ${state.screen === "brain-overview" ? brainStatusBar() : ""}
       ${brainSectionNav()}
       ${state.screen === "brain" ? protectionsBlock() : ""}
       ${content}
@@ -3726,7 +3724,7 @@ function renderWorldArtifactReader(world) {
   const statusLabel = status === "ready" ? `Approved v${approvedVersion}` : "Needs approval";
   return `
     <section class="brain-world-reader brain-world-${world.id}">
-      <div class="artifact-section-heading brain-world-heading"><span><span class="section-label">${escapeHtml(world.lead)}</span><h2>${escapeHtml(world.heading)}</h2></span><span class="artifact-reader-actions"><span class="brain-status ${status === "ready" ? "success" : "governed"}">${statusLabel}</span><button class="button primary" type="button" data-action="export-artifact-pdf">Export PDF <span aria-hidden="true">↓</span></button></span></div>
+      <div class="artifact-section-heading brain-world-heading"><span><h2>${escapeHtml(world.heading)}</h2></span></div>
       <nav class="brain-artifact-tabs" role="tablist" aria-label="${escapeHtml(world.heading)} artifacts">
         ${items.map((item) => `<button class="artifact-${item.reader || item.id} ${item.id === artifact.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === artifact.id}" data-action="select-brain-artifact" data-id="${item.id}"><span>${item.number}</span><strong>${escapeHtml(item.name)}</strong><small>${escapeHtml(item.short)}</small></button>`).join("")}
       </nav>
@@ -3896,10 +3894,6 @@ function renderArtifactLibrary() {
 function renderArtifactReaderScreen() {
   const world = selectedArtifactWorld();
   return `
-    <div class="artifact-reader-toolbar">
-      <button class="button secondary" type="button" data-action="back-to-artifact-library"><span aria-hidden="true">←</span> All artifacts</button>
-      <span>${world.id === "today" ? "Brand today" : "Evolved world"}</span>
-    </div>
     ${renderWorldArtifactReader(world)}
     ${world.id === "today" ? grammarAbsentNote() : ""}
   `;
@@ -10784,7 +10778,6 @@ root.addEventListener("click", (event) => {
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
   if (action === "export-artifacts-pdf") setToast("PDF export will follow the artifact reader design");
-  if (action === "export-artifact-pdf") setToast("Artifact PDF export is coming next");
   if (action === "select-brain-artifact") {
     selectBrainArtifact(target.dataset.id);
     render();

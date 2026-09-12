@@ -3843,12 +3843,6 @@ select {
 
 /* Artifact readers share one restrained editorial shell. Individual artifacts
    keep their own content structures, but navigation and hierarchy stay fixed. */
-.artifact-reader-actions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
 .brain-world-heading {
   align-items: center;
   padding-bottom: 16px;
@@ -4054,16 +4048,6 @@ select {
 }
 
 @media (max-width: 620px) {
-  .artifact-reader-actions {
-    align-items: stretch;
-    flex-direction: column;
-    width: 100%;
-  }
-
-  .artifact-reader-actions .button {
-    width: 100%;
-  }
-
   .brain-artifact-tabs,
   .artifact-reader-contents nav {
     grid-template-columns: 1fr;

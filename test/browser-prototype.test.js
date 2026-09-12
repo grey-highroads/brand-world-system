@@ -250,7 +250,7 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /Your Brand Brain draft is ready/);
 
   session.click("finish-brain-review");
-  assert.match(session.appRoot.innerHTML, /In progress/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /brain-status-bar/);
   assert.match(session.appRoot.innerHTML, /0 of 6 reviewed/);
   assert.match(session.appRoot.innerHTML, /Six sections shape production/);
   assert.match(session.appRoot.innerHTML, /data-screen="brain-artifacts"/);
@@ -282,7 +282,9 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.doesNotMatch(session.appRoot.innerHTML, /A person, not a segment/);
 
   session.click("open-artifact-reader", { id: "dossier", world: "today" });
-  assert.match(session.appRoot.innerHTML, /All artifacts/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /data-action="back-to-artifact-library"/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /Does this describe the brand as it is now\?/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /artifact-reader-actions/);
   assert.match(session.appRoot.innerHTML, /A person, not a segment/);
   assert.match(session.appRoot.innerHTML, /Pulled from approved identity/);
   assert.match(session.appRoot.innerHTML, /Never optimized/);
@@ -324,7 +326,7 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.match(session.appRoot.innerHTML, /data-action="approve-brain-today">Approve for production/);
   assert.doesNotMatch(session.appRoot.innerHTML, /approve-brain-evolved/);
   session.click("approve-brain-today");
-  assert.match(session.appRoot.innerHTML, /Ready for production/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /brain-status-bar/);
   assert.match(session.appRoot.innerHTML, /Go to Design Studio/);
   assert.equal(session.evaluate("state.brain.evolvedStatus"), "not-created");
   assert.equal(session.evaluate('Object.keys(state.brain.approvedResult.artifacts).join(",")'), "today");
@@ -341,8 +343,12 @@ test("Brand Brain prototype connects empty onboarding to a production-ready stor
   assert.equal(session.evaluate("state.brain.artifactVersion"), 1);
   assert.equal(session.evaluate("state.brain.guidanceReviewedIds.length"), 6);
   assert.equal(session.evaluate("state.brain.history.length"), historyBefore);
-  assert.match(session.appRoot.innerHTML, /Ready for production/);
+  assert.doesNotMatch(session.appRoot.innerHTML, /brain-status-bar/);
   assert.match(session.appRoot.innerHTML, /6 of 6 reviewed/);
+
+  session.click("navigate-brain", { screen: "brain-overview" });
+  assert.match(session.appRoot.innerHTML, /Ready for production/);
+  assert.match(session.appRoot.innerHTML, /brain-status-bar/);
 
   session.click("navigate-brain", { screen: "brain-history" });
   assert.match(session.appRoot.innerHTML, /Brand Brain v1 approved/);
