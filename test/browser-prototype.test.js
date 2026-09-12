@@ -427,6 +427,8 @@ test("the Library shows the whole output log, newest first, with filters from th
   assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 9);
   // The sidebar item is live and marked current.
   assert.match(session.appRoot.innerHTML, /data-action="library"[^>]*aria-current="page"/);
+  // Sign out sits at the bottom of the nav on every screen.
+  assert.match(session.appRoot.innerHTML, /class="sidebar-signout">\s*<button class="sidebar-signout-button" type="button" data-action="sign-out">Sign out<\/button>/);
 });
 
 test("a job still working keeps the rendering state even after the connection drops", () => {

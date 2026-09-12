@@ -1607,6 +1607,10 @@ function shell(content) {
           ${navItem("Products", state.screen === "products" || state.screen === "product-detail", "products")}
           ${navItem("Library", state.screen === "library", "library")}
         </nav>
+
+        <div class="sidebar-signout">
+          <button class="sidebar-signout-button" type="button" data-action="sign-out">Sign out</button>
+        </div>
       </aside>
 
       <main class="main-column">
@@ -7670,6 +7674,21 @@ function render() {
   else root.innerHTML = renderChooser();
 }
 
+// Expires the session cookie through the logout route, then lands on the
+// public page. If the route cannot be reached the landing page still loads,
+// and the middleware will send the browser back there on the next request
+// once the cookie lapses on its own.
+async function signOut() {
+  if (typeof fetch === "function") {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch {
+      // Fall through to the redirect either way.
+    }
+  }
+  if (typeof window !== "undefined" && window.location?.assign) window.location.assign("/landing.html");
+}
+
 function navigate(screen) {
   if (screen !== "brain-guidance") {
     state.brain.guidanceReviewActive = false;
@@ -9659,6 +9678,7 @@ root.addEventListener("click", (event) => {
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
   if (action === "campaigns") { navigate("campaigns"); }
   if (action === "library") { navigate("library"); }
+  if (action === "sign-out") { void signOut(); }
   if (action === "set-library-filter") {
     const field = target.dataset.field;
     const value = target.dataset.value || "";

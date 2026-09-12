@@ -26,7 +26,7 @@ function authorized(request, password) {
 }
 
 // Paths that load without any authentication.
-const PUBLIC_PATHS = new Set(["/landing.html", "/api/blob/upload", "/api/auth/login"]);
+const PUBLIC_PATHS = new Set(["/landing.html", "/api/blob/upload", "/api/auth/login", "/api/auth/logout"]);
 
 export default function middleware(request) {
   const pathname = new URL(request.url).pathname;
