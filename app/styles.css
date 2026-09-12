@@ -6074,6 +6074,119 @@ button.ws-attention-item:hover {
   gap: 2px;
 }
 
+/* Library: the full output log as a thumbnail grid. */
+
+.library-filters {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.library-filter-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.library-filter-label {
+  min-width: 84px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.library-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 10px;
+  color: var(--text);
+  background: var(--surface-inset);
+  border: 1px solid var(--border-subtle);
+  border-radius: 999px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.library-chip span {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.library-chip:hover {
+  border-color: var(--border-strong);
+}
+
+.library-chip.active {
+  color: var(--white);
+  background: rgb(230 132 90 / 0.14);
+  border-color: rgb(230 132 90 / 0.6);
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+
+.library-card {
+  display: grid;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.library-thumb {
+  display: block;
+  aspect-ratio: 1;
+  border-radius: var(--radius-sm);
+  background: var(--paper-200);
+  overflow: hidden;
+}
+
+.library-card:hover .library-thumb {
+  outline: 1px solid var(--border-strong);
+}
+
+.library-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.library-thumb-empty,
+.library-thumb-missing {
+  background: var(--paper-200);
+}
+
+.library-card-info {
+  display: grid;
+  gap: 2px;
+}
+
+.library-card-info strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.library-card-info span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .ws-output-card {
   display: grid;
   grid-template-columns: 48px minmax(0, 1fr) auto;

@@ -396,6 +396,39 @@ function workingJob() {
   return 'state.production.job = { jobId: "render-1", status: "working", engine: "seedream", model: "seedream-5-pro", generationPackage: { brainVersion: 1, output: { format: "4:5 portrait" } } }';
 }
 
+test("the Library shows the whole output log, newest first, with filters from the log's own fields", () => {
+  const session = prototypeSession();
+  session.evaluate(`state.outputs = Array.from({ length: 9 }, (_, i) => ({
+    id: "out-" + i,
+    label: "Render " + i,
+    status: "draft",
+    campaignName: i % 3 === 0 ? "Launch" : "",
+    channel: i % 2 === 0 ? "Instagram" : "LinkedIn",
+    format: "1080 x 1350",
+    brainVersion: i < 4 ? 1 : 2,
+    createdAt: "2026-09-0" + (i + 1) + "T12:00:00.000Z",
+    hadImage: true,
+  }))`);
+  session.click("library");
+  assert.equal(session.evaluate("state.screen"), "library");
+  assert.match(session.appRoot.innerHTML, /9 renders for/);
+  // Every output renders, not the six the recent lists cap at.
+  assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 9);
+  // Newest first.
+  assert.ok(session.appRoot.innerHTML.indexOf("Render 8") < session.appRoot.innerHTML.indexOf("Render 0"));
+  // Filters narrow and toggle off, and combine.
+  session.click("set-library-filter", { field: "channel", value: "Instagram" });
+  assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 5);
+  session.click("set-library-filter", { field: "version", value: "v2" });
+  assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 3);
+  session.click("set-library-filter", { field: "channel", value: "Instagram" });
+  assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 5);
+  session.click("clear-library-filters");
+  assert.equal((session.appRoot.innerHTML.match(/class="library-card"/g) || []).length, 9);
+  // The sidebar item is live and marked current.
+  assert.match(session.appRoot.innerHTML, /data-action="library"[^>]*aria-current="page"/);
+});
+
 test("a job still working keeps the rendering state even after the connection drops", () => {
   const session = prototypeSession();
   session.evaluate('state.screen = "result"');

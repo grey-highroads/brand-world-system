@@ -1316,6 +1316,7 @@ const state = {
     detailSections: null,
   },
   clientSwitcherOpen: false,
+  library: { campaign: "", channel: "", version: "" },
   brandName: "SLAKE",
   brandDescription: "Adaptogen sparkling water",
   selectedDeliverable: deliverables[0],
@@ -1569,6 +1570,7 @@ function currentCrumb() {
   if (state.screen === "campaigns") return "Campaigns";
   if (state.screen === "campaign-creation") return "Campaigns / New campaign";
   if (state.screen === "products") return "Products";
+  if (state.screen === "library") return "Library";
   if (state.screen === "product-detail") return state.products.detail?.product_name ? `Products / ${state.products.detail.product_name}` : "Products / Loading";
   if (state.screen === "campaign-workspace") {
     const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
@@ -1603,7 +1605,7 @@ function shell(content) {
           ${navItem("Design Studio", state.screen === "chooser" || state.screen === "studio-setup" || state.screen === "brief" || state.screen === "preflight" || state.screen === "result", "chooser")}
           ${navItem("Campaigns", state.screen === "campaigns" || state.screen === "campaign-creation" || state.screen === "campaign-workspace", "campaigns")}
           ${navItem("Products", state.screen === "products" || state.screen === "product-detail", "products")}
-          ${navItem("Library", false)}
+          ${navItem("Library", state.screen === "library", "library")}
         </nav>
       </aside>
 
@@ -1721,6 +1723,102 @@ function navItem(label, active, action = "") {
       <span>${label}</span>
     </button>
   `;
+}
+
+// The Library is the whole output log for this client, newest first. The
+// three "recent work" lists elsewhere each show six; this is the only place
+// older renders can be reached. Filters are drawn from fields the log already
+// carries, so nothing here asks the user to organize anything.
+function libraryOutputs() {
+  return state.outputs
+    .slice()
+    .sort((a, b) => String(b.createdAt || "").localeCompare(String(a.createdAt || "")));
+}
+
+function libraryFilterValues(outputs, read) {
+  const counts = new Map();
+  outputs.forEach((o) => {
+    const value = read(o);
+    if (!value) return;
+    counts.set(value, (counts.get(value) || 0) + 1);
+  });
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+}
+
+function libraryChannelOf(output) {
+  return output.channel || output.assetType || "";
+}
+
+function libraryVersionOf(output) {
+  return output.brainVersion ? `v${output.brainVersion}` : "";
+}
+
+function libraryFilterGroup(label, field, values) {
+  if (!values.length) return "";
+  const active = state.library[field];
+  return `
+    <div class="library-filter-group" role="group" aria-label="${escapeHtml(label)}">
+      <span class="library-filter-label">${escapeHtml(label)}</span>
+      ${values.map(([value, count]) => `
+        <button class="library-chip ${active === value ? "active" : ""}" type="button" data-action="set-library-filter" data-field="${field}" data-value="${escapeHtml(value)}" aria-pressed="${active === value}">${escapeHtml(value)} <span>${count}</span></button>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLibrary() {
+  const all = libraryOutputs();
+  const filters = state.library;
+  const shown = all.filter((o) =>
+    (!filters.campaign || (o.campaignName || "") === filters.campaign)
+    && (!filters.channel || libraryChannelOf(o) === filters.channel)
+    && (!filters.version || libraryVersionOf(o) === filters.version));
+  const anyFilter = Boolean(filters.campaign || filters.channel || filters.version);
+
+  const description = all.length
+    ? `${all.length} ${all.length === 1 ? "render" : "renders"} for ${state.brandName}, newest first. Open one to see the image, the brief it came from, and its evaluation.`
+    : "Every render made in the Design Studio is kept here, newest first.";
+
+  return shell(`
+    <section class="workspace">
+      ${pageHeader("Library", description)}
+      ${all.length ? `
+        <div class="library-filters">
+          ${libraryFilterGroup("Campaign", "campaign", libraryFilterValues(all, (o) => o.campaignName || ""))}
+          ${libraryFilterGroup("Channel", "channel", libraryFilterValues(all, libraryChannelOf))}
+          ${libraryFilterGroup("Brand Brain", "version", libraryFilterValues(all, libraryVersionOf))}
+          ${anyFilter ? `<button class="text-button" type="button" data-action="clear-library-filters">Show all ${all.length}</button>` : ""}
+        </div>
+      ` : ""}
+      ${shown.length ? `
+        <div class="library-grid">
+          ${shown.map((o) => `
+            <button class="library-card" type="button" data-action="preview-output" data-id="${o.id}">
+              ${o.imageUrl || o.hadImage
+                ? `<span class="library-thumb"><img src="${escapeHtml(outputImageSrc(o))}" alt="" loading="lazy" onerror="this.closest('.library-thumb').classList.add('library-thumb-missing'); this.remove();"></span>`
+                : `<span class="library-thumb library-thumb-empty"></span>`}
+              <span class="library-card-info">
+                <strong>${escapeHtml(o.label || "Untitled")}</strong>
+                <span>${escapeHtml([o.campaignName || libraryChannelOf(o), o.format, libraryVersionOf(o)].filter(Boolean).join(" · "))}</span>
+                <span>${escapeHtml(formatShortDate(o.createdAt))}</span>
+              </span>
+            </button>
+          `).join("")}
+        </div>
+      ` : all.length ? `
+        <div class="card">
+          <div class="card-header"><h2>No renders match</h2></div>
+          <p>Clear a filter to see the rest.</p>
+        </div>
+      ` : `
+        <div class="card">
+          <div class="card-header"><h2>Nothing rendered yet</h2></div>
+          <p>Renders from the Design Studio will collect here.</p>
+          <div class="actions"><button class="button primary" type="button" data-action="chooser">Go to Design Studio</button></div>
+        </div>
+      `}
+    </section>
+  `);
 }
 
 function pageHeader(title, description) {
@@ -7564,6 +7662,7 @@ function render() {
   else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
   else if (state.screen === "campaign-workspace") root.innerHTML = renderCampaignWorkspace();
   else if (state.screen === "products") root.innerHTML = renderProducts();
+  else if (state.screen === "library") root.innerHTML = renderLibrary();
   else if (state.screen === "product-detail") root.innerHTML = renderProductDetail();
   else if (state.screen === "brief") root.innerHTML = renderBrief();
   else if (state.screen === "preflight") root.innerHTML = renderPreflight();
@@ -9559,6 +9658,17 @@ root.addEventListener("click", (event) => {
   if (action === "workspace") { navigate("workspace"); }
   if (action === "chooser") { state.creativeMode = null; state.activeCampaignId = null; navigate("chooser"); }
   if (action === "campaigns") { navigate("campaigns"); }
+  if (action === "library") { navigate("library"); }
+  if (action === "set-library-filter") {
+    const field = target.dataset.field;
+    const value = target.dataset.value || "";
+    if (field in state.library) state.library[field] = state.library[field] === value ? "" : value;
+    render();
+  }
+  if (action === "clear-library-filters") {
+    state.library = { campaign: "", channel: "", version: "" };
+    render();
+  }
   if (action === "products") {
     navigate("products");
     void loadProducts();
