@@ -1582,11 +1582,6 @@ function currentCrumb() {
 function shell(content) {
   const inBrain = state.screen.startsWith("brain");
   const guidanceFocused = state.screen === "brain-guidance" && state.brain.guidanceReviewActive;
-  const attentionCount = inBrain
-    ? state.brain.processingComplete
-      ? brainExceptions.filter((item) => !state.brain.resolutions[item.id]).length
-      : 0
-    : 0;
   return `
     <div class="app-shell ${guidanceFocused ? "guidance-focus-shell" : ""}">
       <aside class="sidebar">
@@ -1610,26 +1605,12 @@ function shell(content) {
           ${navItem("Products", state.screen === "products" || state.screen === "product-detail", "products")}
           ${navItem("Library", false)}
         </nav>
-
-        <div class="sidebar-footer">
-          <p class="eyebrow">Workspace</p>
-          ${navItem("Workflow settings", false)}
-          <div class="profile">
-            <span class="avatar">AL</span>
-            <span>
-              <strong>Alex Lin</strong>
-              <span>SLAKE project</span>
-            </span>
-          </div>
-        </div>
       </aside>
 
       <main class="main-column">
         <header class="topbar">
           <div class="breadcrumb"><strong>${escapeHtml(state.brandName)}</strong> &nbsp;/&nbsp; ${escapeHtml(currentCrumb())}</div>
-          ${guidanceFocused
-            ? `<button class="guidance-focus-exit" type="button" data-action="exit-guidance-review">Exit review</button>`
-            : `<div class="search">Search knowledge, jobs, and assets</div><div class="attention-pill">Needs you <span>${attentionCount}</span></div>`}
+          ${guidanceFocused ? `<button class="guidance-focus-exit" type="button" data-action="exit-guidance-review">Exit review</button>` : ""}
         </header>
         ${renderGenerationBanner()}
         ${content}

@@ -24,11 +24,6 @@
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.app-shell.review-focus-shell .topbar .search,
-.app-shell.review-focus-shell .topbar .attention-pill {
-  display: none;
-}
-
 .app-shell.review-focus-shell .topbar .breadcrumb {
   color: var(--muted);
   font-size: 12px;
