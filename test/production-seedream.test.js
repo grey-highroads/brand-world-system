@@ -635,7 +635,7 @@ test("the assignment closes the scene sentence only when the author left it open
   // Already-correct assignments compile to the same bytes as before.
   assert.equal(
     assignment("A person arranging flowers at a worn kitchen table in morning light."),
-    "Create one 4:5 portrait brand world image for Instagram feed. A person arranging flowers at a worn kitchen table in morning light.",
+    "Create one 4:5 portrait brand world image. A person arranging flowers at a worn kitchen table in morning light.",
   );
   assert.match(assignment("Who is holding the can?"), /Who is holding the can\?$/);
 });

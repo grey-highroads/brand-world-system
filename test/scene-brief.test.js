@@ -798,8 +798,16 @@ test("a scene compile with no look still falls back to the shared capture floor"
 // it did not carry at that commit: `kind`. That key is the record of which kind
 // made the image and is asserted above. Every other field, and the whole of the
 // prompt and the sections, is unchanged.
-const BASE_COMMIT_SCENE_PROMPT_SHA = "a0191d7329702644f51ccf24b84c9f3a081b81d36cf0e0f0fb987936e7518c38";
-const BASE_COMMIT_SCENE_SECTIONS_SHA = "1cbaed05a833dc8607c5297d7ade107eb7c811eb3d8c775d3889a91031377c5e";
+//
+// Re-pinned 2026-09-13. The placement was named in two sentences, the
+// assignment's opening line and the Output line, and the ruling took it out of
+// the prompt: the format carries what changes the picture and the channel name
+// changed nothing a model acts on. Placement is still a claims scope axis and
+// still selects the template and sales branches. The diff behind these two
+// hashes is those two sentences and nothing else, checked against the parent
+// commit with comments stripped before re-pinning.
+const BASE_COMMIT_SCENE_PROMPT_SHA = "0eb2dd8570711c880dbfc1796f0dd72fa077474d350a2441f6210ac56e6158a0";
+const BASE_COMMIT_SCENE_SECTIONS_SHA = "1e2a8bd8292985d418ab3570f2cf66293767ed26e2a92ee1634decb0c90cb98a";
 
 test("a compiled scene prompt is byte identical to the base commit", () => {
   const pkg = compileBrandWorldImagePackage({

@@ -647,7 +647,13 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
             // above both the look and the scene. ADR 0018 ruling five retired
             // that system, so the section now opens with the assignment itself
             // and the scene follows immediately.
-            `Create one ${format} brand world image for ${placement}.`,
+            //
+            // The placement named itself here until 2026-09-13 ("for Instagram
+            // feed"). The format carries the composition information that
+            // changes the picture; naming the channel changed nothing a model
+            // acts on. Placement remains a claims scope axis and still decides
+            // the template and sales branches above.
+            `Create one ${format} brand world image.`,
             sentenceBoundary(scene),
             sceneComposition ? `Composition: ${sceneComposition}` : "",
             sceneLighting ? `Lighting: ${sceneLighting}` : "",
@@ -779,7 +785,7 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
         ? (hasTemplate
           ? `Return one finished composite only. Compose for ${format}. The element sits on the supplied branded template, which is preserved exactly. The result is ready to drop into a slide or one-pager. It must look premium and distinctly ${cleanText(approvedBrain.brandName)}.`
           : `Return one polished content element only. Compose for ${format}. The element should sit on a clean background, ready for placement onto a branded template in a slide or one-pager. It must look premium and distinctly ${cleanText(approvedBrain.brandName)}.`)
-        : `Return one finished image only. Compose for ${format} in ${placement}. Keep the result visually specific, believable, and native to ${cleanText(approvedBrain.brandName)} rather than a generic category image.`,
+        : `Return one finished image only. Compose for ${format}. Keep the result visually specific, believable, and native to ${cleanText(approvedBrain.brandName)} rather than a generic category image.`,
     },
   ].filter((section) => section && section.body);
 

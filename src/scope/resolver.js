@@ -41,6 +41,7 @@ const placementScopes = {
   "Instagram story": { channel: "social", platform: "instagram" },
   "LinkedIn feed": { channel: "social", platform: "linkedin" },
   "Facebook feed": { channel: "social", platform: "facebook" },
+  "Facebook story": { channel: "social", platform: "facebook" },
   "X feed": { channel: "social", platform: "x" },
   "Threads feed": { channel: "social", platform: "threads" },
   "Pinterest pin": { channel: "social", platform: "pinterest" },
