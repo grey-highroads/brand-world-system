@@ -1405,10 +1405,11 @@ const state = {
     textOverlay: false,
     campaignId: "",
     segment: "",
-    // A social job writes its caption unless the user turns it off. The
-    // direction field steers what the caption says; leaving it blank draws
-    // the message from the brief and the Brand Brain.
-    captionOn: true,
+    // Off by default as of 2026-09-13. A run makes an image; the caption is a
+    // second thing to review and a second model call, so it is asked for
+    // rather than assumed. The direction field steers what the caption says;
+    // leaving it blank draws the message from the brief and the Brand Brain.
+    captionOn: false,
     headlineSetOn: false,
     filtersOn: false,
     renderCopyIntoImage: false,
@@ -8331,10 +8332,10 @@ function wait(milliseconds) {
 // an empty list, which compiles exactly as it did before copy existed.
 function declaredCopyOutputs() {
   const declared = [];
-  // The caption is prose for a feed, so it is offered on social only and is
-  // on by default. A headline set is display copy, useful wherever the image
-  // ends up, so it is offered broadly and is off by default: most jobs do not
-  // need one, and an unrequested model call is a cost with no reader.
+  // The caption is prose for a feed, so it is offered on social only. A
+  // headline set is display copy, useful wherever the image ends up, so it is
+  // offered broadly. Both are off by default: most jobs do not need either,
+  // and an unrequested model call is a cost with no reader.
   if (state.studio.category === "social" && state.studio.captionOn) declared.push("social_caption");
   if (state.studio.headlineSetOn) declared.push("headline_set");
   return declared;
@@ -9728,7 +9729,7 @@ root.addEventListener("click", (event) => {
     state.studio.textOverlay = false;
     state.studio.campaignId = "";
     state.studio.copyDirection = "";
-    state.studio.captionOn = true;
+    state.studio.captionOn = false;
     state.studio.headlineSetOn = false;
     state.studio.renderCopyIntoImage = false;
     state.studio.displayFields = ["headline"];
