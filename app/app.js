@@ -1704,7 +1704,7 @@ function renderOutputPreview() {
         ${output.scene ? `<p class="preview-scene">${escapeHtml(output.scene)}</p>` : ""}
         <div class="preview-actions">
           <span class="mini-pill ${output.status === "approved" ? "pill-success" : "pill-neutral"}">${output.status === "approved" ? "Approved" : "Draft"}</span>
-          <button class="button secondary compact" type="button" data-action="open-output-review" data-id="${output.id}">Open evaluation</button>
+          <button class="button secondary compact" type="button" data-action="open-output-review" data-id="${output.id}">Open</button>
           ${output.package ? `<button class="button ghost compact" type="button" data-action="reuse-output" data-id="${output.id}">Make another like this</button>` : ""}
           ${state.discardOutputId === output.id
             ? `<span class="result-discard-inline"><span>Remove this permanently?</span><button class="button danger compact" type="button" data-action="confirm-discard-output" data-id="${output.id}">Discard</button><button class="button ghost compact" type="button" data-action="cancel-discard-output">Keep it</button></span>`
@@ -1781,7 +1781,7 @@ function renderLibrary() {
   const anyFilter = Boolean(filters.campaign || filters.channel || filters.version);
 
   const description = all.length
-    ? `${all.length} ${all.length === 1 ? "render" : "renders"} for ${state.brandName}, newest first. Open one to see the image, the brief it came from, and its evaluation.`
+    ? `${all.length} ${all.length === 1 ? "render" : "renders"} for ${state.brandName}, newest first. Open one to see the image, the brief it came from, and the package behind it.`
     : "Every render made in the Design Studio is kept here, newest first.";
 
   return shell(`
@@ -4205,7 +4205,7 @@ function renderWorkspace() {
   // dismiss control there teaches people to clear the queue by clearing it.
   const driftDismissed = (kind, id, version) => String(state.dismissedOutputDrift[kind][id] || "") === String(version);
   const evaluateAndDismiss = (output, kind, version) => [
-    { action: "open-output-review", id: output.id, label: "Open evaluation", primary: true },
+    { action: "open-output-review", id: output.id, label: "Open", primary: true },
     { action: "dismiss-output-drift", id: output.id, kind, version, label: "Dismiss" },
   ];
 
@@ -4893,14 +4893,6 @@ function renderTemplateSetup(cat) {
           </section>
         </div>
 
-        ${studioSetupDrawer("How templates are evaluated", `
-          <ul class="exact-list">
-            <li>Works as a foundation for placing elements and text on top</li>
-            <li>Open zones are clear and usable at all selected sizes</li>
-            <li>Crops well across the target aspect ratio</li>
-            <li>No generated text or lettering</li>
-          </ul>
-        `)}
       </div>
 
       <div class="actions">
@@ -6934,7 +6926,7 @@ function renderPreflight() {
 
   return shell(`
     <section class="workspace">
-      ${pageHeader("Preflight", "Review the exact prompt and inputs before OpenAI generates the image.")}
+      ${pageHeader("Preflight", `Review the exact prompt and inputs before ${renderEngineLabel(state.studio.renderEngine)} generates the image.`)}
 
       <div class="preflight-grid">
         <div>
@@ -7089,75 +7081,13 @@ function referenceResolution(item) {
   `;
 }
 
-function buildEvaluationFindings(job) {
-  if (!job?.generationPackage) return [];
-  const findings = [];
-  const pkg = job.generationPackage;
-
-  // Locked-asset check
-  if (pkg.lockedAsset) {
-    findings.push({
-      id: "locked-asset",
-      element: pkg.lockedAsset.name || "Protected asset",
-      category: "Fidelity",
-      status: "verify",
-      finding: "The protected asset was included in the generation input. Verify that the label, proportions, and state are preserved in the result.",
-      repairAction: "retry-with-direction",
-      repairLabel: "Retry with stronger protection",
-    });
-  }
-
-  // Composition / placement check
-  findings.push({
-    id: "composition",
-    element: `${pkg.output.format} composition`,
-    category: "Output",
-    status: "verify",
-    finding: `The image was generated at ${pkg.output.size || "default"} for ${pkg.output.placement || "the requested placement"}. Confirm the composition works at this ratio.`,
-    repairAction: "retry-with-direction",
-    repairLabel: "Retry with adjusted composition",
-  });
-
-  // Accidental text / visual claims
-  findings.push({
-    id: "accidental-text",
-    element: "Unintended text or claims",
-    category: "Compliance",
-    status: "verify",
-    finding: "Check for any accidental readable text, logos, or visual elements that could imply a health or performance claim.",
-    repairAction: "retry-exclude",
-    repairLabel: "Retry with explicit exclusion",
-  });
-
-  // Brand-world fidelity
-  findings.push({
-    id: "brand-fidelity",
-    element: `${pkg.brandName} world`,
-    category: "Brand",
-    status: "verify",
-    finding: `Does the scene feel specific to ${pkg.brandName}? The approved creative direction, palette, and materials were compiled into the prompt. The result should feel grounded in those choices, not generic.`,
-    repairAction: "retry-with-direction",
-    repairLabel: "Retry with stronger direction",
-  });
-
-  // Constraint audit findings
-  for (const constraint of pkg.constraintAudit || []) {
-    if (constraint.status === "excluded" || constraint.status === "warning") {
-      findings.push({
-        id: `constraint-${constraint.rule?.replace(/\s/g, "-") || Math.random()}`,
-        element: constraint.rule || "Constraint",
-        category: "Rules",
-        status: constraint.status === "excluded" ? "enforced" : "verify",
-        finding: constraint.status === "excluded"
-          ? `This element was excluded from the prompt: ${constraint.rule}.`
-          : `A constraint was flagged during compilation: ${constraint.rule}. Verify the result complies.`,
-        repairAction: null,
-        repairLabel: null,
-      });
-    }
-  }
-  return findings;
-}
+// buildEvaluationFindings was removed 2026-09-13. It emitted four fixed Verify
+// prompts on every render: check the locked asset, check the ratio, check for
+// stray text, check that it feels like the brand. None inspected the image.
+// Each carried a repair button that navigated to preflight and changed nothing,
+// because there is no protection-strength, composition, or direction lever to
+// turn up. The constraint audit it also read is still on the package and still
+// visible under View package.
 
 // The produced words, shown as part of the finished piece rather than as a
 // side panel. Stacked rather than gridded: caption length varies enormously
@@ -7345,13 +7275,16 @@ function findingStatusLabel(status) {
   return "Verify";
 }
 
+// Only copy findings reach this now, so the "to verify" branch that counted the
+// old image prompts is gone. A run with copy that raises nothing says so.
 function findingCountLabel(findings) {
   const violations = findings.filter((f) => f.status === "violation").length;
   const unchecked = findings.filter((f) => f.status === "unchecked").length;
   if (violations) return `${violations} ${violations === 1 ? "violation" : "violations"}`;
   if (unchecked) return "A check did not run";
-  const toVerify = findings.filter((f) => f.status === "verify" || f.status === "review").length;
-  return `${toVerify} to verify`;
+  const review = findings.filter((f) => f.status === "review").length;
+  if (review) return `${review} to look at`;
+  return "Nothing flagged";
 }
 
 function renderResult() {
@@ -7366,7 +7299,7 @@ function renderResult() {
   if (state.production.reviewError) {
     return shell(`
       <section class="workspace">
-        ${pageHeader("This output cannot be evaluated", "")}
+        ${pageHeader("This output cannot be opened", "")}
         <section class="card">
           <p class="page-description">${escapeHtml(state.production.reviewError)}</p>
           <div class="actions"><button class="button" type="button" data-action="workspace">Back to Snapshot</button></div>
@@ -7386,40 +7319,8 @@ function renderResult() {
   const complete = job?.status === "complete" && job.imageUrl;
   const isLinkedIn = job?.deliverable === "linkedin-post" || job?.generationPackage?.deliverable === "linkedin-post";
   const generationMethod = isLinkedIn ? "Post copy + image" : /\/edits?$/.test(job?.endpoint || "") ? "Reference-guided image" : "Prompt-only image";
-  const findings = complete ? [...buildCopyFindings(job), ...buildEvaluationFindings(job)] : [];
+  const findings = complete ? buildCopyFindings(job) : [];
 
-  // Add LinkedIn-specific evaluation findings
-  if (complete && isLinkedIn && job.postCopy) {
-    findings.unshift(
-      {
-        id: "voice-fidelity",
-        element: "Voice and tone",
-        category: "Copy",
-        status: "verify",
-        finding: "Does the post sound like the approved brand voice? Check that it matches the tone, register, and vocabulary from the voice guidance.",
-        repairAction: "retry-with-direction",
-        repairLabel: "Retry with adjusted voice direction",
-      },
-      {
-        id: "claims-check",
-        element: "Claims and facts",
-        category: "Compliance",
-        status: "verify",
-        finding: "Verify that every factual claim in the post is approved by the Brand Brain. Check for implied health, performance, or efficacy claims that may violate scoped prohibitions.",
-        repairAction: "retry-exclude",
-        repairLabel: "Retry with explicit claim boundaries",
-      },
-      {
-        id: "structural-rules",
-        element: "Writing structure",
-        category: "Copy",
-        status: "verify",
-        finding: "Check for em dashes, fragment stacks, hedging verbs, filler intensifiers, or promotional register. These are structural violations of the prose ruleset.",
-        repairAction: "retry-with-direction",
-        repairLabel: "Retry with stricter structure",
-      },
-    );
-  }
   const candidateRules = state.production.candidateRules || [];
   const feedbackOpen = state.production.feedbackOpen || false;
   const feedbackDraft = state.production.feedbackDraft || "";
@@ -7428,12 +7329,12 @@ function renderResult() {
   return shell(`
     <section class="workspace">
       ${pageHeader(
-        failed ? "Generation needs attention" : working ? "Generating your image" : complete ? "Evaluate result" : "Generated result",
+        failed ? "Generation needs attention" : working ? "Generating your image" : complete ? "Your image" : "Generated result",
         failed ? "Your package is still saved and ready to try again."
-          : working ? "OpenAI is creating the image from the reviewed package."
+          : working ? `${job?.engineLabel || renderEngineLabel(job?.engine || state.studio.renderEngine)} is creating the image from the reviewed package.`
           : complete ? (state.production.reviewing
-              ? `Saved work, made with ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. The findings below come from the package that produced it.`
-              : `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. Review the findings below before approving or revising.`)
+              ? `Saved work, made with ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}.`
+              : `Created from ${state.brandName} Brand Brain v${job.generationPackage.brainVersion}. Look at the image and its copy before approving.`)
           : ""
       )}
 
@@ -7462,7 +7363,7 @@ function renderResult() {
           ${complete && findings.length ? `
           <section class="card">
             <div class="card-header">
-              <h2>Evaluation findings</h2>
+              <h2>Claims check</h2>
               <span class="mini-pill">${findingCountLabel(findings)}</span>
             </div>
             <ul class="evaluation-list">
@@ -8909,7 +8810,7 @@ async function openOutputForReview(outputId) {
     if (!response.ok) throw new Error(payload?.error || "That output could not be opened.");
     const saved = payload.output || record;
     const generationPackage = payload.package?.generationPackage || record?.package || null;
-    if (!generationPackage) throw new Error("The compiled package for this output was not saved, so it cannot be evaluated.");
+    if (!generationPackage) throw new Error("The compiled package for this output was not saved, so it cannot be opened.");
 
     state.production.job = {
       jobId: outputId,
@@ -10834,10 +10735,6 @@ root.addEventListener("click", (event) => {
     const dismissed = state.production.candidateRules.splice(index, 1)[0];
     if (dismissed) recordBrainHistory("Candidate rule dismissed", `"${dismissed.feedback}" was removed from the review queue.`);
     render();
-  }
-  if (action === "retry-with-direction" || action === "retry-exclude") {
-    setToast("Adjust your brief with the finding in mind, then regenerate.");
-    navigate("preflight");
   }
   if (action === "start-new") {
     state.production.status = "idle";
