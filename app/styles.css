@@ -461,6 +461,7 @@ select:focus-visible {
 .result-grid > .card + .card,
 .preflight-grid > .card + .card,
 .content-grid > .card + .card,
+.studio-setup-column > .card + .card,
 .intake-door-grid > .card + .card,
 .source-material-grid > .card + .card,
 .source-presence-grid > .card + .card,
@@ -6996,6 +6997,57 @@ button.ws-attention-item:hover {
 
 .studio-aside-note {
   padding: var(--space-3) 0;
+}
+
+/* Studio setup screens run as one column. The right-hand rail came out on
+   2026-09-13: Guidance applied showed the same three brain summaries on every
+   run with nothing to act on, and the reference cards beside it moved into the
+   drawer below. The max-width keeps a two-up field row readable rather than
+   letting a select stretch the full viewport. */
+.studio-setup-column {
+  display: grid;
+  gap: var(--section-gap);
+  align-content: start;
+  max-width: 1040px;
+}
+
+.studio-setup-column > div {
+  display: grid;
+  gap: var(--section-gap);
+  align-content: start;
+}
+
+.studio-setup-drawer {
+  border: 1px solid var(--paper-300);
+  border-radius: var(--radius-md);
+  background: var(--paper-50);
+}
+
+.studio-setup-drawer > summary {
+  padding: var(--space-3) 18px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.studio-setup-drawer > summary:hover {
+  color: var(--text);
+}
+
+.studio-setup-drawer[open] > summary {
+  border-bottom: 1px solid var(--paper-300);
+}
+
+.studio-setup-drawer-body {
+  padding: var(--space-4) 18px;
+}
+
+@media (max-width: 1040px) {
+  .studio-setup-column {
+    max-width: none;
+  }
 }
 
 @media (max-width: 900px) {

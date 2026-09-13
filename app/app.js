@@ -4533,6 +4533,22 @@ function studioSceneKindField() {
             </div>`;
 }
 
+// The setup screens used to carry a right-hand column. Guidance applied was
+// the bulk of it: three summary strings off the approved brain, the same on
+// every run, with nothing to act on. Ruled out 2026-09-13. The reference cards
+// that were beside it are still worth having, so they sit in a closed drawer
+// under the form rather than taking a column.
+function studioSetupDrawer(label, innerHtml) {
+  const body = String(innerHtml || "").trim();
+  if (!body) return "";
+  return `
+    <details class="studio-setup-drawer">
+      <summary>${escapeHtml(label)}</summary>
+      <div class="studio-setup-drawer-body">${body}</div>
+    </details>
+  `;
+}
+
 function renderStudioSetup() {
   const approved = approvedBrainForProduction();
   const cat = studioCategories.find((c) => c.id === state.studio.category);
@@ -4601,13 +4617,45 @@ function renderStudioSetup() {
     <section class="workspace">
       ${pageHeader(cat.name, "Describe what you need and pick a platform and format. The system handles the size, safe zones, and composition for that shape.")}
 
-      <div class="content-grid">
+      <div class="studio-setup-column">
         <div>
           <section class="card">
             <div class="card-header"><h2>Your brief</h2></div>
 
+            <!-- Field order follows what the scene writer reads. Platform and
+                 format, product, campaign, what the image is, and the filter are
+                 all sent by suggestSceneBriefs, so they sit above the brief and
+                 its three-directions button. The headline set, the segment, and
+                 the text overlay are not sent, so they sit below it. -->
             <div class="field-grid">
-              <div class="field full studio-setup-field">
+              <div class="field studio-setup-field">
+                <label>Platform</label>
+                <div class="studio-platform-grid">
+                  ${Object.entries(studioPlatformFormats).map(([id, p]) => `
+                    <button class="studio-platform-chip ${platforms.includes(id) ? "selected" : ""}" type="button" data-action="toggle-studio-platform" data-id="${id}">
+                      ${escapeHtml(p.label)}
+                    </button>
+                  `).join("")}
+                </div>
+              </div>
+
+              ${platforms.length ? `
+                <div class="field studio-setup-field">
+                  <div class="studio-formats-panel">
+                    <div class="studio-formats-header">
+                      <span class="section-label">Output format</span>
+                    </div>
+                    ${formatGroupsHtml}
+                  </div>
+                </div>
+              ` : `
+                <div class="field studio-setup-field">
+                  <label>Output format</label>
+                  <span class="field-note">Pick a platform and its formats appear here.</span>
+                </div>
+              `}
+
+              <div class="field studio-setup-field">
                 <label for="social-product">Attach a product</label>
                 <span class="field-note">Optional. Brings in approved claims, exclusions, and product imagery.</span>
                 <div class="studio-campaign-row">
@@ -4619,7 +4667,7 @@ function renderStudioSetup() {
                 </div>
               </div>
 
-              <div class="field full studio-setup-field">
+              <div class="field studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
                 <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
                 <div class="studio-campaign-row">
@@ -4629,12 +4677,6 @@ function renderStudioSetup() {
                   </select>
                 </div>
               </div>
-
-              ${segmentField("studio")}
-
-              ${headlineSetField()}
-
-              ${renderCopyField()}
 
               ${studioSceneKindField()}
 
@@ -4651,27 +4693,13 @@ function renderStudioSetup() {
                 placeholder: "Spring collection lifestyle shot with the Yuzu Ginger product on a wooden surface, warm afternoon light",
               })}
 
-              <div class="field full">
-                <label>Platforms</label>
-                <div class="studio-platform-grid">
-                  ${Object.entries(studioPlatformFormats).map(([id, p]) => `
-                    <button class="studio-platform-chip ${platforms.includes(id) ? "selected" : ""}" type="button" data-action="toggle-studio-platform" data-id="${id}">
-                      ${escapeHtml(p.label)}
-                    </button>
-                  `).join("")}
-                </div>
-              </div>
+              ${segmentField("studio")}
+
+              ${headlineSetField()}
+
+              ${renderCopyField()}
 
               ${platforms.length ? `
-                <div class="field full">
-                  <div class="studio-formats-panel">
-                    <div class="studio-formats-header">
-                      <span class="section-label">Output format</span>
-                    </div>
-                    ${formatGroupsHtml}
-                  </div>
-                </div>
-
                 <div class="field full">
                   <button class="studio-toggle-row" type="button" data-action="toggle-studio-text-overlay">
                     <span class="studio-toggle-track ${state.studio.textOverlay ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
@@ -4736,38 +4764,6 @@ function renderStudioSetup() {
           </section>
         </div>
 
-        <aside>
-          <section class="card">
-            <div class="card-header">
-              <h2>Guidance applied</h2>
-              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
-            </div>
-            <ul class="exact-list">
-              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Approve the Brand Brain to use this guidance")}</span></li>
-              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
-              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not active")}</span></li>
-            </ul>
-          </section>
-          ${state.studio.campaignId ? (() => {
-            const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
-            return campaign ? `
-            <section class="card surface-accent surface-accent-governed studio-campaign-card">
-              <div class="card-header">
-                <h2>Campaign direction</h2>
-                <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
-              </div>
-              <ul class="exact-list">
-                ${campaign.campaignIdea ? `<li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>` : ""}
-                ${campaign.messageTerritory ? `<li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>` : ""}
-                ${campaign.explore ? `<li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>` : ""}
-              </ul>
-            </section>
-            ` : "";
-          })() : ""}
-          <div class="studio-aside-note">
-            <span class="field-note">Brand Brain, palette, and production knowledge applied automatically per format.</span>
-          </div>
-        </aside>
       </div>
 
       <div class="actions">
@@ -4811,7 +4807,7 @@ function renderTemplateSetup(cat) {
     <section class="workspace">
       ${pageHeader(cat.name, "Create a reusable surface, environment, or composition foundation. Approved templates become locked assets available as inputs for future production.")}
 
-      <div class="content-grid">
+      <div class="studio-setup-column">
         <div>
           <section class="card">
             <div class="card-header"><h2>Your brief</h2></div>
@@ -4896,50 +4892,14 @@ function renderTemplateSetup(cat) {
           </section>
         </div>
 
-        <aside>
-          <section class="card">
-            <div class="card-header">
-              <h2>How templates are evaluated</h2>
-            </div>
-            <ul class="exact-list">
-              <li>Works as a foundation for placing elements and text on top</li>
-              <li>Open zones are clear and usable at all selected sizes</li>
-              <li>Crops well across the target aspect ratios</li>
-              <li>No generated text or lettering</li>
-            </ul>
-            <p class="field-note" style="margin-top: var(--space-3);">The system evaluates whether the surface supports composition, not whether it stands on its own as a finished image.</p>
-          </section>
-          <section class="card">
-            <div class="card-header">
-              <h2>Guidance applied</h2>
-              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
-            </div>
-            <ul class="exact-list">
-              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not active")}</span></li>
-              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
-              <li><strong>Creative direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "creative")?.summary || "Not active")}</span></li>
-            </ul>
-          </section>
-          ${state.studio.campaignId ? (() => {
-            const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
-            return campaign ? `
-            <section class="card surface-accent surface-accent-governed studio-campaign-card">
-              <div class="card-header">
-                <h2>Campaign direction</h2>
-                <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
-              </div>
-              <ul class="exact-list">
-                ${campaign.campaignIdea ? `<li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>` : ""}
-                ${campaign.messageTerritory ? `<li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>` : ""}
-                ${campaign.explore ? `<li><strong>Explore</strong><span>${escapeHtml(campaign.explore)}</span></li>` : ""}
-              </ul>
-            </section>
-            ` : "";
-          })() : ""}
-          <div class="studio-aside-note">
-            <span class="field-note">Brand Brain, palette, and production knowledge applied automatically per format.</span>
-          </div>
-        </aside>
+        ${studioSetupDrawer("How templates are evaluated", `
+          <ul class="exact-list">
+            <li>Works as a foundation for placing elements and text on top</li>
+            <li>Open zones are clear and usable at all selected sizes</li>
+            <li>Crops well across the target aspect ratio</li>
+            <li>No generated text or lettering</li>
+          </ul>
+        `)}
       </div>
 
       <div class="actions">
@@ -5082,7 +5042,7 @@ function renderWebsiteSetup(cat) {
     <section class="workspace">
       ${pageHeader(cat.name, "Pick where the image goes, describe what it should show, and the system composes it for that shape.")}
 
-      <div class="content-grid">
+      <div class="studio-setup-column">
         <div>
           <section class="card">
             <div class="card-header"><h2>Setup</h2></div>
@@ -5165,34 +5125,9 @@ function renderWebsiteSetup(cat) {
           </section>
         </div>
 
-        <aside>
-          ${fmt ? `
-            <section class="card surface-accent">
-              <div class="card-header">
-                <h2>${escapeHtml(fmt.label)}</h2>
-                <span class="mini-pill">${escapeHtml(fmt.ratio)}</span>
-              </div>
-              <p class="field-note">${escapeHtml(fmt.craft)}</p>
-            </section>
-          ` : `
-            <section class="card">
-              <div class="card-header"><h2>Placement</h2></div>
-              <p class="field-note">Pick where the image goes and this shows the composition the system will use for that shape.</p>
-            </section>
-          `}
-
-          <section class="card">
-            <div class="card-header">
-              <h2>Guidance applied</h2>
-              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
-            </div>
-            <ul class="exact-list">
-              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not active")}</span></li>
-              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
-              <li><strong>Brand world</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "world")?.summary || "Not active")}</span></li>
-            </ul>
-          </section>
-        </aside>
+        ${fmt ? studioSetupDrawer(`Composition for ${fmt.label} (${fmt.ratio})`, `
+          <p class="field-note">${escapeHtml(fmt.craft)}</p>
+        `) : ""}
       </div>
 
       <div class="actions">
@@ -5222,7 +5157,7 @@ function renderSalesSetup(cat) {
     <section class="workspace">
       ${pageHeader(cat.name, "Pick a template, describe the content element, and the system generates a polished visual on your branded background.")}
 
-      <div class="content-grid">
+      <div class="studio-setup-column">
         <div>
           <section class="card">
             <div class="card-header"><h2>Setup</h2></div>
@@ -5344,57 +5279,25 @@ function renderSalesSetup(cat) {
           </section>
         </div>
 
-        <aside>
-          <section class="card">
+        ${selectedTemplate ? `
+          <section class="card surface-accent">
             <div class="card-header">
-              <h2>How this works</h2>
+              <h2>Selected template</h2>
+              <span class="mini-pill pill-governed">Locked</span>
             </div>
-            <ul class="exact-list">
-              <li><strong>Template</strong><span>Locked background. Placed exactly, never regenerated.</span></li>
-              <li><strong>Element</strong><span>Generated content (device mockup, feature graphic, product shot) composed on top.</span></li>
-              <li><strong>Result</strong><span>A single composed image ready for your slide or one-pager.</span></li>
-            </ul>
-            <p class="field-note" style="margin-top: var(--space-3);">The system applies backend production knowledge to make the element look premium: lighting, reflections, perspective, and scale that match the template.</p>
+            <p>${escapeHtml(selectedTemplate.name)}</p>
+            <p class="field-note">${escapeHtml(selectedTemplate.ratio)} &middot; Placed exactly as approved</p>
           </section>
-          ${selectedTemplate ? `
-            <section class="card surface-accent">
-              <div class="card-header">
-                <h2>Selected template</h2>
-                <span class="mini-pill pill-governed">Locked</span>
-              </div>
-              <p>${escapeHtml(selectedTemplate.name)}</p>
-              <p class="field-note">${escapeHtml(selectedTemplate.ratio)} &middot; Placed exactly as approved</p>
-            </section>
-          ` : ""}
-          <section class="card">
-            <div class="card-header">
-              <h2>Guidance applied</h2>
-              <span class="status-pill">${approved ? `Brain v${state.brain.approvedVersion || state.brain.artifactVersion}` : "Not ready"}</span>
-            </div>
-            <ul class="exact-list">
-              <li><strong>${escapeHtml(state.brandName)} foundation</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "foundation")?.summary || "Not active")}</span></li>
-              <li><strong>Identity direction</strong><span>${escapeHtml(approved?.guidanceSections?.find((s) => s.id === "identity")?.summary || "Not active")}</span></li>
-            </ul>
-          </section>
-          ${state.studio.campaignId ? (() => {
-            const campaign = campaigns.find((c) => c.id === state.studio.campaignId);
-            return campaign ? `
-            <section class="card surface-accent surface-accent-governed studio-campaign-card">
-              <div class="card-header">
-                <h2>Campaign direction</h2>
-                <span class="mini-pill pill-governed">${escapeHtml(campaign.name)}</span>
-              </div>
-              <ul class="exact-list">
-                ${campaign.campaignIdea ? `<li><strong>Campaign idea</strong><span>${escapeHtml(campaign.campaignIdea)}</span></li>` : ""}
-                ${campaign.messageTerritory ? `<li><strong>Message territory</strong><span>${escapeHtml(campaign.messageTerritory)}</span></li>` : ""}
-              </ul>
-            </section>
-            ` : "";
-          })() : ""}
-          <div class="studio-aside-note">
-            <span class="field-note">Brand Brain and production knowledge applied automatically to the generated element.</span>
-          </div>
-        </aside>
+        ` : ""}
+
+        ${studioSetupDrawer("How this works", `
+          <ul class="exact-list">
+            <li><strong>Template</strong><span>Locked background. Placed exactly, never regenerated.</span></li>
+            <li><strong>Element</strong><span>Generated content (device mockup, feature graphic, product shot) composed on top.</span></li>
+            <li><strong>Result</strong><span>A single composed image ready for your slide or one-pager.</span></li>
+          </ul>
+          <p class="field-note" style="margin-top: var(--space-3);">The system applies backend production knowledge to make the element look premium: lighting, reflections, perspective, and scale that match the template.</p>
+        `)}
       </div>
 
       <div class="actions">
