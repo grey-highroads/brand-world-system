@@ -6980,7 +6980,7 @@ function renderPreflight() {
       </div>
 
       <div class="actions">
-        <button class="button" type="button" data-action="back-to-brief">‹ Back to brief</button>
+        <button class="button" type="button" data-action="back-to-brief">‹ ${state.studio.category ? "Back to setup" : "Back to brief"}</button>
         ${state.production.job?.status === "complete" ? '<button class="button" type="button" data-action="back-to-result">View result ›</button>' : ""}
       </div>
     </section>
@@ -10447,7 +10447,13 @@ root.addEventListener("click", (event) => {
     navigate("brief");
   }
   if (action === "continue-preflight") void prepareProductionPreflight();
-  if (action === "back-to-brief") navigate("brief");
+  if (action === "back-to-brief") {
+    // A Studio job reaches preflight through its own setup screen, so back
+    // means back to that setup, not to the old brief screen. Until 2026-09-13
+    // this always went to the legacy screen, which arrived with none of the
+    // Studio selections on it.
+    navigate(state.studio.category ? "studio-setup" : "brief");
+  }
   if (action === "back-to-preflight") navigate("preflight");
   if (action === "back-to-result") {
     // Re-fetch the job to get a fresh presigned image URL
