@@ -709,12 +709,17 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       : []),
     isTemplate ? templateProductionInstructions : null,
     isSalesEnablement ? buildSalesElementInstructions(hasTemplate) : null,
-    // Campaign direction, campaign continuity, and the banner and product
-    // composition blocks narrowed to the template and sales paths on
-    // 2026-09-07. Campaign context still reaches the writer, which is where a
-    // campaign belongs: it changes what the moment is, not what a rule says.
-    (isTemplate || isSalesEnablement) ? campaignSection : null,
-    (isTemplate || isSalesEnablement) ? priorOutputs : null,
+    // The banner and product composition blocks narrowed to the template and
+    // sales paths on 2026-09-07.
+    //
+    // Campaign direction and campaign continuity stopped compiling on every
+    // path on 2026-09-13. A selected campaign is an association on the
+    // finished asset. The app no longer sends the campaign on a render, so
+    // both sections were already dead on arrival; the calls are removed so
+    // the compiler says the same thing as the client. campaignSection and
+    // priorOutputs are left defined and uncalled, so a reversal is one revert.
+    // Campaign context still reaches the scene writer, which is where it
+    // belongs: it changes what the moment is, not what a rule says.
     (isTemplate || isSalesEnablement) ? compositionSection : null,
     // Palette only, and template and sales paths only. The materials line was
     // already suppressed on both paths before this cut, for template and sales

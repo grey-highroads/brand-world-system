@@ -4675,7 +4675,7 @@ function renderStudioSetup() {
 
               <div class="field studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
+                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -4834,7 +4834,7 @@ function renderTemplateSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
+                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5030,7 +5030,7 @@ function renderWebsiteSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="website-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
+                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
                 <div class="studio-campaign-row">
                   <select id="website-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5163,7 +5163,7 @@ function renderSalesSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="sales-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Brings in the campaign idea, message territory, and audience.</span>
+                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
                 <div class="studio-campaign-row">
                   <select id="sales-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5883,7 +5883,7 @@ function renderCampaignWorkspace() {
       </header>
 
       <section class="campaign-cta-bar">
-        <span>Create assets for this campaign in the Design Studio. The campaign direction compiles into every output.</span>
+        <span>Create assets for this campaign in the Design Studio. Anything you make from here is filed under the campaign.</span>
         <button class="button primary" type="button" data-action="studio-from-campaign" ${approved ? "" : "disabled"}>Open Design Studio</button>
       </section>
 
@@ -8293,7 +8293,6 @@ function segmentField(idPrefix) {
 }
 
 function productionRequest(jobId) {
-  const campaign = state.campaigns.find((c) => c.id === state.activeCampaignId);
   return {
     jobId,
     brief: { ...state.brief, segment: state.studio.segment || undefined },
@@ -8319,25 +8318,13 @@ function productionRequest(jobId) {
       influence: item.influence,
       usageInstruction: item.usageInstruction,
     })),
-    campaign: campaign ? {
-      name: campaign.name,
-      campaignIdea: campaign.campaignIdea,
-      messageTerritory: campaign.messageTerritory,
-      objective: campaign.objective,
-      audience: campaign.audience,
-      desiredBelief: campaign.desiredBelief,
-      preserve: campaign.preserve,
-      explore: campaign.explore,
-      paletteShift: campaign.paletteShift,
-      productFocus: campaign.productFocus,
-      priorOutputs: state.campaignReferences.map((ref) => ({
-        label: ref.label,
-        scene: ref.scene,
-        role: ref.role,
-        channel: ref.channel,
-        format: ref.format,
-      })),
-    } : undefined,
+    // The campaign is not sent on a render as of 2026-09-13. A selected
+    // campaign is an association on the finished asset, not something the
+    // model reads. The output record still carries campaignId and
+    // campaignName from state.activeCampaignId, which is what files it.
+    // The scene writer still receives the campaign; that call is a draft the
+    // person reads and edits, and its payload is built separately in
+    // suggestSceneBriefs.
   };
 }
 
