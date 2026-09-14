@@ -5,6 +5,7 @@ import { createVercelBlobRefusalsStore } from "../../src/refusals/store.js";
 import { generateProductionImage } from "../../src/production/service.js";
 import { placeOnBackground } from "../../src/production/composite.js";
 import { placeAssetOnRender } from "../../src/production/placement.js";
+import { createVercelBlobIdentityAssetStore } from "../../src/identity-assets/store.js";
 import { createVercelBlobProductionStore } from "../../src/production/store.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
@@ -40,6 +41,8 @@ export default async function handler(request, response) {
       const job = await placeAssetOnRender(body, {
         productionStore: createVercelBlobProductionStore({ clientId }),
         productStore: createVercelBlobProductStore({ clientId }),
+        identityStore: createVercelBlobIdentityAssetStore({ clientId }),
+        brainStore: createVercelBlobBrandBrainStore({ clientId }),
         env: process.env,
       });
       sendJson(response, 200, { job });

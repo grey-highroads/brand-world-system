@@ -11,6 +11,12 @@ import {
   addProductImage,
   removeProductImage,
 } from "../../src/products/service.js";
+import { createVercelBlobIdentityAssetStore } from "../../src/identity-assets/store.js";
+import {
+  convertIdentityAssetsFromSources,
+  listIdentityAssets,
+  readIdentityAsset,
+} from "../../src/identity-assets/service.js";
 import {
   readJsonBody,
   requireBrandWorldAccess,
@@ -49,6 +55,33 @@ export default async function handler(request, response) {
 
     const body = await readJsonBody(request);
     const action = String(body.action || "").trim();
+
+    // Identity asset records (ADR 0020 step 2) dispatch through this handler
+    // to hold the 12-function ceiling. A request without an identity_ action
+    // never reaches these branches.
+    if (action === "identity_list") {
+      const assets = await listIdentityAssets({ identityStore: createVercelBlobIdentityAssetStore({ clientId }) });
+      sendJson(response, 200, { assets });
+      return;
+    }
+
+    if (action === "identity_read") {
+      const record = await readIdentityAsset({
+        identityStore: createVercelBlobIdentityAssetStore({ clientId }),
+        assetId: String(body.assetId || "").trim(),
+      });
+      sendJson(response, 200, { record });
+      return;
+    }
+
+    if (action === "identity_convert") {
+      const result = await convertIdentityAssetsFromSources({
+        brainStore: createVercelBlobBrandBrainStore({ clientId }),
+        identityStore: createVercelBlobIdentityAssetStore({ clientId }),
+      });
+      sendJson(response, 200, result);
+      return;
+    }
 
     if (action === "synthesize") {
       await handleSynthesize(body, clientId, productStore, response);

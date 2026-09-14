@@ -213,21 +213,54 @@ function jobIdFor() {
 // pixels the record points at rather than whatever a browser sent up. Saves
 // under its own job id and never touches the current job slot, for the same
 // reason placeOnBackground does not.
+//
+// Two kinds of asset can be placed. A product cut-out arrives as productId
+// plus productImageId. A brand mark arrives as identityAssetId, variationId,
+// and fileId, resolved through the identity asset record to the source file
+// the brain already stores, and read through the brain store's guarded
+// reader so only this client's own files are reachable.
 export async function placeAssetOnRender(body, options) {
   const backgroundOutputId = String(body.backgroundOutputId || "");
-  const productId = String(body.productId || "");
-  const productImageId = String(body.productImageId || "");
   if (!backgroundOutputId) throw badRequest("Choose a background first.");
-  if (!productId || !productImageId) throw badRequest("Choose a product picture to place.");
+
+  const identityAssetId = String(body.identityAssetId || "");
+  let assetBytes = null;
+  let placementSource = null;
+
+  if (identityAssetId) {
+    const variationId = String(body.variationId || "");
+    const fileId = String(body.fileId || "");
+    if (!variationId) throw badRequest("Choose which version of the mark to place.");
+    const record = await options.identityStore.readAsset(identityAssetId);
+    const variation = (record?.variations || []).find((entry) => entry.variation_id === variationId);
+    if (!variation) throw badRequest("That version of the mark could not be found.");
+    const file = fileId
+      ? (variation.files || []).find((entry) => entry.file_id === fileId)
+      : (variation.files || [])[0];
+    if (!file?.blob_pathname) throw badRequest("That version of the mark has no placeable file.");
+    const stored = await options.brainStore.readSourceFile(file.blob_pathname);
+    assetBytes = stored?.bytes;
+    if (!assetBytes?.length) throw badRequest("The mark's file could not be read from storage.");
+    placementSource = {
+      identityAssetId,
+      variationId,
+      fileId: file.file_id,
+      variation: variation.variation || "",
+    };
+  } else {
+    const productId = String(body.productId || "");
+    const productImageId = String(body.productImageId || "");
+    if (!productId || !productImageId) throw badRequest("Choose a product picture to place.");
+    const product = await options.productStore.readProduct(productId);
+    const imageRecord = (product?.images || []).find((image) => image.image_id === productImageId);
+    if (!imageRecord?.blob_pathname) throw badRequest("That product picture could not be found.");
+    assetBytes = await options.productStore.readImageBytes(imageRecord.blob_pathname);
+    if (!assetBytes?.length) throw badRequest("That product picture could not be read from storage.");
+    placementSource = { productId, productImageId };
+  }
 
   const render = await options.productionStore.readOutputImageBytes(backgroundOutputId);
   if (!render?.bytes?.length) throw badRequest("That background could not be found.");
-
-  const product = await options.productStore.readProduct(productId);
-  const imageRecord = (product?.images || []).find((image) => image.image_id === productImageId);
-  if (!imageRecord?.blob_pathname) throw badRequest("That product picture could not be found.");
-  const assetBytes = await options.productStore.readImageBytes(imageRecord.blob_pathname);
-  if (!assetBytes?.length) throw badRequest("That product picture could not be read from storage.");
 
   const grounding = body.grounding === true;
   const outcome = await runPlacementPipeline(
@@ -254,8 +287,7 @@ export async function placeAssetOnRender(body, options) {
       await options.productionStore.writeOutputPackage(jobId, {
         placement: {
           backgroundOutputId,
-          productId,
-          productImageId,
+          ...placementSource,
           box: outcome.box,
           lightNote: String(body.lightNote || "").slice(0, 300),
           grounding: outcome.groundingRan,
