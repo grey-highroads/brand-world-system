@@ -34,7 +34,7 @@ build it as written anyway.
 - This kind falls back to a named default look rather than to
   `CAPTURE_CHARACTER`, which is a paragraph mostly about skin and is describing
   nothing in a frame with no people in it. The default is
-  `available_light_interior`, the one look in the library whose line names no
+  `long_lens_distance`, which is agnostic and binds no setting, and whose line names no
   face, chin, hair, or skin. `CAPTURE_CHARACTER` itself is not touched in this
   session, and the with-people kind keeps using it exactly as it does now.
 - The user control is a choice inside the studio form, not a new studio
@@ -149,7 +149,7 @@ The writer's kind never reaches it. Carry the kind on the brief record and read
 it in the compiler.
 
 In this session the compiler does one thing with it. When the kind is
-`scene_no_people` and no look was chosen, resolve `available_light_interior` and
+`scene_no_people` and no look was chosen, resolve `long_lens_distance` and
 compile its line into Capture, instead of falling back to `CAPTURE_CHARACTER`.
 The default look is a named constant, not a string inline at the call site, so
 changing it later is one edit.
@@ -168,9 +168,11 @@ say later which kind of image it was.
 ## 6. The user control
 
 In `app/app.js`, add a two-option control to the studio form near
-`studioLookField`, on all four forms that currently pass `kind: "scene"` into
-`sceneSuggestField`: social, website, showcase, and ad. The template and sales
-forms do not get it.
+`studioLookField`, on the forms that pass `kind: "scene"` into `sceneSuggestField`.
+There are two: social and website. `renderStudioSetup` routes template and sales
+to their own functions and sends showcase and ad to a placeholder shell, so those
+two categories have no form to put the control on. The brief said four; the
+builder corrected it.
 
 Labels: "With people" and "Place and product". Default is "With people", so
 existing behavior is unchanged for someone who does not touch it.
@@ -193,7 +195,7 @@ than starting a new file.
 - On `scene_no_people` with a look resolved, the added look sentence is in the
   system prompt.
 - A `scene_no_people` compile with no look chosen puts the
-  `available_light_interior` line in Capture, and `CAPTURE_CHARACTER` appears
+  `long_lens_distance` line in Capture, and `CAPTURE_CHARACTER` appears
   nowhere in the compiled prompt.
 - A `scene_no_people` compile with a look chosen uses that look, not the default.
 - A `scene` compile with no look still falls back to `CAPTURE_CHARACTER`.
@@ -215,3 +217,33 @@ Stop and say so. Briefs from this desk have carried a wrong contract claim, a
 dead fence, and an acceptance line that would have silently dropped display copy,
 and the builder was right every time. Raise it in your report rather than
 building around it.
+
+## Amendments, 2026-09-14
+
+This brief was wrong in four places. Three were caught by the builder at the
+time and one was caught six days later. The body above has been corrected so it
+matches what shipped. What the corrections were:
+
+**The default look.** The brief named `available_light_interior` because it was
+the only look with no skin or face in its line. Its `environment` field is
+`binding` on indoors with one window, so a peopleless direction set outdoors
+would have compiled a sentence about the room's only window over an exterior
+frame, which is the conflict ADR 0018 exists to prevent. The shipped default is
+`long_lens_distance`, which is agnostic. The architect's ruling on 09-08 named
+`color_negative_daylight` instead and was never pushed, so it never reached
+anyone. `long_lens_distance` is the one look that is both agnostic and free of
+skin language, and the code is canon.
+
+**Four studio forms.** There are two. Showcase and ad are unbuilt categories.
+
+**A defaulted look reaching the writer.** Section 5 said it does. It does not:
+the default resolves in the compiler at generate time and the writer ran at
+suggest time. Someone who picks the peopleless kind and no look gets a direction
+written with no look in `lookRules`, compiled against the default. Still true at
+`fb4aebdd60`. It is a gap rather than a defect, and closing it means resolving
+the default before the writer call.
+
+**Byte identity.** Section 7 asked for a byte-identical package while section 5
+asked for the kind to be recorded on it, which cannot both hold. The test hashes
+`pkg.prompt` and `pkg.sections` against the base commit instead, which is what
+byte identity was always about.
