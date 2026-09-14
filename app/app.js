@@ -4524,8 +4524,7 @@ function studioSceneKindField() {
   const selected = state.brief.kind === "scene_no_people" ? "scene_no_people" : "scene";
   return `
             <div class="field full studio-setup-field">
-              <label>What the image is</label>
-              <span class="field-note">With people puts the moment's people in the frame. Place and product photographs the same place at a point when nobody is in it.</span>
+              <label>With or without people</label>
               <div class="studio-platform-grid" role="radiogroup" aria-label="What the image is">
                 ${sceneKinds.map((entry) => `
                   <button
@@ -4663,7 +4662,7 @@ function renderStudioSetup() {
 
               <div class="field studio-setup-field">
                 <label for="social-product">Attach a product</label>
-                <span class="field-note">Optional. The product photo is placed in the image, and any caption or headline is checked against the product's approved claims.</span>
+                <span class="field-note">Optional. Places the product photo in the image.</span>
                 <div class="studio-campaign-row">
                   <select id="social-product" data-action="website-product-change">
                     <option value="">No product record</option>
@@ -4675,7 +4674,7 @@ function renderStudioSetup() {
 
               <div class="field studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -4834,7 +4833,7 @@ function renderTemplateSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5018,7 +5017,7 @@ function renderWebsiteSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="website-product">Attach a product</label>
-                <span class="field-note">Optional. The product photo is placed in the image, and any caption or headline is checked against the product's approved claims.</span>
+                <span class="field-note">Optional. Places the product photo in the image.</span>
                 <div class="studio-campaign-row">
                   <select id="website-product" data-action="website-product-change">
                     <option value="">No product record</option>
@@ -5030,7 +5029,7 @@ function renderWebsiteSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="website-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
                 <div class="studio-campaign-row">
                   <select id="website-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5163,7 +5162,7 @@ function renderSalesSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="sales-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the finished image under the campaign and gives the scene suggestions its idea, audience, and message territory to work from.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
                 <div class="studio-campaign-row">
                   <select id="sales-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5387,9 +5386,12 @@ function renderProducts() {
 function productImageryNote(productId) {
   if (!productId) return "";
   const record = state.products.detail?.product_id === productId ? state.products.detail : null;
-  const entry = state.products.list.find((p) => p.product_id === productId);
   const images = Array.isArray(record?.images) ? record.images : null;
-  if (!images) return `Uses ${entry?.product_name || "this product"}'s governed claims and any imagery on its record.`;
+  // Silent until the record loads. This used to print a generic line about
+  // governed claims and imagery, which repeated the field note above it and
+  // told the person nothing about the product they just picked. The branches
+  // below say something specific or say nothing. Changed 2026-09-14.
+  if (!images) return "";
   const isolated = images.filter((i) => i.kind === "isolated").length;
   const context = images.filter((i) => i.kind === "in_context").length;
   if (!isolated && !context) return "No imagery on this record yet. Add it from the Products screen.";

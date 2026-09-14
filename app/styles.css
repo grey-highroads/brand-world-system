@@ -6741,11 +6741,13 @@ button.ws-attention-item:hover {
   gap: var(--space-2);
 }
 
+/* Matches the select and text input fill (#26313e) so a chip reads as an input
+   rather than as an outline floating on the card. Changed 2026-09-14. */
 .studio-platform-chip {
   padding: var(--space-2) var(--space-4);
   border-radius: var(--radius-md);
-  border: 1px solid var(--border-subtle);
-  background: transparent;
+  border: 1px solid var(--paper-300);
+  background: #26313e;
   color: var(--text);
   font-size: 13px;
   cursor: pointer;
@@ -6754,7 +6756,7 @@ button.ws-attention-item:hover {
 
 .studio-platform-chip:hover {
   border-color: var(--border-strong);
-  background: var(--paper-50);
+  background: #2b3746;
 }
 
 .studio-platform-chip.selected {
