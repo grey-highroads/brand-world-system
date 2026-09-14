@@ -236,12 +236,12 @@ skin language, and the code is canon.
 
 **Four studio forms.** There are two. Showcase and ad are unbuilt categories.
 
-**A defaulted look reaching the writer.** Section 5 said it does. It does not:
-the default resolves in the compiler at generate time and the writer ran at
-suggest time. Someone who picks the peopleless kind and no look gets a direction
-written with no look in `lookRules`, compiled against the default. Still true at
-`fb4aebdd60`. It is a gap rather than a defect, and closing it means resolving
-the default before the writer call.
+**A defaulted look reaching the writer.** Section 5 said it does, the builder
+correctly reported that it did not, and it does now. `generate-copy.js` resolves
+`SCENE_NO_PEOPLE_DEFAULT_LOOK` alongside the requested look, so the default
+reaches `lookRules` like any other look. That was added between the builder's
+commit `8d77418` and `fb4aebdd60`, in the window this desk did not cover. The
+gap is closed and section 5 is now true of the code.
 
 **Byte identity.** Section 7 asked for a byte-identical package while section 5
 asked for the kind to be recorded on it, which cannot both hold. The test hashes
