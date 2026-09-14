@@ -689,7 +689,29 @@ export async function generateProductionImage(body, options) {
     }
     const image = result?.data?.[0];
     if (!image?.b64_json) throw new Error(`${engine.label} returned no image data.`);
-    const bytes = Buffer.from(image.b64_json, "base64");
+    let bytes = Buffer.from(image.b64_json, "base64");
+
+    // Branding (logo brief, 2026-09-14). When the job asked for the logo, the
+    // real file's pixels are placed onto the finished render at the chosen
+    // preset and the placement is verified. This is deterministic work after
+    // all generative work. A branding failure never costs the render: the
+    // unbranded image saves and the failure is recorded on the package.
+    let brandingResult = null;
+    let brandingError = "";
+    if (body.branding?.enabled && options.identityStore) {
+      try {
+        const { applyBrandingToRender } = await import("./placement.js");
+        brandingResult = await applyBrandingToRender({
+          renderBytes: bytes,
+          branding: body.branding,
+          identityStore: options.identityStore,
+          brainStore: options.brainStore,
+        });
+        bytes = brandingResult.bytes;
+      } catch (error) {
+        brandingError = error.message || "The logo could not be placed.";
+      }
+    }
 
     // Last check before anything durable is written. If another attempt has
     // taken over this job, its image is the one the user will see, and
@@ -773,6 +795,8 @@ export async function generateProductionImage(body, options) {
           engineLabel: engine.label,
           model: engine.model,
           endpoint: working.endpoint,
+          ...(brandingResult ? { branding: brandingResult.branding, brandingVerification: brandingResult.verification } : {}),
+          ...(brandingError ? { brandingError } : {}),
           savedAt: new Date().toISOString(),
         });
       } catch {

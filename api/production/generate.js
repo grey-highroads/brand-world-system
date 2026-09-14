@@ -55,6 +55,7 @@ export default async function handler(request, response) {
       productStore: createVercelBlobProductStore({ clientId }),
       claimsStore: createVercelBlobClaimsStore({ clientId }),
       refusalsStore: createVercelBlobRefusalsStore({ clientId }),
+      identityStore: createVercelBlobIdentityAssetStore({ clientId }),
       env: process.env,
     });
     sendJson(response, 200, { job });

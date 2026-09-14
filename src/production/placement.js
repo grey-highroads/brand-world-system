@@ -202,6 +202,94 @@ export async function runPlacementPipeline({ renderBytes, assetBytes, box: rawBo
   return { bytes: composed, box, verification, groundingRan, width, height };
 }
 
+/* Branding a render as it completes */
+
+// The corner and size presets the studio offers. Fractions of image width,
+// with a margin that keeps the mark off the edge the way a designer would.
+const BRANDING_SIZES = { small: 0.12, standard: 0.18, prominent: 0.28 };
+const BRANDING_MARGIN = 0.04;
+
+export function computeBrandingBox(imageWidth, imageHeight, markWidth, markHeight, corner, sizePreset) {
+  const fraction = BRANDING_SIZES[sizePreset] || BRANDING_SIZES.standard;
+  const aspect = markHeight / markWidth;
+  let width = Math.round(imageWidth * fraction);
+  let height = Math.round(width * aspect);
+  // A tall mark at a wide fraction can outgrow the image. Cap the height at a
+  // third of the image and rescale.
+  if (height > imageHeight / 3) {
+    height = Math.round(imageHeight / 3);
+    width = Math.round(height / aspect);
+  }
+  const margin = Math.round(imageWidth * BRANDING_MARGIN);
+  const where = String(corner || "bottom-right");
+  let x = margin;
+  let y = margin;
+  if (where.includes("right")) x = imageWidth - margin - width;
+  if (where === "bottom-center") x = Math.round((imageWidth - width) / 2);
+  if (where.startsWith("bottom")) y = imageHeight - margin - height;
+  x = Math.min(Math.max(x, 0), imageWidth - width);
+  y = Math.min(Math.max(y, 0), imageHeight - height);
+  return { x, y, width, height };
+}
+
+// Places the brand mark onto freshly rendered bytes as the render completes.
+// Called from the production service when the job asked for branding. Resolves
+// the mark record, converting from the registered logo sources on first use so
+// the person never has to run a setup step, places the real file's pixels at
+// the preset, and verifies. Returns the branded bytes with the record of what
+// ran; throws with a plain message when no mark can be resolved, and the
+// caller decides that a branding failure never costs a finished render.
+export async function applyBrandingToRender({ renderBytes, branding, identityStore, brainStore }) {
+  let record = await identityStore.readAsset("brand-mark");
+  if (!record) {
+    const { convertIdentityAssetsFromSources } = await import("../identity-assets/service.js");
+    const conversion = await convertIdentityAssetsFromSources({ brainStore, identityStore });
+    if (!conversion.converted) {
+      throw new Error(conversion.reason || "No logo is registered for this brand, so nothing could be placed.");
+    }
+    record = conversion.record;
+  }
+
+  const requestedVariation = String(branding.variationId || "");
+  const variation = requestedVariation
+    ? (record.variations || []).find((entry) => entry.variation_id === requestedVariation)
+    : (record.variations || [])[0];
+  if (!variation) throw new Error("The requested version of the mark could not be found.");
+  const file = (variation.files || [])[0];
+  if (!file?.blob_pathname) throw new Error("That version of the mark has no placeable file.");
+
+  const stored = await brainStore.readSourceFile(file.blob_pathname);
+  if (!stored?.bytes?.length) throw new Error("The mark's file could not be read from storage.");
+
+  const imageMeta = await sharp(renderBytes).metadata();
+  const markMeta = await sharp(stored.bytes).metadata();
+  if (!imageMeta.width || !markMeta.width) throw new Error("The image or the mark could not be measured.");
+
+  const box = computeBrandingBox(
+    imageMeta.width, imageMeta.height,
+    markMeta.width, markMeta.height,
+    branding.corner, branding.size,
+  );
+
+  const markPng = await rasterizeAsset(stored.bytes, box.width, box.height);
+  const branded = await placeAsset(renderBytes, markPng, box);
+  const verification = await verifyPlacement(branded, markPng, box);
+
+  return {
+    bytes: branded,
+    branding: {
+      identityAssetId: record.asset_id,
+      variationId: variation.variation_id,
+      variation: variation.variation || "",
+      fileId: file.file_id,
+      corner: String(branding.corner || "bottom-right"),
+      size: String(branding.size || "standard"),
+      box,
+    },
+    verification,
+  };
+}
+
 /* Dispatch */
 
 function jobIdFor() {

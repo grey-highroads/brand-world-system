@@ -1436,6 +1436,11 @@ const state = {
     // rather than assumed. The direction field steers what the caption says;
     // leaving it blank draws the message from the brief and the Brand Brain.
     captionOn: false,
+    // Branding is asked for, not assumed, like the caption. The presets are
+    // the common ad convention so yes needs no further thought.
+    brandingOn: false,
+    brandingCorner: "bottom-right",
+    brandingSize: "standard",
     headlineSetOn: false,
     filtersOn: false,
     renderCopyIntoImage: false,
@@ -4726,6 +4731,8 @@ function renderStudioSetup() {
 
               ${segmentField("studio")}
 
+              ${brandingField()}
+
               ${headlineSetField()}
 
               ${renderCopyField()}
@@ -5066,6 +5073,8 @@ function renderWebsiteSetup(cat) {
 
               ${segmentField("website")}
 
+              ${brandingField()}
+
               ${headlineSetField()}
 
               ${renderCopyField()}
@@ -5197,6 +5206,8 @@ function renderSalesSetup(cat) {
                 </div>
               </div>
               ${segmentField("sales")}
+
+              ${brandingField()}
 
               ${headlineSetField()}
 
@@ -8172,6 +8183,48 @@ function headlineSetField() {
   `;
 }
 
+// Branding (logo brief, 2026-09-14). Offered on any flow that produces an
+// image. When on, the logo file's own pixels are placed onto the finished
+// render at the chosen corner and size, deterministic work after all
+// generative work, and the placement is checked pixel by pixel. The corner
+// and size chips appear only when the toggle is on.
+function brandingField() {
+  const corners = [
+    ["top-left", "Top left"], ["top-right", "Top right"],
+    ["bottom-left", "Bottom left"], ["bottom-center", "Bottom center"], ["bottom-right", "Bottom right"],
+  ];
+  const sizes = [["small", "Small"], ["standard", "Standard"], ["prominent", "Prominent"]];
+  return `
+    <div class="field full">
+      <button class="studio-toggle-row" type="button" data-action="toggle-studio-branding">
+        <span class="studio-toggle-track ${state.studio.brandingOn ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+        <span class="studio-toggle-content">
+          <strong>Add your logo</strong>
+          <span class="field-note">Your logo file's own pixels land on the finished image at the corner and size you choose, and the result reports the check.</span>
+        </span>
+      </button>
+      ${state.studio.brandingOn ? `
+        <div class="field studio-setup-field">
+          <label>Corner</label>
+          <div class="studio-platform-grid studio-platform-row">
+            ${corners.map(([id, label]) => `
+              <button class="studio-platform-chip ${state.studio.brandingCorner === id ? "selected" : ""}" type="button" data-action="set-branding-corner" data-id="${id}">${label}</button>
+            `).join("")}
+          </div>
+        </div>
+        <div class="field studio-setup-field">
+          <label>Size</label>
+          <div class="studio-platform-grid studio-platform-row">
+            ${sizes.map(([id, label]) => `
+              <button class="studio-platform-chip ${state.studio.brandingSize === id ? "selected" : ""}" type="button" data-action="set-branding-size" data-id="${id}">${label}</button>
+            `).join("")}
+          </div>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 // Placing the headline into the render. Nested under the headline set,
 // because there is nothing to place until a headline exists.
 //
@@ -8342,6 +8395,9 @@ function productionRequest(jobId) {
     displayZone: state.studio.renderCopyIntoImage ? state.studio.displayZone : undefined,
     displayFields: state.studio.renderCopyIntoImage ? state.studio.displayFields : undefined,
     copyDirection: state.studio.copyDirection || undefined,
+    branding: state.studio.brandingOn
+      ? { enabled: true, corner: state.studio.brandingCorner, size: state.studio.brandingSize }
+      : undefined,
     engine: state.studio.renderEngine || "openai",
     // The directions the writer offered for this brief, if any were, with the
     // chosen id. The server puts them on the job record as they arrive.
@@ -9563,6 +9619,18 @@ root.addEventListener("click", (event) => {
   }
   if (action === "toggle-studio-caption") {
     state.studio.captionOn = !state.studio.captionOn;
+    render();
+  }
+  if (action === "toggle-studio-branding") {
+    state.studio.brandingOn = !state.studio.brandingOn;
+    render();
+  }
+  if (action === "set-branding-corner") {
+    state.studio.brandingCorner = target.dataset.id;
+    render();
+  }
+  if (action === "set-branding-size") {
+    state.studio.brandingSize = target.dataset.id;
     render();
   }
   if (action === "toggle-studio-headline-set") {

@@ -138,3 +138,54 @@ test("an identity mark places through the pipeline and the record carries the ma
   assert.equal(placement.grounding, false);
   assert.equal("productId" in placement, false);
 });
+
+test("the branding box lands at each corner preset inside the image", async () => {
+  const { computeBrandingBox } = await import("../src/production/placement.js");
+  const box = computeBrandingBox(1080, 1350, 600, 300, "bottom-right", "standard");
+  assert.equal(box.width, Math.round(1080 * 0.18));
+  assert.equal(box.height, Math.round(box.width * 0.5));
+  const margin = Math.round(1080 * 0.04);
+  assert.equal(box.x, 1080 - margin - box.width);
+  assert.equal(box.y, 1350 - margin - box.height);
+
+  const centered = computeBrandingBox(1080, 1350, 600, 300, "bottom-center", "small");
+  assert.equal(centered.x, Math.round((1080 - centered.width) / 2));
+
+  // A tall mark at the prominent size caps at a third of the image height.
+  const tall = computeBrandingBox(1080, 1080, 300, 900, "top-left", "prominent");
+  assert.equal(tall.height, 360);
+  assert.ok(tall.x >= 0 && tall.y >= 0 && tall.x + tall.width <= 1080 && tall.y + tall.height <= 1080);
+});
+
+test("branding a render converts the record on first use, places, and verifies", async () => {
+  const { applyBrandingToRender } = await import("../src/production/placement.js");
+  const render = await sharp(Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350"><rect width="1080" height="1350" fill="#5c452c"/></svg>`,
+  )).png().toBuffer();
+
+  const identityStore = stubIdentityStore();
+  const result = await applyBrandingToRender({
+    renderBytes: render,
+    branding: { enabled: true, corner: "bottom-right", size: "standard" },
+    identityStore,
+    brainStore: {
+      async read() {
+        return { sources: [{ id: "s1", name: "Primary", authority: "exact-asset", assetKind: "logo", assetVariation: "Primary",
+          files: [{ name: "logo.svg", type: "image/svg+xml", blobPathname: "brand-world-system/clients/default/sources/logo.svg" }] }] };
+      },
+      async readSourceFile() {
+        return { bytes: Buffer.from(logoSvg), mimeType: "image/svg+xml" };
+      },
+    },
+  });
+
+  assert.equal(identityStore.written.length, 1, "first use converts the sources into the record");
+  assert.equal(result.verification.intact, true);
+  assert.equal(result.verification.mismatchedPixels, 0);
+  assert.equal(result.branding.identityAssetId, "brand-mark");
+  assert.equal(result.branding.variation, "Primary");
+  assert.equal(result.branding.corner, "bottom-right");
+  const meta = await sharp(result.bytes).metadata();
+  assert.equal(meta.width, 1080);
+  assert.equal(meta.height, 1350);
+});
