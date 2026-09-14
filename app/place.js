@@ -130,10 +130,10 @@ async function chooseBackground(outputId) {
       headers: { Accept: "application/json" },
     }));
     const image = await loadImage(payload.dataUrl);
-    if (!shapeFor(image.naturalWidth, image.naturalHeight)) {
-      state.message = `That background is ${image.naturalWidth} by ${image.naturalHeight}, which is not a shape this can place onto yet.`;
-      return;
-    }
+    // No shape gate here anymore. Exact placement works at every size, so a
+    // background is never refused at the door. The paths that need one of the
+    // three edit-endpoint shapes say so when the button is pressed, which is
+    // the moment the chosen path is known.
     backgroundImage = image;
     state.chosenBackgroundId = outputId;
     state.resultUrl = "";
@@ -397,7 +397,7 @@ async function generate() {
   if (!backgroundImage || !elementImage || !box) return;
   if (state.method === "server") {
     if (state.grounding && !shapeFor(backgroundImage.naturalWidth, backgroundImage.naturalHeight)) {
-      state.message = "That background is not a shape the shadow pass can work on. Turn grounding off to place onto it.";
+      state.message = `That background is ${backgroundImage.naturalWidth} by ${backgroundImage.naturalHeight}, and the shadow pass works on three shapes only. Choose Skip the shadow to place onto it.`;
       render();
       return;
     }
@@ -406,7 +406,7 @@ async function generate() {
   }
   const shape = shapeFor(backgroundImage.naturalWidth, backgroundImage.naturalHeight);
   if (!shape) {
-    state.message = "That background is not a shape this can place onto yet.";
+    state.message = `That background is ${backgroundImage.naturalWidth} by ${backgroundImage.naturalHeight}, and the shadow pass works on three shapes only. Use Exact placement with Skip the shadow for this size.`;
     render();
     return;
   }
