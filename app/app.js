@@ -4663,7 +4663,7 @@ function renderStudioSetup() {
 
               <div class="field studio-setup-field">
                 <label for="social-product">Attach a product</label>
-                <span class="field-note">Optional. Brings in approved claims, exclusions, and product imagery.</span>
+                <span class="field-note">Optional. The product photo is placed in the image, and any caption or headline is checked against the product's approved claims.</span>
                 <div class="studio-campaign-row">
                   <select id="social-product" data-action="website-product-change">
                     <option value="">No product record</option>
@@ -5018,7 +5018,7 @@ function renderWebsiteSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="website-product">Attach a product</label>
-                <span class="field-note">Optional. Brings in approved claims, exclusions, and product imagery.</span>
+                <span class="field-note">Optional. The product photo is placed in the image, and any caption or headline is checked against the product's approved claims.</span>
                 <div class="studio-campaign-row">
                   <select id="website-product" data-action="website-product-change">
                     <option value="">No product record</option>
@@ -5098,7 +5098,7 @@ function renderSalesSetup(cat) {
 
   return shell(`
     <section class="workspace">
-      ${pageHeader(cat.name, "Pick a template, describe the content element, and the system generates a polished visual on your branded background.")}
+      ${pageHeader(cat.name, "Pick a template, describe the content element, and the system generates the element against your template.")}
 
       <div class="studio-setup-column">
         <div>
@@ -5124,7 +5124,7 @@ function renderSalesSetup(cat) {
 
               <div class="field full">
                 <label>Background template</label>
-                <span class="field-note">Uploaded during brain build and tagged as templates. The selected template becomes the locked background layer.</span>
+                <span class="field-note">Uploaded during brain build and tagged as templates. The selected template is supplied to the model as the background reference and the model is asked to leave it unchanged. Check the result against the original before you approve it.</span>
                 ${templates.length ? `
                   <div class="sales-template-grid">
                     ${templates.map((t) => `
@@ -5138,7 +5138,7 @@ function renderSalesSetup(cat) {
                   <div class="sales-empty-templates">
                     <p>No templates uploaded yet.</p>
                     <p class="field-note">Upload branded backgrounds during the Brand Brain build, then tag them as templates with their dimensions. They will appear here as selectable locked backgrounds.</p>
-                    <span class="field-note">You can still generate a content element without a template. The element will be produced on a transparent or brand-colored background.</span>
+                    <span class="field-note">You can still generate a content element without a template. The element will be produced on a clean white, light, or brand-colored background.</span>
                   </div>
                 `}
               </div>
@@ -5204,20 +5204,19 @@ function renderSalesSetup(cat) {
           <section class="card surface-accent">
             <div class="card-header">
               <h2>Selected template</h2>
-              <span class="mini-pill pill-governed">Locked</span>
+              <span class="mini-pill pill-governed">Reference</span>
             </div>
             <p>${escapeHtml(selectedTemplate.name)}</p>
-            <p class="field-note">${escapeHtml(selectedTemplate.ratio)} &middot; Placed exactly as approved</p>
+            <p class="field-note">${escapeHtml(selectedTemplate.ratio)} &middot; Supplied as the background reference</p>
           </section>
         ` : ""}
 
         ${studioSetupDrawer("How this works", `
           <ul class="exact-list">
-            <li><strong>Template</strong><span>Locked background. Placed exactly, never regenerated.</span></li>
-            <li><strong>Element</strong><span>Generated content (device mockup, feature graphic, product shot) composed on top.</span></li>
-            <li><strong>Result</strong><span>A single composed image ready for your slide or one-pager.</span></li>
+            <li><strong>Template</strong><span>Supplied to the model as the background reference, with an instruction to leave it unchanged. Compare the result with the original.</span></li>
+            <li><strong>Element</strong><span>The content you describe (device mockup, feature graphic, product shot), which the model places against that background.</span></li>
+            <li><strong>Result</strong><span>A single image ready for your slide or one-pager.</span></li>
           </ul>
-          <p class="field-note" style="margin-top: var(--space-3);">The system applies backend production knowledge to make the element look premium: lighting, reflections, perspective, and scale that match the template.</p>
         `)}
       </div>
 
