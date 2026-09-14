@@ -1382,10 +1382,12 @@ const state = {
     error: "",
     recovered: false,
     approved: false,
-    candidateRules: [],
-    feedbackOpen: false,
-    feedbackDraft: "",
-    feedbackScope: "this-output",
+    // The feedback panel was removed 2026-09-13. Its three scopes offered to
+    // revise the output, propose a candidate rule, and propose a brand rule.
+    // Revise navigated to preflight with the package unchanged. The other two
+    // pushed onto a browser-only array that no reviewer saw and a refresh
+    // dropped. Nothing stored and nothing learned, so the panel stopped
+    // claiming otherwise.
     bannerDismissed: false,
     discardConfirm: false,
     reviewing: false,
@@ -7321,10 +7323,6 @@ function renderResult() {
   const generationMethod = isLinkedIn ? "Post copy + image" : /\/edits?$/.test(job?.endpoint || "") ? "Reference-guided image" : "Prompt-only image";
   const findings = complete ? buildCopyFindings(job) : [];
 
-  const candidateRules = state.production.candidateRules || [];
-  const feedbackOpen = state.production.feedbackOpen || false;
-  const feedbackDraft = state.production.feedbackDraft || "";
-  const feedbackScope = state.production.feedbackScope || "this-output";
 
   return shell(`
     <section class="workspace">
@@ -7394,7 +7392,6 @@ function renderResult() {
                 ? `<button class="button is-disabled" type="button" disabled>Approved</button>`
                 : `<button class="button secondary" type="button" data-action="approve-output">Approve this output</button>`
               }
-              <button class="button" type="button" data-action="open-feedback">Provide feedback</button>
               <button class="button" type="button" data-action="retry-generate">Try again</button>
               <button class="button" type="button" data-action="back-to-preflight">View package</button>
               <button class="button" type="button" data-action="download-result">Download image</button>
@@ -7410,55 +7407,6 @@ function renderResult() {
               }
             </div>
           </section>
-
-          ${feedbackOpen ? `
-          <section class="card feedback-card">
-            <div class="card-header"><h2>What should change?</h2></div>
-            <textarea class="feedback-textarea" data-field="feedbackDraft" placeholder="Describe what you would change. Be specific about which element and why." rows="4">${escapeHtml(feedbackDraft)}</textarea>
-            <div class="feedback-scope">
-              <span class="section-label">Where should this apply?</span>
-              <label class="feedback-scope-option ${feedbackScope === "this-output" ? "selected" : ""}">
-                <input type="radio" name="feedbackScope" value="this-output" ${feedbackScope === "this-output" ? "checked" : ""} data-action="set-feedback-scope">
-                <span><strong>Fix this one</strong>Revise the current output only. Nothing else changes.</span>
-              </label>
-              <label class="feedback-scope-option ${feedbackScope === "remember" ? "selected" : ""}">
-                <input type="radio" name="feedbackScope" value="remember" ${feedbackScope === "remember" ? "checked" : ""} data-action="set-feedback-scope">
-                <span><strong>Propose for future work</strong>Submit for review as a candidate rule. Does not change the Brand Brain until someone approves it.</span>
-              </label>
-              <label class="feedback-scope-option ${feedbackScope === "brand-rule" ? "selected" : ""}">
-                <input type="radio" name="feedbackScope" value="brand-rule" ${feedbackScope === "brand-rule" ? "checked" : ""} data-action="set-feedback-scope">
-                <span><strong>Propose as a brand rule</strong>Submit for review as a potential identity-defining rule. Requires brand-owner approval before it takes effect.</span>
-              </label>
-            </div>
-            <div class="actions">
-              <button class="button secondary" type="button" data-action="submit-feedback" ${feedbackDraft.trim() ? "" : "disabled"}>
-                ${feedbackScope === "this-output" ? "Revise this output" : "Submit for review"}
-              </button>
-              <button class="button" type="button" data-action="cancel-feedback">Cancel</button>
-            </div>
-          </section>
-          ` : ""}
-
-          ${candidateRules.length ? `
-          <section class="card">
-            <div class="card-header">
-              <h2>Pending review</h2>
-              <span class="mini-pill">${candidateRules.length} candidate ${candidateRules.length === 1 ? "rule" : "rules"}</span>
-            </div>
-            <ul class="candidate-rules-list">
-              ${candidateRules.map((rule, index) => `
-                <li class="candidate-rule-item">
-                  <div class="candidate-rule-header">
-                    <span class="mini-pill ${rule.scope === "brand-rule" ? "pill-protected" : "pill-governed"}">${rule.scope === "brand-rule" ? "Brand rule proposal" : "Candidate rule"}</span>
-                  </div>
-                  <p>${escapeHtml(rule.feedback)}</p>
-                  <span class="candidate-rule-source">From: ${escapeHtml(rule.sourceOutput || state.brandName + " production")} · ${escapeHtml(rule.time)}</span>
-                  <button class="button small" type="button" data-action="dismiss-candidate" data-index="${index}">Dismiss</button>
-                </li>
-              `).join("")}
-            </ul>
-          </section>
-          ` : ""}
 
           <section class="card">
             <div class="card-header"><h2>Production record</h2></div>
@@ -8632,16 +8580,13 @@ async function startProductionGeneration() {
   state.production.error = "";
   state.production.recovered = false;
   state.production.bannerDismissed = false;
-  // A new render is a new output. Approval, review mode, and any open feedback
-  // belong to the job that just ended, so they reset here. Without this, a
-  // second render after approving the first one opened already approved while
-  // its record was still a draft, and approving again would have flipped the
-  // earlier output instead of this one.
+  // A new render is a new output. Approval and review mode belong to the job
+  // that just ended, so they reset here. Without this, a second render after
+  // approving the first one opened already approved while its record was still
+  // a draft, and approving again would have flipped the earlier output instead
+  // of this one.
   state.production.approved = false;
   state.production.reviewing = false;
-  state.production.feedbackOpen = false;
-  state.production.feedbackDraft = "";
-  state.production.feedbackScope = "this-output";
   state.production.job = {
     jobId,
     status: "working",
@@ -8829,7 +8774,6 @@ async function openOutputForReview(outputId) {
     state.production.error = "";
     state.production.approved = (saved?.status || record?.status) === "approved";
     state.production.bannerDismissed = true;
-    state.production.feedbackOpen = false;
     state.production.reviewing = true;
   } catch (error) {
     state.production.reviewError = error.message || "That output could not be opened.";
@@ -9144,9 +9088,6 @@ root.addEventListener("input", (event) => {
   }
   if (event.target.matches('[data-action="reference-guidance"]')) {
     state.references[Number(event.target.dataset.index)].usageInstruction = event.target.value;
-  }
-  if (event.target.matches('[data-field="feedbackDraft"]')) {
-    state.production.feedbackDraft = event.target.value;
   }
   if (event.target.matches('[data-action="campaign-draft-input"]')) {
     if (!state.campaignDraft) state.campaignDraft = newCampaignDraft();
@@ -10688,54 +10629,6 @@ root.addEventListener("click", (event) => {
     setToast("Output approved. The image and production package are recorded.");
     void persistOutputs();
   }
-  if (action === "open-feedback") {
-    state.production.feedbackOpen = true;
-    state.production.feedbackScope = "this-output";
-    state.production.feedbackDraft = "";
-    render();
-  }
-  if (action === "cancel-feedback") {
-    state.production.feedbackOpen = false;
-    render();
-  }
-  if (action === "set-feedback-scope") {
-    state.production.feedbackScope = target.value;
-    render();
-  }
-  if (action === "submit-feedback") {
-    const draft = state.production.feedbackDraft.trim();
-    if (!draft) { setToast("Describe what should change first"); return; }
-    const scope = state.production.feedbackScope;
-    if (scope === "this-output") {
-      // Revision: go back to preflight with the feedback as additional direction
-      state.production.feedbackOpen = false;
-      setToast("Feedback noted. Adjust the brief or try again with the revised direction.");
-      navigate("preflight");
-    } else {
-      // Candidate rule: log it for review, do NOT write to the brain
-      state.production.candidateRules.push({
-        feedback: draft,
-        scope,
-        sourceOutput: `${state.brandName} ${state.brief.placement} ${state.brief.format}`,
-        sourcePackageVersion: state.production.job?.generationPackage?.brainVersion || 0,
-        time: "This session",
-      });
-      state.production.feedbackOpen = false;
-      state.production.feedbackDraft = "";
-      recordBrainHistory(
-        scope === "brand-rule" ? "Brand rule proposed" : "Candidate rule submitted",
-        `"${draft}" was submitted for review. It does not affect the Brand Brain until a qualified reviewer approves it.`,
-        "governed"
-      );
-      setToast(scope === "brand-rule" ? "Brand rule proposal submitted for review" : "Candidate rule submitted for review");
-    }
-  }
-  if (action === "dismiss-candidate") {
-    const index = Number(target.dataset.index);
-    const dismissed = state.production.candidateRules.splice(index, 1)[0];
-    if (dismissed) recordBrainHistory("Candidate rule dismissed", `"${dismissed.feedback}" was removed from the review queue.`);
-    render();
-  }
   if (action === "start-new") {
     state.production.status = "idle";
     state.production.package = null;
@@ -10744,9 +10637,6 @@ root.addEventListener("click", (event) => {
     state.production.recovered = false;
     state.production.approved = false;
     state.production.bannerDismissed = true;
-    state.production.feedbackOpen = false;
-    state.production.feedbackDraft = "";
-    state.production.feedbackScope = "this-output";
     state.production.reviewing = false;
     state.production.reviewError = "";
     state.campaignReferences = [];

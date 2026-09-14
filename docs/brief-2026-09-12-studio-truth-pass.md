@@ -158,3 +158,64 @@ Check: select Seedream, open preflight and the result screen, confirm both name 
 - The legacy brief screen and the LinkedIn post path. Item 6 reports what remains reachable; removal is a separate ruling.
 - Learning from reactions. The directions-offered record already keeps the three directions and the chosen one on every job. That is the raw material for the corrections corpus in the 2026-09-09 plan. Nothing on the result screen should suggest learning until that corpus has a mechanism.
 - "Export complete PDF" on the artifact library (`3860`, `10789`) is a toast. Outside the Studio; noted for a separate pass.
+
+## Amendment, 2026-09-13
+
+Rulings made while building. They change what some items above say to do. Where
+this section and an item disagree, this section is current.
+
+**Status at this date.** Items 1, 2, 8, 9, and 10 are built and deployed. Item
+10's doc line recording the engine picker conflict is not written. Items 3, 4,
+5, 6, and 7 are not started.
+
+**Item 2 is reversed on the prompt.** The placement no longer appears in the
+image prompt. The assignment line and the Output line name the format only. The
+format carries what changes the picture, and naming the channel changed nothing
+a model acts on. Placement remains a claims scope axis, and the template and
+sales branches still read it. Do not re-add it to the prompt. Item 2's check
+line, which says to confirm the assignment reads "for Facebook feed", no longer
+applies; confirm instead that it does not.
+
+Every social format now carries its own placement and the label search is gone,
+as item 2 required. `studioPlacementForDraft` was fixed the same way. "Facebook
+story" was added to `placementScopes`.
+
+**Item 9 absorbed the repair buttons from item 8.** All seven ran one handler
+that showed a toast and navigated to preflight with the package unchanged. No
+protection strength, composition, or direction lever exists to turn up. The
+three LinkedIn copy findings went with them, which item 8 did not name. The
+`retry-with-direction` and `retry-exclude` handlers are gone.
+
+**Item 9's check line assumes a default that changed.** It says to generate with
+the caption on. The caption is now off by default, so turn it on for that check.
+
+**Caption writing is off by default.** A run makes an image. The caption was a
+second deliverable and a second model call taken without being asked for, and it
+brings its own claims audit to review. It is opt in now, like the headline set.
+
+**The guidance rail is gone from all four setups.** Guidance applied showed the
+same three brain summary strings on every run with nothing to act on. Social and
+template are single column. Website keeps its composition note and sales keeps
+"How this works", both in a closed drawer under the form, which is where item 7
+should write its corrected strings. Sales keeps the selected template card
+inline.
+
+**The social form is ordered by what the scene writer reads.** Platform, format,
+product, campaign, what the image is, and the filter are sent by
+`suggestSceneBriefs`, so they sit above the brief and its three-directions
+button. The segment, the headline set, and the text overlay are not sent, so
+they sit below it. A comment in `renderStudioSetup` says this. Do not reorder on
+appearance.
+
+Ruled and not built: the scene writer does not receive the headline placement or
+the frame zone, so the three directions are composed without knowing text is
+coming. Grey ruled against changing the writer for it. The compiler still gets
+the zone, so the space is handled at render time.
+
+**Still open, both needed before or during item 3.**
+
+- Whether the campaign keeps going to the scene writer. Item 3's default is to
+  remove it.
+- "Website card" and "Website share image" are used by the website formats and
+  exist nowhere in `placementScopes`, so those jobs scope against nothing. Two
+  lines to fix. Not item 2's path, so it was reported rather than fixed.
