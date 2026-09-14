@@ -30,10 +30,18 @@ const state = {
   chosenImageId: "",
   lightFrom: "",
   lightNote: "",
+  // How the placement runs. "shadow" is the original path: the browser
+  // flattens the picture and the model adds the shadow. "server" is the
+  // deterministic path: the server composites the stored files itself,
+  // optionally grounds them with the same shadow pass, and checks the result
+  // against the source artwork.
+  method: "shadow",
+  grounding: true,
   message: "",
   busy: false,
   resultUrl: "",
   resultId: "",
+  resultVerification: null,
 };
 
 // Loaded pixels, kept out of state because they are not render inputs.
@@ -344,8 +352,58 @@ function measure(dataUrl) {
   return Math.round(base64.length * 0.75);
 }
 
+// The server placement request carries ids and the box, nothing else. The
+// server reads the stored render and the stored product picture itself, so
+// the pixels being placed are the pixels on record.
+async function generateServerPlacement() {
+  state.busy = true;
+  state.message = state.grounding
+    ? "Placing and grounding. The shadow pass takes about a minute."
+    : "Placing.";
+  render();
+  try {
+    const payload = await readJson(await fetch("/api/production/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "place-asset",
+        backgroundOutputId: state.chosenBackgroundId,
+        productId: state.chosenProductId,
+        productImageId: state.chosenImageId,
+        grounding: state.grounding,
+        lightNote: lightSentence(),
+        lightPush: directionById(state.lightFrom)?.push ?? 0,
+        box: {
+          x: Math.round(box.x), y: Math.round(box.y),
+          width: Math.round(box.width), height: Math.round(box.height),
+        },
+      }),
+    }));
+    state.resultId = payload.job.jobId;
+    state.resultUrl = `/api/production/outputs?action=image&outputId=${encodeURIComponent(payload.job.jobId)}`;
+    state.resultVerification = payload.job.verification || null;
+    state.message = "";
+    render();
+    await addToRecentWork(payload.job.jobId);
+  } catch (error) {
+    state.message = error.message || "The placement did not finish.";
+  } finally {
+    state.busy = false;
+    render();
+  }
+}
+
 async function generate() {
   if (!backgroundImage || !elementImage || !box) return;
+  if (state.method === "server") {
+    if (state.grounding && !shapeFor(backgroundImage.naturalWidth, backgroundImage.naturalHeight)) {
+      state.message = "That background is not a shape the shadow pass can work on. Turn grounding off to place onto it.";
+      render();
+      return;
+    }
+    await generateServerPlacement();
+    return;
+  }
   const shape = shapeFor(backgroundImage.naturalWidth, backgroundImage.naturalHeight);
   if (!shape) {
     state.message = "That background is not a shape this can place onto yet.";
@@ -391,6 +449,7 @@ async function generate() {
     }));
     state.resultId = payload.job.jobId;
     state.resultUrl = `/api/production/outputs?action=image&outputId=${encodeURIComponent(payload.job.jobId)}`;
+    state.resultVerification = null;
     state.message = "";
     render();
     await addToRecentWork(payload.job.jobId);
@@ -494,6 +553,21 @@ function render() {
         </section>
 
         <section class="card">
+          <div class="card-header"><h2>How it is placed</h2></div>
+          <div class="place-direction">
+            <button class="button small ${state.method === "shadow" ? "" : "ghost"}" type="button" data-action="method" data-id="shadow">Shadow pass</button>
+            <button class="button small ${state.method === "server" ? "" : "ghost"}" type="button" data-action="method" data-id="server">Exact placement</button>
+          </div>
+          ${state.method === "server"
+            ? `<p class="field-note place-note">The server places the stored artwork itself and checks the result against the source file. The check appears with the result.</p>
+               <div class="place-direction place-note">
+                 <button class="button small ${state.grounding ? "" : "ghost"}" type="button" data-action="grounding" data-id="on">Ground it with a shadow pass</button>
+                 <button class="button small ${state.grounding ? "ghost" : ""}" type="button" data-action="grounding" data-id="off">Skip the shadow</button>
+               </div>`
+            : `<p class="field-note place-note">The picture is flattened here and the model adds the shadow.</p>`}
+        </section>
+
+        <section class="card">
           <div class="card-header"><h2>Where the light is</h2></div>
           <p class="page-description">This decides which way the shadow falls. Leave it alone if you are not sure and the shadow will sit straight underneath.</p>
           <div class="place-direction">
@@ -523,14 +597,17 @@ function render() {
             : `<p class="place-empty page-description">Choose a background to start.</p>`}
           ${state.message ? `<p class="page-description place-note">${escapeHtml(state.message)}</p>` : ""}
           <div class="actions">
-            <button class="button" type="button" data-action="generate" ${ready && !state.busy ? "" : "disabled"}>${state.busy ? "Working" : "Add the shadow"}</button>
+            <button class="button" type="button" data-action="generate" ${ready && !state.busy ? "" : "disabled"}>${state.busy ? "Working" : state.method === "server" ? "Place it" : "Add the shadow"}</button>
           </div>
         </section>
 
         ${state.resultUrl
           ? `<section class="card place-result">
                <div class="card-header"><h2>Result</h2></div>
-               <img src="${escapeHtml(state.resultUrl)}" alt="The product placed on the background with shadow added">
+               <img src="${escapeHtml(state.resultUrl)}" alt="The product placed on the background">
+               ${state.resultVerification
+                 ? `<p class="field-note place-note">${Number(state.resultVerification.checkedPixels).toLocaleString()} pixels checked, ${Number(state.resultVerification.mismatchedPixels).toLocaleString()} changed.</p>`
+                 : ""}
                <p class="field-note place-note">Saved to your recent work.</p>
              </section>`
           : ""}
@@ -556,6 +633,14 @@ root.addEventListener("click", (event) => {
   if (target.dataset.action === "product-image") chooseProductImage(id);
   if (target.dataset.action === "light") {
     state.lightFrom = state.lightFrom === id ? "" : id;
+    render();
+  }
+  if (target.dataset.action === "method") {
+    state.method = id === "server" ? "server" : "shadow";
+    render();
+  }
+  if (target.dataset.action === "grounding") {
+    state.grounding = id === "on";
     render();
   }
   if (target.dataset.action === "generate") generate();

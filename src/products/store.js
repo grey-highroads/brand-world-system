@@ -119,6 +119,21 @@ export function createVercelBlobProductStore(options = {}) {
       return record;
     },
 
+    // Read a product image's bytes from storage. Added for the deterministic
+    // placement path, which composites the stored file on the server rather
+    // than trusting pixels a browser sent up. The pathname must sit inside
+    // this client's own namespace; anything else is refused, so a crafted
+    // request cannot read another client's files through this method.
+    async readImageBytes(blobPathname) {
+      const pathname = String(blobPathname || "");
+      if (!pathname.startsWith(`brand-world-system/clients/${clientId}/`)) {
+        throw new Error("That picture does not belong to this client.");
+      }
+      const result = await get(pathname, { access: "private", ...credentials, useCache: false });
+      if (!result || result.statusCode !== 200 || !result.stream) return null;
+      return Buffer.from(await new Response(result.stream).arrayBuffer());
+    },
+
     // Delete a product record and remove it from the index.
     async deleteProduct(productId) {
       const pathname = productPathname(clientId, productId);

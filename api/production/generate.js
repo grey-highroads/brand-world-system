@@ -4,6 +4,7 @@ import { createVercelBlobClaimsStore } from "../../src/claims/store.js";
 import { createVercelBlobRefusalsStore } from "../../src/refusals/store.js";
 import { generateProductionImage } from "../../src/production/service.js";
 import { placeOnBackground } from "../../src/production/composite.js";
+import { placeAssetOnRender } from "../../src/production/placement.js";
 import { createVercelBlobProductionStore } from "../../src/production/store.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
@@ -25,6 +26,20 @@ export default async function handler(request, response) {
     if (body.action === "place-on-background") {
       const job = await placeOnBackground(body, {
         productionStore: createVercelBlobProductionStore({ clientId }),
+        env: process.env,
+      });
+      sendJson(response, 200, { job });
+      return;
+    }
+
+    // Deterministic placement, the Tier 1 path. The server composites the
+    // stored pixels, optionally grounds them with the existing shadow pass,
+    // composites again, and records the verification result. A request
+    // without this action never reaches this branch.
+    if (body.action === "place-asset") {
+      const job = await placeAssetOnRender(body, {
+        productionStore: createVercelBlobProductionStore({ clientId }),
+        productStore: createVercelBlobProductStore({ clientId }),
         env: process.env,
       });
       sendJson(response, 200, { job });
