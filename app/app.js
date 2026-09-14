@@ -570,16 +570,35 @@ function protectedAssetKind(id = state.brain.sourceAssetKind) {
   return protectedAssetKinds.find((kind) => kind.id === id) || null;
 }
 
-// The label a person reads in a list of five logo files.
-function assetVariationLabel(contract) {
-  if (!contract?.assetKind) return "";
-  const kind = protectedAssetKinds.find((k) => k.id === contract.assetKind);
+// The label a person reads in a list of five logo files. The intake spreads
+// the contract fields flat onto the source record, so this reads them there.
+function assetVariationLabel(source) {
+  if (!source?.assetKind) return "";
+  const kind = protectedAssetKinds.find((k) => k.id === source.assetKind);
   if (!kind) return "";
-  if (!contract.assetVariation) return kind.label;
-  const variation = contract.assetVariation === "Other" && contract.assetVariationOther
-    ? contract.assetVariationOther
-    : contract.assetVariation;
+  if (!source.assetVariation) return kind.label;
+  const variation = source.assetVariation === "Other" && source.assetVariationOther
+    ? source.assetVariationOther
+    : source.assetVariation;
   return `${kind.label} · ${variation}`;
+}
+
+// Mirrors visionMimeTypes in src/brand-brain/source-normalizer.js, the same
+// way upload-client.js mirrors sanitizeClientId: the browser file cannot
+// import the server module, so the set is repeated here with a pointer to the
+// original. Synthesis can only look at these formats. Anything else under a
+// protected asset is stored exactly as supplied and never visually read; the
+// normalizer records that on the file as a note after synthesis runs, and this
+// list is what lets the composer say it at the moment the file is chosen.
+const synthesisReadableImageTypes = ["image/gif", "image/jpeg", "image/png", "image/webp"];
+
+// Shown in the asset composer when the chosen file is one synthesis cannot
+// look at. A notice rather than an error: nothing went wrong, and per ADR
+// 0020 these are the files to have if the real logo is ever placed.
+function pendingAssetFileNotice(kind, material, pendingFile) {
+  if (!kind?.isAsset || material?.isTemplate || !pendingFile) return "";
+  if (synthesisReadableImageTypes.includes(String(pendingFile.type || "").toLowerCase())) return "";
+  return `<p class="field-note source-format-notice">${escapeHtml(pendingFile.name)} is saved and will be kept exactly as supplied. The Brand Brain cannot look at this file format, so it will not shape what the Brain learns. Adding a PNG or JPG of the same asset lets the Brain see it.</p>`;
 }
 
 const sourceRoleOptions = ["Multiple areas", "Brand foundation", "Identity", "World and story", "Voice and messaging", "Creative direction", "Creative rules"];
@@ -2521,6 +2540,7 @@ function intakeContentStep(kind, stepNumber = 2, slot = null) {
           <strong>${state.brain.sourceFileReading ? "Reading the selected file" : pendingFile ? escapeHtml(pendingFile.name) : kind.isAsset && !material ? "Choose an asset type first" : "Choose or drag a file here"}</strong>
           <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : `${escapeHtml(kind.isAsset ? material?.examples || "" : "Documents, images, PDFs")} · 20 MB maximum`}</span>
         </label>
+        ${pendingAssetFileNotice(kind, material, pendingFile)}
       ` : ""}
 
       ${mode === "url" ? `
@@ -2751,7 +2771,7 @@ function sourceGroupRow(source) {
         </span>
         <span class="brain-source-copy">
           <strong>${escapeHtml(source.name)}</strong>
-          <span>${escapeHtml(assetVariationLabel(source.contract) || source.detail)}</span>
+          <span>${escapeHtml(assetVariationLabel(source) || source.detail)}</span>
         </span>
         <span class="source-library-use">
           <strong>${escapeHtml(source.role || "Multiple areas")}</strong>
@@ -3035,6 +3055,7 @@ function sourceInlineDrawer(slot) {
               <span>${pendingFile ? `${escapeHtml(fileExtension(pendingFile).toUpperCase())} · ${escapeHtml(formatFileSize(pendingFile.size))}` : `${escapeHtml(material?.examples || "Documents, images, PDFs")} · 20 MB maximum`}</span>
             </span>
           </label>
+          ${pendingAssetFileNotice(kind, material, pendingFile)}
         ` : ""}
 
         ${kind.isAsset && material && !material.isTemplate ? `
@@ -6313,12 +6334,19 @@ function productionLockedAssets() {
   if (state.brain.synthesisKind === "sample") return [];
   return state.brain.sources
     .filter((source) => (source.authority === "exact-asset" || source.sessionProductAsset) && !source.templateMeta && !source.productMeta)
+    // A logo or claim lockup offered here would be attached as a reference to
+    // a generative edit, which redraws artwork; nothing on the scene path
+    // protects it. Packaging, typeface, and uncategorized assets stay in,
+    // because "other" is the escape hatch for a packaging file nobody
+    // categorized. A stored job that selected a logo before this filter
+    // existed falls into the existing no-match path when it reopens.
+    .filter((source) => !["logo", "lockup"].includes(source.assetKind))
     .map((source) => {
       const file = (source.files || []).find((item) => ["image/png", "image/jpeg", "image/webp"].includes(String(item.type || "").toLowerCase()) && item.blobPathname);
       if (!file) return null;
       // The variation is the point of this list when a brand has five logos,
       // so it leads the detail line rather than the generic type label.
-      const variation = assetVariationLabel(source.contract);
+      const variation = assetVariationLabel(source);
       return { id: source.id, name: source.name, detail: variation || source.detail || source.declaredType || "Protected asset", fileName: file.name };
     })
     .filter(Boolean);

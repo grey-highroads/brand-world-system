@@ -277,6 +277,16 @@ export function passInstructions(passId, options = {}) {
     .join("\n\n");
 }
 
+// The "Other" variation resolves to the typed value, mirroring
+// assetVariationLabel in app/app.js, so the model reads "Monochrome" or
+// "anniversary lockup" rather than an enum plus a second field.
+function resolvedAssetVariation(source) {
+  if (!source.assetVariation) return undefined;
+  return source.assetVariation === "Other" && source.assetVariationOther
+    ? source.assetVariationOther
+    : source.assetVariation;
+}
+
 function sourceMetadata(sources) {
   return sources.map((source) => ({
     id: source.id,
@@ -292,6 +302,12 @@ function sourceMetadata(sources) {
     exclusions: source.exclusions,
     provenance: source.provenance || "ours",
     aspiration: source.aspiration || "current",
+    // The intake already asked which asset each protected file is. A brand
+    // with five logo files gives synthesis five answers rather than five
+    // filenames to guess from. Sources saved before the contract existed
+    // carry none of these fields and send none; undefined keys drop out of
+    // the serialized payload, so absent stays absent.
+    ...(source.assetKind ? { assetKind: source.assetKind, assetVariation: resolvedAssetVariation(source) } : {}),
     url: source.url || undefined,
     material: source.content || undefined,
     files: [...(source.extractedFiles ?? []), ...(source.files ?? []).map((file) => ({ name: file.name, type: file.type, size: file.size }))],

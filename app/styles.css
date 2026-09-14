@@ -578,6 +578,19 @@ textarea {
   font-size: 11px;
 }
 
+/* Informational, never error styling: the file saved fine, the system just
+   cannot look at it. */
+.source-format-notice {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border: 1px solid var(--line, #e3e0da);
+  border-radius: 8px;
+  background: var(--surface-2, #f7f6f3);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 select {
   height: 42px;
   padding: 0 38px 0 13px;
