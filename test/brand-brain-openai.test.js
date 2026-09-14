@@ -951,3 +951,44 @@ test("an evolved-only rebuild can carry new direction sources, merged over the s
   assert.ok(ids.includes("approved-note") && ids.includes("direction-note"), `pass 5 read stored and new sources: ${ids.join(", ")}`);
   assert.ok(store.saved().sources.some((source) => source.id === "direction-note"), "the new source is stored with the brain");
 });
+
+test("the asset contract reaches synthesis resolved, and absent stays absent", () => {
+  const request = buildPassRequest(1, { sources: [
+    {
+      id: "logo-mono",
+      name: "Logo, monochrome",
+      authority: "exact-asset",
+      assetKind: "logo",
+      assetVariation: "Monochrome",
+      assetVariationOther: "",
+    },
+    {
+      id: "lockup-anniversary",
+      name: "Anniversary lockup",
+      authority: "exact-asset",
+      assetKind: "lockup",
+      assetVariation: "Other",
+      assetVariationOther: "anniversary lockup",
+    },
+    {
+      id: "pre-contract",
+      name: "Old logo file",
+      authority: "exact-asset",
+    },
+  ] });
+
+  const text = request.messages[1].content[0].text;
+  assert.match(text, /"assetKind": "logo"/);
+  assert.match(text, /"assetVariation": "Monochrome"/);
+  // "Other" resolves to the typed value; the raw enum and the second field
+  // never reach the model.
+  assert.match(text, /"assetVariation": "anniversary lockup"/);
+  assert.doesNotMatch(text, /"assetVariation": "Other"/);
+  assert.doesNotMatch(text, /assetVariationOther/);
+  // The pre-contract source sends none of the fields: its metadata object
+  // carries no assetKind key at all, rather than an empty string.
+  const entries = JSON.parse(text.slice(text.indexOf("["), text.lastIndexOf("]") + 1));
+  const old = entries.find((entry) => entry.id === "pre-contract");
+  assert.ok(old, "the pre-contract source is in the register");
+  assert.ok(!("assetKind" in old) && !("assetVariation" in old), "absent means absent");
+});

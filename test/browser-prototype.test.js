@@ -839,3 +839,51 @@ test("switching studio category drops the offered directions with the brief", as
   await session.evaluateAsync('suggestSceneBriefs("template_surface", "brief")');
   assert.equal(session.evaluate("state.studio.directions"), null);
 });
+
+test("the product asset picker excludes logos and lockups and keeps everything else", () => {
+  const session = prototypeSession();
+  session.evaluate('state.brain.synthesisKind = "full"');
+  session.evaluate(`state.brain.sources = [
+    { id: "s-logo", name: "Primary logo", authority: "exact-asset", assetKind: "logo", assetVariation: "Primary", files: [{ name: "logo.png", type: "image/png", blobPathname: "x/logo.png" }] },
+    { id: "s-lockup", name: "Claim lockup", authority: "exact-asset", assetKind: "lockup", assetVariation: "Primary", files: [{ name: "lockup.png", type: "image/png", blobPathname: "x/lockup.png" }] },
+    { id: "s-pack", name: "Yuzu can", authority: "exact-asset", assetKind: "packaging", files: [{ name: "can.png", type: "image/png", blobPathname: "x/can.png" }] },
+    { id: "s-other", name: "Uncategorized packaging", authority: "exact-asset", assetKind: "other", files: [{ name: "box.png", type: "image/png", blobPathname: "x/box.png" }] },
+    { id: "s-session", name: "Session upload", authority: "exact-asset", sessionProductAsset: true, files: [{ name: "shot.png", type: "image/png", blobPathname: "x/shot.png" }] },
+  ]`);
+  const ids = session.evaluate("productionLockedAssets().map((a) => a.id)");
+  assert.deepEqual([...ids], ["s-pack", "s-other", "s-session"]);
+});
+
+test("a stored job whose locked asset is now excluded reopens without error", () => {
+  const session = prototypeSession();
+  session.evaluate('state.brain.synthesisKind = "full"');
+  session.evaluate(`state.brain.sources = [
+    { id: "s-logo", name: "Primary logo", authority: "exact-asset", assetKind: "logo", files: [{ name: "logo.png", type: "image/png", blobPathname: "x/logo.png" }] },
+  ]`);
+  session.evaluate(`state.outputs = [{ id: "out-1", assetType: "product", scene: "Logo on a desk", lockedAsset: { name: "Primary logo" }, package: { brief: { scene: "Logo on a desk" } } }]`);
+  session.click("reuse-output", { id: "out-1" });
+  // The brief is restored, the excluded asset is not silently swapped in,
+  // and the existing no-match toast tells the person to add one.
+  assert.equal(session.evaluate("state.lockedAssetId"), "");
+  assert.equal(session.evaluate("state.brief.scene"), "Logo on a desk");
+  assert.match(session.evaluate("state.toast"), /no longer available/);
+});
+
+test("the asset composer says when a chosen file is a format synthesis cannot read", () => {
+  const session = prototypeSession();
+  session.click("brand-brain");
+  session.click("navigate-brain", { screen: "brain-sources" });
+  session.click("open-slot-intake", { slot: "logo" });
+  session.evaluate('state.brain.sourceAssetVariation = "Primary"');
+  session.evaluate('state.brain.pendingFiles = [{ name: "primary-logo.svg", size: 1024, type: "image/svg+xml" }]');
+  session.evaluate("render()");
+  assert.match(session.appRoot.innerHTML, /source-format-notice/);
+  assert.match(session.appRoot.innerHTML, /primary-logo\.svg is saved and will be kept exactly as supplied/);
+  assert.match(session.appRoot.innerHTML, /cannot look at this file format/);
+  assert.match(session.appRoot.innerHTML, /Adding a PNG or JPG of the same asset lets the Brain see it/);
+
+  // A raster file gets no notice.
+  session.evaluate('state.brain.pendingFiles = [{ name: "primary-logo.png", size: 1024, type: "image/png" }]');
+  session.evaluate("render()");
+  assert.doesNotMatch(session.appRoot.innerHTML, /source-format-notice/);
+});
