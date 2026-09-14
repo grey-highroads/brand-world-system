@@ -3,7 +3,7 @@
 Date: 2026-09-14
 Covers: one architect thread with Grey on 2026-09-08, resumed 2026-09-14. The six days between are not mine and are flagged below.
 Repo state at close: `main` at `66cf05e893`.
-Read this alongside the findings and decision documents in `docs/`, which are the durable record. This is the narrative and the working knowledge that did not fit in them.
+Every claim in this document was checked against the repository on 2026-09-14 after it was written, and three were wrong and are corrected. Read it alongside the findings and decision documents in `docs/`, which are the durable record. This is the narrative and the working knowledge that did not fit in them.
 
 ## Where things stand in one paragraph
 
@@ -39,7 +39,7 @@ Grey asked for a live audit of how files get synthesized into the brain, on the 
 What the audit found, each verified by reading the file at `fb4aebdd60`:
 
 - Multiple logos already work at intake, and the variation is already collected. The contract carries `assetKind`, `assetVariation`, and `assetVariationOther`, and `assetVariationLabel` shows it in two places.
-- `sourceMetadata` in `chat-completions-provider.js` does not include the contract, so synthesis sees five filenames and infers what the user already answered.
+- `sourceMetadata` in `chat-completions-provider.js` did not include the contract, so synthesis saw five filenames and inferred what the user had already answered. Now fixed.
 - A source's `usage` and `exclusions` do reach synthesis and the pass instructions act on them. Neither reaches the compiled package, which carries `lockedAsset: { name, format }` and nothing else.
 - `generate-copy.js` contains no reference to a locked asset in any form, so the writer composes a frame with no knowledge that a mark has to sit in it.
 - `productionLockedAssets` returned every `exact-asset` source including logos, into a picker titled "Product asset." Selecting a logo asked a generative model to redraw a logo. Live defect, now fixed.
@@ -60,11 +60,11 @@ I did not read any of it. Nothing in this handoff describes those changes and no
 
 1. **Logo placement.** The tabled decision, and the biggest one. Deterministic compositing was retired on 2026-09-09. Placing a real logo file brings it back for this one case. Until it is decided, no identity asset reaches a render, and ADR 0020 says so explicitly.
 2. **The identity asset record type itself.** Schema, store, conversion of the existing MycoPop and Simply Agree logo sources, and synthesis reading the record. Buildable now, useful to synthesis without placement.
-3. **A defaulted look does not reach the writer.** Recorded in the brief's amendments. The default resolves in the compiler at generate time; the writer ran at suggest time. Closing it means resolving the default before the writer call.
+3. **The moment library.** Still the largest unbuilt thing named in the 2026-09-09 direction handoff, and nothing in my thread touched it.
 4. **The look precedence sentence is untested.** It tells a look that its instructions about how subjects behave do not apply when nobody is in the frame. If a person appears on a face-heavy look, the sentence was not enough and the fallback is filtering the look list, which the brief told the builder not to build.
 5. **The Sources tab layer 1 card layout.** Grey wants the Brand foundation section to use the card format that layer 2 uses, two rows, with the blue tone it already carries. The section already has `tone-info`; the work is rendering layer 1 through a card function instead of `sourceFoundationRow`. Worth doing after the record type, because what a logo card has to show depends on what a logo record is.
 6. **Images inside brand guide PDFs.** Extraction runs with `includeImages: false`. The diagram that is the rule is invisible. Not scoped anywhere.
-7. **`kinds[requestedKind]` is a bare object lookup on a request string.** A builder flagged it on 09-08. `src/lookup.js` and `ownEntry` exist because this exact shape let `constructor` resolve an inherited function in `resolveLook`. Pre-existing, unchanged, and in `docs/deferred-work.md`.
+7. **`kinds[requestedKind]` is a bare object lookup on a request string.** A builder flagged it on 09-08. `src/lookup.js` and `ownEntry` exist because this exact shape let `constructor` resolve an inherited function in `resolveLook`. Pre-existing and unchanged. It is not recorded in `docs/deferred-work.md`, so it lives only here and in the builder's report.
 8. **Everything in the 09-08 handoff's open queue** that has not been closed since. I did not re-verify it this session.
 
 ## The working relationship
