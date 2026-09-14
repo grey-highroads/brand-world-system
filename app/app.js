@@ -4679,7 +4679,7 @@ function renderStudioSetup() {
 
               <div class="field studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -4838,7 +4838,7 @@ function renderTemplateSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="studio-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library.</span>
                 <div class="studio-campaign-row">
                   <select id="studio-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5034,7 +5034,7 @@ function renderWebsiteSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="website-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library.</span>
                 <div class="studio-campaign-row">
                   <select id="website-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
@@ -5167,7 +5167,7 @@ function renderSalesSetup(cat) {
 
               <div class="field full studio-setup-field">
                 <label for="sales-campaign">Associate a campaign</label>
-                <span class="field-note">Optional. Files the image under the campaign in your Library and informs the scene suggestions.</span>
+                <span class="field-note">Optional. Files the image under the campaign in your Library.</span>
                 <div class="studio-campaign-row">
                   <select id="sales-campaign" data-action="studio-campaign-change">
                     <option value="">No campaign</option>
