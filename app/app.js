@@ -219,10 +219,15 @@ const studioPlatformFormats = {
   instagram: {
     label: "Instagram",
     formats: [
-      { id: "ig-portrait", placement: "Instagram feed", name: "Feed portrait", ratio: "4:5", dim: "1080 x 1350", default: true, craft: "Put the subject in the upper two thirds and let the lower third carry ground, shadow, or open space. Vertical depth reads better here than side to side composition. The bottom edge should feel finished rather than cut off." },
+      // Feed portrait and Carousel card were separate entries at the same 4:5
+      // and the same 1080 x 1350, so the picker offered one shape twice.
+      // Merged 2026-09-14. The carousel craft's set-consistency advice is not
+      // carried over: a run makes one image, so there is no set to hold a
+      // horizon line across. Its grid-preview crop note is, because that
+      // applies to any 4:5 feed post.
+      { id: "ig-portrait", placement: "Instagram feed", name: "Feed or carousel", ratio: "4:5", dim: "1080 x 1350", default: true, craft: "Put the subject in the upper two thirds and let the lower third carry ground, shadow, or open space. Vertical depth reads better here than side to side composition. The bottom edge should feel finished rather than cut off. The profile grid crops this to a square, so keep anything that carries meaning clear of the top and bottom edges." },
       { id: "ig-square", placement: "Instagram feed", name: "Feed square", ratio: "1:1", dim: "1080 x 1080", default: false, craft: "Displays smaller than the portrait shape and gives you less room, so commit to one idea. Center the subject, keep the composition balanced enough that a tight crop does not ruin it, and hold detail to what survives at phone scale." },
       { id: "ig-story", placement: "Instagram story", name: "Story", ratio: "9:16", dim: "1080 x 1920", default: false, craft: "Full bleed and full screen, with interface elements sitting over roughly the top and bottom sixth. Keep the subject and anything that carries meaning inside the middle band. This is seen for a second or two before a tap, so it needs one clear read rather than a scene that rewards study." },
-      { id: "ig-carousel", placement: "Instagram feed", name: "Carousel card", ratio: "4:5", dim: "1080 x 1350", default: false, craft: "One card in a swipeable set, so it has to hold on its own and belong to the ones beside it. Keep horizon height, light direction, and palette consistent across the set. The grid preview crops this to a square, so keep the subject clear of the top and bottom edges." },
     ],
   },
   linkedin: {
@@ -4487,7 +4492,7 @@ function studioLookField() {
                 <span class="studio-toggle-track ${open ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
                 <span class="studio-toggle-content">
                   <strong>Apply a filter</strong>
-                  <span class="field-note">Optional. A filter sets how the photograph is made: the light, the film, the grain. Scene suggestions are written for the filter you choose. Off means no filter is applied.</span>
+                  <span class="field-note">Select a specific visual style for the image.</span>
                 </span>
               </button>
             </div>`;
@@ -4635,7 +4640,7 @@ function renderStudioSetup() {
             <div class="field-grid">
               <div class="field studio-setup-field">
                 <label>Platform</label>
-                <div class="studio-platform-grid">
+                <div class="studio-platform-grid studio-platform-row">
                   ${Object.entries(studioPlatformFormats).map(([id, p]) => `
                     <button class="studio-platform-chip ${platforms.includes(id) ? "selected" : ""}" type="button" data-action="toggle-studio-platform" data-id="${id}">
                       ${escapeHtml(p.label)}
