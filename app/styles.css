@@ -6947,6 +6947,35 @@ button.ws-attention-item:hover {
   text-decoration: underline;
 }
 
+/* Coming soon treatment, added 2026-09-13 for the three Studio controls that
+   were visible and inert and for the two chooser cards with no setup screen. */
+.studio-add-link.is-disabled {
+  color: var(--muted);
+  cursor: default;
+}
+
+.studio-add-link.is-disabled:hover {
+  text-decoration: none;
+}
+
+.studio-soon-tag {
+  margin-left: var(--space-2);
+  padding: 2px 8px;
+  border: 1px solid var(--paper-300);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  vertical-align: middle;
+}
+
+.studio-toggle-row.is-disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
 .studio-section-close {
   display: flex;
   align-items: center;

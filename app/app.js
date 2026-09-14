@@ -142,10 +142,10 @@ const placementFormats = {
 const studioCategories = [
   { id: "social", name: "Social image", description: "Feed posts, stories, and carousels for any platform.", icon: "image" },
   { id: "website", name: "Website image", description: "Heroes, features, cards, and share images.", icon: "web" },
-  { id: "showcase", name: "Product showcase", description: "Product photography, device mockups, and lifestyle scenes.", icon: "product" },
+  { id: "showcase", name: "Product showcase", description: "Product photography, device mockups, and lifestyle scenes.", icon: "product", available: false },
   { id: "sales", name: "Sales enablement", description: "Elements and backgrounds for slides, one-pagers, and pitch materials.", icon: "sales" },
   { id: "template", name: "Brand template", description: "Reusable surfaces, environments, and composition foundations.", icon: "template" },
-  { id: "ad", name: "Ad image", description: "Paid social and display ads with copy governance.", icon: "ad" },
+  { id: "ad", name: "Ad image", description: "Paid social and display ads with copy governance.", icon: "ad", available: false },
 ];
 
 // Website formats from the output type catalog. Each entry carries the
@@ -1426,9 +1426,6 @@ const state = {
     draftCopyStale: false,
     copyDirection: "",
     renderEngine: "openai",
-    referenceOpen: false,
-    directionOpen: false,
-    direction: "",
     // Template-specific fields
     targetUses: [],
     templateFormats: [],
@@ -4386,15 +4383,22 @@ function renderChooser() {
     .sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
     .slice(0, 6);
 
-  const categoryCards = studioCategories.map((cat) => `
-    <button class="card studio-card ${!approved ? "unavailable" : ""}" type="button" data-action="select-studio-category" data-id="${cat.id}" ${!approved ? "disabled" : ""}>
+  // Showcase and Ad are marked unavailable as of 2026-09-13. Neither had a
+  // setup screen; both fell through to a placeholder offering the old brief
+  // flow. A card that opens nothing is better greyed than clickable.
+  const categoryCards = studioCategories.map((cat) => {
+    const soon = cat.available === false;
+    const blocked = soon || !approved;
+    return `
+    <button class="card studio-card ${blocked ? "unavailable" : ""}" type="button" ${soon ? "" : `data-action="select-studio-category" data-id="${cat.id}"`} ${blocked ? "disabled" : ""}>
       <span class="studio-card-icon studio-icon-${cat.icon}" aria-hidden="true"></span>
       <div class="studio-card-body">
-        <h2>${escapeHtml(cat.name)}</h2>
+        <h2>${escapeHtml(cat.name)}${soon ? `<span class="studio-soon-tag">Coming soon</span>` : ""}</h2>
         <p>${escapeHtml(cat.description)}</p>
       </div>
     </button>
-  `).join("");
+  `;
+  }).join("");
 
   return shell(`
     <section class="workspace">
@@ -4541,6 +4545,16 @@ function studioSceneKindField() {
 // every run, with nothing to act on. Ruled out 2026-09-13. The reference cards
 // that were beside it are still worth having, so they sit in a closed drawer
 // under the form rather than taking a column.
+// Reference image and creative direction are disabled as of 2026-09-13. Neither
+// did anything. The dropzone had no drop handler, no click handler, and no file
+// input, so nothing could be attached. The direction textarea wrote
+// state.studio.direction, which was read only to display it back; it never
+// reached productionRequest or the scene writer. Both stay visible so the
+// intent is on the screen, and both say what they are.
+function studioComingSoonLink(label) {
+  return `<span class="studio-add-link is-disabled" aria-disabled="true">${escapeHtml(label)}<span class="studio-soon-tag">Coming soon</span></span>`;
+}
+
 function studioSetupDrawer(label, innerHtml) {
   const body = String(innerHtml || "").trim();
   if (!body) return "";
@@ -4572,22 +4586,11 @@ function renderStudioSetup() {
     return renderWebsiteSetup(cat);
   }
 
-  // Social image is the first implemented category
-  if (cat.id !== "social") {
-    return shell(`
-      <section class="workspace">
-        ${pageHeader(cat.name, cat.description)}
-        <section class="card">
-          <div class="card-header"><h2>Coming soon</h2></div>
-          <p class="page-description">This category is defined in the output type catalog but does not have a setup flow yet. Use the legacy production flow for now.</p>
-        </section>
-        <div class="actions">
-          <button class="button" type="button" data-action="back-to-studio">&lsaquo; Design Studio</button>
-          <button class="button primary" type="button" data-action="studio-use-legacy">Use legacy flow</button>
-        </div>
-      </section>
-    `);
-  }
+  // Every live category above has its own setup. Showcase and Ad are marked
+  // unavailable in studioCategories and cannot be clicked, so the placeholder
+  // that used to stand here, offering the old brief flow, was removed
+  // 2026-09-13. Nothing in the Studio reaches navigate("brief") now.
+  if (cat.id !== "social") return renderChooser();
 
   const campaigns = state.campaigns || [];
   const platforms = state.studio.platforms;
@@ -4704,12 +4707,11 @@ function renderStudioSetup() {
 
               ${platforms.length ? `
                 <div class="field full">
-                  <button class="studio-toggle-row" type="button" data-action="toggle-studio-text-overlay">
-                    <span class="studio-toggle-track ${state.studio.textOverlay ? "on" : ""}"><span class="studio-toggle-knob"></span></span>
+                  <button class="studio-toggle-row is-disabled" type="button" disabled>
+                    <span class="studio-toggle-track"><span class="studio-toggle-knob"></span></span>
                     <span class="studio-toggle-content">
-                      <strong>This image will have text on it</strong>
-                      <span class="field-note">Adjusts composition to leave space for headlines or captions you add in your layout tool.</span>
-                      ${state.studio.textOverlay ? `<span class="field-note studio-toggle-detail">The system keeps the subject clear of text-safe zones. You place text in Canva, Figma, or your design tool after export.</span>` : ""}
+                      <strong>This image will have text on it<span class="studio-soon-tag">Coming soon</span></strong>
+                      <span class="field-note">Nothing reads this yet. The composition is not adjusted for text, so leaving it off changes nothing.</span>
                     </span>
                   </button>
                 </div>
@@ -4736,33 +4738,11 @@ function renderStudioSetup() {
               </div>
             ` : ""}
 
-            ${state.studio.referenceOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Reference image</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="referenceOpen" aria-label="Remove reference image">&times;</button>
-                </div>
-                <div class="studio-dropzone">
-                  Drop an image or click to browse
-                </div>
-                <span class="field-note">Used as creative direction, not source material. Provenance and influence tracked.</span>
-              </div>
-            ` : ""}
 
-            ${state.studio.directionOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Creative direction</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
-                </div>
-                <p class="field-note field-spaced">Art direction beyond the Brand Brain. This job only.</p>
-                <textarea data-action="studio-direction-input" placeholder="Mood, lighting, composition preferences.">${escapeHtml(state.studio.direction)}</textarea>
-              </div>
-            ` : ""}
 
             <div class="studio-additive-links">
-              ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
-              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+              ${studioComingSoonLink("Add reference image")}
+              ${studioComingSoonLink("Add creative direction")}
             </div>
           </section>
         </div>
@@ -4864,33 +4844,11 @@ function renderTemplateSetup(cat) {
               </div>
             </div>
 
-            ${state.studio.referenceOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Reference image</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="referenceOpen" aria-label="Remove reference image">&times;</button>
-                </div>
-                <span class="field-note">A surface or texture to draw from. Used as creative direction, not copied.</span>
-                <div class="studio-dropzone">
-                  Drop an image or click to browse
-                </div>
-              </div>
-            ` : ""}
 
-            ${state.studio.directionOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Creative direction</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
-                </div>
-                <p class="field-note field-spaced">Art direction beyond the Brand Brain. This job only.</p>
-                <textarea data-action="studio-direction-input" placeholder="Moody, atmospheric. Inspired by the studio lighting in our spring campaign photography.">${escapeHtml(state.studio.direction)}</textarea>
-              </div>
-            ` : ""}
 
             <div class="studio-additive-links">
-              ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
-              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+              ${studioComingSoonLink("Add reference image")}
+              ${studioComingSoonLink("Add creative direction")}
             </div>
           </section>
         </div>
@@ -5103,19 +5061,9 @@ function renderWebsiteSetup(cat) {
               })}
             </div>
 
-            ${state.studio.directionOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Creative direction</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
-                </div>
-                <p class="field-note field-spaced">Mood, lighting, or composition notes. This job only.</p>
-                <textarea data-action="studio-direction-input" placeholder="Warmer than our usual palette. Shallow depth of field.">${escapeHtml(state.studio.direction)}</textarea>
-              </div>
-            ` : ""}
 
             <div class="studio-additive-links">
-              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+              ${studioComingSoonLink("Add creative direction")}
             </div>
           </section>
         </div>
@@ -5243,33 +5191,11 @@ function renderSalesSetup(cat) {
               })}
             </div>
 
-            ${state.studio.referenceOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Reference image</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="referenceOpen" aria-label="Remove reference image">&times;</button>
-                </div>
-                <span class="field-note">A visual reference for the content element. Used as creative direction, not copied.</span>
-                <div class="studio-dropzone">
-                  Drop an image or click to browse
-                </div>
-              </div>
-            ` : ""}
 
-            ${state.studio.directionOpen ? `
-              <div class="studio-additive-section">
-                <div class="studio-additive-header">
-                  <span class="section-label">Creative direction</span>
-                  <button class="studio-section-close" type="button" data-action="studio-close-section" data-section="directionOpen" aria-label="Remove creative direction">&times;</button>
-                </div>
-                <p class="field-note field-spaced">Art direction for the content element. This job only.</p>
-                <textarea data-action="studio-direction-input" placeholder="High-end product photography feel. Studio lighting, subtle reflections on the screen.">${escapeHtml(state.studio.direction)}</textarea>
-              </div>
-            ` : ""}
 
             <div class="studio-additive-links">
-              ${!state.studio.referenceOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="referenceOpen">+ Add reference image</button>` : ""}
-              ${!state.studio.directionOpen ? `<button class="studio-add-link" type="button" data-action="studio-toggle-section" data-section="directionOpen">+ Add creative direction</button>` : ""}
+              ${studioComingSoonLink("Add reference image")}
+              ${studioComingSoonLink("Add creative direction")}
             </div>
           </section>
         </div>
@@ -6652,7 +6578,6 @@ function renderBrief() {
       </div>
 
       <div class="actions">
-        <button class="button" type="button" data-action="save-draft">Save draft</button>
         <button class="button primary" type="button" data-action="continue-preflight" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
       </div>
     </section>
@@ -6755,7 +6680,6 @@ function renderLinkedInBrief() {
       </div>
 
       <div class="actions">
-        <button class="button" type="button" data-action="save-draft">Save draft</button>
         <button class="button primary" type="button" data-action="continue-preflight" ${approved ? "" : "disabled"}>Continue to preflight ›</button>
       </div>
     </section>
@@ -9128,9 +9052,6 @@ root.addEventListener("input", (event) => {
   if (event.target.matches('[data-action="studio-copy-direction-input"]')) {
     state.studio.copyDirection = event.target.value;
   }
-  if (event.target.matches('[data-action="studio-direction-input"]')) {
-    state.studio.direction = event.target.value;
-  }
   if (event.target.matches('[data-action="sales-element-input"]')) {
     state.studio.salesElement = event.target.value;
     updateSalesReadyState();
@@ -9578,9 +9499,6 @@ root.addEventListener("click", (event) => {
     state.studio.draftCopy = null;
     state.studio.draftCopyStale = false;
     state.studio.draftCopyError = "";
-    state.studio.referenceOpen = false;
-    state.studio.directionOpen = false;
-    state.studio.direction = "";
     state.studio.targetUses = [];
     state.studio.templateFormats = [];
     state.studio.salesFormat = "slide-16x9";
@@ -9595,12 +9513,6 @@ root.addEventListener("click", (event) => {
   if (action === "back-to-studio") {
     state.studio.category = null;
     navigate("chooser");
-  }
-  if (action === "studio-use-legacy") {
-    state.creativeMode = "explore";
-    state.activeCampaignId = null;
-    state.selectedDeliverable = deliverables[0];
-    navigate("brief");
   }
   if (action === "toggle-studio-platform") {
     // Single-select: a run produces one image (ruling 2026-09-12). Selecting a
@@ -9660,17 +9572,6 @@ root.addEventListener("click", (event) => {
   }
   if (action === "toggle-render-copy-into-image") {
     state.studio.renderCopyIntoImage = !state.studio.renderCopyIntoImage;
-    render();
-  }
-  if (action === "studio-toggle-section") {
-    const section = target.dataset.section;
-    state.studio[section] = !state.studio[section];
-    render();
-  }
-  if (action === "studio-close-section") {
-    const section = target.dataset.section;
-    state.studio[section] = false;
-    if (section === "directionOpen") state.studio.direction = "";
     render();
   }
   if (action === "studio-continue-preflight") {
@@ -10545,7 +10446,6 @@ root.addEventListener("click", (event) => {
     state.selectedDeliverable = deliverables.find((item) => item.id === target.dataset.id) ?? deliverables[0];
     navigate("brief");
   }
-  if (action === "save-draft") setToast("Draft saved in this prototype session");
   if (action === "continue-preflight") void prepareProductionPreflight();
   if (action === "back-to-brief") navigate("brief");
   if (action === "back-to-preflight") navigate("preflight");
