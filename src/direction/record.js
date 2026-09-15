@@ -29,7 +29,7 @@ export const DIRECTION_SECTIONS = [
   {
     id: "people",
     label: "Who is in frame",
-    hint: "The range of people this world casts from, as a kind of presence rather than a roster.",
+    hint: "The range this world casts from: what they are into, what scene or era they belong to, how they dress and carry themselves. Wide enough that twenty pictures cast twenty different people who all belong, and particular enough that someone outside this world would not. A casting range, never a recurring character.",
   },
   {
     id: "places",
@@ -160,7 +160,7 @@ export function directionRecordProse(record) {
     `Direction record for ${record.brandName || "this brand"}, version ${record.version}. The brand's visual direction, decided with its owner in a direction session.`,
   );
   lines.push(
-    "Rules hold across every picture in this world and are what to build from. Examples illustrate a rule and are not scenes to reproduce: write different situations that obey the same rules. Ruled-out lines are territory the owner killed and must not appear in any form.",
+    "Rules hold across every picture in this world and are what to build from. Examples illustrate a rule and are not scenes to reproduce: write different situations that obey the same rules. Where this record describes people, it describes a range to cast from rather than particular recurring people: cast someone new for every picture, and never carry a named person from one picture into another. Ruled-out lines are territory the owner killed and must not appear in any form.",
   );
   for (const section of DIRECTION_SECTIONS) {
     const entries = record.sections?.[section.id] || [];
@@ -191,7 +191,7 @@ export function directionRecordAsSource(record) {
     role: "Creative direction",
     influence: "Lead",
     usage:
-      "This is the brand's declared direction, approved by its owner. Build the world it describes. Its rules hold across every picture. Its examples illustrate those rules and are not scenes to reproduce: write different situations that obey the same rules, across the range of places the record names. Ruled-out lines were killed by the owner and must not return in any form.",
+      "This is the brand's declared direction, approved by its owner. Build the world it describes. Its rules hold across every picture. Its examples illustrate those rules and are not scenes to reproduce: write different situations that obey the same rules, across the range of places the record names. Its people are a casting range rather than a cast list, so cast someone new for every picture and never carry a named person between pictures. Ruled-out lines were killed by the owner and must not return in any form.",
     exclusions: "No additional exclusions supplied.",
     provenance: "ours",
     aspiration: "aspiration",
