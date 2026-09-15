@@ -2807,8 +2807,6 @@ function sourceGroupRow(source) {
   const weighted = sourceUsesInfluence(source.authority);
   const statusPill = pending
     ? `<span class="mini-pill pill-warning">Pending</span>`
-    : source.productMeta
-    ? (source.productMeta.synthesizedProductId ? `<span class="mini-pill pill-success">Record built</span>` : `<span class="mini-pill pill-neutral">Brief</span>`)
     : locked
     ? `<span class="mini-pill pill-governed">Active</span>`
     : "";
@@ -2839,7 +2837,7 @@ function sourceGroupRow(source) {
               ${locked ? `<div class="source-lock-note"><strong>Part of active Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion}</strong><span>Existing approved sources stay unchanged while additions are reviewed. Source retirement will be handled as a separate governed change later.</span></div>` : ""}
               ${sourceOriginalMaterial(source)}
               <div class="source-entry-row">
-                <label><span>Material type</span><select data-action="brain-source-item-material-type" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceMaterialTypes.map((item) => `<option value="${item.id}" ${item.id === material?.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}</select><small>${escapeHtml(material?.description || "This source will be checked before synthesis.")}</small></label>
+                <label><span>Material type</span><select data-action="brain-source-item-material-type" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceMaterialTypes.filter((item) => !item.isProductBrief).map((item) => `<option value="${item.id}" ${item.id === material?.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}</select><small>${escapeHtml(material?.description || "This source will be checked before synthesis.")}</small></label>
                 <label><span>What should it inform?</span><select data-action="brain-source-item-role" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceRoleOptions.map((value) => option(value, source.role)).join("")}</select></label>
               </div>
               ${
@@ -2859,19 +2857,6 @@ function sourceGroupRow(source) {
                   <button class="button" type="button" data-action="open-intake-door" data-door="asset">Register a protected asset</button>
                 </div>
               ` : ""}
-              ${source.productMeta ? `
-                <div class="source-product-synthesis">
-                  <div class="rule">
-                    <span class="mini-pill ${source.productMeta.synthesizedProductId ? "pill-success" : "pill-neutral"}">${source.productMeta.synthesizedProductId ? "Synthesized" : "Product brief"}</span>
-                    <span>
-                      <strong>${escapeHtml(source.productMeta.productName)}</strong>
-                      <span>${source.productMeta.synthesizedProductId ? "A candidate product record was built from this brief. Review and approve it on the Products screen." : "Build a governed product record from this brief. Every claim will trace back to the source and remain a candidate until you approve it."}</span>
-                    </span>
-                    <button class="button ${source.productMeta.synthesizedProductId ? "" : "primary"}" type="button" data-action="synthesize-product-from-source" data-id="${escapeHtml(source.id)}" ${state.brain.productSynthesizingId === source.id ? "disabled" : ""}>${state.brain.productSynthesizingId === source.id ? "Working..." : source.productMeta.synthesizedProductId ? "Re-synthesize" : "Synthesize product record"}</button>
-                    ${source.productMeta.synthesizedProductId ? `<button class="button" type="button" data-action="view-product" data-id="${escapeHtml(source.productMeta.synthesizedProductId)}">Review</button>` : ""}
-                  </div>
-                </div>
-              ` : ""}
             </div>`
           : ""
       }
@@ -2879,22 +2864,30 @@ function sourceGroupRow(source) {
   `;
 }
 
-// Group library rows by lifecycle so the three kinds are visible instead of
-// flattened into one list.
+// Group library rows by lifecycle so the two kinds are visible instead of
+// flattened into one list. Product briefs are deliberately absent: a brief
+// builds a product record and never teaches brand guidance, so it belongs on
+// the Products screen. Sources excluded them from synthesis already; as of
+// 2026-09-15 the screen says so too.
 function sourceLibraryGroups() {
-  const sources = state.brain.sources;
+  const sources = brandSources();
   const groups = [
     { key: "evidence", label: "Brand usage", rows: [] },
     { key: "asset", label: "Protected assets", rows: [] },
-    { key: "product", label: "Product briefs", rows: [] },
   ];
   for (const source of sources) {
     const material = sourceMaterialType(source);
-    if (source.productMeta) groups[2].rows.push(source);
-    else if (material && assetMaterialIds.includes(material.id)) groups[1].rows.push(source);
+    if (material && assetMaterialIds.includes(material.id)) groups[1].rows.push(source);
     else groups[0].rows.push(source);
   }
   return groups.filter((g) => g.rows.length);
+}
+
+// Every source the Sources screen is responsible for. Product briefs are
+// stored on the brain record so they travel with the client, but they are not
+// brand material and are counted nowhere on this screen.
+function brandSources() {
+  return state.brain.sources.filter((source) => !source.productMeta);
 }
 
 // The Sources landing is organized around three layers that answer different
@@ -3356,7 +3349,8 @@ function sourceContextDrawer() {
 }
 
 function renderBrainSources() {
-  const hasSources = state.brain.sources.length > 0;
+  const brandSourceList = brandSources();
+  const hasSources = brandSourceList.length > 0;
   const hasApproved = sourceHasApprovedBaseline();
   const pending = pendingSourceCount();
   const canSynthesize = hasApproved ? pending > 0 : hasSources;
@@ -3442,7 +3436,7 @@ function renderBrainSources() {
             label: "Detailed library",
             title: "All sources",
             description: "Every source, with its handling and detailed instructions.",
-            status: `${state.brain.sources.length} ${state.brain.sources.length === 1 ? "source" : "sources"}`,
+            status: `${brandSourceList.length} ${brandSourceList.length === 1 ? "source" : "sources"}`,
           })}
           <div class="card brain-source-batch source-library">
           ${hasApproved && !pending && hasSources ? `<div class="source-library-version"><span class="mini-pill pill-governed">Active v${state.brain.approvedVersion || state.brain.artifactVersion}</span></div>` : ""}
@@ -5514,6 +5508,30 @@ function productImageryNote(productId) {
   return `${parts.join(", and ")}.`;
 }
 
+// The brief a product record was built from. Products own this now: Sources
+// stopped listing product briefs on 2026-09-15 because a brief builds the
+// product record and never informs brand guidance.
+function productBriefSection(record) {
+  const sourceId = record?.provenance?.source_ref;
+  const source = sourceId ? state.brain.sources.find((item) => item.id === sourceId) : null;
+  if (!source) {
+    return `
+      <section class="card">
+        <div class="card-header"><h2>Brief</h2></div>
+        <p class="field-note">The brief this record was built from is no longer available. Re-synthesizing needs it, so add the product again if you want a new version.</p>
+      </section>`;
+  }
+  return `
+    <section class="card">
+      <div class="card-header"><h2>Brief</h2></div>
+      <p class="field-note">This brief built the product record. It informs work that selects this product and does not change brand guidance.</p>
+      <div class="product-brief-material">
+        <div class="product-brief-name"><strong>${escapeHtml(source.name)}</strong><small>${escapeHtml(source.detail || source.declaredType || "Product brief")}</small></div>
+        ${sourceOriginalMaterial(source)}
+      </div>
+    </section>`;
+}
+
 function productImagesSection(record) {
   const images = Array.isArray(record.images) ? record.images : [];
   const pending = state.products.imageUploadingKind;
@@ -5696,6 +5714,8 @@ function renderProductDetail() {
           <li><strong>Source summary:</strong> ${escapeHtml(record.source_summary)}</li>
         </ul>
       </details>
+
+      ${productBriefSection(record)}
 
       ${productImagesSection(record)}
 
@@ -9613,9 +9633,7 @@ root.addEventListener("click", (event) => {
   if (action === "approve-product") {
     void approveProductRecord(target.dataset.id);
   }
-  if (action === "synthesize-product-from-source") {
-    void synthesizeProductFromSource(target.dataset.id);
-  }
+
   if (action === "open-product-add") {
     state.products.addOpen = true;
     state.products.addName = "";
@@ -11716,6 +11734,8 @@ async function createProductRecord() {
   }
 }
 
+// Unreachable since 2026-09-15: the Sources screen no longer renders product
+// briefs or their synthesis button. Retained so a return is one revert.
 async function synthesizeProductFromSource(sourceId) {
   if (typeof fetch !== "function") return;
   const source = state.brain.sources.find((s) => s.id === sourceId);
