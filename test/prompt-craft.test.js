@@ -214,3 +214,47 @@ test("the proportion compiles as its own scene section and is absent when unmeas
   const template = compileBrandWorldImagePackage({ ...inputs, brief: { scene: "A surface.", placement: "Brand template", format: "4:5 portrait", deliverable: "template" }, lockedAssetProportion: { width: 500, height: 1200 } });
   assert.doesNotMatch(template.prompt, /SUPPLIED PRODUCT IMAGE/);
 });
+
+test("the stated real-world size compiles into relational scale language", async () => {
+  const { realWorldScaleSentences } = await import("../src/production/prompt-craft.js");
+  const slim = realWorldScaleSentences({ height_cm: 13.4, width_cm: 5.3 });
+  assert.match(slim, /13\.4 centimeters tall and 5\.3 centimeters across/);
+  assert.match(slim, /shorter than the hand is long/);
+  assert.match(slim, /closes fully around it, fingers overlapping the thumb/);
+  assert.match(slim, /Do not render the product larger than this real size/);
+
+  const bottle = realWorldScaleSentences({ height_cm: 30 });
+  assert.doesNotMatch(bottle, /the product is small/);
+  assert.doesNotMatch(bottle, /hand's length tall/);
+
+  const tallboy = realWorldScaleSentences({ height_cm: 18, width_cm: 6.9 });
+  assert.match(tallboy, /about a hand's length tall/);
+
+  assert.equal(realWorldScaleSentences(null), "");
+  assert.equal(realWorldScaleSentences({ height_cm: 0 }), "");
+});
+
+test("the compiled section carries both facts when the product states a size", async () => {
+  const { compileBrandWorldImagePackage } = await import("../src/production/package.js");
+  const section = (id, name) => ({ id, name, summary: `${name}.`, principles: [name], productionUse: name });
+  const approvedBrain = {
+    brandName: "Test Brand", brandDescription: "A test brand", synthesisSummary: "Summary.", sourceCount: 1,
+    guidanceSections: [
+      section("foundation", "Brand foundation"), section("identity", "Identity"),
+      section("world", "World and story"), section("voice", "Voice and messaging"),
+      section("creative", "Creative direction"), section("rules", "Creative rules"),
+    ],
+    artifacts: {},
+  };
+  const compiled = compileBrandWorldImagePackage({
+    approvedBrain,
+    brainVersion: 1,
+    brief: { scene: "A can rests on a workbench.", placement: "Instagram feed", format: "4:5 portrait" },
+    lockedAsset: { source: { id: "s1", name: "Can cut-out" }, file: { name: "can.png", type: "image/png", blobPathname: "brand-world-system/clients/default/sources/can.png" } },
+    lockedAssetProportion: { width: 500, height: 1200 },
+    product: { product_id: "p1", product_name: "Test Can", physical_size: { height_cm: 13.4, width_cm: 5.3 } },
+  });
+  assert.match(compiled.prompt, /2\.4 times as tall as it is wide/);
+  assert.match(compiled.prompt, /13\.4 centimeters tall/);
+  assert.match(compiled.prompt, /Size everything in the scene against that/);
+});

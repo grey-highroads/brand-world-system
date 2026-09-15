@@ -10,6 +10,7 @@ import {
   FACE_FRAMING_RULE,
   sceneProtectionBlock,
   measuredProportionSection,
+  realWorldScaleSentences,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "./looks.js";
@@ -682,7 +683,15 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
     // as before.
     (!isTemplate && !isSalesEnablement && lockedAsset && !scenePass) ? {
       title: "Supplied product image",
-      body: measuredProportionSection(lockedAssetProportion),
+      // Two measured facts in one section: the image's own proportion, and
+      // the stated real-world size from the product record when a person has
+      // entered one. Scale is the one the giant-can failure needed; a
+      // cut-out carries no size, so without the stated fact the model sizes
+      // the product from its category prior, which for cans runs large.
+      body: [
+        measuredProportionSection(lockedAssetProportion),
+        realWorldScaleSentences(product?.physical_size),
+      ].filter(Boolean).join(" "),
     } : null,
     // The People section stopped compiling on 2026-09-07, with the ruling that
     // the writer authors the prompt and the compiler attaches facts. It was a

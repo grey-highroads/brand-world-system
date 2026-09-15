@@ -10,6 +10,7 @@ import {
   deleteProductRecord,
   addProductImage,
   removeProductImage,
+  setProductPhysicalSize,
 } from "../../src/products/service.js";
 import { createVercelBlobIdentityAssetStore } from "../../src/identity-assets/store.js";
 import {
@@ -102,6 +103,16 @@ export default async function handler(request, response) {
       const productId = String(body.productId || "").trim();
       const result = await deleteProductRecord({ store: productStore, productId });
       sendJson(response, 200, result);
+      return;
+    }
+
+    if (action === "set_physical_size") {
+      const record = await setProductPhysicalSize({
+        store: productStore,
+        productId: String(body.productId || "").trim(),
+        physicalSize: body.physicalSize || {},
+      });
+      sendJson(response, 200, { product: record });
       return;
     }
 

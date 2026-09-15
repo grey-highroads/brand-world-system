@@ -292,6 +292,47 @@ export function measuredProportionSection(proportion) {
   return `${identity} Measured from that image, the product is ${inverse} times as wide as it is tall. Hold that proportion at any size in the frame, and do not stretch it toward a more common product shape.`;
 }
 
+// The product's stated real-world size, turned into scale language a model
+// can see (owner ruling, 2026-09-14 evening, against the giant-can failure).
+// Centimeter numbers are not visible in a picture, the same way ounces were
+// not (see the 2026-09-02 revision note above sceneProductPlaceholder), so
+// the numbers ride along as support while relational anchors carry the
+// instruction: hands and tabletop objects, whose sizes every image model
+// knows. Anchor facts used: an adult hand is about 18 cm from wrist to
+// fingertips, and a grip closes fully around anything narrower than about
+// 7 cm.
+export function realWorldScaleSentences(physicalSize) {
+  const height = Number(physicalSize?.height_cm);
+  if (!Number.isFinite(height) || height <= 0) return "";
+  const width = Number(physicalSize?.width_cm);
+  const parts = [];
+  const size = Number.isFinite(width) && width > 0
+    ? `about ${trimNumber(height)} centimeters tall and ${trimNumber(width)} centimeters across`
+    : `about ${trimNumber(height)} centimeters tall`;
+  parts.push(`In the real world the product is small: ${size}.`);
+  if (height < 9) {
+    parts.push("Held, it sits low in a single hand.");
+  } else if (height < 18) {
+    parts.push("Held, it stands shorter than the hand is long from wrist to fingertips.");
+  } else if (height < 30) {
+    parts.push("Held, it stands about a hand's length tall or a little more.");
+  }
+  if (Number.isFinite(width) && width > 0 && width < 7) {
+    parts.push("A hand closes fully around it, fingers overlapping the thumb.");
+  }
+  parts.push("Size everything in the scene against that: hands, tables, and nearby objects all read larger relative to the product than a first instinct would draw them. Do not render the product larger than this real size.");
+  // The opening word "small" is only true below a hand-and-a-half of height.
+  if (height >= 30) {
+    parts[0] = `In the real world the product is ${size}.`;
+  }
+  return parts.join(" ");
+}
+
+function trimNumber(value) {
+  const rounded = Math.round(value * 10) / 10;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded);
+}
+
 function terminal(text) {
   return /[.!?]$/.test(text) ? text : `${text}.`;
 }

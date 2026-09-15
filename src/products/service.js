@@ -348,6 +348,37 @@ export async function addProductImage({ store, productId, image }) {
   return updated;
 }
 
+// The product's real-world size, stated once by a person (owner ruling,
+// 2026-09-14 evening, against the giant-can failure). A cut-out image carries
+// no scale, so without this fact the render model sizes the product from its
+// own category prior, which for cans runs large. Height is required; width is
+// optional. Numbers are held as stated and compiled into scale language at
+// package preparation.
+export async function setProductPhysicalSize({ store, productId, physicalSize }) {
+  const record = await store.readProduct(productId);
+  if (!record) {
+    const error = new Error(`Product "${productId}" was not found.`);
+    error.status = 404;
+    throw error;
+  }
+  const height = Number(physicalSize?.height_cm);
+  const width = Number(physicalSize?.width_cm);
+  if (!Number.isFinite(height) || height <= 0) {
+    const error = new Error("The real-world size needs a height in centimeters.");
+    error.status = 400;
+    throw error;
+  }
+  const updated = {
+    ...record,
+    physical_size: {
+      height_cm: height,
+      ...(Number.isFinite(width) && width > 0 ? { width_cm: width } : {}),
+    },
+  };
+  await store.writeProduct(updated);
+  return updated;
+}
+
 export async function removeProductImage({ store, productId, imageId }) {
   const record = await store.readProduct(productId);
   if (!record) {

@@ -109,6 +109,30 @@
     "model": {
       "type": "string",
       "description": "The model that produced this synthesis. Operational metadata."
+    },
+    "physical_size": {
+      "type": "object",
+      "description": "Optional. The product's real-world size, stated by a person. A cut-out image carries no scale, so this is the only place the system can learn how big the product is. Compiled into scene prompts as relational scale language.",
+      "additionalProperties": false,
+      "required": [
+        "height_cm"
+      ],
+      "properties": {
+        "height_cm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Height in centimeters, as it stands in use."
+        },
+        "width_cm": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Optional. Width or diameter in centimeters at the widest point."
+        },
+        "stated_by": {
+          "type": "string",
+          "description": "Optional note on where the numbers came from."
+        }
+      }
     }
   },
   "$defs": {

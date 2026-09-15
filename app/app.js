@@ -5623,6 +5623,24 @@ function renderProductDetail() {
 
       ${productImagesSection(record)}
 
+      <section class="card">
+        <div class="card-header"><h2>Real-world size</h2></div>
+        <p class="field-note">A cut-out picture carries no size, so renders scale the product by guesswork without this. State it once and every scene render sizes hands, tables, and surroundings against it.</p>
+        <div class="field-grid">
+          <div class="field">
+            <label>Height in centimeters</label>
+            <input type="number" step="0.1" min="0" value="${record.physical_size?.height_cm ?? ""}" data-action="physical-height-input" placeholder="13.4">
+          </div>
+          <div class="field">
+            <label>Width across in centimeters (optional)</label>
+            <input type="number" step="0.1" min="0" value="${record.physical_size?.width_cm ?? ""}" data-action="physical-width-input" placeholder="5.3">
+          </div>
+        </div>
+        <div class="actions">
+          <button class="button" type="button" data-action="save-physical-size" ${state.products.savingSize ? "disabled" : ""}>${state.products.savingSize ? "Saving" : "Save size"}</button>
+        </div>
+      </section>
+
       ${(record.features || []).length ? `
       <details class="card collapsible-card" data-psection="features" ${sections.features ? "open" : ""}>
         <summary class="card-header collapsible-header">
@@ -8555,6 +8573,45 @@ async function fetchCurrentProductionJob() {
 const RECOVERY_POLL_INTERVAL_MS = 2500;
 const RECOVERY_CEILING_MS = 8 * 60 * 1000;
 
+// Saves the stated real-world size onto the open product record. Values are
+// read from the inputs at click time; state holds only the saving flag, so
+// typing in the fields never re-renders the screen out from under the caret.
+async function saveProductPhysicalSize() {
+  const record = state.products.detail;
+  if (!record) return;
+  const heightInput = document.querySelector('[data-action="physical-height-input"]');
+  const widthInput = document.querySelector('[data-action="physical-width-input"]');
+  const height = Number(heightInput?.value);
+  if (!Number.isFinite(height) || height <= 0) {
+    state.products.error = "The real-world size needs a height in centimeters.";
+    render();
+    return;
+  }
+  const width = Number(widthInput?.value);
+  state.products.savingSize = true;
+  state.products.error = "";
+  render();
+  try {
+    const response = await fetch("/api/products", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "set_physical_size",
+        productId: record.product_id,
+        physicalSize: { height_cm: height, ...(Number.isFinite(width) && width > 0 ? { width_cm: width } : {}) },
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The size could not be saved.");
+    state.products.detail = body.product;
+  } catch (error) {
+    state.products.error = error.message || "The size could not be saved.";
+  } finally {
+    state.products.savingSize = false;
+    render();
+  }
+}
+
 async function recoverProductionJob(jobId) {
   const deadline = Date.now() + RECOVERY_CEILING_MS;
   while (Date.now() < deadline) {
@@ -9621,6 +9678,9 @@ root.addEventListener("click", (event) => {
   if (action === "toggle-studio-caption") {
     state.studio.captionOn = !state.studio.captionOn;
     render();
+  }
+  if (action === "save-physical-size") {
+    void saveProductPhysicalSize();
   }
   if (action === "toggle-studio-branding") {
     state.studio.brandingOn = !state.studio.brandingOn;
