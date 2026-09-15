@@ -3983,6 +3983,12 @@ function renderArtifactLibrary() {
         ${artifactWorldsAvailable().map((item) => `<button class="${item.id === world.id ? "active" : ""}" type="button" role="tab" aria-selected="${item.id === world.id}" data-action="select-artifact-world" data-world="${item.id}">${item.id === "today" ? "Brand today" : "Evolved world"}</button>`).join("")}
       </div>
       <p>${worldCopy}</p>
+      ${world.id === "evolved" && status === "draft" && state.brain.artifactStatus === "ready"
+        ? `<div class="artifact-world-approve">
+             <p>Production writes from the brand today until this world is approved.</p>
+             <button class="button primary" type="button" data-action="approve-brain-evolved">Approve the brand world, evolved</button>
+           </div>`
+        : ""}
     </section>
 
     <section class="artifact-library-grid">
@@ -8078,26 +8084,42 @@ async function approveDirectionRecord() {
 function directionCard() {
   if (state.brain.artifactStatus !== "ready") return "";
   if (todayAudienceEvidence() !== "not established") return "";
-  if (state.brain.evolvedStatus === "draft" || state.brain.evolvedStatus === "ready") return "";
+  if (state.brain.evolvedStatus === "ready") return "";
   const record = state.direction.record;
   const approved = record?.status === "approved";
   const started = Boolean(record) && directionEntryTotal(record) > 0;
-  const heading = approved ? "Direction approved" : started ? "Direction session in progress" : "This brand needs a direction";
-  const copy = approved
+  // The evolved world is built and waiting on its own decision. Production
+  // reads the brand today until it gets one, which is why the writer can
+  // return directions that owe nothing to the direction record. This is the
+  // last step of the ADR 0021 order and it needs a control on this screen.
+  const evolvedWaiting = state.brain.evolvedStatus === "draft";
+  const heading = evolvedWaiting
+    ? "The evolved world needs your approval"
+    : approved
+    ? "Direction approved"
+    : started
+    ? "Direction session in progress"
+    : "This brand needs a direction";
+  const copy = evolvedWaiting
+    ? "It is built and stored, and production still writes from the brand today until you approve it. Read it first: the moments and the cast are what every picture comes from."
+    : approved
     ? `Version ${record.version} is approved and the evolved passes will read it as a source. Build the brand world, evolved, when you are ready.`
     : started
     ? `${directionEntryTotal(record, true)} entries so far${record.reach ? `, reach recommended: ${record.reach.level}` : ""}. Continue the session, then approve the record.`
     : "The foundation records no audience evidence, so the evolved world has nothing to reach from. Hold a direction session to decide who this is for and what the pictures are.";
+  const actions = evolvedWaiting
+    ? `<button class="button primary" type="button" data-action="approve-brain-evolved">Approve the brand world, evolved</button>
+       <button class="button secondary" type="button" data-action="select-artifact-world" data-world="evolved">Read it first</button>
+       <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
+    : approved
+    ? `<button class="button primary" type="button" data-action="rebuild-evolved-world">Build the brand world, evolved</button>
+       <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
+    : `<button class="button primary" type="button" data-action="direction-open">${started ? "Continue the direction session" : "Start the direction session"}</button>`;
   return `
     <section class="card direction-card">
-      <div class="card-header"><h2>${escapeHtml(heading)}</h2><span class="mini-pill">${approved ? `v${record.version}` : "Direction session"}</span></div>
+      <div class="card-header"><h2>${escapeHtml(heading)}</h2><span class="mini-pill">${evolvedWaiting ? "Needs approval" : approved ? `v${record.version}` : "Direction session"}</span></div>
       <p class="page-description">${escapeHtml(copy)}</p>
-      <div class="direction-card-actions">
-        ${approved
-          ? `<button class="button primary" type="button" data-action="rebuild-evolved-world">Build the brand world, evolved</button>
-             <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
-          : `<button class="button primary" type="button" data-action="direction-open">${started ? "Continue the direction session" : "Start the direction session"}</button>`}
-      </div>
+      <div class="direction-card-actions">${actions}</div>
     </section>
   `;
 }
@@ -10962,8 +10984,10 @@ root.addEventListener("click", (event) => {
       };
       state.brain.evolvedStatus = "ready";
       state.brain.evolvedApprovedVersion = state.brain.artifactVersion;
+      syncProductionReferences();
       recordBrainHistory(`Brand Brain v${state.brain.artifactVersion} approved: the brand world, evolved`, "Production now writes from the evolved world. The brand today stays approved as the truth check beside it.", "complete");
       void persistBrainState();
+      render();
       setToast(`The brand world, evolved, v${state.brain.artifactVersion}, is what production writes from now`);
     }
   }
