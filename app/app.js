@@ -8154,19 +8154,28 @@ function renderDirectionSession() {
   const approved = record.status === "approved";
   const personTurns = state.direction.turns.filter((turn) => turn.role === "person").length;
   const overCap = personTurns >= 40;
-  const conversation = state.direction.turns.map((turn, turnIndex) => {
-    if (turn.role === "person") {
-      return `<div class="direction-turn person"><span class="direction-who">You</span><p>${escapeHtml(turn.text)}</p></div>`;
-    }
-    const options = (turn.options || []).map((option, optionIndex) => {
-      const resolved = turn.resolved;
-      return `<span class="direction-option ${resolved ? "resolved" : ""}">
-        <button type="button" data-action="direction-pick" data-turn="${turnIndex}" data-option="${optionIndex}" ${resolved || state.direction.busy ? "disabled" : ""}>${escapeHtml(option)}</button>
-        <button type="button" class="direction-option-drop" title="Rule this out" data-action="direction-drop" data-turn="${turnIndex}" data-option="${optionIndex}" ${resolved || state.direction.busy ? "disabled" : ""}>&times;</button>
-      </span>`;
-    }).join("");
-    return `<div class="direction-turn session"><span class="direction-who">Direction</span><p>${escapeHtml(turn.text)}</p>${options ? `<div class="direction-options">${options}</div>` : ""}</div>`;
-  }).join("");
+  // Only the current question is on screen. Every answer lands in the record
+  // beside it, so there is nothing to scroll back through and the viewport
+  // never moves between turns.
+  const turnIndex = state.direction.turns.map((turn) => turn.role).lastIndexOf("session");
+  const current = turnIndex >= 0 ? state.direction.turns[turnIndex] : null;
+  const options = current && !state.direction.busy
+    ? (current.options || []).map((option, optionIndex) => {
+        const resolved = current.resolved;
+        return `<span class="direction-option ${resolved ? "resolved" : ""}">
+          <button type="button" data-action="direction-pick" data-turn="${turnIndex}" data-option="${optionIndex}" ${resolved ? "disabled" : ""}>${escapeHtml(option)}</button>
+          <button type="button" class="direction-option-drop" title="Rule this out" data-action="direction-drop" data-turn="${turnIndex}" data-option="${optionIndex}" ${resolved ? "disabled" : ""}>&times;</button>
+        </span>`;
+      }).join("")
+    : "";
+  const filledSections = DIRECTION_SECTION_IDS.filter((id) => (record.sections?.[id] || []).some((entry) => entry.origin !== "rejected")).length;
+  const conversation = current
+    ? `<div class="direction-turn session"><span class="direction-who">Direction</span>${
+        state.direction.busy
+          ? `<p class="direction-thinking">Thinking</p>`
+          : `<p>${escapeHtml(current.text)}</p>${options ? `<div class="direction-options">${options}</div>` : ""}`
+      }</div>`
+    : "";
   return brainWorkspace(
     "Direction session",
     approved
@@ -8185,7 +8194,7 @@ function renderDirectionSession() {
               ${overCap ? `<p class="direction-cap">This session has run ${personTurns} turns, which usually means it is failing to converge rather than producing a better record. Approve what is there, or close and come back.</p>` : ""}
               <textarea rows="2" data-action="direction-input" placeholder="Answer in your own words, or pick from what it offers." ${state.direction.busy ? "disabled" : ""}>${escapeHtml(state.direction.input)}</textarea>
               <div class="direction-composer-row">
-                <span>Picking an option records a choice. The small x records a rejection, which is kept and never proposed again.</span>
+                <span>${filledSections} of ${DIRECTION_SECTION_IDS.length} sections have material after ${personTurns} ${personTurns === 1 ? "answer" : "answers"}. Picking an option records a choice; the small x records a rejection, kept and never proposed again.</span>
                 <button class="button primary" type="button" data-action="direction-send" ${state.direction.busy ? "disabled" : ""}>Send</button>
               </div>
             </div>`}
@@ -8382,6 +8391,16 @@ async function startBrainSynthesis() {
   // connection on a pass is no longer the end of the synthesis.
   // See docs/findings-2026-09-07-pass-recovery.md.
   let runningPass = SYNTHESIS_PASSES[0];
+  // Which passes can finish this synthesis. Pass 8 always can; pass 4 can for
+  // an initial run with no approved direction record, because the server
+  // saves the today world there and clears the in-progress record (ADR 0021).
+  // A finished final pass leaves nothing to poll in progress, so recovery for
+  // these passes goes to the saved brain, matched by request id. When the
+  // direction record has not hydrated yet this treats pass 4 as possibly
+  // final, which at worst delays a genuine pass 4 error by the recovery poll.
+  const maybeFinalPass = (pass) =>
+    pass === SYNTHESIS_PASSES[SYNTHESIS_PASSES.length - 1] ||
+    (!incremental && pass === FIRST_EVOLVED_PASS - 1 && state.direction.record?.status !== "approved");
 
   try {
     // Four requests, one per pass, each with its own server clock. Pass 1
@@ -8417,10 +8436,10 @@ async function startBrainSynthesis() {
         // finished the pass anyway. A pass that returned a body, ok or not, is
         // a real answer and is handled below.
         //
-        // The last pass is left to the existing recovery in the catch block:
+        // A possibly-final pass is left to the recovery in the catch block:
         // by then the in-progress record is cleared and the saved brain is
         // what there is to poll for.
-        if (pass === SYNTHESIS_PASSES[SYNTHESIS_PASSES.length - 1]) throw networkError;
+        if (maybeFinalPass(pass)) throw networkError;
         const completed = await waitForSynthesisPass(requestId, pass);
         if (!completed) throw networkError;
         // The pass finished on the server. Its response is gone, and nothing
@@ -8453,11 +8472,10 @@ async function startBrainSynthesis() {
     );
   } catch (error) {
     // Reaching here on an earlier pass means the loop already polled and the
-    // pass did not finish, so there is nothing left to recover. Only the last
-    // pass can have left a saved brain behind, and that is what this polls for.
-    const recovered = runningPass === SYNTHESIS_PASSES[SYNTHESIS_PASSES.length - 1]
-      ? await recoverBrainSynthesis(requestId)
-      : null;
+    // pass did not finish, so there is nothing left to recover. Only a pass
+    // that can finish the synthesis can have left a saved brain behind, and
+    // that is what this polls for, matched by request id.
+    const recovered = maybeFinalPass(runningPass) ? await recoverBrainSynthesis(requestId) : null;
     if (recovered) {
       applySynthesisResult(recovered.result, {
         baseline: recovered.approvedResult || baseline,
