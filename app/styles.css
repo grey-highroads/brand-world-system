@@ -9980,3 +9980,23 @@ button.ws-attention-item:hover {
 .direction-record-actions {
   margin-top: 14px;
 }
+
+.artifact-world-approve {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+  padding: 12px 14px;
+  background: var(--paper-100);
+  border: 1px solid var(--ink-700);
+  border-left: 2px solid var(--gold);
+  border-radius: var(--radius-md);
+}
+
+.artifact-world-approve p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
