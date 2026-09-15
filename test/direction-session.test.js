@@ -178,6 +178,7 @@ test("the prose keeps rejections visible and the source carries the direction fl
   // the whole world.
   assert.match(prose, /For example, and not to be reproduced: Four of them crowded around a borrowed amp\./);
   assert.match(prose, /Examples illustrate a rule and are not scenes to reproduce/);
+  assert.match(prose, /cast someone new for every picture/);
   assert.doesNotMatch(prose, /\u2014|\u2013/, "no em or en dash in what synthesis reads");
 
   const source = directionRecordAsSource(record);
@@ -186,6 +187,7 @@ test("the prose keeps rejections visible and the source carries the direction fl
   assert.equal(source.aspiration, "aspiration");
   assert.equal(source.influence, "Lead");
   assert.match(source.content, /direction session/i);
+  assert.match(source.usage, /casting range rather than a cast list/);
 });
 
 test("the reach list holds only a new world when the audience is not established, and never it otherwise", () => {
@@ -222,6 +224,12 @@ test("the session payload carries the open review questions, and a ruled one wit
   assert.match(instruction, /You propose, they react/);
   assert.match(instruction, /A world is not a scene/);
   assert.match(instruction, /Write rules, not scenes/);
+  // The people are written deep and as a casting range. Both halves matter:
+  // a vague description gives the writer nothing, and a recurring named
+  // person puts the same face in every frame.
+  assert.match(instruction, /casting range, never as a character/);
+  assert.match(instruction, /twenty pictures cast twenty different people/);
+  assert.match(instruction, /Reach past occupation/);
 });
 
 test("a settled audience runs the same session, held fixed rather than reopened", async () => {
