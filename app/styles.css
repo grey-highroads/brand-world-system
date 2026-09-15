@@ -10000,3 +10000,43 @@ button.ws-attention-item:hover {
   font-size: 13px;
   color: var(--muted);
 }
+
+.direction-worlds {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.direction-world {
+  padding: 14px 16px;
+  background: var(--paper-100);
+  border: 1px solid var(--ink-700);
+  border-left: 2px solid var(--lavender);
+  border-radius: var(--radius-md);
+}
+
+.direction-world.resolved {
+  opacity: 0.45;
+}
+
+.direction-world h3 {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.direction-world p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.direction-world-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.direction-entry-text em {
+  color: var(--muted);
+  font-style: normal;
+}
