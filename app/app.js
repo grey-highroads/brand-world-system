@@ -2931,25 +2931,25 @@ function orientationForRatio(ratio) {
 
 const sourceSlots = [
   {
-    id: "website", layer: 1, title: "Website",
+    id: "website", layer: 1, title: "Website", note: "The brand's own site, read as current guidance.",
     match: (source, material) => (source.kind === "url" || source.url) && material?.id === "approved-guidance",
     intake: { kind: "guidance", form: "url", usage: "The brand's own website, read as current guidance." },
     cta: "Add website",
   },
   {
-    id: "logo", layer: 1, title: "Logo", plural: true,
+    id: "logo", layer: 1, title: "Logo", plural: true, note: "Official brand marks, used exactly as supplied.",
     match: (source, material) => material?.id === "protected-asset",
     intake: { kind: "asset", form: "files", materialType: "protected-asset", usage: "An official brand mark. Use exactly as supplied." },
     cta: "Add a logo",
   },
   {
-    id: "guide", layer: 1, title: "Brand guide",
+    id: "guide", layer: 1, title: "Brand guide", note: "Approved standards, followed wherever relevant.",
     match: (source, material) => (material?.id === "approved-guidance" || material?.id === "asset-bearing-guide") && !(source.kind === "url" || source.url),
     intake: { kind: "guidance", form: "files", usage: "Approved brand standards. Follow wherever relevant." },
     cta: "Add guide",
   },
   {
-    id: "templates", layer: 1, title: "Templates", plural: true,
+    id: "templates", layer: 1, title: "Templates", plural: true, note: "Branded layouts, used as locked backgrounds.",
     match: (source, material) => material?.isTemplate || source.templateMeta?.isTemplate,
     intake: { kind: "asset", form: "files", materialType: "brand-template", usage: "A branded template. Used as a locked background layer." },
     cta: "Add template",
@@ -3207,6 +3207,9 @@ function sourceInlineDrawer(slot) {
   `;
 }
 
+// Unused since 2026-09-15: section 1 renders slot cards through
+// sourcePresenceCard like the other sections. Retained so a return to the
+// compact row layout is one revert.
 function sourceFoundationRow(slot, locked) {
   const rows = sourceSlotRows(slot);
   const status = slotStatus(slot, rows);
@@ -3238,7 +3241,7 @@ function sourcePresenceCard(slot, locked) {
         ${status.filled ? `<span class="source-slot-status filled">${sourceIcon("check")}${escapeHtml(status.text)}</span>` : ""}
       </div>
       <p class="source-presence-description">${escapeHtml(slot.note)}${slot.tip ? `<span>${escapeHtml(slot.tip)}</span>` : ""}</p>
-      ${slot.id === "recent-work" && latest ? `
+      ${(slot.layer === 1 || slot.id === "recent-work") && latest ? `
         <div class="source-presence-record">
           ${sourceIcon("check")}
           <span><strong>${escapeHtml(latest.name)}</strong><small>${escapeHtml(latest.detail || "Added to the source library")}</small></span>
@@ -3361,6 +3364,7 @@ function renderBrainSources() {
   const coverage = sourceLayerCoverage();
   const genericIntakeOpen = Boolean(state.brain.intakeDoor && !state.brain.intakeSlotId);
   const presenceSlot = sourceSlots.find((slot) => slot.layer === 2 && slot.id === state.brain.intakeSlotId) || null;
+  const foundationSlot = sourceSlots.find((slot) => slot.layer === 1 && slot.id === state.brain.intakeSlotId) || null;
   const contextOpen = state.brain.intakeSlotId === "context";
   return brainWorkspace(
     "Sources",
@@ -3388,8 +3392,9 @@ function renderBrainSources() {
             value: coverage.covered,
             max: coverage.foundationTotal,
           })}
-          <div class="source-foundation-list">
-            ${sourceSlots.filter((slot) => slot.layer === 1).map((slot) => sourceFoundationRow(slot, hasApproved)).join("")}
+          <div class="source-presence-grid source-foundation-grid">
+            ${sourceSlots.filter((slot) => slot.layer === 1).map((slot) => sourcePresenceCard(slot, hasApproved)).join("")}
+            ${foundationSlot ? sourceInlineDrawer(foundationSlot) : ""}
           </div>
         </section>
 
