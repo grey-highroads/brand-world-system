@@ -1,52 +1,77 @@
 import { REACH_LEVELS } from "../brand-brain/schema.js";
 
-// The direction record, ADR 0021. A brand's visual aspirational direction,
-// authored in a session between the two worlds: passes 1 through 4 write the
-// brand today, the session produces this record, and the evolved passes read
-// it as an ordinary source once it is approved. One record per brand, stored
-// beside the brain in the same store.
+// The direction record, ADR 0021, reshaped 2026-09-15 after the first real
+// sessions. See docs/findings-2026-09-15-the-session-proposes.md.
 //
-// This module holds the shape and the two translations: the record rendered
-// as prose, and the record wrapped as a source. Nothing in the synthesis
-// instructions knows this record exists. That is deliberate and it is the
-// test of the shape: the evolved passes read it through the same authority
-// rules every other source answers to, because it arrives with provenance
-// "ours" and aspiration "aspiration" like any direction material a client
-// could have uploaded.
+// The first shape had one section per artifact field, so an answer landed in
+// the slot the evolved pass was about to fill and got copied across. A scene
+// the owner described in detail became the world. This shape holds the world
+// at the level that generates pictures rather than at the level of one
+// picture: a territory, the rules that hold across every frame in it, and
+// examples that are marked as examples and are never reproduced literally.
 
-// This brief builds the world kind only. A craft direction, for a brand whose
-// audience is settled, is a separate session with its own sections and is out
-// of scope here.
 export const DIRECTION_KINDS = ["world"];
 
-// The sections a world direction fills: the four Lived World fields the
-// session can decide, and the six Visual Grammar sections. Ids are the
-// architecture's words, because the record is read by synthesis; labels are
-// the user's words, because the screen shows them. The two grammar section
-// ids "places" and the Lived World field "environments" are distinct on
-// purpose: environments are journey moments, places are rooms and surfaces,
-// and the schema keeps them apart for the same reason.
-export const WORLD_DIRECTION_SECTIONS = [
-  { id: "cast", artifact: "livedWorld", label: "Who these people are" },
-  { id: "patterns", artifact: "livedWorld", label: "How their days run" },
-  { id: "environments", artifact: "livedWorld", label: "Where they spend time" },
-  { id: "social", artifact: "livedWorld", label: "Who they are with" },
-  { id: "people", artifact: "visualGrammar", label: "People in frame" },
-  { id: "objects", artifact: "visualGrammar", label: "Objects" },
-  { id: "places", artifact: "visualGrammar", label: "Places and surfaces" },
-  { id: "light", artifact: "visualGrammar", label: "Light" },
-  { id: "camera", artifact: "visualGrammar", label: "Camera" },
-  { id: "rejects", artifact: "visualGrammar", label: "What the pictures refuse" },
+// What the record holds. These are the decisions the session makes, not the
+// fields synthesis fills, which is deliberate: a section named after a schema
+// slot invites the model to copy into it.
+export const DIRECTION_SECTIONS = [
+  {
+    id: "territory",
+    label: "The world",
+    hint: "The visual territory this brand lives in. Who these people are, where they spend time, what the place feels like to be in.",
+  },
+  {
+    id: "register",
+    label: "The register",
+    hint: "What is always true about how people appear. What they are doing and not doing, how aware of the camera they are, what state the product is in.",
+  },
+  {
+    id: "people",
+    label: "Who is in frame",
+    hint: "The range of people this world casts from, as a kind of presence rather than a roster.",
+  },
+  {
+    id: "places",
+    label: "Where it happens",
+    hint: "The spread of rooms and settings this world covers. A range, never one room.",
+  },
+  {
+    id: "objects",
+    label: "What is in the room",
+    hint: "The era and condition of things in frame, and the prop territory the brand owns.",
+  },
+  {
+    id: "light",
+    label: "How it is lit",
+    hint: "Sources, direction, contrast, and color condition.",
+  },
+  {
+    id: "camera",
+    label: "How it is shot",
+    hint: "Distance, format, stock character, and what is allowed to be imperfect.",
+  },
+  {
+    id: "fixed",
+    label: "What must not change",
+    hint: "What the brand already has that this direction keeps. Empty for a brand with nothing settled yet.",
+  },
 ];
 
-const SECTION_IDS = WORLD_DIRECTION_SECTIONS.map((section) => section.id);
+const SECTION_IDS = DIRECTION_SECTIONS.map((section) => section.id);
 
-// How an entry was arrived at. Stated means the person typed it. Chosen means
-// they picked it from options the session offered. Rejected means they ruled
-// one out. Rejected entries are kept rather than deleted: they stop a later
-// session re-proposing what an earlier one killed, and what a brand rules out
-// is often more particular to it than what it asks for.
+// How an entry was arrived at. Stated means the person said it. Chosen means
+// they took it from a world the session proposed. Rejected means they killed
+// it, and rejections are kept: they stop a later session re-proposing what an
+// earlier one killed.
 export const DIRECTION_ENTRY_ORIGINS = ["stated", "chosen", "rejected"];
+
+// What an entry is. A rule holds across every picture in this world and is
+// what synthesis builds from. An example is one illustration of a rule, kept
+// so a reader can see what was meant, and never reproduced as a scene. The
+// first shape had no such distinction, which is how one described scene
+// became the whole world.
+export const DIRECTION_ENTRY_KINDS = ["rule", "example"];
 
 export function emptyDirectionRecord({ brandName = "", model = "" } = {}) {
   const now = new Date().toISOString();
@@ -70,27 +95,34 @@ export function emptyDirectionRecord({ brandName = "", model = "" } = {}) {
 function cleanEntry(entry) {
   const text = String(entry?.text || "").trim().slice(0, 600);
   if (!text) return null;
-  const origin = DIRECTION_ENTRY_ORIGINS.includes(entry?.origin) ? entry.origin : "stated";
-  const at = typeof entry?.at === "string" ? entry.at : new Date().toISOString();
-  return { text, origin, at };
+  return {
+    text,
+    origin: DIRECTION_ENTRY_ORIGINS.includes(entry?.origin) ? entry.origin : "stated",
+    entryKind: DIRECTION_ENTRY_KINDS.includes(entry?.entryKind) ? entry.entryKind : "rule",
+    at: typeof entry?.at === "string" ? entry.at : new Date().toISOString(),
+  };
 }
 
-// The record as the store holds it. Anything outside the shape is dropped
-// rather than stored, so a round trip through the store returns what this
-// returns and nothing else.
 export function normalizeDirectionRecord(record) {
   if (!record || typeof record !== "object") return null;
-  const base = emptyDirectionRecord({ brandName: String(record.brandName || "").slice(0, 120), model: String(record.model || "").slice(0, 120) });
+  const base = emptyDirectionRecord({
+    brandName: String(record.brandName || "").slice(0, 120),
+    model: String(record.model || "").slice(0, 120),
+  });
   for (const id of SECTION_IDS) {
     const entries = Array.isArray(record.sections?.[id]) ? record.sections[id] : [];
     base.sections[id] = entries.map(cleanEntry).filter(Boolean).slice(0, 40);
   }
   base.status = record.status === "approved" ? "approved" : "proposed";
   base.version = Number.isInteger(record.version) && record.version > 0 ? record.version : 1;
-  const reach = record.reach;
-  base.reach = reach && REACH_LEVELS.includes(reach.level)
-    ? { level: reach.level, because: String(reach.because || "").slice(0, 600), tradeoff: String(reach.tradeoff || "").slice(0, 600) }
-    : null;
+  base.reach =
+    record.reach && REACH_LEVELS.includes(record.reach.level)
+      ? {
+          level: record.reach.level,
+          because: String(record.reach.because || "").slice(0, 600),
+          tradeoff: String(record.reach.tradeoff || "").slice(0, 600),
+        }
+      : null;
   base.turns = Number.isInteger(record.turns) && record.turns >= 0 ? record.turns : 0;
   if (typeof record.createdAt === "string") base.createdAt = record.createdAt;
   if (typeof record.updatedAt === "string") base.updatedAt = record.updatedAt;
@@ -109,39 +141,37 @@ export function directionKeptEntryCount(record) {
   );
 }
 
-// Which reach levels a session may recommend for this brand. Derived from the
-// levels the schema declares rather than written out again, so a new level
-// reaches here by being added once. For an audience that is not established
-// there are no people, places or moments to keep, so the two keeping levels
-// are unavailable and a new world is the only one on the list. For a settled
-// audience the direction lands in how the pictures are made, so a new world
-// is off the table.
+// Which reach levels a session may recommend. A brand with no audience
+// evidence has no people or places to keep, so a new world is the only level
+// available. A brand with a settled audience keeps them, so a new world is
+// off the table and the direction lands in how the pictures are made.
 export function availableReachLevels(livedWorld) {
   const established = livedWorld?.audienceEvidence !== "not established";
   return REACH_LEVELS.filter((level) => (established ? level !== "a new world" : level === "a new world"));
 }
 
-const ARTIFACT_HEADINGS = { livedWorld: "Lived World", visualGrammar: "Visual Grammar" };
-
-// The record rendered as prose, which is what synthesis reads. Written for a
-// model that already knows the authority rules: kept entries are the
-// direction, ruled-out entries are territory that must not return. Nothing
-// here instructs the model; the source's usage instructions carry that.
+// The record rendered as prose, which is what synthesis reads. Rules are
+// stated as rules. Examples are labelled as examples and carry the
+// instruction not to reproduce them, because the failure this shape exists to
+// prevent is a described scene arriving in the artifact as a moment.
 export function directionRecordProse(record) {
   const lines = [];
-  const brand = record.brandName || "this brand";
-  lines.push(`Direction record for ${brand}, version ${record.version}. Authored with the brand's owner in a direction session.`);
   lines.push(
-    "Each entry says how it was arrived at. Stated means the owner said it in their own words. Chosen means the owner picked it from offered options. The ruled-out lists are territory the owner rejected in the session; it must not appear in the evolved world in any form.",
+    `Direction record for ${record.brandName || "this brand"}, version ${record.version}. The brand's visual direction, decided with its owner in a direction session.`,
   );
-  for (const section of WORLD_DIRECTION_SECTIONS) {
+  lines.push(
+    "Rules hold across every picture in this world and are what to build from. Examples illustrate a rule and are not scenes to reproduce: write different situations that obey the same rules. Ruled-out lines are territory the owner killed and must not appear in any form.",
+  );
+  for (const section of DIRECTION_SECTIONS) {
     const entries = record.sections?.[section.id] || [];
     if (!entries.length) continue;
-    const kept = entries.filter((entry) => entry.origin !== "rejected");
+    const rules = entries.filter((entry) => entry.origin !== "rejected" && entry.entryKind === "rule");
+    const examples = entries.filter((entry) => entry.origin !== "rejected" && entry.entryKind === "example");
     const rejected = entries.filter((entry) => entry.origin === "rejected");
     lines.push("");
-    lines.push(`${ARTIFACT_HEADINGS[section.artifact]}, ${section.id}:`);
-    for (const entry of kept) lines.push(`- ${entry.text} (${entry.origin})`);
+    lines.push(`${section.label}:`);
+    for (const entry of rules) lines.push(`- ${entry.text}`);
+    for (const entry of examples) lines.push(`- For example, and not to be reproduced: ${entry.text}`);
     if (rejected.length) {
       lines.push("Ruled out:");
       for (const entry of rejected) lines.push(`- ${entry.text}`);
@@ -150,23 +180,18 @@ export function directionRecordProse(record) {
   return lines.join("\n");
 }
 
-// The record as a source, which is how it reaches the evolved passes on
-// approval. Provenance ours, aspiration aspiration, lead influence: the
-// brand's own declared direction, and the strongest voice among direction
-// material. The id is stable so a re-approved record replaces itself in any
-// merged set rather than accumulating.
 export function directionRecordAsSource(record) {
   return {
     id: "direction-record",
     name: `${record.brandName || "Brand"} direction record v${record.version}`,
     type: "Direction record",
     declaredType: "Direction record",
-    detail: "The brand's visual direction, authored in a direction session and approved by the owner.",
+    detail: "The brand's visual direction, decided in a direction session and approved by the owner.",
     authority: "brand-evidence",
     role: "Creative direction",
     influence: "Lead",
     usage:
-      "This is the brand's declared direction, approved by its owner. Build the evolved world in the direction it states. Entries under a ruled-out heading were rejected by the owner and must not return in any form.",
+      "This is the brand's declared direction, approved by its owner. Build the world it describes. Its rules hold across every picture. Its examples illustrate those rules and are not scenes to reproduce: write different situations that obey the same rules, across the range of places the record names. Ruled-out lines were killed by the owner and must not return in any form.",
     exclusions: "No additional exclusions supplied.",
     provenance: "ours",
     aspiration: "aspiration",
