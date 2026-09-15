@@ -30,6 +30,14 @@ function inProgressPathname(clientId) {
   return `${clientRoot(clientId)}/state/in-progress.json`;
 }
 
+// The direction record, ADR 0021. One per brand, stored beside the brain in
+// the same store rather than inside the saved brain payload, because it has
+// its own status and its own approval and must survive a brain rebuild that
+// replaces the saved payload.
+function directionPathname(clientId) {
+  return `${clientRoot(clientId)}/state/direction.json`;
+}
+
 function sourcesPrefix(clientId) {
   return `${clientRoot(clientId)}/sources/`;
 }
@@ -79,6 +87,18 @@ export function createFileBrandBrainStore(storePath) {
     },
     async clearInProgress() {
       await fs.rm(inProgressFilePath(storePath), { force: true });
+    },
+    async readDirection() {
+      try {
+        return JSON.parse(await fs.readFile(path.join(path.dirname(storePath), "direction.json"), "utf8"));
+      } catch (error) {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      }
+    },
+    async writeDirection(value) {
+      await fs.mkdir(path.dirname(storePath), { recursive: true });
+      await fs.writeFile(path.join(path.dirname(storePath), "direction.json"), `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
     },
     async readSourceFile() {
       throw new Error("Hosted source storage is not configured for this local server.");
@@ -153,6 +173,19 @@ export function createVercelBlobBrandBrainStore(options = {}) {
         // Nothing to clear, or the clear failed. Either way the next pass 1
         // overwrites it, and no saved brain depends on it.
       }
+    },
+    async readDirection() {
+      return readJsonBlobOrNull(directionPathname(clientId));
+    },
+    async writeDirection(value) {
+      await put(directionPathname(clientId), JSON.stringify(value), {
+        access: "private",
+        ...credentials,
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: "application/json",
+        cacheControlMaxAge: 0,
+      });
     },
     async readSourceFile(pathname) {
       const namespaced = sourcesPrefix(clientId);
