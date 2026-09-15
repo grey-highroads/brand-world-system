@@ -8638,6 +8638,19 @@ button.ws-attention-item:hover {
   --source-tone-soft: rgb(145 136 199 / 0.08);
 }
 
+.source-context-grid {
+  margin-bottom: var(--space-4);
+}
+
+.source-context-card {
+  min-height: 0;
+  grid-template-rows: auto 1fr auto;
+}
+
+.source-context-card .button {
+  justify-self: start;
+}
+
 .source-rhythm-header {
   display: grid;
   grid-template-columns: 28px minmax(0, 1fr) auto;
