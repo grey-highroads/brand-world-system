@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Direction session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1a1f2e;
+    --panel: #212739;
+    --panel-2: #262d42;
+    --line: #333c55;
+    --line-soft: #2c3449;
+    --text: #e8eaf2;
+    --muted: #9099b0;
+    --faint: #6b748d;
+    --lav: #9188c7;
+    --lav-soft: rgba(145,136,199,0.12);
+    --celery: #72b8d7;
+    --coral: #e6845a;
+    --sans: 'Archivo', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --serif: 'Newsreader', Georgia, 'Times New Roman', serif;
+  }
+  :root:not([data-theme="light"]) { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .shell { display: grid; grid-template-rows: auto 1fr; height: 100dvh; }
+
+  header.bar {
+    display: flex; align-items: baseline; gap: 14px;
+    padding: 14px 22px; border-bottom: 1px solid var(--line);
+    background: var(--panel);
+  }
+  header.bar h1 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+  header.bar .brand {
+    color: var(--lav); font-weight: 600; font-size: 12px;
+    padding: 3px 9px; background: var(--lav-soft); border-radius: 3px;
+  }
+  header.bar .phase { margin-left: auto; color: var(--faint); font-size: 12px; }
+  .switcher { display: flex; gap: 0; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .switcher button {
+    padding: 5px 11px; font: inherit; font-size: 12px; font-weight: 500;
+    color: var(--muted); background: transparent; border: 0; cursor: pointer;
+  }
+  .switcher button + button { border-left: 1px solid var(--line); }
+  .switcher button.on { color: var(--text); background: var(--lav-soft); }
+
+  .cols { display: grid; grid-template-columns: minmax(0,1fr) 440px; min-height: 0; }
+  @media (max-width: 1080px) { .cols { grid-template-columns: 1fr; grid-template-rows: 1fr auto; } }
+
+  /* conversation */
+  .talk { display: grid; grid-template-rows: 1fr auto; min-height: 0; }
+  .scroll { overflow-y: auto; padding: 22px 26px 8px; }
+  .turn { max-width: 68ch; margin: 0 0 20px; }
+  .turn.you { margin-left: auto; }
+  .who { font-size: 11px; font-weight: 600; color: var(--faint); margin-bottom: 5px; }
+  .turn.you .who { text-align: right; }
+  .said {
+    font-family: var(--serif); font-size: 16px; line-height: 1.62;
+    white-space: pre-wrap;
+  }
+  .turn.you .said {
+    font-family: var(--sans); font-size: 14px; line-height: 1.55;
+    background: var(--panel-2); border: 1px solid var(--line-soft);
+    padding: 10px 13px; border-radius: 4px 4px 1px 4px;
+  }
+
+  .options { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+  .opt {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 10px; font: inherit; font-size: 13px;
+    color: var(--text); background: transparent;
+    border: 1px solid var(--line); border-radius: 3px; cursor: pointer;
+  }
+  .opt:hover { border-color: var(--lav); background: var(--lav-soft); }
+  .opt .no {
+    color: var(--faint); font-size: 15px; line-height: 1;
+    padding: 0 2px; border-radius: 2px;
+  }
+  .opt .no:hover { color: var(--coral); }
+  .opt.gone { opacity: 0.4; text-decoration: line-through; pointer-events: none; }
+
+  .composer { border-top: 1px solid var(--line); padding: 14px 26px 18px; background: var(--panel); }
+  .composer form { display: flex; gap: 10px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; min-height: 44px; max-height: 160px;
+    padding: 11px 13px; font: inherit; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 4px;
+  }
+  textarea:focus, .opt:focus-visible, button:focus-visible { outline: 2px solid var(--lav); outline-offset: 1px; }
+  button.send {
+    padding: 11px 18px; font: inherit; font-weight: 600; font-size: 13px;
+    color: #171c2a; background: var(--lav); border: 0; border-radius: 4px; cursor: pointer;
+  }
+  button.send:disabled { opacity: 0.45; cursor: default; }
+  .hint { margin: 9px 0 0; font-size: 12px; color: var(--faint); }
+
+  /* record */
+  .record {
+    border-left: 1px solid var(--line); background: var(--panel);
+    overflow-y: auto; padding: 18px 20px 26px;
+  }
+  @media (max-width: 1080px) { .record { border-left: 0; border-top: 1px solid var(--line); max-height: 45dvh; } }
+  .record h2 { margin: 0 0 3px; font-size: 13px; font-weight: 600; }
+  .record .sub { margin: 0 0 18px; font-size: 12px; color: var(--faint); }
+
+  .grp { margin-bottom: 20px; }
+  .grp-head {
+    display: flex; align-items: baseline; gap: 8px;
+    padding-bottom: 6px; margin-bottom: 9px; border-bottom: 1px solid var(--line-soft);
+  }
+  .grp-head h3 { margin: 0; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .grp-head .feeds { margin-left: auto; font-size: 11px; color: var(--faint); }
+
+  .sect { margin-bottom: 11px; }
+  .sect-name { display: flex; align-items: center; gap: 7px; font-size: 12px; font-weight: 600; margin-bottom: 4px; }
+  .meter { flex: 1; height: 2px; background: var(--line-soft); border-radius: 2px; overflow: hidden; }
+  .meter i { display: block; height: 100%; background: var(--lav); transition: width 0.5s ease; }
+  .sect ul { margin: 0; padding: 0; list-style: none; }
+  .sect li {
+    display: flex; gap: 7px; align-items: baseline;
+    padding: 3px 0; font-family: var(--serif); font-size: 14px; line-height: 1.45;
+    color: var(--text);
+  }
+  .sect li.rejected { color: var(--faint); }
+  .sect li.rejected span.body { text-decoration: line-through; }
+  .tag {
+    flex: 0 0 auto; margin-top: 3px; font-family: var(--sans); font-size: 10px; font-weight: 600;
+    padding: 1px 5px; border-radius: 2px; letter-spacing: 0.01em;
+  }
+  .tag.said { color: var(--celery); background: rgba(114,184,215,0.12); }
+  .tag.picked { color: var(--lav); background: var(--lav-soft); }
+  .tag.no { color: var(--coral); background: rgba(230,132,90,0.12); }
+  .empty { font-size: 12px; color: var(--faint); font-style: italic; }
+
+  .reach {
+    margin-top: 6px; padding: 14px; background: var(--panel-2);
+    border: 1px solid var(--line); border-left: 2px solid var(--lav); border-radius: 4px;
+  }
+  .reach h3 { margin: 0 0 2px; font-size: 13px; font-weight: 600; }
+  .reach .level { color: var(--lav); }
+  .reach p { margin: 7px 0 0; font-family: var(--serif); font-size: 14px; line-height: 1.5; color: var(--muted); }
+
+  .thinking { color: var(--faint); font-family: var(--sans); font-size: 13px; }
+  .err {
+    margin: 0 26px 14px; padding: 10px 13px; font-size: 13px;
+    color: var(--coral); background: rgba(230,132,90,0.08);
+    border: 1px solid rgba(230,132,90,0.3); border-radius: 4px;
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="shell">
+  <header class="bar">
+    <span class="brand" id="brandTag">MycoPop</span>
+    <h1>Direction session</h1>
+    <span class="phase" id="phase"></span>
+    <span class="switcher" id="switcher">
+      <button type="button" data-brief="mycopop">World direction</button>
+      <button type="button" data-brief="simplyagree">Craft direction</button>
+    </span>
+  </header>
+
+  <div class="cols">
+    <section class="talk">
+      <div class="scroll" id="scroll"></div>
+      <div id="errslot"></div>
+      <div class="composer">
+        <form id="form">
+          <textarea id="input" rows="1" placeholder="Answer in your own words, or pick from what it offers." autocomplete="off"></textarea>
+          <button class="send" id="send" type="submit">Send</button>
+        </form>
+        <p class="hint">Picking an option records it as a choice. The small x records a rejection, which is kept and never proposed again.</p>
+      </div>
+    </section>
+
+    <aside class="record" id="record"></aside>
+  </div>
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// The approved foundation. In the product this is passes 1 through 4, already
+// reviewed. Here it is fixed so the session opens the way it would for a real
+// brand: knowing the brand facts and knowing nothing about the audience.
+// ---------------------------------------------------------------------------
+const BRIEFS = {
+  mycopop: {
+    brand: "MycoPop",
+    kind: "world",
+    phase: "Foundation approved \u00b7 v1 \u00b7 direction not yet set",
+    foundation: {
+      brand: "MycoPop",
+      category: "Emerging CPG, canned functional beverage",
+      productTruth: [
+        "No caffeine",
+        "Functional mushrooms (lion's mane, cordyceps)",
+        "Clean label, no artificial sweeteners",
+        "12oz can, four flavors",
+        "Positioned against energy drinks, not against wellness tonics"
+      ],
+      claims: ["Refuses medical and wellness-outcome claims", "Refuses 'energy' as a stated benefit"],
+      palette: ["Warm off-white", "Deep plum", "Acid chartreuse", "Muted terracotta"],
+      marks: ["Primary wordmark", "Spore mark"],
+      audienceEvidence: "None. No customer research, no owned social history, no shipped campaign work. The today Lived World records no audience and asks for evidence.",
+      existingPhotography: "None."
+    },
+    reachAvailable: ["a new world"],
+    reachNote: "The today world records no audience, so there are no people or places to keep. A few touches and a clear direction are both unavailable here.",
+    opening: {
+      text: "I have read the approved foundation. MycoPop, canned, no caffeine, functional mushrooms, sitting against energy drinks rather than wellness tonics. The plum and chartreuse are yours and the refusals are recorded.\n\nWhat the foundation has no evidence for is who this is for. There is no customer research, no owned social history, and no campaign work to read. So that is what we are here to decide, and I am going to ask you rather than guess.\n\nStart wherever it is easiest. Who do you picture holding this can, and where are they?",
+      options: ["Let me describe them", "Show me some territories first", "I know what it is NOT"]
+    }
+  },
+  simplyagree: {
+    brand: "Simply Agree",
+    kind: "craft",
+    phase: "Foundation approved \u00b7 v2 \u00b7 audience settled, craft direction open",
+    foundation: {
+      brand: "Simply Agree",
+      category: "Contract execution software for legal teams",
+      productTruth: [
+        "Web app, signature and approval workflow",
+        "Buyers are in-house legal ops and law firm administrators",
+        "Recently rebranded: new wordmark, type system, palette"
+      ],
+      claims: ["No security or compliance claims without review"],
+      palette: ["Ink navy", "Paper white", "Signal amber", "Slate grey"],
+      marks: ["Primary wordmark", "Monogram"],
+      audienceEvidence: "Settled. Three researched personas and a set of documented moments, approved in the today world. Legal ops managers, paralegals, firm administrators. Their days, rooms and tensions are recorded and are not in question.",
+      existingPhotography: "A library of stock and light custom work. Laptop-on-desk compositions, meeting-room shots, generic professional casting, even bright office light throughout. The team can feel it is not working and cannot say why.",
+      theAsk: "Make the brand imagery look like a bigger brand that hired a better agency, without changing who the people are or what they do."
+    },
+    reachAvailable: ["a few touches", "a clear direction"],
+    reachNote: "The audience is settled and is not in question, so a new world is not on the table. The direction lands in how the work is made.",
+    opening: {
+      text: "Your foundation is settled and I am not going to reopen it. Three personas, documented moments, a new identity system. None of that is what you want changed.\n\nWhat you said is that the imagery should look like a bigger brand hired a better agency. That is a real problem and it is also the hardest brief to work from, because sophisticated reads to a camera as clean, and clean is what you already have. Even light, tidy desks, nobody caught mid-anything.\n\nSo let me start at the sore spot. Pull up a piece of your current photography you dislike most. What is wrong with it?",
+      options: ["It looks like stock", "It looks staged", "It looks cheap", "I cannot tell, it just feels off"]
+    }
+  }
+};
+
+let BRIEF = BRIEFS.mycopop;
+
+// The sections the session is briefing toward. The right column is not a
+// summary of the chat, it is the artifact the chat exists to produce.
+const SECTIONS_WORLD = [
+  { group: "Lived World", feeds: "passes 6 and 7", items: [
+    { id: "cast", label: "Who these people are" },
+    { id: "patterns", label: "How their days run" },
+    { id: "places", label: "Where they spend time" },
+    { id: "social", label: "Who they are with" }
+  ]},
+  { group: "Visual Grammar", feeds: "pass 8", items: [
+    { id: "people", label: "People in frame" },
+    { id: "objects", label: "Objects" },
+    { id: "rooms", label: "Places and surfaces" },
+    { id: "light", label: "Light" },
+    { id: "camera", label: "Camera" },
+    { id: "rejects", label: "Not this" }
+  ]}
+];
+
+// A craft direction never touches the Lived World. Everything it produces is
+// grammar, so the record shows only grammar and shows it in more detail.
+const SECTIONS_CRAFT = [
+  { group: "Visual Grammar", feeds: "pass 8", items: [
+    { id: "people", label: "People in frame" },
+    { id: "objects", label: "Objects and props" },
+    { id: "rooms", label: "Places and surfaces" },
+    { id: "light", label: "Light" },
+    { id: "camera", label: "Camera" },
+    { id: "rejects", label: "Not this" }
+  ]},
+  { group: "Held fixed", feeds: "from the approved foundation", items: [
+    { id: "fixed", label: "What does not change" }
+  ]}
+];
+
+let SECTIONS = SECTIONS_WORLD;
+
+let SECTION_IDS = SECTIONS.flatMap(g => g.items.map(i => i.id));
+
+const ORIGIN_TAG = { stated: ["said", "said"], chosen: ["picked", "picked"], rejected: ["no", "ruled out"] };
+
+const state = {
+  turns: [],          // {role, text, options?, resolved?}
+  record: {},         // id -> [{text, origin}]
+  reach: null,        // {level, because, tradeoff}
+  busy: false
+};
+
+let sample = null;
+
+// ---------------------------------------------------------------------------
+// Rendering
+// ---------------------------------------------------------------------------
+const scroll = document.getElementById("scroll");
+const recordEl = document.getElementById("record");
+const input = document.getElementById("input");
+const sendBtn = document.getElementById("send");
+
+function esc(s) {
+  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+function renderTalk() {
+  scroll.innerHTML = state.turns.map((t, ti) => {
+    if (t.role === "you") {
+      return `<div class="turn you"><div class="who">You</div><div class="said">${esc(t.text)}</div></div>`;
+    }
+    const opts = (t.options || []).map((o, oi) => {
+      const gone = t.resolved || o.gone;
+      return `<span class="opt ${gone ? "gone" : ""}">
+        <span data-pick="${ti}:${oi}">${esc(o)}</span>
+        <span class="no" title="Rule this out" data-drop="${ti}:${oi}">&times;</span>
+      </span>`;
+    }).join("");
+    return `<div class="turn"><div class="who">Direction</div><div class="said">${esc(t.text)}</div>${
+      opts ? `<div class="options">${opts}</div>` : ""}</div>`;
+  }).join("") + (state.busy ? `<div class="turn"><div class="who">Direction</div><div class="said thinking">Thinking…</div></div>` : "");
+  scroll.scrollTop = scroll.scrollHeight;
+}
+
+function readiness(id) {
+  const n = (state.record[id] || []).filter(e => e.origin !== "rejected").length;
+  return Math.min(100, n * 34);
+}
+
+function renderRecord() {
+  const groups = SECTIONS.map(g => `
+    <div class="grp">
+      <div class="grp-head"><h3>${esc(g.group)}</h3><span class="feeds">feeds ${esc(g.feeds)}</span></div>
+      ${g.items.map(it => {
+        const entries = state.record[it.id] || [];
+        return `<div class="sect">
+          <div class="sect-name">${esc(it.label)}<span class="meter"><i style="width:${readiness(it.id)}%"></i></span></div>
+          ${entries.length ? `<ul>${entries.map(e => {
+            const [cls, word] = ORIGIN_TAG[e.origin] || ORIGIN_TAG.stated;
+            return `<li class="${e.origin === "rejected" ? "rejected" : ""}"><span class="tag ${cls}">${word}</span><span class="body">${esc(e.text)}</span></li>`;
+          }).join("")}</ul>` : `<p class="empty">Nothing yet</p>`}
+        </div>`;
+      }).join("")}
+    </div>`).join("");
+
+  const reach = state.reach ? `
+    <div class="reach">
+      <h3>Recommended reach: <span class="level">${esc(state.reach.level)}</span></h3>
+      <p>${esc(state.reach.because)}</p>
+      ${state.reach.tradeoff ? `<p>${esc(state.reach.tradeoff)}</p>` : ""}
+    </div>` : "";
+
+  recordEl.innerHTML = `
+    <h2>Direction record</h2>
+    <p class="sub">One per brand. Revisable. Read as a source by the evolved passes.</p>
+    ${groups}${reach}`;
+}
+
+function render() { renderTalk(); renderRecord(); }
+
+function showError(msg) {
+  document.getElementById("errslot").innerHTML = `<p class="err">${esc(msg)}</p>`;
+}
+function clearError() { document.getElementById("errslot").innerHTML = ""; }
+
+// ---------------------------------------------------------------------------
+// Chips: picking records a choice, the x records a rejection. Both are sent
+// back to the model as the user's next turn so it knows what happened.
+// ---------------------------------------------------------------------------
+scroll.addEventListener("click", (ev) => {
+  const pick = ev.target.closest("[data-pick]");
+  const drop = ev.target.closest("[data-drop]");
+  const ref = pick?.dataset.pick || drop?.dataset.drop;
+  if (!ref || state.busy) return;
+  const [ti, oi] = ref.split(":").map(Number);
+  const turn = state.turns[ti];
+  if (!turn || turn.resolved) return;
+  const label = turn.options[oi];
+  turn.resolved = true;
+  send(pick ? `I'll take: ${label}` : `Not that: ${label}`, pick ? "chosen" : "rejected");
+});
+
+document.getElementById("form").addEventListener("submit", (ev) => {
+  ev.preventDefault();
+  const text = input.value.trim();
+  if (!text || state.busy) return;
+  input.value = "";
+  input.style.height = "auto";
+  send(text, "stated");
+});
+
+input.addEventListener("input", () => {
+  input.style.height = "auto";
+  input.style.height = Math.min(160, input.scrollHeight) + "px";
+});
+input.addEventListener("keydown", (ev) => {
+  if (ev.key === "Enter" && !ev.shiftKey) { ev.preventDefault(); document.getElementById("form").requestSubmit(); }
+});
+
+// ---------------------------------------------------------------------------
+// The session instruction. The agent extracts rather than supplies, because a
+// model that volunteers a cultural read gives every brand the same one.
+// ---------------------------------------------------------------------------
+function instruction(intent) {
+  const craft = BRIEF.kind === "craft";
+
+  const job = craft
+    ? `Fill the direction record well enough that synthesis can rebuild how this brand's pictures are made. The sections are: people, objects, rooms, light, camera, rejects, fixed.
+
+This is a CRAFT direction, not a world direction. The audience, their days, their rooms and their moments are settled in the approved foundation and are not in question. Never ask who these people are, what they value, or what their lives are like. Everything you record is about how the picture gets made: the light source, where the camera stands, what is in frame that nobody arranged, what is allowed to be imperfect, what the surfaces are, what people are doing with their hands. Use the "fixed" section to record what the person says must not change.`
+    : `Fill the direction record well enough that synthesis can author this brand's evolved world. The sections are: cast, patterns, places, social, people, objects, rooms, light, camera, rejects.
+
+This is a WORLD direction. The foundation records no audience evidence. That is why this session exists. Do not treat the product facts as the audience.`;
+
+  const craftRules = craft ? `
+CRAFT SESSION RULES, THESE MATTER MOST
+- The ask is a feeling, not a description. "More sophisticated", "bigger brand", "better agency", "elevated", "premium" are the starting point, never an entry in the record. Your whole job is converting them into decisions a camera makes.
+- Sophisticated reads to an image model as clean: even exposure, controlled highlights, no grain, tasteful shallow focus, nothing clipped, nothing blurred. That is the house style they already have and dislike. If you write "clean", "polished" or "refined" into the record you have failed. Push toward what the light actually is, how far the camera stands, what is not arranged.
+- Start from what is wrong with the current work, in specifics. Wrong light, wrong distance, wrong casting, wrong tidiness, wrong moment in the action. A person can usually point at a bad picture more precisely than they can describe a good one.
+- The rejects section carries the most weight here. What to stop doing is more specific and more useful than what to start.
+- When they name another brand's work they admire, never accept the name alone. Ask what about it. The light, the distance, the casting, the mess, the moment. Names are not directions.
+- You may offer named photographic approaches as options to react to, for example: overcast daylight editorial, available light interior, large format daylight, long lens from distance, pushed black and white reportage, daylight street documentary. Describe each in one plain clause rather than naming it alone. Choosing between two is a far easier question than describing light.
+- Protect what works. Ask what the current photography gets right that must survive, and record it under "fixed".` : `
+- The foundation records no audience evidence, so the people are yours and theirs to decide together.`;
+
+  const reachRules = `
+REACH
+Available levels for this brand: ${BRIEF.reachAvailable.map(r => `"${r}"`).join(", ")}. ${BRIEF.reachNote} Do not recommend a level outside that list.
+A few touches keeps the people, places and moments the foundation established and moves only objects, clothes, light and detail. A clear direction recasts and rewrites while keeping what the foundation got right. A new world lets the direction write everything and reads the foundation only for brand facts and refusals.
+Once the record has real material in most sections, recommend one. State plainly why, and state what it costs.`;
+
+  return `You are running a direction session for a brand inside Brand World System. You are talking with the brand's owner or their creative lead.
+
+The approved foundation, already reviewed and settled. Do not re-ask anything answered here:
+${JSON.stringify(BRIEF.foundation, null, 2)}
+
+The direction record so far. Each entry is tagged with how it was arrived at:
+${JSON.stringify(state.record, null, 2)}
+
+Reach recommendation so far: ${state.reach ? JSON.stringify(state.reach) : "not made yet"}
+
+HOW THE LAST MESSAGE ARRIVED: ${intent === "chosen" ? "the person picked one of the options you offered. Record it as chosen." : intent === "rejected" ? "the person ruled out one of the options you offered. Record it as rejected, and never offer it or anything close to it again." : "the person typed it themselves. Record what they actually said as stated."}
+
+YOUR JOB
+${job}
+
+HOW TO WORK
+- Extract, do not supply. You have a large vocabulary for this and the person may not. Offer that vocabulary as options for them to choose or reject. Never write something into the record that the person did not state, pick, or clearly confirm.
+- Ask one thing at a time. Short questions. Offer two to four concrete options when a menu would be easier to answer than a blank.
+- Push back when an answer is generic. Ask what it looks like.
+- Get physical. The record has to be things a photographer could act on.
+- What they rule out is the most brand-specific thing in this session. Chase it.
+- Known failure modes to brief against: a look described optically rather than behaviorally, so ask what changes about how people act in frame; the product ending up in someone's hand in every picture, so ask where it actually sits; a world that converges, so push for range across settings.${craftRules}
+
+TONE
+Plain, peer to peer, curious. No marketing language. Short sentences. Never use an em dash. Never write a line built to be quotable.
+${reachRules}
+
+OUTPUT
+Reply with JSON only. No prose outside it, no code fences.
+{
+  "reply": "what you say next, as plain text",
+  "options": ["short option", "short option"],
+  "record": [{"section": "one of the section ids", "text": "the entry, one short physical sentence", "origin": "stated | chosen | rejected"}],
+  "reach": {"level": "...", "because": "...", "tradeoff": "..."} or null
+}
+"options" may be empty when a menu would not help. "record" holds only entries earned by the message you are responding to; it is appended, never a rewrite. "reach" is null until you are ready to recommend one, then it stays.`;
+}
+
+async function send(text, intent) {
+  clearError();
+  state.turns.push({ role: "you", text });
+  state.busy = true;
+  sendBtn.disabled = true;
+  render();
+
+  // One user turn carrying the instruction and the transcript. Alternating
+  // roles are easy to get wrong here and the model has no memory between
+  // calls anyway, so the whole session travels in the prompt.
+  const transcript = state.turns
+    .filter(t => t.role === "you" || t.role === "agent")
+    .slice(-16)
+    .map(t => `${t.role === "you" ? "PERSON" : "YOU"}: ${t.text}`)
+    .join("\n\n");
+
+  const prompt = `${instruction(intent)}
+
+THE SESSION SO FAR
+${transcript}
+
+Reply now with the JSON object and nothing else.`;
+
+  try {
+    const res = await sample(prompt, { modelTier: "default", cache: false });
+    const out = parseReply(res.text);
+    if (!out) throw new Error("The reply was not usable JSON.");
+    (out.record || []).forEach(e => {
+      if (!SECTION_IDS.includes(e.section) || !e.text) return;
+      const origin = ORIGIN_TAG[e.origin] ? e.origin : "stated";
+      if (state.record[e.section].some(x => x.text.toLowerCase() === String(e.text).toLowerCase())) return;
+      state.record[e.section].push({ text: e.text, origin });
+    });
+    if (out.reach && out.reach.level) state.reach = out.reach;
+    state.turns.push({ role: "agent", text: out.reply || "\u2026", options: Array.isArray(out.options) ? out.options.slice(0, 4) : [] });
+  } catch (err) {
+    const code = err && err.code;
+    if (code === "not_granted") {
+      showError("This session needs permission to ask Claude. Reload and allow it to continue.");
+    } else if (code === "rate_limited") {
+      showError("Too many requests at once. Wait a moment and send again.");
+    } else {
+      showError("That turn did not come back: " + ((err && (err.message || err.code)) || "unknown") + ". Send it again.");
+    }
+  } finally {
+    state.busy = false;
+    sendBtn.disabled = false;
+    render();
+    input.focus();
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Two briefs, two sessions. Which one a brand gets is decided by what the
+// approved foundation already contains, not by asking the person to choose a
+// mode. A settled audience means the direction is about craft.
+// ---------------------------------------------------------------------------
+function loadBrief(key) {
+  BRIEF = BRIEFS[key];
+  SECTIONS = BRIEF.kind === "craft" ? SECTIONS_CRAFT : SECTIONS_WORLD;
+  SECTION_IDS = SECTIONS.flatMap(g => g.items.map(i => i.id));
+  state.turns = [{ role: "agent", text: BRIEF.opening.text, options: BRIEF.opening.options.slice() }];
+  state.record = {};
+  SECTION_IDS.forEach(id => state.record[id] = []);
+  state.reach = null;
+  state.busy = false;
+  clearError();
+  document.getElementById("brandTag").textContent = BRIEF.brand;
+  document.getElementById("phase").textContent = BRIEF.phase;
+  document.querySelectorAll("[data-brief]").forEach(b => b.classList.toggle("on", b.dataset.brief === key));
+  render();
+}
+
+document.getElementById("switcher").addEventListener("click", (ev) => {
+  const b = ev.target.closest("[data-brief]");
+  if (!b || state.busy || BRIEFS[b.dataset.brief] === BRIEF) return;
+  loadBrief(b.dataset.brief);
+});
+
+(async function boot() {
+  loadBrief("mycopop");
+  sample = await claude.use("sample");
+  if (!sample) {
+    sendBtn.disabled = true;
+    input.disabled = true;
+    showError("This prototype runs inside the Claude viewer, where it can ask Claude. Open it from the artifact card to use it.");
+  } else {
+    input.focus();
+  }
+})();
+</script>
+</body>
+</html>
