@@ -1319,6 +1319,7 @@ const state = {
   // decisions and a transcript grows without bound.
   direction: {
     record: null,
+    settled: false,
     loaded: false,
     turns: [],
     input: "",
@@ -7896,19 +7897,17 @@ async function hydrateStoredBrain() {
 // ---------------------------------------------------------------------------
 
 const DIRECTION_SECTION_GROUPS = [
-  { group: "Lived World", feeds: "Feeds the people and their moments", items: [
-    { id: "cast", label: "Who these people are" },
-    { id: "patterns", label: "How their days run" },
-    { id: "environments", label: "Where they spend time" },
-    { id: "social", label: "Who they are with" },
+  { group: "The direction", feeds: "What the world is", items: [
+    { id: "territory", label: "The world" },
+    { id: "register", label: "The register" },
   ] },
-  { group: "Visual Grammar", feeds: "Feeds the pictures", items: [
-    { id: "people", label: "People in frame" },
-    { id: "objects", label: "Objects" },
-    { id: "places", label: "Places and surfaces" },
-    { id: "light", label: "Light" },
-    { id: "camera", label: "Camera" },
-    { id: "rejects", label: "What the pictures refuse" },
+  { group: "What the pictures hold", feeds: "What every frame obeys", items: [
+    { id: "people", label: "Who is in frame" },
+    { id: "places", label: "Where it happens" },
+    { id: "objects", label: "What is in the room" },
+    { id: "light", label: "How it is lit" },
+    { id: "camera", label: "How it is shot" },
+    { id: "fixed", label: "What must not change" },
   ] },
 ];
 
@@ -7977,14 +7976,12 @@ async function persistDirectionRecord() {
   }
 }
 
-const DIRECTION_OPENING_OPTIONS = ["Let me describe them", "Show me some territories first", "I know what it is NOT"];
-
 function directionOpeningTurn() {
-  const brand = state.brandName || "This brand";
+  const brand = state.brandName || "this brand";
   return {
     role: "session",
-    text: `The ${brand} foundation is approved, and it records no audience evidence: the people in its Lived World were reasoned from the brand's own material, and nobody has met them. This session decides who this is for and what the pictures are, and I am going to ask you rather than guess.\n\nStart wherever it is easiest. Who do you picture holding this, and where are they?`,
-    options: DIRECTION_OPENING_OPTIONS.slice(),
+    text: `Give me a line or two about where you want ${brand} to live. Twenty five words is plenty, and a rough steer is fine. I will come back with two or three worlds built out, and you kill what is wrong.`,
+    options: [],
   };
 }
 
@@ -8002,7 +7999,7 @@ function applyDirectionEntry(entry) {
   if (!record || !DIRECTION_SECTION_IDS.includes(entry.section) || !entry.text) return;
   const section = record.sections[entry.section];
   if (section.some((existing) => existing.text.toLowerCase() === String(entry.text).toLowerCase())) return;
-  section.push({ text: entry.text, origin: entry.origin || "stated", at: new Date().toISOString() });
+  section.push({ text: entry.text, origin: entry.origin || "stated", entryKind: entry.entryKind === "example" ? "example" : "rule", at: new Date().toISOString() });
 }
 
 async function sendDirectionTurn(text, arrival) {
@@ -8029,6 +8026,7 @@ async function sendDirectionTurn(text, arrival) {
     const body = await readApiJson(response);
     if (!response.ok) throw new Error(body.error || "That turn did not come back. Send it again.");
     for (const entry of body.entries || []) applyDirectionEntry(entry);
+    if (body.settled !== undefined) state.direction.settled = body.settled;
     if (body.reach) record.reach = body.reach;
     if (body.model) record.model = body.model;
     record.turns = state.direction.turns.filter((turn) => turn.role === "person").length;
@@ -8036,6 +8034,7 @@ async function sendDirectionTurn(text, arrival) {
     state.direction.turns.push({
       role: "session",
       text: body.reply || "Go on.",
+      worlds: Array.isArray(body.worlds) ? body.worlds.slice(0, 3) : [],
       options: Array.isArray(body.options) ? body.options.slice(0, 4) : [],
     });
     void persistDirectionRecord();
@@ -8106,7 +8105,7 @@ function directionCard() {
     ? `Version ${record.version} is approved and the evolved passes will read it as a source. Build the brand world, evolved, when you are ready.`
     : started
     ? `${directionEntryTotal(record, true)} entries so far${record.reach ? `, reach recommended: ${record.reach.level}` : ""}. Continue the session, then approve the record.`
-    : "The foundation records no audience evidence, so the evolved world has nothing to reach from. Hold a direction session to decide who this is for and what the pictures are.";
+    : "The evolved world has nothing to reach from yet. Give the session a rough steer and it proposes worlds to react to. Three or four rounds.";
   const actions = evolvedWaiting
     ? `<button class="button primary" type="button" data-action="approve-brain-evolved">Approve the brand world, evolved</button>
        <button class="button secondary" type="button" data-action="select-artifact-world" data-world="evolved">Read it first</button>
@@ -8114,7 +8113,7 @@ function directionCard() {
     : approved
     ? `<button class="button primary" type="button" data-action="rebuild-evolved-world">Build the brand world, evolved</button>
        <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
-    : `<button class="button primary" type="button" data-action="direction-open">${started ? "Continue the direction session" : "Start the direction session"}</button>`;
+    : `<button class="button primary" type="button" data-action="direction-open">${started ? "Continue the direction session" : "Find the direction"}</button>`;
   return `
     <section class="card direction-card">
       <div class="card-header"><h2>${escapeHtml(heading)}</h2><span class="mini-pill">${evolvedWaiting ? "Needs approval" : approved ? `v${record.version}` : "Direction session"}</span></div>
@@ -8175,12 +8174,23 @@ function renderDirectionSession() {
   const record = state.direction.record || newDirectionRecord();
   const approved = record.status === "approved";
   const personTurns = state.direction.turns.filter((turn) => turn.role === "person").length;
-  const overCap = personTurns >= 40;
+  const overCap = personTurns >= 8;
   // Only the current question is on screen. Every answer lands in the record
   // beside it, so there is nothing to scroll back through and the viewport
   // never moves between turns.
   const turnIndex = state.direction.turns.map((turn) => turn.role).lastIndexOf("session");
   const current = turnIndex >= 0 ? state.direction.turns[turnIndex] : null;
+  const worlds = current && !state.direction.busy
+    ? (current.worlds || []).map((world, worldIndex) => `
+        <article class="direction-world ${current.resolved ? "resolved" : ""}">
+          <h3>${escapeHtml(world.name)}</h3>
+          <p>${escapeHtml(world.sketch)}</p>
+          <div class="direction-world-actions">
+            <button class="button primary" type="button" data-action="direction-pick-world" data-turn="${turnIndex}" data-world="${worldIndex}" ${current.resolved ? "disabled" : ""}>Take this one</button>
+            <button class="button secondary" type="button" data-action="direction-drop-world" data-turn="${turnIndex}" data-world="${worldIndex}" ${current.resolved ? "disabled" : ""}>Kill it</button>
+          </div>
+        </article>`).join("")
+    : "";
   const options = current && !state.direction.busy
     ? (current.options || []).map((option, optionIndex) => {
         const resolved = current.resolved;
@@ -8195,7 +8205,7 @@ function renderDirectionSession() {
     ? `<div class="direction-turn session"><span class="direction-who">Direction</span>${
         state.direction.busy
           ? `<p class="direction-thinking">Thinking</p>`
-          : `<p>${escapeHtml(current.text)}</p>${options ? `<div class="direction-options">${options}</div>` : ""}`
+          : `<p>${escapeHtml(current.text)}</p>${worlds ? `<div class="direction-worlds">${worlds}</div>` : ""}${options ? `<div class="direction-options">${options}</div>` : ""}`
       }</div>`
     : "";
   return brainWorkspace(
@@ -8213,10 +8223,10 @@ function renderDirectionSession() {
           ${state.direction.error ? `<p class="direction-error">${escapeHtml(state.direction.error)}</p>` : ""}
           ${approved ? "" : `
             <div class="direction-composer">
-              ${overCap ? `<p class="direction-cap">This session has run ${personTurns} turns, which usually means it is failing to converge rather than producing a better record. Approve what is there, or close and come back.</p>` : ""}
-              <textarea rows="2" data-action="direction-input" placeholder="Answer in your own words, or pick from what it offers." ${state.direction.busy ? "disabled" : ""}>${escapeHtml(state.direction.input)}</textarea>
+              ${overCap ? `<p class="direction-cap">This has run ${personTurns} rounds. A direction that has not landed by now is not going to land by asking more. Approve what is there, or start again with a sharper steer.</p>` : ""}
+              <textarea rows="3" data-action="direction-input" placeholder="Answer in your own words, or pick from what it offers." ${state.direction.busy ? "disabled" : ""}>${escapeHtml(state.direction.input)}</textarea>
               <div class="direction-composer-row">
-                <span>${filledSections} of ${DIRECTION_SECTION_IDS.length} sections have material after ${personTurns} ${personTurns === 1 ? "answer" : "answers"}. Picking an option records a choice; the small x records a rejection, kept and never proposed again.</span>
+                <span>Round ${personTurns}${personTurns >= 8 ? ", past where this should have landed" : " of about four"}. ${filledSections} of ${DIRECTION_SECTION_IDS.length} sections have material. Take a world, kill it, or say what is wrong with it.</span>
                 <button class="button primary" type="button" data-action="direction-send" ${state.direction.busy ? "disabled" : ""}>Send</button>
               </div>
             </div>`}
@@ -10886,6 +10896,19 @@ root.addEventListener("click", (event) => {
     const text = state.direction.input;
     state.direction.input = "";
     void sendDirectionTurn(text, "stated");
+  }
+  if (action === "direction-pick-world" || action === "direction-drop-world") {
+    const turn = state.direction.turns[Number(target.dataset.turn)];
+    const world = turn?.worlds?.[Number(target.dataset.world)];
+    if (turn && world && !turn.resolved && !state.direction.busy) {
+      turn.resolved = true;
+      void sendDirectionTurn(
+        action === "direction-pick-world"
+          ? `Take ${world.name}. Record what it runs on.`
+          : `Kill ${world.name}.`,
+        action === "direction-pick-world" ? "chosen" : "rejected",
+      );
+    }
   }
   if (action === "direction-pick" || action === "direction-drop") {
     const turn = state.direction.turns[Number(target.dataset.turn)];
