@@ -2750,6 +2750,51 @@ function sourceMaterialIcon(material, source) {
   return "file";
 }
 
+// The Details expand shows the material itself, not only the contract around
+// it. Without this, the only trace of an upload is the name the user typed,
+// which makes a locked source impossible to inspect. Files render with a
+// thumbnail where the type allows and an Open link once the private blob's
+// presigned URL resolves. URL sources link out. Pasted material shows in
+// full, because the row's detail line truncates it at 92 characters.
+function sourceOriginalMaterial(source) {
+  const files = source.files || [];
+  if (files.length) {
+    const unresolved = files.map((file) => file.blobPathname).filter((path) => path && !state.thumbnailUrls[path]);
+    if (unresolved.length) void ensureThumbnailUrls(unresolved);
+    const rows = files.map((file) => {
+      const isImage = ["image/png", "image/jpeg", "image/webp"].includes(String(file.type || "").toLowerCase());
+      const href = file.data || (file.blobPathname ? state.thumbnailUrls[file.blobPathname] : "") || "";
+      const ext = fileExtension(file);
+      const meta = [ext ? ext.toUpperCase() : "", Number.isFinite(Number(file.size)) ? formatFileSize(file.size) : ""].filter(Boolean).join(" · ");
+      return `
+        <div class="source-original-file">
+          ${isImage ? (href ? `<img class="source-original-thumb" src="${escapeHtml(href)}" alt="">` : `<span class="source-original-thumb empty" aria-hidden="true"></span>`) : ""}
+          <span class="source-original-copy">
+            <strong>${escapeHtml(file.name || "Uploaded file")}</strong>
+            ${meta ? `<small>${escapeHtml(meta)}</small>` : ""}
+          </span>
+          ${href ? `<a class="text-button source-original-open" href="${escapeHtml(href)}" target="_blank" rel="noopener">Open</a>` : `<small class="source-original-pending">Preparing link</small>`}
+        </div>`;
+    }).join("");
+    return `<div class="source-original-material"><span>Uploaded file</span>${rows}</div>`;
+  }
+  if (source.url) {
+    return `
+      <div class="source-original-material">
+        <span>Linked page</span>
+        <a class="text-button source-original-url" href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.url)}</a>
+      </div>`;
+  }
+  if (source.content) {
+    return `
+      <div class="source-original-material">
+        <span>Pasted material</span>
+        <div class="source-original-text">${escapeHtml(source.content)}</div>
+      </div>`;
+  }
+  return "";
+}
+
 // Compact library row: kind mark, name, one differentiating label, status.
 // Repeated pills (role, influence, active-version) are demoted into the
 // expandable detail rather than shown on every row. Editing lives in the
@@ -2792,6 +2837,7 @@ function sourceGroupRow(source) {
         expanded
           ? `<div class="brain-source-details">
               ${locked ? `<div class="source-lock-note"><strong>Part of active Brand Brain v${state.brain.approvedVersion || state.brain.artifactVersion}</strong><span>Existing approved sources stay unchanged while additions are reviewed. Source retirement will be handled as a separate governed change later.</span></div>` : ""}
+              ${sourceOriginalMaterial(source)}
               <div class="source-entry-row">
                 <label><span>Material type</span><select data-action="brain-source-item-material-type" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceMaterialTypes.map((item) => `<option value="${item.id}" ${item.id === material?.id ? "selected" : ""}>${escapeHtml(item.label)}</option>`).join("")}</select><small>${escapeHtml(material?.description || "This source will be checked before synthesis.")}</small></label>
                 <label><span>What should it inform?</span><select data-action="brain-source-item-role" data-id="${escapeHtml(source.id)}" ${locked ? "disabled" : ""}>${sourceRoleOptions.map((value) => option(value, source.role)).join("")}</select></label>
