@@ -9694,3 +9694,289 @@ button.ws-attention-item:hover {
 .field-error {
   color: var(--danger);
 }
+
+/* Direction session (ADR 0021). The record beside the conversation. */
+.direction-card .direction-card-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.direction-session {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: 18px;
+  align-items: start;
+}
+
+@media (max-width: 1080px) {
+  .direction-session {
+    grid-template-columns: 1fr;
+  }
+}
+
+.direction-talk {
+  background: var(--paper-50);
+  border: 1px solid var(--ink-700);
+  border-radius: var(--radius-lg);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  min-height: 480px;
+}
+
+.direction-scroll {
+  overflow-y: auto;
+  max-height: 60vh;
+  padding: 18px 20px 8px;
+}
+
+.direction-turn {
+  max-width: 62ch;
+  margin: 0 0 16px;
+}
+
+.direction-turn.person {
+  margin-left: auto;
+}
+
+.direction-who {
+  display: block;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.direction-turn.person .direction-who {
+  text-align: right;
+}
+
+.direction-turn p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.55;
+}
+
+.direction-turn.person p {
+  background: var(--paper-200);
+  border: 1px solid var(--ink-700);
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+}
+
+.direction-thinking {
+  color: var(--muted);
+}
+
+.direction-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.direction-option {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--ink-700);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.direction-option button {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: transparent;
+  border: 0;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.direction-option button:hover:not(:disabled) {
+  background: var(--paper-200);
+}
+
+.direction-option .direction-option-drop {
+  color: var(--muted);
+  border-left: 1px solid var(--ink-700);
+  padding: 6px 8px;
+}
+
+.direction-option .direction-option-drop:hover:not(:disabled) {
+  color: var(--danger);
+}
+
+.direction-option.resolved {
+  opacity: 0.45;
+}
+
+.direction-composer {
+  border-top: 1px solid var(--ink-700);
+  padding: 12px 20px 16px;
+}
+
+.direction-composer textarea {
+  width: 100%;
+  resize: vertical;
+  font: inherit;
+  color: var(--text);
+  background: var(--paper-100);
+  border: 1px solid var(--ink-700);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+}
+
+.direction-composer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.direction-cap {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--gold);
+}
+
+.direction-error {
+  margin: 8px 20px;
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--danger);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+}
+
+.direction-record {
+  background: var(--paper-50);
+  border: 1px solid var(--ink-700);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px 20px;
+  max-height: 78vh;
+  overflow-y: auto;
+}
+
+.direction-record-head h2 {
+  margin: 0 0 2px;
+  font-size: 15px;
+}
+
+.direction-record-head p {
+  margin: 0 0 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.direction-group {
+  margin-bottom: 16px;
+}
+
+.direction-group-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  border-bottom: 1px solid var(--ink-700);
+  padding-bottom: 5px;
+  margin-bottom: 8px;
+}
+
+.direction-group-head h3 {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.direction-group-head span {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.direction-section {
+  margin-bottom: 10px;
+}
+
+.direction-section-name {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+
+.direction-section ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.direction-section li {
+  display: flex;
+  gap: 7px;
+  align-items: baseline;
+  padding: 2px 0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.direction-section li.rejected .direction-entry-text {
+  text-decoration: line-through;
+  color: var(--muted);
+}
+
+.direction-tag {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: var(--paper-200);
+  color: var(--celery-ink);
+}
+
+.direction-tag.chosen {
+  color: var(--lavender-ink);
+}
+
+.direction-tag.rejected {
+  color: var(--coral-dark);
+}
+
+.direction-empty {
+  margin: 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--muted);
+}
+
+.direction-reach {
+  margin-top: 10px;
+  padding: 12px;
+  background: var(--paper-100);
+  border: 1px solid var(--ink-700);
+  border-left: 2px solid var(--lavender);
+  border-radius: var(--radius-md);
+}
+
+.direction-reach h3 {
+  margin: 0 0 4px;
+  font-size: 13px;
+}
+
+.direction-reach h3 span {
+  color: var(--lavender-ink);
+}
+
+.direction-reach p {
+  margin: 4px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.direction-record-actions {
+  margin-top: 14px;
+}
