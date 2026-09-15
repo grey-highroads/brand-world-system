@@ -710,6 +710,10 @@ export async function generateProductionImage(body, options) {
         bytes = brandingResult.bytes;
       } catch (error) {
         brandingError = error.message || "The logo could not be placed.";
+        // The render must not fail over branding, but the reason has to be
+        // findable in the runtime logs, or a missing logo and an ignored
+        // toggle look identical from the outside.
+        console.error("Branding failed on job", jobId, error);
       }
     }
 
@@ -808,6 +812,9 @@ export async function generateProductionImage(body, options) {
       status: "complete",
       completedAt: new Date().toISOString(),
       imagePathname: savedImage.pathname,
+      branding: brandingResult ? brandingResult.branding : null,
+      brandingVerification: brandingResult ? brandingResult.verification : null,
+      brandingError: brandingError || null,
       imageContentType: savedImage.contentType,
       imagePublicUrl: null,
       usage: result.usage || null,

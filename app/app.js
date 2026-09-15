@@ -7319,6 +7319,7 @@ function renderResult() {
                     ${job.imageUrl ? `<figure class="generated-output linkedin-image"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} supporting image"><figcaption class="result-caption"><strong>Supporting image</strong><span>${escapeHtml(job.generationPackage?.output?.format || "1:1 square")}</span></figcaption></figure>` : state.brief.includeImage ? '<p class="page-description">The supporting image could not be generated. The post copy is still usable.</p>' : ""}
                   </div>`
                 : `<figure class="generated-output"><img src="${escapeHtml(outputImageSrc(job) || job.imageUrl)}" alt="Generated ${escapeHtml(state.brandName)} brand world image"><figcaption class="result-caption"><strong>${escapeHtml(job.generationPackage.output.format)}</strong><span>${escapeHtml(generationMethod)} · ${escapeHtml(job.model)}</span></figcaption></figure>
+                   ${brandingResultLine(job)}
                    ${sceneRenderFigure(job)}
                    ${directionsOfferedPanel(job)}
                    ${renderedCopyCheckPanel(job)}
@@ -10711,6 +10712,21 @@ function clientSwitcherMenu() {
 // a record only briefly after a render. Thumbnails decide from hadImage and
 // let the stable image route mint the URL; deciding from imageUrl left every
 // list showing empty tiles whenever the transient field was absent.
+// One plain line under the result about the logo. When branding ran, the
+// pixel check as data. When it was asked for and failed, the reason, because
+// a silently missing logo and an ignored toggle look identical otherwise.
+// Absent entirely on a job that did not ask for the logo.
+function brandingResultLine(job) {
+  if (job?.brandingError) {
+    return `<p class="field-note">The logo was not placed: ${escapeHtml(job.brandingError)} The image saved without it.</p>`;
+  }
+  if (job?.brandingVerification) {
+    const v = job.brandingVerification;
+    return `<p class="field-note">Logo placed: ${Number(v.checkedPixels).toLocaleString()} pixels checked, ${Number(v.mismatchedPixels).toLocaleString()} changed.</p>`;
+  }
+  return "";
+}
+
 function outputHasImage(output) {
   return Boolean(output && (output.hadImage || output.imageUrl));
 }
