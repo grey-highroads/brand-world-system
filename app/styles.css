@@ -9721,7 +9721,7 @@ button.ws-attention-item:hover {
   border-radius: var(--radius-lg);
   display: grid;
   grid-template-rows: 1fr auto;
-  min-height: 480px;
+  min-height: 260px;
 }
 
 .direction-scroll {
