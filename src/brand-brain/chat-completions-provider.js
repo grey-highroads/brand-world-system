@@ -98,7 +98,8 @@ const LIVED_WORLD_OPENING = `Lived World:
 - "patterns" entries describe moments in a person's day or week. The "time" field holds a time of day, a point in a routine, or a stage in a recurring process. It does not hold a content calendar category.
 - "environments" entries are physical places these people occupy for reasons of their own. The "earned" field states the behavior that puts them there. A place the brand photographs its product is not by itself a place the audience has earned.
 - "social" entries describe how these people relate to other people. They do not describe formats, channels, or creative treatments.
-- When the supplied sources describe a product rather than a buyer, which is common for consumer brands, reason toward the person the product implies rather than describing the brand's own output. Reason in two layers. First, what kind of person a product of this category serves. Second, and more important, the narrower group implied by this brand's specific facts: its formulation, price position, sourcing, format, and stated positioning. Name those facts. The narrow layer is the useful one, because the broad layer describes every competitor's audience too.
+- When the supplied sources describe a product rather than a buyer, which is common for consumer brands, you may reason toward the person the product implies, from its category, formulation, price position, sourcing, format and stated positioning. Name those facts. But this is the weakest kind of entry in the artifact and it is the reason "audienceEvidence" exists: a product fact constrains what can be claimed and what is physically true in a picture, and it does not establish who the audience is. Two brands with the same formulation serve different people. So reason this way only when nothing better was supplied, mark the artifact "not established", and do not reach past the product facts into taste, culture, scene or subculture. Those are declared by the brand, never derived from a can.
+- A person is made particular by more than an occupation. What someone does for work is one handle; what they are into, what they are part of, what they do on a weekend, and what era or scene they belong to are equally specific and are often more particular to this brand. Do not reach for a job every time you need to make someone real, and never invent a trade to fill the gap where taste belongs.
 - Never present reasoning as observation. Every entry in "patterns", "environments", and "social", and every cast example, carries a "basis" object recording how it was arrived at.
 - "basis.origin" is "evidence" when the supplied sources state or directly show the thing, and "inference" when it was reasoned. If the source describes the brand and the entry describes a person, the origin is "inference".`;
 
@@ -112,7 +113,8 @@ const AMBITION_TEST = `- An entry carries "basis.origin" of "ambition" when it w
 
 const LIVED_WORLD_CLOSING = `- "basis.derivedFrom" names what it rests on in plain language: the source and what it said for evidence, or the specific brand facts the reasoning used for inference.
 - "basis.confidence" is High, Medium, or Low. Reserve High for entries a reader could verify against a named source.
-- When the sources contain no direct evidence about the audience at all, still build the Lived World by inference, and raise a review question saying the audience portrait is reasoned from the brand's own material and asking what customer evidence exists.`;
+- "audienceEvidence" records whether the sources carry real evidence about who this brand serves: research, owned social history, shipped campaign work, or customer material. Product facts are not audience evidence. A formulation, a price, a format and a stated positioning describe a can, and reasoning a person out of them is inference, not evidence.
+- When there is no such evidence, set "audienceEvidence" to "not established". Every field here is required, so still write the Lived World, but write it as the placeholder it is: every entry carries origin "inference" and confidence "Low", the cast description says in plain words that these people were reasoned from the brand's own material rather than observed, and you raise a review question asking what customer evidence exists. Do not write a confident portrait and label it low confidence. A reader has to be able to tell at a glance that nobody has met these people.`;
 
 const LIVED_WORLD_RULES = {
   today: [LIVED_WORLD_OPENING, LIVED_WORLD_FENCE, LIVED_WORLD_CLOSING].join("\n"),
@@ -195,6 +197,14 @@ const VISUAL_GRAMMAR_RULES = {
 // How far the aspiration sources may change the evolved world. One sentence,
 // sent only to evolved passes, chosen by the reach level on the request. The
 // levels are the owner's words (ADR 0019).
+// The today Lived World is required to be full even when nothing is known about
+// the audience, so a brand with no customer evidence hands the evolved passes a
+// portrait that was reasoned out of its own packaging. Left unsaid, that
+// portrait anchors: the model reads people in its context and writes the
+// evolved world beside them. This sentence tells the evolved passes to check
+// the flag and drop the placeholder. It costs nothing when the audience is real.
+const UNESTABLISHED_AUDIENCE = `Check "audienceEvidence" on the today Lived World. When it reads "not established", the people, days, places and social modes in it were reasoned from the brand's own material and nobody has met them. Do not carry them forward, do not treat them as what these people are like now, and do not write your world as a revision of theirs. Build from the direction sources and the brand facts instead. When it reads "established", the today world is real evidence and the reach sentence governs how far you move from it.`;
+
 const REACH_SENTENCES = {
   "a few touches": `Reach for this evolved world: a few touches. Keep the people, the places, and the moments as the today world wrote them, and bring the direction into the objects, the clothes, the light, and the detail.`,
   "a clear direction": `Reach for this evolved world: a clear direction. Recast the people, rebuild the rooms, and rewrite the moments in the direction the sources point, keeping what the today world got right about how these people live. The today world is the starting point, not the limit.`,
@@ -240,12 +250,14 @@ The brand today is finished and is supplied below as data: passes 1 through 4. I
 
 Write the Lived World for the evolved world, and any review questions it raises. Nothing else.
 
-The brand today is finished and is supplied below as data: passes 1 through 4. Pass 5, the evolved dossier, is also finished and supplied. They are settled: read them, do not restate them, and do not contradict their facts. The today Lived World is the world these people live in now; you are writing the world the brand is reaching for, from all of the sources, as far as the reach sentence allows. An entry that depends on the aspiration sources carries the ambition origin so a reviewer can tell it from evidence.`,
+The brand today is finished and is supplied below as data: passes 1 through 4. Pass 5, the evolved dossier, is also finished and supplied. They are settled: read them, do not restate them, and do not contradict their facts. The today Lived World is the world these people live in now; you are writing the world the brand is reaching for, from all of the sources, as far as the reach sentence allows. An entry that depends on the aspiration sources carries the ambition origin so a reviewer can tell it from evidence.
+${UNESTABLISHED_AUDIENCE}`,
   7: `This is pass 7 of 8, moments in that world. It is the third of four passes that write the brand evolved.
 
 Write the Story Architecture for the evolved world, and any review questions it raises. Nothing else.
 
-The brand today is finished and is supplied below as data: passes 1 through 4. Passes 5 and 6, the evolved dossier and the evolved Lived World, are also finished and supplied. They are settled: read them, do not restate them, and do not contradict them. The cast you place into moments is the evolved cast from pass 6, and the environments, tensions and social modes are the ones pass 6 wrote. A moment that depends on the aspiration sources carries the ambition origin.`,
+The brand today is finished and is supplied below as data: passes 1 through 4. Passes 5 and 6, the evolved dossier and the evolved Lived World, are also finished and supplied. They are settled: read them, do not restate them, and do not contradict them. The cast you place into moments is the evolved cast from pass 6, and the environments, tensions and social modes are the ones pass 6 wrote. A moment that depends on the aspiration sources carries the ambition origin.
+${UNESTABLISHED_AUDIENCE}`,
   8: `This is pass 8 of 8, the pictures in that world. It is the last of four passes that write the brand evolved.
 
 Write the Visual Grammar for the evolved world, and any review questions it raises. Nothing else.
