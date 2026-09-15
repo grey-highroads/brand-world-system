@@ -207,6 +207,17 @@ const livedWorld = strictObject({
   description: { type: "string" },
   sourceCount: { type: "integer", minimum: 1 },
   categories: stringArray(2, 6),
+  // Whether the sources carry real evidence about the audience. Every field
+  // below is required and every array has a floor, so a brand with no customer
+  // evidence still gets a full Lived World: the schema cannot express silence.
+  // This field is how the artifact says so out loud, and it is what the evolved
+  // passes read to decide whether these people are settled or a placeholder.
+  audienceEvidence: {
+    type: "string",
+    enum: ["established", "not established"],
+    description:
+      "\"established\" when the sources carry real evidence about the audience: research, owned social history, shipped campaign work, or customer material. \"not established\" when the audience below was reasoned from the brand's own material because no such evidence was supplied. Product facts are not audience evidence.",
+  },
   // ADR 0019 part three. A cast rather than a roster of characters: one
   // description wide enough that twenty pictures cast twenty different people
   // who all belong, plus examples a writer can reach for and never reuse by
