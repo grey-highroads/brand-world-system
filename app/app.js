@@ -2813,7 +2813,7 @@ function sourceGroupRow(source) {
     ? `<span class="mini-pill pill-governed">Active</span>`
     : "";
   return `
-    <article class="brain-source-item ${expanded ? "expanded" : ""} ${pending ? "pending" : ""} ${locked ? "locked" : ""}">
+    <article class="brain-source-item ${expanded ? "expanded" : ""} ${pending ? "pending" : ""} ${locked ? "locked" : ""}" id="source-row-${escapeHtml(source.id)}">
       <div class="brain-source-row">
         <span class="source-library-kind">
           ${sourceIcon(sourceMaterialIcon(material, source))}
@@ -3010,10 +3010,34 @@ function sourceLayerCoverage() {
   const presence = sourceSlots.filter((slot) => slot.layer === 2);
   const covered = foundation.filter((slot) => sourceSlotRows(slot).length > 0).length;
   const present = presence.filter((slot) => sourceSlotRows(slot).length > 0).length;
+  return { covered, foundationTotal: foundation.length, present, presenceTotal: presence.length, context: contextSources().length };
+}
+
+// Context sources are the ones no named slot claims. The same rule feeds the
+// section count and the card list, so the number in the header is always
+// reconcilable with the cards under it.
+function contextSources() {
   const slotted = new Set();
   sourceSlots.forEach((slot) => sourceSlotRows(slot).forEach((source) => slotted.add(source.id)));
-  const context = state.brain.sources.filter((source) => !source.productMeta && !slotted.has(source.id)).length;
-  return { covered, foundationTotal: foundation.length, present, presenceTotal: presence.length, context };
+  return state.brain.sources.filter((source) => !source.productMeta && !slotted.has(source.id));
+}
+
+// Context cards borrow the presence-card format: the section reads as a set
+// of things the Brain knows about, with room around each one, instead of a
+// bare count. Details opens the full record in the library below, because
+// handling and instructions already live there.
+function sourceContextCard(source) {
+  const material = sourceMaterialType(source);
+  return `
+    <article class="source-presence-card source-context-card filled">
+      <div class="source-presence-card-header">
+        <span class="source-presence-title">${sourceIcon(sourceMaterialIcon(material, source))}<strong>${escapeHtml(source.name)}</strong></span>
+        <span class="source-slot-status filled">${sourceIcon("check")}${escapeHtml(material?.shortLabel || source.type || "Added")}</span>
+      </div>
+      <p class="source-presence-description">${escapeHtml(source.detail || "Added to the source library")}</p>
+      <button class="button compact" type="button" data-action="open-source-details" data-id="${escapeHtml(source.id)}">Details</button>
+    </article>
+  `;
 }
 
 function sourceRhythmHeader({ number, label, title, description, status, value = null, max = null }) {
@@ -3393,6 +3417,7 @@ function renderBrainSources() {
             description: "Competitors, category references, moodboards, aspirations, or anything else that helps explain the brand.",
             status: `${coverage.context} ${coverage.context === 1 ? "source" : "sources"}`,
           })}
+          ${coverage.context ? `<div class="source-presence-grid source-context-grid">${contextSources().map(sourceContextCard).join("")}</div>` : ""}
           <div class="source-context-entry ${contextOpen ? "active" : ""}">
             ${sourceIcon("context")}
             <span class="source-context-copy"><strong>Anything else the Brain should understand?</strong><span>Add a file or link, then explain where it came from and how much it should influence the brand.</span></span>
@@ -10438,6 +10463,13 @@ root.addEventListener("click", (event) => {
   if (action === "toggle-source-details") {
     state.brain.selectedSourceId = state.brain.selectedSourceId === target.dataset.id ? "" : target.dataset.id;
     render();
+  }
+  // From a context card: always open (never toggle closed) and bring the
+  // expanded library record into view, since it lives a section below.
+  if (action === "open-source-details") {
+    state.brain.selectedSourceId = target.dataset.id;
+    render();
+    document.getElementById(`source-row-${target.dataset.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
   }
   if (action === "rule-protection" && !protections.busyId) {
     void ruleProtection(target.dataset.id, target.dataset.decision);
