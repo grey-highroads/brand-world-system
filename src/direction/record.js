@@ -34,7 +34,7 @@ export const DIRECTION_SECTIONS = [
   {
     id: "places",
     label: "Where it happens",
-    hint: "The spread of rooms and settings this world covers. A range, never one room.",
+    hint: "The spread of settings this world covers, at more than one scale: rooms, streets, fields, crowds. A range, never one room.",
   },
   {
     id: "objects",
