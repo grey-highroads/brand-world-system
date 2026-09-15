@@ -35,3 +35,15 @@ The sameness risk ADR 0021 named is real and is now handled where it belongs: th
 **Range is instructed but not measured.** The session is told to push for more than one kind of place and more than one kind of day before it lands, and the prose tells synthesis that examples are not scenes. Whether that is enough to stop convergence across twenty images is unknown until a set exists. The gate stated in the 2026-09-09 handoff still applies: twenty images have to be twenty different moments.
 
 **Not run against a real session yet.** The instruction is rewritten and the tests pin its shape, but no live turn has gone through it.
+
+## Correction: the casting range is the design, not a workaround
+
+Recorded 2026-09-15, owner ruling.
+
+An earlier version of this finding, and the handoff of 2026-09-09, treated the casting range as a concession to a model limitation. The handoff's open question asks whether recurring people can hold across twenty images, notes that no current model holds identity across arbitrary scenes, and says that if identity does not hold, territories have to be built around recurring situations, environments, and behavior instead.
+
+The owner ruled that this frames the wrong question. A casting range is the right answer for a brand world on its own terms and would remain right if identity consistency were solved. There are millions of people in a casting range and a brand's pictures should look like it. People in a Lived World are representative rather than particular, so twenty images asking for the same twenty faces would be a worse world rather than a compromised one. Building territories around situations, environments, and behavior is the design, not the fallback.
+
+That open question can be closed on this ruling rather than on a technical answer.
+
+One consequence, fixed here. The session's world sketches skewed small and interior, because nothing told it that scale is part of a territory. A festival field is one environment holding twenty thousand people, and the same world also holds a packed room, a street at closing, and a kitchen at seven in the morning. The instruction now asks for settings at more than one scale, and names the failure it prevents: a world written entirely in small interiors produces twenty pictures of tables.
