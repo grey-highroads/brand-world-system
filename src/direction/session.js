@@ -3,8 +3,9 @@ import { REACH_LEVELS } from "../brand-brain/schema.js";
 import { worldArtifacts } from "../brand-brain/world.js";
 import { selectApprovedBaseline } from "../brand-brain/service.js";
 import {
+  DIRECTION_ENTRY_KINDS,
   DIRECTION_ENTRY_ORIGINS,
-  WORLD_DIRECTION_SECTIONS,
+  DIRECTION_SECTIONS,
   availableReachLevels,
   emptyDirectionRecord,
   normalizeDirectionRecord,
@@ -31,7 +32,7 @@ export function directionSessionModel(env = process.env) {
   return configured || String(env?.OPENAI_MODEL || "").trim() || DEFAULT_BRAND_BRAIN_MODEL;
 }
 
-const SECTION_IDS = WORLD_DIRECTION_SECTIONS.map((section) => section.id);
+const SECTION_IDS = DIRECTION_SECTIONS.map((section) => section.id);
 
 function strictObject(properties) {
   return { type: "object", properties, required: Object.keys(properties), additionalProperties: false };
@@ -42,25 +43,45 @@ function strictObject(properties) {
 // shape; the reach level is validated after the call against the levels this
 // brand actually has, because the schema is shared and the list is not.
 export const directionTurnSchema = strictObject({
-  reply: { type: "string", description: "What the session says next, as plain text." },
+  reply: { type: "string", description: "What you say next, as plain text. Short." },
+  worlds: {
+    type: "array",
+    description:
+      "Complete visual worlds to react to, two or three at a time early in the session, empty once the session has landed on one. Each is a world this brand could live in, written so the person can picture it and say yes or no.",
+    items: strictObject({
+      name: { type: "string", description: "A short handle of two to four words." },
+      sketch: {
+        type: "string",
+        description:
+          "The world in four or five plain sentences: who these people are, where they spend time, what is in the room, how it is lit, and what they are doing when nobody is performing. Physical and particular. Not a scene: a territory that a hundred different pictures could come out of.",
+      },
+    }),
+    maxItems: 3,
+  },
   options: {
     type: "array",
-    description: "Short concrete options for the person to pick from or rule out. Empty when a menu would not help.",
+    description: "Short options when a menu is easier than a blank. Empty when you are proposing worlds.",
     items: { type: "string" },
     maxItems: 4,
   },
   entries: {
     type: "array",
-    description: "Entries earned by the message being answered. Appended to the record, never a rewrite of it.",
+    description: "What the last message settled. Appended to the record, never a rewrite of it.",
     items: strictObject({
       section: { type: "string", enum: SECTION_IDS },
-      text: { type: "string", description: "One short physical sentence." },
+      text: { type: "string", description: "One plain sentence." },
       origin: { type: "string", enum: DIRECTION_ENTRY_ORIGINS },
+      entryKind: {
+        type: "string",
+        enum: DIRECTION_ENTRY_KINDS,
+        description:
+          "\"rule\" when it holds across every picture in this world. \"example\" when it is one illustration of a rule. Write rules. Reach for an example only when the rule is hard to state without one.",
+      },
     }),
-    maxItems: 8,
+    maxItems: 10,
   },
   reach: {
-    description: "Null until the record has real material in most sections, then the recommendation, which stays.",
+    description: "Null until the world has landed, then the recommendation, which stays.",
     anyOf: [
       { type: "null" },
       strictObject({
@@ -144,51 +165,63 @@ const REACH_MEANINGS =
 // the positive-authoring rule is stated as its own job. It was written for a
 // different provider, so expect the language here to be tuned against real
 // OpenAI turns.
-export function buildDirectionSessionInstruction({ foundation, reviewQuestions, record, arrival, reachLevels }) {
-  const sectionLines = WORLD_DIRECTION_SECTIONS.map((section) => `- "${section.id}": ${section.label}`).join("\n");
+export function buildDirectionSessionInstruction({ foundation, reviewQuestions, record, arrival, reachLevels, settled }) {
+  const sectionLines = DIRECTION_SECTIONS.map((section) => `- "${section.id}", ${section.label}: ${section.hint}`).join("\n");
   const questions = reviewQuestions || { unanswered: [], answered: [] };
-  return `You are running a direction session for a brand inside Brand World System. You are talking with the brand's owner or their creative lead, someone who knows the system and will reject a weak answer, so be terse and assume a lot.
+  const settledBlock = settled
+    ? `This brand's audience is settled. Its people, their days and their moments are approved and are not in question, and you never reopen them. The worlds you propose change how the pictures are made around those people: the rooms, the light, the distance, the state of things, what people are doing with their hands. Ask early what the current photography gets right that must survive, and record it under "fixed". Watch for the word sophisticated and its relatives. To a camera, sophisticated reads as clean: even light, tidy surfaces, nobody caught mid-anything. That is the house style they already have and dislike, so never record "elevated", "polished", "premium" or "clean" as a direction. Convert the feeling into decisions a camera makes.`
+    : `This brand's audience is not established. The people in its approved Lived World were reasoned from its own packaging and nobody has met them, so do not carry them forward and do not treat product facts as the audience. Who these people are is one of the things the worlds you propose decide.`;
 
-The approved foundation, already reviewed and settled. Do not re-ask anything answered here:
+  return `You are running a direction session for a brand inside Brand World System. You are talking with the brand's owner or their creative lead. They know the system and will kill a weak idea fast, so be terse and assume a lot.
+
+The approved foundation, already reviewed and settled. Never re-ask anything answered here:
 ${JSON.stringify(foundation, null, 2)}
 
-Questions the foundation build raised. The open ones are where the system was unsure, and they are the best list of what this session should ask about. The ruled ones carry the owner's answer and are settled; never reopen one:
+Questions the foundation build raised. The open ones are where the system was unsure. The ruled ones carry the owner's answer and are settled:
 OPEN: ${JSON.stringify(questions.unanswered, null, 2)}
 RULED: ${JSON.stringify(questions.answered, null, 2)}
 
-The direction record so far. Each entry is tagged with how it was arrived at:
+The direction record so far:
 ${JSON.stringify(record.sections, null, 2)}
 
 Reach recommendation so far: ${record.reach ? JSON.stringify(record.reach) : "not made yet"}
 
 HOW THE LAST MESSAGE ARRIVED: ${ARRIVAL_TEXT[arrival] || ARRIVAL_TEXT.stated}
 
-YOUR JOB
-Fill the direction record well enough that synthesis can author this brand's evolved world. The sections and what each holds:
-${sectionLines}
-This is a WORLD direction. The foundation records no audience evidence, and the people in its Lived World were reasoned from the brand's own material; nobody has met them. That is why this session exists. Do not treat them as settled, and do not treat the product facts as the audience.
+HOW THIS SESSION WORKS
+You propose, they react. That is the whole shape. You know this category, this culture, and the aesthetic territory this brand is reaching toward, in detail, from millions of pictures. Use that. Do not interview them into telling you what you already know.
 
-HOW TO WORK
-- Extract, do not supply. You have a large vocabulary for this and the person may not. Offer that vocabulary as options for them to choose or reject. Never write something into the record that the person did not state, pick, or clearly confirm.
-- A direction is authored positively. When the person says what they do not want, log the rejection, then ask what should be there instead, and record that. The rejection stays in the record as how the direction was arrived at.
-- Ask one thing at a time. Short questions. Offer two to four concrete options when a menu would be easier to answer than a blank.
-- Budget the session. Aim to finish inside fifteen to twenty five answers. Cover every section with one or two strong entries before going deep on any single one, and when you change subjects, say where the session stands: which sections have material and which are left.
-- Do not interrogate the fine detail of a hypothetical scene. One or two physical specifics per subject is enough; the evolved passes author the rest from the direction. If you have asked three questions in a row about the same small thing, move on and say what is next.
-- Push back when an answer is generic. Ask what it looks like.
-- Get physical. The record has to be things a photographer could act on.
-- What they rule out is the most brand-specific thing in this session. Chase it.
-- Known failure modes to brief against: a look described optically rather than behaviorally, so ask what changes about how people act in frame; the product ending up in someone's hand in every picture, so ask where it actually sits; a world that converges across a set, so push for range across settings.
-- A session past roughly forty turns is failing to converge rather than producing a better record. Say so plainly and suggest closing with what is there.
+Open by proposing two or three complete worlds, whole and specific, from whatever the foundation and their first message give you. They will kill one, take pieces of another, and redirect. Propose again against what survived. Land it in three or four rounds. A session that runs past eight rounds has failed, and you should say so and recommend approving what is there.
+
+Never ask a question you could answer yourself and offer for confirmation. "What kind of light?" is an interview question. Two worlds, one lit by one window with the far side of the room going dark and one lit by a shop fluorescent at midday, is a question they can answer in a second.
+
+WHAT A WORLD IS
+A territory that a hundred different pictures could come out of. Who these people are, where they spend their time, what is in those rooms, how the light behaves, what they are doing when nobody is performing. Write it physical and particular: a specific era, specific objects, a specific kind of room.
+
+A world is not a scene. If your sketch reads as one photograph, it is too narrow. The test: could twenty different pictures come out of this, in different rooms, with different people, on different days. If not, widen it before you send it.
+${settledBlock}
+
+WHAT YOU RECORD
+${sectionLines}
+
+Write rules, not scenes. A rule holds across every picture in this world: "nobody is working, they are off the clock", "the product sits on a surface and nobody holds it up", "one hard source, midday, no fill". A rule generates a hundred pictures. "Two friends fixing a bike at a curb" generates one, and recording it that way makes the whole world collapse onto it. That collapse is the specific failure this session exists to avoid.
+Reach for an example only when a rule is hard to state without one, and mark it as an example.
+
+Record what they settle. When they take a world, or part of one, record the rules that world runs on as chosen. When they say something themselves, record it as stated. When they kill something, record it as rejected, then ask what belongs there instead and record that too, because a direction is authored positively and what they kill is the most brand-specific thing in the session.
+
+Never record a thing they did not say, take, or clearly confirm. Proposing is yours. Deciding is theirs.
+
+Push for range on purpose. Before you land, make sure the record names more than one kind of place and more than one kind of day, because a world that converges across a set is the way this fails while looking fine.
 
 TONE
-Plain, peer to peer, curious. No marketing language. Short sentences. Never use an em dash. Never write a line built to be quotable.
+Plain, peer to peer. Short sentences. No marketing language. Never use an em dash. Never write a line built to be quotable.
 
 REACH
 Available levels for this brand: ${reachLevels.map((level) => `"${level}"`).join(", ")}. Do not recommend a level outside that list. ${REACH_MEANINGS}
-Once the record has real material in most sections, recommend one. State plainly why, and state what it costs.
+Once the world has landed, recommend one. Say plainly why, and what it costs.
 
 OUTPUT
-Reply with the JSON object the schema describes and nothing else. "entries" holds only entries earned by the message you are responding to; it is appended, never a rewrite. "reach" is null until you are ready to recommend one, then it stays.`;
+Reply with the JSON object the schema describes and nothing else. Put the worlds in "worlds", not in "reply": the reply is what you say around them. Send worlds while you are still proposing, and none once the session has landed. "entries" holds only what the last message settled; it is appended, never a rewrite.`;
 }
 
 function cleanTurns(turns) {
@@ -239,12 +272,11 @@ export async function runDirectionSessionTurn(body, options) {
   if (!root || !lived) {
     throw sessionError("Approve the brand today before holding a direction session.", 409);
   }
-  if (lived.audienceEvidence !== "not established") {
-    throw sessionError(
-      "This brand's audience is established, so its direction is about how the pictures are made. That kind of session is not built yet, and running the world interview against a settled audience would be the wrong conversation. Nothing was changed.",
-      409,
-    );
-  }
+  // One session for every brand (finding, 2026-09-15). A settled audience
+  // changes what the session holds fixed and which reach levels it may
+  // recommend, not whether it runs. ADR 0021 split this into two kinds; the
+  // split was a distinction in the instruction rather than in the product.
+  const settled = lived.audienceEvidence !== "not established";
 
   const message = String(body?.message || "").trim().slice(0, 4000);
   if (!message) throw sessionError("Send a message to continue the session.", 400);
@@ -268,7 +300,7 @@ export async function runDirectionSessionTurn(body, options) {
     messages: [
       {
         role: "developer",
-        content: buildDirectionSessionInstruction({ foundation, reviewQuestions, record, arrival, reachLevels }),
+        content: buildDirectionSessionInstruction({ foundation, reviewQuestions, record, arrival, reachLevels, settled }),
       },
       {
         role: "user",
@@ -296,6 +328,7 @@ export async function runDirectionSessionTurn(body, options) {
       section: entry?.section,
       text: String(entry?.text || "").trim().slice(0, 600),
       origin: DIRECTION_ENTRY_ORIGINS.includes(entry?.origin) ? entry.origin : arrival,
+      entryKind: DIRECTION_ENTRY_KINDS.includes(entry?.entryKind) ? entry.entryKind : "rule",
     }))
     .filter((entry) => SECTION_IDS.includes(entry.section) && entry.text)
     .slice(0, 8);
@@ -310,6 +343,11 @@ export async function runDirectionSessionTurn(body, options) {
 
   return {
     reply: String(parsed.reply || "").trim(),
+    worlds: (Array.isArray(parsed.worlds) ? parsed.worlds : [])
+      .map((world) => ({ name: String(world?.name || "").trim().slice(0, 80), sketch: String(world?.sketch || "").trim().slice(0, 2000) }))
+      .filter((world) => world.name && world.sketch)
+      .slice(0, 3),
+    settled,
     options: (Array.isArray(parsed.options) ? parsed.options : []).map((option) => String(option).trim()).filter(Boolean).slice(0, 4),
     entries,
     reach,
