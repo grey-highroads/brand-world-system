@@ -47,6 +47,7 @@ The model is the synthesis model, `OPENAI_MODEL`, with its own environment overr
 The session instruction is the substance of this route and it is prompt text, not code. It has to carry, at least:
 
 - The approved foundation as data, so the session never re-asks a settled question.
+- The review questions the four today passes raised, as data. Every pass carries `reviewQuestions` and the assembled set is on the brain. They are the system saying where it was unsure, which is the closest thing the foundation has to a list of what the session should ask about. Send the title, summary and rationale. Send the ones still unanswered, and send an answered one with its ruling, because a ruling is a settled answer the session must not reopen.
 - The record so far, so it knows what is filled.
 - How the last message arrived, so it tags the entry correctly.
 - The rule that it extracts rather than supplies. It may offer vocabulary as options. It may not write into the record anything the person did not state, pick, or confirm. Without this every brand that says the word retro receives the same answer.
@@ -89,6 +90,7 @@ Nothing in the synthesis instructions changes to accommodate it. That is the tes
 - A proposed record is not returned to synthesis; an approved one is.
 - The session route rejects a request for a brand whose today Lived World reads `established`, because this brief builds one kind of session. Fail with a plain message rather than running the wrong interview.
 - The reach list offered to the session holds only `a new world` when the audience is not established.
+- The session payload carries the brain's unanswered review questions, and carries an answered one together with its ruling.
 - An initial synthesis for a brand with no direction record stops after pass 4 and saves what the four passes produced.
 - A brand with an approved direction record runs all eight unchanged.
 - The approved record appears in the source register sent to pass 5, with provenance and aspiration set.
