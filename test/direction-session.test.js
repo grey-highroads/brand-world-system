@@ -93,9 +93,10 @@ async function runInitialPasses(store, seen, passes) {
 
 function recordWithAllOrigins(status = "proposed") {
   const record = emptyDirectionRecord({ brandName: "MycoPop", model: "gpt-5.6" });
-  record.sections.cast.push({ text: "Late 20s, into bikes and shows, not into optimization.", origin: "stated", at: "2026-09-15T00:00:00.000Z" });
-  record.sections.light.push({ text: "One practical source per room, the far side goes dark.", origin: "chosen", at: "2026-09-15T00:01:00.000Z" });
-  record.sections.rejects.push({ text: "Neon gradients laid over the photograph.", origin: "rejected", at: "2026-09-15T00:02:00.000Z" });
+  record.sections.territory.push({ text: "Late 20s, into shows and skating, off the clock.", origin: "stated", entryKind: "rule", at: "2026-09-15T00:00:00.000Z" });
+  record.sections.light.push({ text: "One practical source per room, the far side goes dark.", origin: "chosen", entryKind: "rule", at: "2026-09-15T00:01:00.000Z" });
+  record.sections.register.push({ text: "Four of them crowded around a borrowed amp.", origin: "chosen", entryKind: "example", at: "2026-09-15T00:04:00.000Z" });
+  record.sections.people.push({ text: "Neon gradients laid over the photograph.", origin: "rejected", entryKind: "rule", at: "2026-09-15T00:02:00.000Z" });
   record.status = status;
   if (status === "approved") record.approvedAt = "2026-09-15T00:03:00.000Z";
   return record;
@@ -157,9 +158,10 @@ test("a record with entries of all three origins round-trips through the store u
   const read = await store.readDirection();
   assert.deepEqual(read, record);
   assert.deepEqual(
-    read.sections.cast.concat(read.sections.light, read.sections.rejects).map((entry) => entry.origin),
+    read.sections.territory.concat(read.sections.light, read.sections.people).map((entry) => entry.origin),
     ["stated", "chosen", "rejected"],
   );
+  assert.deepEqual(read.sections.register.map((entry) => entry.entryKind), ["example"]);
   // Normalizing what came back changes nothing: the stored shape is the shape.
   assert.deepEqual(normalizeDirectionRecord(read), record);
   await fs.rm(dir, { recursive: true, force: true });
@@ -168,9 +170,14 @@ test("a record with entries of all three origins round-trips through the store u
 test("the prose keeps rejections visible and the source carries the direction flags", () => {
   const record = recordWithAllOrigins("approved");
   const prose = directionRecordProse(record);
-  assert.match(prose, /Lived World, cast:/);
-  assert.match(prose, /Visual Grammar, light:/);
+  assert.match(prose, /The world:/);
+  assert.match(prose, /How it is lit:/);
   assert.match(prose, /Ruled out:\n- Neon gradients laid over the photograph\./);
+  // An example is labelled as one and carries the instruction not to
+  // reproduce it. This is the line that stops one described scene becoming
+  // the whole world.
+  assert.match(prose, /For example, and not to be reproduced: Four of them crowded around a borrowed amp\./);
+  assert.match(prose, /Examples illustrate a rule and are not scenes to reproduce/);
   assert.doesNotMatch(prose, /\u2014|\u2013/, "no em or en dash in what synthesis reads");
 
   const source = directionRecordAsSource(record);
@@ -207,23 +214,40 @@ test("the session payload carries the open review questions, and a ruled one wit
   });
   assert.match(instruction, /Who is this for/);
   assert.match(instruction, /Keep the site palette/);
-  assert.match(instruction, /never reopen one/);
+  assert.match(instruction, /The ruled ones carry the owner's answer and are settled/);
   assert.match(instruction, /Available levels for this brand: "a new world"\./);
   assert.doesNotMatch(instruction, /"a few touches"/);
+  // The session proposes rather than interviews, and records rules rather
+  // than scenes. Both are the point of the 2026-09-15 reshape.
+  assert.match(instruction, /You propose, they react/);
+  assert.match(instruction, /A world is not a scene/);
+  assert.match(instruction, /Write rules, not scenes/);
 });
 
-test("the session route rejects a brand whose today Lived World reads established", async () => {
+test("a settled audience runs the same session, held fixed rather than reopened", async () => {
   const store = directionStore(savedBrain({ audienceEvidence: "established" }));
-  await assert.rejects(
-    runDirectionSessionTurn({ message: "Let us begin.", arrival: "stated" }, { store, env: { OPENAI_API_KEY: "x" }, complete: cannedTurn({}) }),
-    (error) => {
-      assert.equal(error.status, 409);
-      assert.match(error.message, /audience is established/);
-      assert.match(error.message, /Nothing was changed/);
-      return true;
-    },
+  const turn = await runDirectionSessionTurn(
+    { message: "Make it look like a bigger brand.", arrival: "stated" },
+    { store, env: { OPENAI_API_KEY: "x" }, complete: cannedTurn({ reply: "Here are two.", worlds: [], options: [], entries: [], reach: null }) },
   );
+  assert.equal(turn.settled, true);
+  assert.deepEqual(turn.reachLevels, ["a few touches", "a clear direction"]);
+
+  const instruction = buildDirectionSessionInstruction({
+    foundation: directionSessionFoundation(saved
+      = savedBrain({ audienceEvidence: "established" })),
+    reviewQuestions: { unanswered: [], answered: [] },
+    record: emptyDirectionRecord({ brandName: "Simply Agree" }),
+    arrival: "stated",
+    reachLevels: ["a few touches", "a clear direction"],
+    settled: true,
+  });
+  assert.match(instruction, /audience is settled/);
+  assert.match(instruction, /never reopen them/);
+  assert.match(instruction, /sophisticated reads as clean/);
+  assert.doesNotMatch(instruction, /not established/);
 });
+let saved;
 
 test("the session route refuses before the brand today is approved", async () => {
   const unapproved = savedBrain();
@@ -251,11 +275,12 @@ test("a turn keeps valid entries, tags unknown origins with the arrival, and dro
       complete: cannedTurn({
         reply: "Where do they spend a Saturday?",
         options: ["Show me some territories", "I know what it is NOT"],
+        worlds: [{ name: "Late shift", sketch: "A territory with room in it." }, { name: "", sketch: "dropped" }],
         entries: [
-          { section: "cast", text: "Into bikes and live shows.", origin: "stated" },
-          { section: "not-a-section", text: "Dropped.", origin: "stated" },
-          { section: "light", text: "", origin: "chosen" },
-          { section: "patterns", text: "Out late on weekends.", origin: "invented" },
+          { section: "territory", text: "Into shows and skating.", origin: "stated", entryKind: "rule" },
+          { section: "not-a-section", text: "Dropped.", origin: "stated", entryKind: "rule" },
+          { section: "light", text: "", origin: "chosen", entryKind: "rule" },
+          { section: "register", text: "Nobody is working.", origin: "invented", entryKind: "scene" },
         ],
         reach: { level: "a few touches", because: "Off the list for this brand.", tradeoff: "" },
       }),
@@ -263,9 +288,11 @@ test("a turn keeps valid entries, tags unknown origins with the arrival, and dro
   );
   assert.equal(turn.reply, "Where do they spend a Saturday?");
   assert.deepEqual(turn.entries, [
-    { section: "cast", text: "Into bikes and live shows.", origin: "stated" },
-    { section: "patterns", text: "Out late on weekends.", origin: "stated" },
+    { section: "territory", text: "Into shows and skating.", origin: "stated", entryKind: "rule" },
+    { section: "register", text: "Nobody is working.", origin: "stated", entryKind: "rule" },
   ]);
+  assert.deepEqual(turn.worlds, [{ name: "Late shift", sketch: "A territory with room in it." }]);
+  assert.equal(turn.settled, false);
   assert.equal(turn.reach, null, "a level outside this brand's list is not a recommendation");
   assert.deepEqual(turn.reachLevels, ["a new world"]);
   assert.equal(turn.model, "gpt-5.6-test");
