@@ -170,3 +170,47 @@ test("auditConstraints returns empty for no rules", () => {
   const audit = auditConstraints({ guardrails: [], exclusions: "", prompt: "anything" });
   assert.equal(audit.length, 0);
 });
+
+test("the measured proportion section states the ratio in plain words", async () => {
+  const { measuredProportionSection } = await import("../src/production/prompt-craft.js");
+  const tall = measuredProportionSection({ width: 500, height: 1200 });
+  assert.match(tall, /2\.4 times as tall as it is wide/);
+  assert.match(tall, /do not widen it/);
+  const wide = measuredProportionSection({ width: 1200, height: 500 });
+  assert.match(wide, /2\.4 times as wide as it is tall/);
+  const square = measuredProportionSection({ width: 1000, height: 1050 });
+  assert.match(square, /about as tall as it is wide/);
+  assert.equal(measuredProportionSection(null), "");
+  assert.equal(measuredProportionSection({ width: 0, height: 500 }), "");
+});
+
+test("the proportion compiles as its own scene section and is absent when unmeasured", async () => {
+  const { compileBrandWorldImagePackage } = await import("../src/production/package.js");
+  const section = (id, name) => ({ id, name, summary: `${name}.`, principles: [name], productionUse: name });
+  const inputs = {
+    approvedBrain: {
+      brandName: "Test Brand",
+      brandDescription: "A test brand",
+      synthesisSummary: "Summary.",
+      sourceCount: 1,
+      guidanceSections: [
+        section("foundation", "Brand foundation"), section("identity", "Identity"),
+        section("world", "World and story"), section("voice", "Voice and messaging"),
+        section("creative", "Creative direction"), section("rules", "Creative rules"),
+      ],
+      artifacts: {},
+    },
+    brainVersion: 1,
+    brief: { scene: "A can rests on a workbench in afternoon light.", placement: "Instagram feed", format: "4:5 portrait" },
+    lockedAsset: { source: { id: "s1", name: "Can cut-out" }, file: { name: "can.png", type: "image/png", blobPathname: "brand-world-system/clients/default/sources/can.png" } },
+  };
+  const withMeasure = compileBrandWorldImagePackage({ ...inputs, lockedAssetProportion: { width: 500, height: 1200 } });
+  assert.match(withMeasure.prompt, /SUPPLIED PRODUCT IMAGE/);
+  assert.match(withMeasure.prompt, /2\.4 times as tall as it is wide/);
+
+  const withoutMeasure = compileBrandWorldImagePackage({ ...inputs });
+  assert.doesNotMatch(withoutMeasure.prompt, /SUPPLIED PRODUCT IMAGE/);
+
+  const template = compileBrandWorldImagePackage({ ...inputs, brief: { scene: "A surface.", placement: "Brand template", format: "4:5 portrait", deliverable: "template" }, lockedAssetProportion: { width: 500, height: 1200 } });
+  assert.doesNotMatch(template.prompt, /SUPPLIED PRODUCT IMAGE/);
+});

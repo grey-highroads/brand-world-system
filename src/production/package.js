@@ -9,6 +9,7 @@ import {
   CAPTURE_CHARACTER,
   FACE_FRAMING_RULE,
   sceneProtectionBlock,
+  measuredProportionSection,
 } from "./prompt-craft.js";
 import { getZone } from "../copy/display-budget.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "./looks.js";
@@ -469,7 +470,7 @@ export function imageSizeForFormat(format) {
 // nothing, so the scene prompt stays a compiler output rather than a second
 // prompt to keep in step with the first. Left at its default the compiled
 // package is unchanged in every byte.
-export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null, look = null, scenePass = false }) {
+export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, brief, references = [], lockedAsset = null, lockedAssetProportion = null, templateAsset = null, campaign = null, product = null, copyOutputs = [], claimsSet = null, displayCopy = null, refusals = null, look = null, scenePass = false }) {
   if (!approvedBrain?.brandName || !Array.isArray(approvedBrain.guidanceSections)) {
     const error = new Error("Approve a Brand Brain before generating production work.");
     error.status = 409;
@@ -672,6 +673,17 @@ export function compileBrandWorldImagePackage({ approvedBrain, brainVersion, bri
       // check above and docs/findings-2026-08-31-prompt-reset.md.
       body: selectedLook ? selectedLook.line : CAPTURE_CHARACTER,
     },
+    // The supplied product image, as a measured fact (owner ruling,
+    // 2026-09-14 evening). Scene path only, and only when a locked asset is
+    // attached and was measured. This is compiler-attached fact in the
+    // 2026-09-07 sense, like display copy and the format: the ratio comes
+    // from the stored file, not from a rule library. When measurement fails
+    // upstream the proportion arrives null and the package compiles exactly
+    // as before.
+    (!isTemplate && !isSalesEnablement && lockedAsset && !scenePass) ? {
+      title: "Supplied product image",
+      body: measuredProportionSection(lockedAssetProportion),
+    } : null,
     // The People section stopped compiling on 2026-09-07, with the ruling that
     // the writer authors the prompt and the compiler attaches facts. It was a
     // scene-path section only, so it now compiles nowhere. How people are cast,

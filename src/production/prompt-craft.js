@@ -266,6 +266,32 @@ const SCENE_ASSET_FIDELITY = "The supplied product image governs artwork and geo
 const SCENE_SINGLE_READABLE_UNIT = "Exactly one unit of the product in the frame carries readable branding. Any other unit is turned away, occluded, cropped, or defocused so no lettering is legible on it.";
 const SCENE_STATE_LOCK = "The product is closed and sealed exactly as supplied. Do not render it opened, tipped, or with contents visible.";
 
+// The measured proportion of a locked asset, stated as a compiled fact
+// (owner ruling, 2026-09-14 evening). The render prior for common product
+// shapes beats adjectives nearly every time: "exactly," "skinny," and the
+// trade term "sleek" have all lost to the standard can (see the giant-can
+// finding of 2026-09-02). A ratio measured from the real cut-out is the
+// strongest language a prompt has for proportion, and it is computed, so
+// nobody has to remember to write it and it cannot drift from the file.
+// One short section in the out-loud register the 2026-09-02 revision set:
+// numbers and plain words, no trade terms, no stacked directives.
+export function measuredProportionSection(proportion) {
+  const width = Number(proportion?.width);
+  const height = Number(proportion?.height);
+  if (!width || !height || width < 1 || height < 1) return "";
+  const identity = "The supplied product image is the product in this scene. Reproduce its artwork and its shape exactly.";
+  const ratio = height / width;
+  if (ratio >= 0.9 && ratio <= 1.1) {
+    return `${identity} Measured from that image, the product is about as tall as it is wide. Hold that proportion at any size in the frame.`;
+  }
+  if (ratio > 1.1) {
+    const value = (Math.round(ratio * 10) / 10).toString();
+    return `${identity} Measured from that image, the product is ${value} times as tall as it is wide. Hold that proportion at any size in the frame, and do not widen it toward a more common product shape.`;
+  }
+  const inverse = (Math.round((width / height) * 10) / 10).toString();
+  return `${identity} Measured from that image, the product is ${inverse} times as wide as it is tall. Hold that proportion at any size in the frame, and do not stretch it toward a more common product shape.`;
+}
+
 function terminal(text) {
   return /[.!?]$/.test(text) ? text : `${text}.`;
 }

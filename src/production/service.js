@@ -389,12 +389,34 @@ export async function prepareProductionPackage(body, options) {
     }
   }
 
+  // Measure the locked asset (owner ruling, 2026-09-14 evening). The real
+  // cut-out's width and height, read from the stored file at compile time,
+  // become the measured proportion fact the package compiles. Reading uses
+  // the same guarded source reader the render itself uses, so whatever the
+  // render can load, this can measure. A failed measurement never blocks a
+  // compile: the proportion stays null and the package is byte-identical to
+  // one compiled before this existed.
+  let lockedAssetProportion = null;
+  if (lockedAsset?.file?.blobPathname) {
+    try {
+      const storedAsset = await options.brainStore.readSourceFile(lockedAsset.file.blobPathname);
+      const { default: sharp } = await import("sharp");
+      const measured = await sharp(storedAsset.bytes).metadata();
+      if (measured?.width > 0 && measured?.height > 0) {
+        lockedAssetProportion = { width: measured.width, height: measured.height };
+      }
+    } catch {
+      // Unmeasured assets compile exactly as before.
+    }
+  }
+
   const compileInputs = {
     approvedBrain,
     brainVersion,
     brief: body.brief,
     references,
     lockedAsset,
+    lockedAssetProportion,
     templateAsset,
     campaign: body.campaign || null,
     product,
