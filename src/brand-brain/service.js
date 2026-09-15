@@ -3,6 +3,7 @@ import { DEFAULT_REACH, PASS_IDS, PASS_LABELS, REACH_LEVELS, passStep, passWorld
 import { normalizeSourcesForSynthesis } from "./source-normalizer.js";
 import { enrichUrlSources } from "./source-reader.js";
 import { worldArtifacts } from "./world.js";
+import { directionRecordAsSource } from "../direction/record.js";
 
 // Re-exported so callers that already import the service keep working.
 export { worldArtifacts, selectWorldArtifacts } from "./world.js";
@@ -54,6 +55,32 @@ export async function saveBrandBrainSnapshot(snapshot, store) {
 const FIRST_PASS = PASS_IDS[0];
 const FINAL_PASS = PASS_IDS[PASS_IDS.length - 1];
 const FIRST_EVOLVED_PASS = PASS_IDS.find((id) => passWorld(id) === "evolved");
+const LAST_TODAY_PASS = FIRST_EVOLVED_PASS - 1;
+
+// The direction record, ADR 0021, read from the store when the store can
+// hold one. A store without the capability behaves exactly as before, which
+// is what keeps every earlier caller and every existing test unchanged.
+async function storedDirectionRecord(store) {
+  if (typeof store?.readDirection !== "function") return null;
+  return store.readDirection();
+}
+
+// The approved direction record as a source, or null. A proposed record is
+// not returned to synthesis: approval is the governance step, and the session
+// must not be the one surface that skips it.
+async function approvedDirectionSource(store) {
+  const record = await storedDirectionRecord(store);
+  return record?.status === "approved" ? directionRecordAsSource(record) : null;
+}
+
+// The direction source rides the evolved passes only, injected at read time
+// rather than persisted into the stored source set: the record itself is
+// stored beside the brain, versioned and inspectable, and the intake list
+// stays what the user supplied. The today passes never see it, which is the
+// filter ADR 0021 notes nothing else provides.
+function withApprovedDirection(sources, direction) {
+  return direction ? mergeIncrementalSources(sources, [direction]) : sources;
+}
 
 // An evolved-only rebuild (2026-09-09). The today world did not change, so the
 // four today passes are not run again; their results are seeded from the
@@ -106,11 +133,12 @@ async function runEvolvedStart(body, options) {
     throw error;
   }
   const reach = reachFor(body);
+  const direction = await approvedDirectionSource(store);
   const pass = await synthesize({
     apiKey: options.env.OPENAI_API_KEY,
     model: options.env.OPENAI_MODEL,
     passId: FIRST_EVOLVED_PASS,
-    sources,
+    sources: withApprovedDirection(sources, direction),
     priorPasses: todayResults,
     baseline: null,
     baselineVersion: null,
@@ -234,6 +262,26 @@ export function assembleBrainFromPasses(passResults) {
       reviewQuestions.push(question);
     }
   }
+  // A synthesis that stopped at the last today pass, waiting on a direction
+  // session, carries no evolved results. The evolved key is omitted rather
+  // than written empty, because an empty object reads as "an evolved world
+  // exists" to every worldArtifacts caller and to the app's evolved status.
+  const artifacts = {
+    today: {
+      dossier: one.dossier,
+      livedWorld: passResults[2]?.livedWorld,
+      storyArchitecture: passResults[3]?.storyArchitecture,
+      visualGrammar: passResults[4]?.visualGrammar,
+    },
+  };
+  if (PASS_IDS.some((id) => passWorld(id) === "evolved" && passResults[id])) {
+    artifacts.evolved = {
+      dossier: passResults[5]?.dossier,
+      livedWorld: passResults[6]?.livedWorld,
+      storyArchitecture: passResults[7]?.storyArchitecture,
+      visualGrammar: passResults[8]?.visualGrammar,
+    };
+  }
   return {
     brandName: one.brandName,
     brandDescription: one.brandDescription,
@@ -241,20 +289,7 @@ export function assembleBrainFromPasses(passResults) {
     cleanAssetCount: one.cleanAssetCount,
     guidanceSections: one.guidanceSections,
     reviewQuestions,
-    artifacts: {
-      today: {
-        dossier: one.dossier,
-        livedWorld: passResults[2]?.livedWorld,
-        storyArchitecture: passResults[3]?.storyArchitecture,
-        visualGrammar: passResults[4]?.visualGrammar,
-      },
-      evolved: {
-        dossier: passResults[5]?.dossier,
-        livedWorld: passResults[6]?.livedWorld,
-        storyArchitecture: passResults[7]?.storyArchitecture,
-        visualGrammar: passResults[8]?.visualGrammar,
-      },
-    },
+    artifacts,
   };
 }
 
@@ -363,6 +398,19 @@ async function runFirstPass(body, options) {
   const previousSources = incremental && Array.isArray(stored?.sources) ? stored.sources : [];
   const sources = incremental ? mergeIncrementalSources(previousSources, incomingSources) : incomingSources;
 
+  // Where this synthesis ends (ADR 0021). An initial synthesis for a brand
+  // with no approved direction record stops after the last today pass and
+  // saves the four today artifacts: the foundation is reviewed, the direction
+  // session runs, and the evolved passes run later through the evolved-only
+  // path once the record is approved. A brand with an approved record runs
+  // all eight as before, and so does one whose store cannot hold a record.
+  // Incremental updates are baseline work and always run the full set.
+  const direction = !incremental && typeof store?.readDirection === "function" ? await storedDirectionRecord(store) : null;
+  const finalPass =
+    !incremental && typeof store?.readDirection === "function" && direction?.status !== "approved"
+      ? LAST_TODAY_PASS
+      : FINAL_PASS;
+
   const pass = await synthesize({
     apiKey: options.env.OPENAI_API_KEY,
     model: options.env.OPENAI_MODEL,
@@ -387,6 +435,7 @@ async function runFirstPass(body, options) {
     synthesisSources: strippedForStorage(incomingSources),
     passResults: { 1: pass.result },
     passes: [{ pass: FIRST_PASS, responseId: pass.responseId, model: pass.model, usage: pass.usage || null }],
+    finalPass,
     nextPass: FIRST_PASS + 1,
     startedAt: new Date().toISOString(),
   };
@@ -411,12 +460,19 @@ async function runLaterPass(passId, body, options) {
     throw passError(passId, `the synthesis is waiting for pass ${inProgress.nextPass}. Start again from the first pass.`, 409);
   }
 
-  const sources = await rehydrateSources(inProgress.synthesisSources, store);
+  let sources = await rehydrateSources(inProgress.synthesisSources, store);
   // An evolved pass runs at the reach level on its request. The level is
   // recorded on the in-progress record from the first evolved pass so the
   // saved brain can say what its evolved world was built at.
   const evolved = passWorld(passId) === "evolved";
   const reach = evolved ? reachFor(body) : undefined;
+  // The approved direction record rides every evolved pass as a source,
+  // injected at read time. This is the seam ADR 0021 names: the today passes
+  // never see direction material, and the evolved passes read it through the
+  // same authority rules as any uploaded direction source.
+  if (evolved) {
+    sources = withApprovedDirection(sources, await approvedDirectionSource(store));
+  }
   const pass = await synthesize({
     apiKey: options.env.OPENAI_API_KEY,
     model: options.env.OPENAI_MODEL,
@@ -433,7 +489,12 @@ async function runLaterPass(passId, body, options) {
   const passes = [...inProgress.passes, { pass: passId, responseId: pass.responseId, model: pass.model, usage: pass.usage || null }];
   const reachRecord = evolved ? { reach: inProgress.reach || reach } : {};
 
-  if (passId !== FINAL_PASS) {
+  // Where this synthesis ends. An initial run for a brand with no approved
+  // direction record recorded LAST_TODAY_PASS on pass 1 (ADR 0021); every
+  // other run, and every in-progress record written before the field
+  // existed, ends at pass 8 as before.
+  const finalPass = PASS_IDS.includes(Number(inProgress.finalPass)) ? Number(inProgress.finalPass) : FINAL_PASS;
+  if (passId !== finalPass) {
     const next = { ...inProgress, ...reachRecord, passResults, passes, nextPass: passId + 1 };
     await store.writeInProgress(next);
     return passProgress(next);
@@ -492,7 +553,7 @@ async function runLaterPass(passId, body, options) {
     // for something the system stored. The in-progress record still goes, since
     // this synthesis is finished either way.
     await store.clearInProgress?.();
-    return { ...saved, dryRun: true, pass: FINAL_PASS, complete: true };
+    return { ...saved, dryRun: true, pass: finalPass, complete: true };
   }
 
   // A non-incremental synthesis replaces the stored payload rather than adding
@@ -523,7 +584,7 @@ async function runLaterPass(passId, body, options) {
 
   await store.write(saved);
   await store.clearInProgress?.();
-  return { ...saved, pass: FINAL_PASS, complete: true };
+  return { ...saved, pass: finalPass, complete: true };
 }
 
 // What a pass that is not the last one returns. The client needs to know which
