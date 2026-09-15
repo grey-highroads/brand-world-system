@@ -1,6 +1,6 @@
 # ADR 0021: Author the direction in a session, and keep prohibitions out of the prompt
 
-- Status: Proposed. Owner ruled on refusals and on where rules may reach during the drafting conversation, 2026-09-15; those rulings are applied to the decision text.
+- Status: Proposed. Owner ruled on refusals, on where rules may reach, on who runs the session, on how boards are stored, and on the model, all 2026-09-15. Rulings are recorded below and applied to the decision text.
 - Date: 2026-09-15
 - Owner: Higher Roads
 - Deciders: Grey rules. Chief architect drafts and verifies.
@@ -47,7 +47,7 @@ ADR 0019 built two worlds and a reach lever. Both work. What neither has is a wa
 
 **It is re-runnable and versioned.** A direction sharpens after the first twenty images. A later session reads the record and asks what changed.
 
-**The session records the model that wrote it,** following the writer's precedent. The session is a taste-bearing component and changing its model changes the worlds it produces.
+**The session runs on the synthesis model and records which one wrote the record,** following the writer's precedent, and is overridable by environment variable. The session is a taste-bearing component and changing its model changes the worlds it produces.
 
 ## Decision, part two: two kinds of session
 
@@ -93,10 +93,12 @@ Direction material arriving in the session rather than in phase one keeps it out
 
 **Whether influence should govern more than precedence among direction sources.** It is instructed on the evolved run only and not at all on the today run. Out of scope here.
 
-**Whether a brand with a settled audience may later reopen it.** One direction per brand is ruled. Whether the kind of direction can change is not.
+## Owner rulings, 2026-09-15, after drafting
+
+4. Grey runs the direction sessions for now. The agent is written for someone who knows the system and will reject a weak answer, so it can be terse and assume a lot. Whether a client can run one alone is a question for the outsider test rather than a design assumption.
+5. A board handed over in a session is stored both ways. The session's written reading of it, confirmed or corrected by the person in the session, is what synthesis reads, because prose travels intact where an unlabelled image does not. The file stays attached to the record so a reviewer can look at the board and judge whether the reading was fair.
+6. The session runs on OpenAI, in the same ecosystem as the rest of the pipeline. It defaults to the synthesis model rather than the writer model, because its job is holding a long instruction and exercising judgment, which is closer to synthesis. Following the writer's precedent, the model is overridable by environment variable and is recorded on every direction record.
 
 ## Open questions
 
-1. Does the session run with the client present, with Higher Roads, or either? The output differs, and the World Kit decision was written to remove the dependency on Higher Roads being in the room.
-2. Should the session read uploaded boards directly, and if so does the record store the image reference, the session's written reading of it, or both? The written reading travels through synthesis intact where the image currently cannot.
-3. What model runs the session. Synthesis runs on gpt-5.6 and the writer on gpt-4o, both VERIFIED. The session is closer to synthesis in what it has to hold at once. The prototype used a different provider and its quality should not be read as a prediction.
+**Whether a brand with a settled audience may later reopen it.** One direction per brand is ruled. Whether the kind of direction can change, from craft to world, is not.
