@@ -1313,6 +1313,18 @@ const state = {
   screen: "workspace",
   clients: [],
   activeClientId: "default",
+  // The direction session and its record (ADR 0021). The record is the
+  // artifact the session exists to produce; the turns are this browser's
+  // conversation and are not persisted, because the record carries the
+  // decisions and a transcript grows without bound.
+  direction: {
+    record: null,
+    loaded: false,
+    turns: [],
+    input: "",
+    busy: false,
+    error: "",
+  },
   products: {
     list: [],
     detail: null,
@@ -1594,6 +1606,7 @@ function currentCrumb() {
   if (state.screen === "brain-grammar-sample") return "Brand brain / Brand guidance / Visual Grammar sample";
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
+  if (state.screen === "direction-session") return "Brand brain / Direction session";
   if (state.screen === "chooser") return "Design Studio";
   if (state.screen === "studio-setup") return `Design Studio / ${escapeHtml(studioCategoryLabel(state.studio.category))}`;
   if (state.screen === "campaigns") return "Campaigns";
@@ -3962,6 +3975,8 @@ function renderArtifactLibrary() {
         </div>
       </aside>
     </section>
+
+    ${directionCard()}
 
     <section class="artifact-library-worlds">
       <div class="artifact-library-world-switch" role="tablist" aria-label="Brand world">
@@ -7532,6 +7547,7 @@ function render() {
   else if (state.screen === "brain-grammar-sample") root.innerHTML = renderGrammarSample();
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
+  else if (state.screen === "direction-session") root.innerHTML = renderDirectionSession();
   else if (state.screen === "studio-setup") root.innerHTML = renderStudioSetup();
   else if (state.screen === "campaigns") root.innerHTML = renderCampaigns();
   else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
@@ -7864,6 +7880,323 @@ async function hydrateStoredBrain() {
   }
 }
 
+// ---------------------------------------------------------------------------
+// The direction session (ADR 0021). A brand whose approved foundation records
+// no audience evidence authors its direction here, in a conversation with the
+// record filling beside it. The record is the point of the screen: each entry
+// says how it was arrived at, rejected entries stay visible and struck
+// through, and on approval the evolved passes read the record as a source.
+// The section ids mirror src/direction/record.js; this file cannot import it.
+// ---------------------------------------------------------------------------
+
+const DIRECTION_SECTION_GROUPS = [
+  { group: "Lived World", feeds: "Feeds the people and their moments", items: [
+    { id: "cast", label: "Who these people are" },
+    { id: "patterns", label: "How their days run" },
+    { id: "environments", label: "Where they spend time" },
+    { id: "social", label: "Who they are with" },
+  ] },
+  { group: "Visual Grammar", feeds: "Feeds the pictures", items: [
+    { id: "people", label: "People in frame" },
+    { id: "objects", label: "Objects" },
+    { id: "places", label: "Places and surfaces" },
+    { id: "light", label: "Light" },
+    { id: "camera", label: "Camera" },
+    { id: "rejects", label: "What the pictures refuse" },
+  ] },
+];
+
+const DIRECTION_SECTION_IDS = DIRECTION_SECTION_GROUPS.flatMap((group) => group.items.map((item) => item.id));
+
+const DIRECTION_ORIGIN_LABELS = { stated: "said", chosen: "picked", rejected: "ruled out" };
+
+function newDirectionRecord() {
+  const sections = {};
+  for (const id of DIRECTION_SECTION_IDS) sections[id] = [];
+  return {
+    kind: "direction-record",
+    directionKind: "world",
+    brandName: state.brandName || "",
+    status: "proposed",
+    version: 1,
+    sections,
+    reach: null,
+    model: "",
+    turns: 0,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+}
+
+function todayAudienceEvidence() {
+  return worldArtifactsOf(currentSynthesisResult, "today")?.livedWorld?.audienceEvidence || "";
+}
+
+function directionEntryTotal(record, keptOnly = false) {
+  return DIRECTION_SECTION_IDS.reduce((total, id) => {
+    const entries = record?.sections?.[id] || [];
+    return total + (keptOnly ? entries.filter((entry) => entry.origin !== "rejected").length : entries.length);
+  }, 0);
+}
+
+async function hydrateDirectionRecord() {
+  if (typeof fetch !== "function") return;
+  try {
+    const response = await fetch("/api/direction", { headers: { Accept: "application/json" } });
+    if (!response.ok) return;
+    const body = await readApiJson(response);
+    state.direction.record = body.record || null;
+    state.direction.loaded = true;
+    if (state.screen === "direction-session" || state.screen === "brain-artifacts") render();
+  } catch {
+    // The card renders from what is loaded; a failed read just means no record yet.
+  }
+}
+
+async function persistDirectionRecord() {
+  const record = state.direction.record;
+  if (typeof fetch !== "function" || !record || record.status === "approved") return;
+  try {
+    const response = await fetch("/api/direction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "save", record }),
+    });
+    if (response.ok) {
+      const body = await readApiJson(response);
+      if (body.record) state.direction.record = body.record;
+    }
+  } catch {
+    // The session stays usable; the next turn saves again.
+  }
+}
+
+const DIRECTION_OPENING_OPTIONS = ["Let me describe them", "Show me some territories first", "I know what it is NOT"];
+
+function directionOpeningTurn() {
+  const brand = state.brandName || "This brand";
+  return {
+    role: "session",
+    text: `The ${brand} foundation is approved, and it records no audience evidence: the people in its Lived World were reasoned from the brand's own material, and nobody has met them. This session decides who this is for and what the pictures are, and I am going to ask you rather than guess.\n\nStart wherever it is easiest. Who do you picture holding this, and where are they?`,
+    options: DIRECTION_OPENING_OPTIONS.slice(),
+  };
+}
+
+function openDirectionSession() {
+  if (!state.direction.record) state.direction.record = newDirectionRecord();
+  if (!state.direction.turns.length && state.direction.record.status !== "approved") {
+    state.direction.turns = [directionOpeningTurn()];
+  }
+  state.direction.error = "";
+  navigate("direction-session");
+}
+
+function applyDirectionEntry(entry) {
+  const record = state.direction.record;
+  if (!record || !DIRECTION_SECTION_IDS.includes(entry.section) || !entry.text) return;
+  const section = record.sections[entry.section];
+  if (section.some((existing) => existing.text.toLowerCase() === String(entry.text).toLowerCase())) return;
+  section.push({ text: entry.text, origin: entry.origin || "stated", at: new Date().toISOString() });
+}
+
+async function sendDirectionTurn(text, arrival) {
+  const message = String(text || "").trim();
+  if (!message || state.direction.busy) return;
+  const record = state.direction.record || newDirectionRecord();
+  state.direction.record = record;
+  state.direction.error = "";
+  state.direction.turns.push({ role: "person", text: message });
+  state.direction.busy = true;
+  render();
+  try {
+    const response = await fetch("/api/direction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "turn",
+        message,
+        arrival,
+        record,
+        turns: state.direction.turns.slice(0, -1).slice(-16),
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "That turn did not come back. Send it again.");
+    for (const entry of body.entries || []) applyDirectionEntry(entry);
+    if (body.reach) record.reach = body.reach;
+    if (body.model) record.model = body.model;
+    record.turns = state.direction.turns.filter((turn) => turn.role === "person").length;
+    record.updatedAt = new Date().toISOString();
+    state.direction.turns.push({
+      role: "session",
+      text: body.reply || "Go on.",
+      options: Array.isArray(body.options) ? body.options.slice(0, 4) : [],
+    });
+    void persistDirectionRecord();
+  } catch (error) {
+    state.direction.error = error.message || "That turn did not come back. Send it again.";
+  } finally {
+    state.direction.busy = false;
+    render();
+  }
+}
+
+async function approveDirectionRecord() {
+  const record = state.direction.record;
+  if (!record || state.direction.busy || !directionEntryTotal(record, true)) return;
+  state.direction.busy = true;
+  render();
+  try {
+    const response = await fetch("/api/direction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve", record }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The direction record could not be approved.");
+    state.direction.record = body.record;
+    recordBrainHistory(
+      `Direction record v${body.record.version} approved`,
+      "The evolved passes now read the direction as a source. Build the brand world, evolved, when you are ready.",
+      "complete",
+    );
+    setToast("The direction is approved. Build the evolved world when ready.");
+    navigate("brain-artifacts");
+  } catch (error) {
+    state.direction.error = error.message || "The direction record could not be approved.";
+    render();
+  } finally {
+    state.direction.busy = false;
+  }
+}
+
+// The card on the Artifacts screen that carries a brand through the ADR 0021
+// order: approve the foundation, hold the session, approve the record, build
+// the evolved world. It appears only where that order applies: the brand
+// today is approved, its audience is not established, and the evolved world
+// is not already built or waiting on its own approval.
+function directionCard() {
+  if (state.brain.artifactStatus !== "ready") return "";
+  if (todayAudienceEvidence() !== "not established") return "";
+  if (state.brain.evolvedStatus === "draft" || state.brain.evolvedStatus === "ready") return "";
+  const record = state.direction.record;
+  const approved = record?.status === "approved";
+  const started = Boolean(record) && directionEntryTotal(record) > 0;
+  const heading = approved ? "Direction approved" : started ? "Direction session in progress" : "This brand needs a direction";
+  const copy = approved
+    ? `Version ${record.version} is approved and the evolved passes will read it as a source. Build the brand world, evolved, when you are ready.`
+    : started
+    ? `${directionEntryTotal(record, true)} entries so far${record.reach ? `, reach recommended: ${record.reach.level}` : ""}. Continue the session, then approve the record.`
+    : "The foundation records no audience evidence, so the evolved world has nothing to reach from. Hold a direction session to decide who this is for and what the pictures are.";
+  return `
+    <section class="card direction-card">
+      <div class="card-header"><h2>${escapeHtml(heading)}</h2><span class="mini-pill">${approved ? `v${record.version}` : "Direction session"}</span></div>
+      <p class="page-description">${escapeHtml(copy)}</p>
+      <div class="direction-card-actions">
+        ${approved
+          ? `<button class="button primary" type="button" data-action="rebuild-evolved-world">Build the brand world, evolved</button>
+             <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
+          : `<button class="button primary" type="button" data-action="direction-open">${started ? "Continue the direction session" : "Start the direction session"}</button>`}
+      </div>
+    </section>
+  `;
+}
+
+function renderDirectionRecordPane(record, approved) {
+  const groups = DIRECTION_SECTION_GROUPS.map((group) => `
+    <div class="direction-group">
+      <div class="direction-group-head"><h3>${escapeHtml(group.group)}</h3><span>${escapeHtml(group.feeds)}</span></div>
+      ${group.items.map((item) => {
+        const entries = record?.sections?.[item.id] || [];
+        return `
+          <div class="direction-section">
+            <span class="direction-section-name">${escapeHtml(item.label)}</span>
+            ${entries.length
+              ? `<ul>${entries.map((entry) => `
+                  <li class="${entry.origin === "rejected" ? "rejected" : ""}">
+                    <span class="direction-tag ${escapeHtml(entry.origin)}">${escapeHtml(DIRECTION_ORIGIN_LABELS[entry.origin] || "said")}</span>
+                    <span class="direction-entry-text">${escapeHtml(entry.text)}</span>
+                  </li>`).join("")}</ul>`
+              : `<p class="direction-empty">Nothing yet</p>`}
+          </div>
+        `;
+      }).join("")}
+    </div>
+  `).join("");
+  const reach = record?.reach
+    ? `
+      <div class="direction-reach">
+        <h3>Recommended reach: <span>${escapeHtml(record.reach.level)}</span></h3>
+        <p>${escapeHtml(record.reach.because || "")}</p>
+        ${record.reach.tradeoff ? `<p>${escapeHtml(record.reach.tradeoff)}</p>` : ""}
+      </div>`
+    : "";
+  const canApprove = !approved && directionEntryTotal(record, true) > 0;
+  return `
+    <aside class="direction-record">
+      <div class="direction-record-head">
+        <h2>Direction record</h2>
+        <p>One per brand. Read as a source by the evolved passes once approved.</p>
+      </div>
+      ${groups}
+      ${reach}
+      <div class="direction-record-actions">
+        ${approved
+          ? `<span class="brain-status success">Approved v${record.version}</span>`
+          : `<button class="button primary" type="button" data-action="direction-approve" ${canApprove && !state.direction.busy ? "" : "disabled"}>Approve the direction</button>`}
+      </div>
+    </aside>
+  `;
+}
+
+function renderDirectionSession() {
+  const record = state.direction.record || newDirectionRecord();
+  const approved = record.status === "approved";
+  const personTurns = state.direction.turns.filter((turn) => turn.role === "person").length;
+  const overCap = personTurns >= 40;
+  const conversation = state.direction.turns.map((turn, turnIndex) => {
+    if (turn.role === "person") {
+      return `<div class="direction-turn person"><span class="direction-who">You</span><p>${escapeHtml(turn.text)}</p></div>`;
+    }
+    const options = (turn.options || []).map((option, optionIndex) => {
+      const resolved = turn.resolved;
+      return `<span class="direction-option ${resolved ? "resolved" : ""}">
+        <button type="button" data-action="direction-pick" data-turn="${turnIndex}" data-option="${optionIndex}" ${resolved || state.direction.busy ? "disabled" : ""}>${escapeHtml(option)}</button>
+        <button type="button" class="direction-option-drop" title="Rule this out" data-action="direction-drop" data-turn="${turnIndex}" data-option="${optionIndex}" ${resolved || state.direction.busy ? "disabled" : ""}>&times;</button>
+      </span>`;
+    }).join("");
+    return `<div class="direction-turn session"><span class="direction-who">Direction</span><p>${escapeHtml(turn.text)}</p>${options ? `<div class="direction-options">${options}</div>` : ""}</div>`;
+  }).join("");
+  return brainWorkspace(
+    "Direction session",
+    approved
+      ? "This direction is approved. The evolved passes read it as a source."
+      : "Say who this is for and what the pictures are. The record beside the conversation is what synthesis will read.",
+    `
+      <section class="direction-session">
+        <div class="direction-talk">
+          <div class="direction-scroll">
+            ${conversation}
+            ${state.direction.busy ? `<div class="direction-turn session"><span class="direction-who">Direction</span><p class="direction-thinking">Thinking</p></div>` : ""}
+          </div>
+          ${state.direction.error ? `<p class="direction-error">${escapeHtml(state.direction.error)}</p>` : ""}
+          ${approved ? "" : `
+            <div class="direction-composer">
+              ${overCap ? `<p class="direction-cap">This session has run ${personTurns} turns, which usually means it is failing to converge rather than producing a better record. Approve what is there, or close and come back.</p>` : ""}
+              <textarea rows="2" data-action="direction-input" placeholder="Answer in your own words, or pick from what it offers." ${state.direction.busy ? "disabled" : ""}>${escapeHtml(state.direction.input)}</textarea>
+              <div class="direction-composer-row">
+                <span>Picking an option records a choice. The small x records a rejection, which is kept and never proposed again.</span>
+                <button class="button primary" type="button" data-action="direction-send" ${state.direction.busy ? "disabled" : ""}>Send</button>
+              </div>
+            </div>`}
+        </div>
+        ${renderDirectionRecordPane(record, approved)}
+      </section>
+    `,
+    "direction-session-workspace",
+  );
+}
+
 function loadSampleSources() {
   brainBatch = JSON.parse(JSON.stringify(sampleBrainBatch));
   guidanceSections = JSON.parse(JSON.stringify(sampleGuidanceSections));
@@ -8097,6 +8430,10 @@ async function startBrainSynthesis() {
       }
       body = await readApiJson(response);
       if (!response.ok) throw new Error(body.error || "The Brand Brain could not be built.");
+      // The server says where this synthesis ends: pass 4 for a brand with no
+      // approved direction record (ADR 0021), pass 8 otherwise. The completed
+      // payload arrives on whichever pass finishes it.
+      if (body?.complete) break;
     }
     if (!body?.result) throw new Error("The Brand Brain came back without a result. Try again.");
     applySynthesisResult(body.result, {
@@ -9183,6 +9520,9 @@ async function readApiJson(response) {
 }
 
 root.addEventListener("input", (event) => {
+  if (event.target.matches('[data-action="direction-input"]')) {
+    state.direction.input = event.target.value;
+  }
   if (event.target.matches('[data-action="brain-source-url"]')) {
     state.brain.sourceUrl = event.target.value;
   }
@@ -10501,6 +10841,24 @@ root.addEventListener("click", (event) => {
   if (action === "retry-protections") void hydrateProtections(true);
   if (action === "start-brain-synthesis") startBrainSynthesis();
   if (action === "rebuild-evolved-world") void startEvolvedRebuild();
+  if (action === "direction-open") openDirectionSession();
+  if (action === "direction-send") {
+    const text = state.direction.input;
+    state.direction.input = "";
+    void sendDirectionTurn(text, "stated");
+  }
+  if (action === "direction-pick" || action === "direction-drop") {
+    const turn = state.direction.turns[Number(target.dataset.turn)];
+    const label = turn?.options?.[Number(target.dataset.option)];
+    if (turn && label && !turn.resolved && !state.direction.busy) {
+      turn.resolved = true;
+      void sendDirectionTurn(
+        action === "direction-pick" ? `I'll take: ${label}` : `Not that: ${label}`,
+        action === "direction-pick" ? "chosen" : "rejected",
+      );
+    }
+  }
+  if (action === "direction-approve") void approveDirectionRecord();
   if (action === "retry-brain-synthesis") startBrainSynthesis();
   if (action === "select-brain-exception") {
     state.brain.selectedExceptionId = target.dataset.id;
@@ -11844,6 +12202,7 @@ render();
 void hydrateClients();
 void loadCampaigns();
 void hydrateStoredBrain();
+void hydrateDirectionRecord();
 void hydrateProtections();
 // Outputs must hydrate before the production job so the job hydration
 // can check whether its output was already approved.
