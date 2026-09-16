@@ -2,6 +2,7 @@ import { DEFAULT_BRAND_BRAIN_MODEL, collectChatCompletionStream } from "../brand
 import { REACH_LEVELS } from "../brand-brain/schema.js";
 import { worldArtifacts } from "../brand-brain/world.js";
 import { selectApprovedBaseline } from "../brand-brain/service.js";
+import { buildWorldAuthoringInstruction, worldAuthoringModel, worldAuthoringSchema, worldFromAuthoringResult } from "./author.js";
 import {
   DIRECTION_ENTRY_KINDS,
   DIRECTION_ENTRY_ORIGINS,
@@ -101,12 +102,17 @@ function passageList(values) {
 // facts, the refusals, and the honest statement that the audience portrait is
 // a placeholder. The session must never re-ask a settled question, and it
 // must never treat the placeholder people as settled.
+// The foundation the session needs is the brand facts, nothing more. It runs
+// off the first pass, which reads the sources and writes the dossier, rather
+// than waiting for four passes and an approval. The session is where the
+// world gets decided, so making it wait behind a full synthesis of a world
+// nobody has directed yet was the wrong order.
 export function directionSessionFoundation(saved) {
-  const root = selectApprovedBaseline(saved);
+  const root = selectApprovedBaseline(saved) || saved?.result;
   if (!root) return null;
-  const today = worldArtifacts(root, "today");
-  const dossier = today?.dossier || {};
-  const lived = today?.livedWorld || {};
+  const today = worldArtifacts(root, "today") || {};
+  const dossier = today.dossier || root.dossier || {};
+  const lived = today.livedWorld || {};
   return {
     brand: root.brandName || "",
     description: root.brandDescription || "",
@@ -273,11 +279,11 @@ export async function runDirectionSessionTurn(body, options) {
   const complete = options.complete || completeWithChatCompletions;
 
   const saved = await store.read();
-  const root = selectApprovedBaseline(saved);
-  const lived = worldArtifacts(root, "today")?.livedWorld;
-  if (!root || !lived) {
-    throw sessionError("Approve the brand today before holding a direction session.", 409);
+  const root = selectApprovedBaseline(saved) || saved?.result;
+  if (!root || !(worldArtifacts(root, "today")?.dossier || root.dossier)) {
+    throw sessionError("Read the brand's sources first. The session needs the brand facts to build on.", 409);
   }
+  const lived = worldArtifacts(root, "today")?.livedWorld || {};
   // One session for every brand (finding, 2026-09-15). A settled audience
   // changes what the session holds fixed and which reach levels it may
   // recommend, not whether it runs. ADR 0021 split this into two kinds; the
@@ -360,4 +366,56 @@ export async function runDirectionSessionTurn(body, options) {
     reachLevels,
     model: completion.model || model,
   };
+}
+
+// Write the world. Called once, when the owner says the session has landed.
+// Everything the session gathered goes in and one long document comes out.
+export async function authorBrandWorld(body, options) {
+  const store = options.store;
+  const fetchImpl = options.fetchImpl || fetch;
+  const complete = options.complete || completeWithChatCompletions;
+
+  const saved = await store.read();
+  const root = selectApprovedBaseline(saved) || saved?.result;
+  if (!root) throw sessionError("Read the brand's sources first.", 409);
+
+  const foundation = directionSessionFoundation(saved);
+  const transcript = cleanTurns(body?.turns)
+    .map((turn) => `${turn.role === "session" ? "PROPOSED" : "OWNER"}: ${turn.text}`)
+    .join("\n\n");
+  const landed = String(body?.landed || "").trim().slice(0, 4000);
+  const decisions = Array.isArray(body?.decisions) ? body.decisions.slice(0, 80) : [];
+
+  const model = worldAuthoringModel(options.env);
+  const request = {
+    model,
+    store: false,
+    stream: true,
+    stream_options: { include_usage: true },
+    messages: [
+      { role: "developer", content: buildWorldAuthoringInstruction({ foundation, transcript, landed, decisions }) },
+      { role: "user", content: "Write the world now. Reply with the JSON object and nothing else." },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: { name: "brand_world", strict: true, schema: worldAuthoringSchema },
+    },
+  };
+
+  const completion = await complete({ apiKey: options.env?.OPENAI_API_KEY, request, fetchImpl });
+  const raw = completion?.choices?.[0]?.message;
+  if (raw?.refusal) throw new Error(raw.refusal);
+  let parsed;
+  try {
+    parsed = JSON.parse(raw?.content || "");
+  } catch {
+    throw new Error("The world did not come back as usable JSON. Try again.");
+  }
+
+  return worldFromAuthoringResult({
+    parsed,
+    brandName: root.brandName || "",
+    model: completion.model || model,
+    decisions,
+  });
 }
