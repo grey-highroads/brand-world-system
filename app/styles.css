@@ -10141,3 +10141,15 @@ button.ws-attention-item:hover {
   padding: 5px 10px;
   margin-bottom: 14px;
 }
+
+.direction-turn.earlier {
+  opacity: 0.55;
+}
+
+.direction-turn.earlier p {
+  font-size: 14px;
+}
+
+.direction-land {
+  margin-bottom: 14px;
+}
