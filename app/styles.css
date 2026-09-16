@@ -10040,3 +10040,68 @@ button.ws-attention-item:hover {
   color: var(--muted);
   font-style: normal;
 }
+
+/* The brand world document. */
+.world-document {
+  max-width: 76ch;
+  background: var(--paper-50);
+  border: 1px solid var(--ink-700);
+  border-radius: var(--radius-lg);
+  padding: 28px 32px;
+}
+
+.world-section {
+  margin-bottom: 26px;
+}
+
+.world-section:last-child {
+  margin-bottom: 0;
+}
+
+.world-section h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.world-section p {
+  margin: 0 0 12px;
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+.world-section ul {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.world-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.direction-land {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 16px;
+  background: var(--paper-100);
+  border: 1px solid var(--ink-700);
+  border-left: 2px solid var(--gold);
+  border-radius: var(--radius-md);
+}
+
+.direction-land p {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
