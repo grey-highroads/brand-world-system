@@ -443,12 +443,14 @@ test("the world round-trips, counts its words, and renders as one piece of prose
 });
 
 test("the authoring instruction sends the facts, the session, and the decisions", async () => {
-  const { buildWorldAuthoringInstruction, worldAuthoringSchema } = await import("../src/direction/author.js");
+  const { WORLD_STAGES, buildWorldAuthoringInstruction, worldAuthoringSchemaFor } = await import("../src/direction/author.js");
   const instruction = buildWorldAuthoringInstruction({
     foundation: { brand: "MycoPop", productTruth: "No caffeine." },
     transcript: "PROPOSED: Two worlds.\n\nOWNER: The second one, without the garage.",
     landed: "The second one.",
     decisions: [{ text: "No garages.", because: "Reads as labor.", scope: "this brand", active: true }],
+    stageId: "ground",
+    written: {},
   });
   assert.match(instruction, /No caffeine/);
   assert.match(instruction, /without the garage/);
@@ -457,9 +459,27 @@ test("the authoring instruction sends the facts, the session, and the decisions"
   assert.match(instruction, /casting range, never a cast/);
   assert.match(instruction, /twenty pictures of tables/);
   assert.doesNotMatch(instruction, /\u2014/);
-  // Every section the document holds is asked for in one call, so the parts
-  // are written against each other rather than separately.
-  assert.deepEqual(Object.keys(worldAuthoringSchema.properties.sections.properties).length, 9);
+  // The document is written in three stages, and every section belongs to
+  // exactly one of them. A later stage reads what the earlier ones wrote, so
+  // the parts are still written against each other.
+  const staged = WORLD_STAGES.flatMap((stage) => stage.sections);
+  assert.equal(staged.length, 9);
+  assert.equal(new Set(staged).size, 9);
+  assert.deepEqual(Object.keys(worldAuthoringSchemaFor("ground").properties.sections.properties), ["thesis", "people", "life"]);
+  assert.equal("title" in worldAuthoringSchemaFor("ground").properties, true);
+  assert.equal("title" in worldAuthoringSchemaFor("reach").properties, false);
+
+  const later = buildWorldAuthoringInstruction({
+    foundation: { brand: "MycoPop" },
+    transcript: "",
+    landed: "",
+    decisions: [],
+    stageId: "pictures",
+    written: { people: "Culturally curious adults who go to shows." },
+  });
+  assert.match(later, /WHAT IS ALREADY WRITTEN/);
+  assert.match(later, /Culturally curious adults who go to shows/);
+  assert.match(later, /do not restate them/);
 });
 
 test("an approved world replaces the derived artifacts in the writer's context", async () => {
