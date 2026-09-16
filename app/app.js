@@ -7954,7 +7954,7 @@ async function hydrateDirectionRecord() {
     const response = await fetch("/api/direction", { headers: { Accept: "application/json" } });
     if (!response.ok) return;
     const body = await readApiJson(response);
-    state.direction.record = body.record || null;
+    state.direction.record = migrateDirectionRecord(body.record) || null;
     state.direction.world = body.world || null;
     state.direction.loaded = true;
     if (state.screen === "direction-session" || state.screen === "brain-artifacts") render();
@@ -7994,15 +7994,39 @@ function directionOpeningTurn() {
 }
 
 function openDirectionSession() {
-  if (!state.direction.record) state.direction.record = newDirectionRecord();
+  state.direction.record = migrateDirectionRecord(state.direction.record) || newDirectionRecord();
   if (!state.direction.turns.length) state.direction.turns = [directionOpeningTurn()];
   state.direction.error = "";
   navigate("direction-session");
 }
 
+const DIRECTION_SECTION_MOVES = {
+  cast: "people",
+  patterns: "register",
+  environments: "places",
+  social: "register",
+  rejects: "people",
+  territory: "territory",
+};
+
+function migrateDirectionRecord(record) {
+  if (!record || typeof record !== "object") return record;
+  const sections = {};
+  for (const id of DIRECTION_SECTION_IDS) sections[id] = [];
+  for (const [id, entries] of Object.entries(record.sections || {})) {
+    const target = DIRECTION_SECTION_IDS.includes(id) ? id : DIRECTION_SECTION_MOVES[id];
+    if (!target || !sections[target]) continue;
+    for (const entry of Array.isArray(entries) ? entries : []) {
+      if (entry?.text) sections[target].push({ ...entry, entryKind: entry.entryKind === "example" ? "example" : "rule" });
+    }
+  }
+  return { ...record, sections };
+}
+
 function applyDirectionEntry(entry) {
   const record = state.direction.record;
   if (!record || !DIRECTION_SECTION_IDS.includes(entry.section) || !entry.text) return;
+  if (!Array.isArray(record.sections[entry.section])) record.sections[entry.section] = [];
   const section = record.sections[entry.section];
   if (section.some((existing) => existing.text.toLowerCase() === String(entry.text).toLowerCase())) return;
   section.push({ text: entry.text, origin: entry.origin || "stated", entryKind: entry.entryKind === "example" ? "example" : "rule", at: new Date().toISOString() });
