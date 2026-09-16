@@ -8332,39 +8332,62 @@ async function describeFetchFailure(error, response) {
   return `The request never reached the server or was cut off before it answered. ${error?.message || ""}`.trim();
 }
 
+// Writing the world. Three requests, in order, each carrying what is written
+// so far. One request writing all nine sections answered nothing for minutes
+// and the connection was cut before it came back, so the document is written
+// in stages that each answer quickly and are still written against each other.
+const WORLD_STAGE_LABELS = {
+  ground: "the people and their days",
+  pictures: "the places, light and camera",
+  reach: "the range this world produces",
+};
+
+async function authorWorldStage(stage, world) {
+  const record = state.direction.record;
+  const response = await fetch("/api/direction", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      action: "author-world",
+      stage,
+      world,
+      turns: state.direction.turns.slice(-16),
+      landed: state.direction.turns.filter((turn) => turn.role === "person").slice(-1)[0]?.text || "",
+      // Kept lines are the direction. Ruled out lines travel separately, as
+      // what this world is not, so authoring does not read a rejection as an
+      // instruction.
+      decisions: DIRECTION_SECTION_IDS.flatMap((id) =>
+        (record?.sections?.[id] || [])
+          .filter((entry) => entry.origin === "rejected")
+          .map((entry) => ({ text: `Not this: ${entry.text}`, because: "Ruled out in the session.", scope: "this brand", active: true })),
+      ),
+      direction: DIRECTION_SECTION_IDS.flatMap((id) =>
+        (record?.sections?.[id] || [])
+          .filter((entry) => entry.origin !== "rejected")
+          .map((entry) => `${id}: ${entry.text}`),
+      ).join("\n"),
+    }),
+  });
+  if (!response.ok) throw new Error(await describeFetchFailure(null, response));
+  return readApiJson(response);
+}
+
 async function authorTheWorld() {
   if (state.direction.authoring) return;
-  const record = state.direction.record;
   state.direction.authoring = true;
   state.direction.error = "";
-  render();
   try {
-    const response = await fetch("/api/direction", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        action: "author-world",
-        turns: state.direction.turns.slice(-16),
-        landed: state.direction.turns.filter((turn) => turn.role === "person").slice(-1)[0]?.text || "",
-        // Kept lines are the direction. Ruled out lines travel separately, as
-        // what this world is not, so the authoring pass does not read a
-        // rejection as an instruction.
-        decisions: DIRECTION_SECTION_IDS.flatMap((id) =>
-          (record?.sections?.[id] || [])
-            .filter((entry) => entry.origin === "rejected")
-            .map((entry) => ({ text: `Not this: ${entry.text}`, because: "Ruled out in the session.", scope: "this brand", active: true })),
-        ),
-        direction: DIRECTION_SECTION_IDS.flatMap((id) =>
-          (record?.sections?.[id] || [])
-            .filter((entry) => entry.origin !== "rejected")
-            .map((entry) => `${id}: ${entry.text}`),
-        ).join("\n"),
-      }),
-    });
-    if (!response.ok) throw new Error(await describeFetchFailure(null, response));
-    const body = await readApiJson(response);
-    state.direction.world = body.world;
-    recordBrainHistory(`The world was written, v${body.world.version}`, "Read it, then approve it so production writes from it.", "complete");
+    let stage = "ground";
+    let world = null;
+    while (stage) {
+      state.direction.authoringStage = WORLD_STAGE_LABELS[stage] || stage;
+      render();
+      const result = await authorWorldStage(stage, world);
+      world = result.world;
+      state.direction.world = world;
+      stage = result.nextStage;
+    }
+    recordBrainHistory(`The world was written, v${world.version}`, "Read it, then approve it so production writes from it.", "complete");
     navigate("brand-world");
   } catch (error) {
     state.direction.error = error instanceof TypeError
@@ -8372,6 +8395,7 @@ async function authorTheWorld() {
       : error.message || "The world could not be written.";
   } finally {
     state.direction.authoring = false;
+    state.direction.authoringStage = "";
     render();
   }
 }
