@@ -8181,10 +8181,11 @@ function renderDirectionRecordPane(record, approved) {
           <div class="direction-section">
             <span class="direction-section-name">${escapeHtml(item.label)}</span>
             ${entries.length
-              ? `<ul>${entries.map((entry) => `
+              ? `<ul>${entries.map((entry, entryIndex) => `
                   <li class="${entry.origin === "rejected" ? "rejected" : ""}">
                     <span class="direction-tag ${escapeHtml(entry.origin)}">${escapeHtml(DIRECTION_ORIGIN_LABELS[entry.origin] || "said")}</span>
-                    <span class="direction-entry-text">${escapeHtml(entry.text)}</span>
+                    <span class="direction-entry-text">${entry.entryKind === "example" ? "<em>For example: </em>" : ""}${escapeHtml(entry.text)}</span>
+                    <button type="button" class="direction-entry-cut" title="Cut this line" data-action="direction-cut" data-section="${escapeHtml(item.id)}" data-index="${entryIndex}">&times;</button>
                   </li>`).join("")}</ul>`
               : `<p class="direction-empty">Nothing yet</p>`}
           </div>
@@ -8207,7 +8208,8 @@ function renderDirectionRecordPane(record, approved) {
     <aside class="direction-record">
       <div class="direction-record-head">
         <h2>Direction record</h2>
-        <p>One per brand. Read as a source by the evolved passes once approved.</p>
+        <p>What the session settled. The world is written from this, so cut anything you do not want carried into it.</p>
+        <button type="button" class="button secondary small" data-action="direction-clear">Start the record fresh</button>
       </div>
       ${groups}
       ${reach}
@@ -8328,14 +8330,19 @@ async function authorTheWorld() {
         action: "author-world",
         turns: state.direction.turns.slice(-16),
         landed: state.direction.turns.filter((turn) => turn.role === "person").slice(-1)[0]?.text || "",
+        // Kept lines are the direction. Ruled out lines travel separately, as
+        // what this world is not, so the authoring pass does not read a
+        // rejection as an instruction.
         decisions: DIRECTION_SECTION_IDS.flatMap((id) =>
-          (record?.sections?.[id] || []).map((entry) => ({
-            text: entry.text,
-            because: "",
-            scope: entry.origin === "rejected" ? "this brand" : "this brand",
-            active: true,
-          })),
+          (record?.sections?.[id] || [])
+            .filter((entry) => entry.origin === "rejected")
+            .map((entry) => ({ text: `Not this: ${entry.text}`, because: "Ruled out in the session.", scope: "this brand", active: true })),
         ),
+        direction: DIRECTION_SECTION_IDS.flatMap((id) =>
+          (record?.sections?.[id] || [])
+            .filter((entry) => entry.origin !== "rejected")
+            .map((entry) => `${id}: ${entry.text}`),
+        ).join("\n"),
       }),
     });
     const body = await readApiJson(response);
@@ -11105,6 +11112,26 @@ root.addEventListener("click", (event) => {
   }
   if (action === "direction-approve") void approveDirectionRecord();
   if (action === "direction-author-world") void authorTheWorld();
+  if (action === "direction-cut") {
+    const section = state.direction.record?.sections?.[target.dataset.section];
+    if (Array.isArray(section)) {
+      section.splice(Number(target.dataset.index), 1);
+      state.direction.record.updatedAt = new Date().toISOString();
+      void persistDirectionRecord();
+      render();
+    }
+  }
+  if (action === "direction-clear") {
+    // Everything in the record goes into the world, so a session that changed
+    // direction needs a way to leave the old one behind rather than carrying
+    // it forward under a strikethrough.
+    const held = directionEntryTotal(state.direction.record);
+    if (held && window.confirm(`Clear all ${held} lines from the record? The conversation stays, and anything decided from here starts a clean record.`)) {
+      state.direction.record = newDirectionRecord();
+      void persistDirectionRecord();
+      render();
+    }
+  }
   if (action === "world-open") navigate("brand-world");
   if (action === "world-approve") void approveTheWorld();
   if (action === "retry-brain-synthesis") startBrainSynthesis();
