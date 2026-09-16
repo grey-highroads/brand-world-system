@@ -7901,17 +7901,15 @@ async function hydrateStoredBrain() {
 // ---------------------------------------------------------------------------
 
 const DIRECTION_SECTION_GROUPS = [
-  { group: "The direction", feeds: "What the world is", items: [
+  { group: "", feeds: "", items: [
     { id: "territory", label: "The world" },
-    { id: "register", label: "The register" },
-  ] },
-  { group: "What the pictures hold", feeds: "What every frame obeys", items: [
+    { id: "register", label: "How people are in it" },
     { id: "people", label: "Who is in frame" },
     { id: "places", label: "Where it happens" },
-    { id: "objects", label: "What is in the room" },
-    { id: "light", label: "How it is lit" },
-    { id: "camera", label: "How it is shot" },
-    { id: "fixed", label: "What must not change" },
+    { id: "objects", label: "What is around them" },
+    { id: "light", label: "Light" },
+    { id: "camera", label: "Camera" },
+    { id: "fixed", label: "What stays" },
   ] },
 ];
 
@@ -7965,7 +7963,7 @@ async function hydrateDirectionRecord() {
 
 async function persistDirectionRecord() {
   const record = state.direction.record;
-  if (typeof fetch !== "function" || !record || record.status === "approved") return;
+  if (typeof fetch !== "function" || !record) return;
   try {
     const response = await fetch("/api/direction", {
       method: "POST",
@@ -8174,7 +8172,7 @@ function directionCard() {
 function renderDirectionRecordPane(record, approved) {
   const groups = DIRECTION_SECTION_GROUPS.map((group) => `
     <div class="direction-group">
-      <div class="direction-group-head"><h3>${escapeHtml(group.group)}</h3><span>${escapeHtml(group.feeds)}</span></div>
+      ${group.group ? `<div class="direction-group-head"><h3>${escapeHtml(group.group)}</h3><span>${escapeHtml(group.feeds)}</span></div>` : ""}
       ${group.items.map((item) => {
         const entries = record?.sections?.[item.id] || [];
         return `
@@ -8207,8 +8205,8 @@ function renderDirectionRecordPane(record, approved) {
   return `
     <aside class="direction-record">
       <div class="direction-record-head">
-        <h2>Direction record</h2>
-        <p>What the session settled. The world is written from this, so cut anything you do not want carried into it.</p>
+        <h2>What you have settled</h2>
+        <p>Notes from this conversation, not the finished thing. The world gets written from these, so cut anything you do not want carried in.</p>
         <button type="button" class="button secondary small" data-action="direction-clear">Start the record fresh</button>
       </div>
       ${groups}
@@ -8230,6 +8228,11 @@ function renderDirectionSession() {
   // never moves between turns.
   const turnIndex = state.direction.turns.map((turn) => turn.role).lastIndexOf("session");
   const current = turnIndex >= 0 ? state.direction.turns[turnIndex] : null;
+  const earlier = state.direction.turns.slice(0, Math.max(turnIndex, 0)).map((turn) => `
+    <div class="direction-turn ${turn.role === "person" ? "person" : "session"} earlier">
+      <span class="direction-who">${turn.role === "person" ? "You" : "Direction"}</span>
+      <p>${escapeHtml(turn.text)}</p>
+    </div>`).join("");
   const worlds = current && !state.direction.busy
     ? (current.worlds || []).map((world, worldIndex) => `
         <article class="direction-world ${current.resolved ? "resolved" : ""}">
@@ -8252,7 +8255,7 @@ function renderDirectionSession() {
     : "";
   const filledSections = DIRECTION_SECTION_IDS.filter((id) => (record.sections?.[id] || []).some((entry) => entry.origin !== "rejected")).length;
   const conversation = current
-    ? `<div class="direction-turn session"><span class="direction-who">Direction</span>${
+    ? `${earlier}<div class="direction-turn session"><span class="direction-who">Direction</span>${
         state.direction.busy
           ? `<p class="direction-thinking">Thinking</p>`
           : `<p>${escapeHtml(current.text)}</p>${worlds ? `<div class="direction-worlds">${worlds}</div>` : ""}${options ? `<div class="direction-options">${options}</div>` : ""}`
@@ -8264,6 +8267,10 @@ function renderDirectionSession() {
       ? "This direction is approved. The evolved passes read it as a source."
       : "Say who this is for and what the pictures are. The record beside the conversation is what synthesis will read.",
     `
+      <div class="direction-land">
+        <p>This conversation decides the direction. When it has landed, the world gets written from it, and that document is what production reads.</p>
+        <button class="button primary" type="button" data-action="direction-author-world" ${state.direction.authoring || personTurns < 1 ? "disabled" : ""}>${state.direction.authoring ? "Writing the world" : "Write the world"}</button>
+      </div>
       <section class="direction-session">
         <div class="direction-talk">
           <div class="direction-scroll">
@@ -8282,10 +8289,6 @@ function renderDirectionSession() {
             </div>`}
         </div>
         ${renderDirectionRecordPane(record, approved)}
-        <div class="direction-land">
-          <p>When the world has landed, write it out. It takes a minute and produces the document everything else comes from.</p>
-          <button class="button primary" type="button" data-action="direction-author-world" ${state.direction.authoring || personTurns < 1 ? "disabled" : ""}>${state.direction.authoring ? "Writing the world" : "Write the world"}</button>
-        </div>
       </section>
     `,
     "direction-session-workspace",
@@ -8316,6 +8319,19 @@ function worldHasText(world) {
 
 // Write the world from everything the session gathered. One call, and it
 // takes a while, because it is writing the whole document.
+async function describeFetchFailure(error, response) {
+  if (response) {
+    let detail = "";
+    try {
+      detail = (await response.clone().text()).slice(0, 300);
+    } catch {
+      detail = "";
+    }
+    return `The server answered ${response.status}. ${detail || "No detail came back."}`;
+  }
+  return `The request never reached the server or was cut off before it answered. ${error?.message || ""}`.trim();
+}
+
 async function authorTheWorld() {
   if (state.direction.authoring) return;
   const record = state.direction.record;
@@ -8345,13 +8361,15 @@ async function authorTheWorld() {
         ).join("\n"),
       }),
     });
+    if (!response.ok) throw new Error(await describeFetchFailure(null, response));
     const body = await readApiJson(response);
-    if (!response.ok) throw new Error(body.error || "The world could not be written.");
     state.direction.world = body.world;
     recordBrainHistory(`The world was written, v${body.world.version}`, "Read it, then approve it so production writes from it.", "complete");
     navigate("brand-world");
   } catch (error) {
-    state.direction.error = error.message || "The world could not be written.";
+    state.direction.error = error instanceof TypeError
+      ? await describeFetchFailure(error, null)
+      : error.message || "The world could not be written.";
   } finally {
     state.direction.authoring = false;
     render();
