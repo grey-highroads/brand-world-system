@@ -7983,18 +7983,19 @@ async function persistDirectionRecord() {
 
 function directionOpeningTurn() {
   const brand = state.brandName || "this brand";
+  const carried = directionEntryTotal(state.direction.record, true);
   return {
     role: "session",
-    text: `Give me a line or two about where you want ${brand} to live. Twenty five words is plenty, and a rough steer is fine. I will come back with two or three worlds built out, and you kill what is wrong.`,
+    text: carried
+      ? `There is a direction on file for ${brand} with ${carried} ${carried === 1 ? "entry" : "entries"} in it, and I have read it. Tell me where you actually want this to go, in a line or two, and I will come back with two or three worlds built out. Say if the existing direction is wrong and I will leave it behind.`
+      : `Give me a line or two about where you want ${brand} to live. Twenty five words is plenty, and a rough steer is fine. I will come back with two or three worlds built out, and you kill what is wrong.`,
     options: [],
   };
 }
 
 function openDirectionSession() {
   if (!state.direction.record) state.direction.record = newDirectionRecord();
-  if (!state.direction.turns.length && state.direction.record.status !== "approved") {
-    state.direction.turns = [directionOpeningTurn()];
-  }
+  if (!state.direction.turns.length) state.direction.turns = [directionOpeningTurn()];
   state.direction.error = "";
   navigate("direction-session");
 }
@@ -8175,7 +8176,9 @@ function renderDirectionRecordPane(record, approved) {
         ${record.reach.tradeoff ? `<p>${escapeHtml(record.reach.tradeoff)}</p>` : ""}
       </div>`
     : "";
-  const canApprove = !approved && directionEntryTotal(record, true) > 0;
+  // The record no longer has its own approval step. It is session notes that
+  // feed the world, and the world is the thing that gets approved.
+  const canApprove = false;
   return `
     <aside class="direction-record">
       <div class="direction-record-head">
@@ -8185,9 +8188,7 @@ function renderDirectionRecordPane(record, approved) {
       ${groups}
       ${reach}
       <div class="direction-record-actions">
-        ${approved
-          ? `<span class="brain-status success">Approved v${record.version}</span>`
-          : `<button class="button primary" type="button" data-action="direction-approve" ${canApprove && !state.direction.busy ? "" : "disabled"}>Approve the direction</button>`}
+        <span class="direction-record-note">${directionEntryTotal(record, true)} kept, ${directionEntryTotal(record) - directionEntryTotal(record, true)} ruled out. This feeds the world you write at the end.</span>
       </div>
     </aside>
   `;
@@ -8195,7 +8196,7 @@ function renderDirectionRecordPane(record, approved) {
 
 function renderDirectionSession() {
   const record = state.direction.record || newDirectionRecord();
-  const approved = record.status === "approved";
+  const approved = state.direction.world?.status === "approved";
   const personTurns = state.direction.turns.filter((turn) => turn.role === "person").length;
   const overCap = personTurns >= 8;
   // Only the current question is on screen. Every answer lands in the record
