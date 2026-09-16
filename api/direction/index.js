@@ -86,15 +86,17 @@ export default async function handler(request, response) {
     // document everything else comes from. It is saved as proposed; the owner
     // reads it and approves it separately.
     if (action === "author-world") {
-      const world = await authorBrandWorld(body, { store, env: process.env });
+      const { world, stage, nextStage } = await authorBrandWorld(body, { store, env: process.env });
       if (!worldIsWritten(world)) {
-        sendJson(response, 502, { error: "The world came back empty. Run it again." });
+        sendJson(response, 502, { error: "That part of the world came back empty. Run it again." });
         return;
       }
+      // Saved after every stage, so a dropped connection later costs one
+      // stage rather than the whole document.
       const stored = await store.readWorld();
-      if (stored) world.version = stored.version + 1;
+      world.version = body.world ? body.world.version || 1 : (stored ? stored.version + 1 : 1);
       await store.writeWorld(world);
-      sendJson(response, 200, { world });
+      sendJson(response, 200, { world, stage, nextStage });
       return;
     }
 
