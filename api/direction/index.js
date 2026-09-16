@@ -1,6 +1,7 @@
 import { createVercelBlobBrandBrainStore } from "../../src/brand-brain/store.js";
 import { directionEntryCount, directionKeptEntryCount, normalizeDirectionRecord } from "../../src/direction/record.js";
-import { runDirectionSessionTurn } from "../../src/direction/session.js";
+import { authorBrandWorld, runDirectionSessionTurn } from "../../src/direction/session.js";
+import { normalizeWorld, worldIsWritten } from "../../src/direction/world.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 
 // The direction record and its session (ADR 0021). One dispatching handler,
@@ -28,7 +29,7 @@ export default async function handler(request, response) {
     const store = createVercelBlobBrandBrainStore({ clientId });
 
     if (request.method === "GET") {
-      sendJson(response, 200, { record: await store.readDirection() });
+      sendJson(response, 200, { record: await store.readDirection(), world: await store.readWorld() });
       return;
     }
 
@@ -78,6 +79,36 @@ export default async function handler(request, response) {
       record.updatedAt = record.approvedAt;
       await store.writeDirection(record);
       sendJson(response, 200, { record });
+      return;
+    }
+
+    // Write the world. One call at the end of a session, producing the long
+    // document everything else comes from. It is saved as proposed; the owner
+    // reads it and approves it separately.
+    if (action === "author-world") {
+      const world = await authorBrandWorld(body, { store, env: process.env });
+      if (!worldIsWritten(world)) {
+        sendJson(response, 502, { error: "The world came back empty. Run it again." });
+        return;
+      }
+      const stored = await store.readWorld();
+      if (stored) world.version = stored.version + 1;
+      await store.writeWorld(world);
+      sendJson(response, 200, { world });
+      return;
+    }
+
+    if (action === "approve-world") {
+      const world = normalizeWorld(body.world) || (await store.readWorld());
+      if (!world || !worldIsWritten(world)) {
+        sendJson(response, 400, { error: "There is no world to approve yet." });
+        return;
+      }
+      world.status = "approved";
+      world.approvedAt = new Date().toISOString();
+      world.updatedAt = world.approvedAt;
+      await store.writeWorld(world);
+      sendJson(response, 200, { world });
       return;
     }
 
