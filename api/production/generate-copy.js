@@ -8,6 +8,7 @@ import { produceCopy, auditProducedCopy } from "../../src/copy/generate.js";
 import { readJsonBody, requireBrandWorldAccess, resolveClientId, sendJson, sendPublicError } from "../../src/server/http.js";
 import { resolveLook, SCENE_NO_PEOPLE_DEFAULT_LOOK } from "../../src/production/looks.js";
 import { selectWorldArtifacts } from "../../src/brand-brain/world.js";
+import { worldProse } from "../../src/direction/world.js";
 import crypto from "node:crypto";
 
 export default async function handler(request, response) {
@@ -47,7 +48,18 @@ export default async function handler(request, response) {
     // job direction for a single image, never brand knowledge: nothing written
     // here is stored, and the user edits or discards it freely.
     if (String(body.action || "") === "scene_brief") {
-      await handleSceneBrief({ body, brain, product, apiKey, response });
+      // The approved brand world, when one exists. The writer reads it
+      // instead of the derived artifacts. Read server side rather than taken
+      // from the request, so the browser cannot hand the writer a world the
+      // owner has not approved.
+      let brandWorld = null;
+      if (typeof brainStore?.readWorld === "function") {
+        const stored = await brainStore.readWorld();
+        if (stored?.status === "approved") {
+          brandWorld = { version: stored.version, status: "approved", prose: worldProse(stored) };
+        }
+      }
+      await handleSceneBrief({ body: { ...body, brandWorld }, brain, product, apiKey, response });
       return;
     }
 
@@ -618,6 +630,32 @@ export function selectMoments(moments, random = Math.random) {
 // decides, here and in the compiler; nothing else asks which world.
 export { selectWorldArtifacts };
 
+// Writing from the world. When an approved brand world exists, the writer
+// reads that document and writes new situations inside it, instead of reading
+// the derived artifacts and elaborating three sampled moments. The document
+// is the creative source and there is nothing behind it to fall back on, so
+// it goes in whole.
+//
+// The product placement rule stays exactly as it is. It is a renderer
+// workaround: the render models do not judge the scale of a can against a
+// body, and direct interaction failed in 100 percent of owner testing. It is
+// a rule about how a can appears, not a rule about what a picture can be.
+export function worldSceneTask({ peopleless, count }) {
+  return [
+    `You write the directions for ${count} photographs, and each one is a different picture from this brand's world. The world document below is the whole brief. Read it and write photographs that belong in it.`,
+    "",
+    peopleless
+      ? "Nobody is in these frames. The camera arrives before someone gets there or after they have gone, and what is left in the room says who was. Take the world's places, objects and light."
+      : "Cast the people from the world's casting range: particular people who belong there, doing separate concrete things. Nobody appears in more than one of these pictures, and nobody is described by their job or their age bracket.",
+    "",
+    "Write new situations. The situations under The range are possibilities to depart from rather than a list to work through, so use them as evidence of what this world produces and then write something else it also produces. Every direction is one instant, so each person is in the middle of one thing rather than several in a row.",
+    "",
+    `Make these ${count} genuinely different from each other. Different kinds of day, different places, different scales, from one person alone to a crowd. ${count} pictures of people sitting at tables is a failure even when each table is different.`,
+    "",
+    "Name a few objects that belong there. Describe light by where it comes from and how it behaves on what it hits.",
+  ].join("\n");
+}
+
 export async function handleSceneBrief({ body, brain, product, apiKey, response, random = Math.random, env = process.env }) {
   // Three artifacts are the whole of what the writer reads, as of 2026-09-07.
   // The guidance sections went first: they are prose summaries of the same
@@ -664,6 +702,21 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
   };
 
   context.push(`BRAND: ${brain.brandName}. ${brain.brandDescription || ""}`.trim());
+
+  // An approved brand world replaces the derived artifacts as the writer's
+  // source. The document goes in whole and the moment list is not built, so
+  // the writer invents situations inside the world instead of elaborating
+  // three that synthesis already chose. When no approved world exists,
+  // everything below runs exactly as before.
+  const approvedWorld = body.brandWorld && body.brandWorld.status === "approved" ? body.brandWorld : null;
+  const worldMode = Boolean(approvedWorld) && writesAScene;
+  // Built now and swapped in at kind resolution below. The artifact blocks
+  // still run, because a great deal else in this function reads what they set
+  // up, and their context is discarded rather than skipped.
+  const worldContext = worldMode
+    ? [`BRAND: ${brain.brandName}. ${brain.brandDescription || ""}`.trim(), `THE WORLD\n${approvedWorld.prose}`]
+    : null;
+  if (worldMode) drewOn.push(`Brand world v${approvedWorld.version}`);
 
   // The patterns, emotions, tensions, and social modes are the reason the
   // writer has anything to say, so they arrive as what these people do and
@@ -966,7 +1019,28 @@ export async function handleSceneBrief({ body, brain, product, apiKey, response,
       ],
     },
   };
-  const kind = kinds[requestedKind] || kinds.scene;
+  // The world replaces the derived artifacts as the writer's source. The
+  // moments, the lived world and the grammar leave the context, the world
+  // document takes their place, and the task asks for new situations inside
+  // it rather than one photograph per sampled moment. The product placement
+  // rule is carried over unchanged: it is a renderer workaround about how a
+  // can appears, not a rule about what a picture can be.
+  const kind = worldMode
+    ? {
+        ...(kinds[requestedKind] || kinds.scene),
+        task: [
+          worldSceneTask({ peopleless, count: SCENE_MOMENT_COUNT }),
+          product
+            ? `\nWhere a product is named above, it is present in each scene as one object among several, mentioned once, and never the subject. It sits where someone set it down and left it, on a surface in the room, and no one in the frame is holding or touching it.`
+            : "",
+        ].filter(Boolean).join("\n"),
+      }
+    : kinds[requestedKind] || kinds.scene;
+  if (worldMode) {
+    const carried = context.filter((entry) => entry.startsWith("CAMPAIGN:") || entry.startsWith("PRODUCT:"));
+    context.length = 0;
+    context.push(...worldContext, ...carried);
+  }
 
   // ADR 0018. A look that requires a condition to exist has to decide the
   // setting, and it was losing to the earned-environments rule that used to sit
