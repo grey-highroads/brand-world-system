@@ -1319,6 +1319,8 @@ const state = {
   // decisions and a transcript grows without bound.
   direction: {
     record: null,
+    world: null,
+    authoring: false,
     settled: false,
     loaded: false,
     turns: [],
@@ -1608,6 +1610,7 @@ function currentCrumb() {
   if (state.screen === "brain-history") return "Brand brain / History";
   if (state.screen === "brain-canon") return "Brand brain / Core guidance";
   if (state.screen === "direction-session") return "Brand brain / Direction session";
+  if (state.screen === "brand-world") return "Brand brain / The brand world";
   if (state.screen === "chooser") return "Design Studio";
   if (state.screen === "studio-setup") return `Design Studio / ${escapeHtml(studioCategoryLabel(state.studio.category))}`;
   if (state.screen === "campaigns") return "Campaigns";
@@ -7555,6 +7558,7 @@ function render() {
   else if (state.screen === "brain-history") root.innerHTML = renderBrainHistory();
   else if (state.screen === "brain-canon") root.innerHTML = renderCanonPromotion();
   else if (state.screen === "direction-session") root.innerHTML = renderDirectionSession();
+  else if (state.screen === "brand-world") root.innerHTML = renderBrandWorld();
   else if (state.screen === "studio-setup") root.innerHTML = renderStudioSetup();
   else if (state.screen === "campaigns") root.innerHTML = renderCampaigns();
   else if (state.screen === "campaign-creation") root.innerHTML = renderCampaignCreation();
@@ -7951,6 +7955,7 @@ async function hydrateDirectionRecord() {
     if (!response.ok) return;
     const body = await readApiJson(response);
     state.direction.record = body.record || null;
+    state.direction.world = body.world || null;
     state.direction.loaded = true;
     if (state.screen === "direction-session" || state.screen === "brain-artifacts") render();
   } catch {
@@ -8081,9 +8086,27 @@ async function approveDirectionRecord() {
 // today is approved, its audience is not established, and the evolved world
 // is not already built or waiting on its own approval.
 function directionCard() {
-  if (state.brain.artifactStatus !== "ready") return "";
-  if (todayAudienceEvidence() !== "not established") return "";
-  if (state.brain.evolvedStatus === "ready") return "";
+  // The entry point to the world. It shows as soon as the sources have been
+  // read, because the session runs off the foundation read rather than behind
+  // a full synthesis, and it stays visible after the old evolved flow is done,
+  // because the world supersedes that path rather than following it.
+  if (!currentSynthesisResult) return "";
+  const brandWorld = state.direction.world;
+  if (brandWorld && String(brandWorld.sections?.thesis || brandWorld.sections?.people || "").trim()) {
+    const approved = brandWorld.status === "approved";
+    return `
+      <section class="card direction-card">
+        <div class="card-header"><h2>${escapeHtml(brandWorld.title || "The brand world")}</h2><span class="mini-pill">${approved ? `Approved v${brandWorld.version}` : "Needs your read"}</span></div>
+        <p class="page-description">${approved
+          ? "Production writes from this world. Everything visual comes from it."
+          : "The world is written. Read it, then approve it so production writes from it."}</p>
+        <div class="direction-card-actions">
+          <button class="button primary" type="button" data-action="world-open">${approved ? "Read the world" : "Read and approve the world"}</button>
+          <button class="button secondary" type="button" data-action="direction-open">Reopen the session</button>
+        </div>
+      </section>
+    `;
+  }
   const record = state.direction.record;
   const approved = record?.status === "approved";
   const started = Boolean(record) && directionEntryTotal(record) > 0;
@@ -8091,7 +8114,7 @@ function directionCard() {
   // reads the brand today until it gets one, which is why the writer can
   // return directions that owe nothing to the direction record. This is the
   // last step of the ADR 0021 order and it needs a control on this screen.
-  const evolvedWaiting = state.brain.evolvedStatus === "draft";
+  const evolvedWaiting = false;
   const heading = evolvedWaiting
     ? "The evolved world needs your approval"
     : approved
@@ -8232,9 +8255,143 @@ function renderDirectionSession() {
             </div>`}
         </div>
         ${renderDirectionRecordPane(record, approved)}
+        <div class="direction-land">
+          <p>When the world has landed, write it out. It takes a minute and produces the document everything else comes from.</p>
+          <button class="button primary" type="button" data-action="direction-author-world" ${state.direction.authoring || personTurns < 1 ? "disabled" : ""}>${state.direction.authoring ? "Writing the world" : "Write the world"}</button>
+        </div>
       </section>
     `,
     "direction-session-workspace",
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// The brand world. One long document, written at the end of a session, that
+// production reads directly. Section ids mirror src/direction/world.js.
+// ---------------------------------------------------------------------------
+
+const WORLD_SECTION_LABELS = [
+  ["thesis", "What this world is"],
+  ["people", "The people"],
+  ["life", "How their days run"],
+  ["places", "Where it happens"],
+  ["objects", "What is around them"],
+  ["light", "How it is lit"],
+  ["camera", "How it is shot"],
+  ["range", "The range"],
+  ["edges", "Where this world ends"],
+];
+
+function worldHasText(world) {
+  return Boolean(world && WORLD_SECTION_LABELS.some(([id]) => String(world.sections?.[id] || "").trim()));
+}
+
+// Write the world from everything the session gathered. One call, and it
+// takes a while, because it is writing the whole document.
+async function authorTheWorld() {
+  if (state.direction.authoring) return;
+  const record = state.direction.record;
+  state.direction.authoring = true;
+  state.direction.error = "";
+  render();
+  try {
+    const response = await fetch("/api/direction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        action: "author-world",
+        turns: state.direction.turns.slice(-16),
+        landed: state.direction.turns.filter((turn) => turn.role === "person").slice(-1)[0]?.text || "",
+        decisions: DIRECTION_SECTION_IDS.flatMap((id) =>
+          (record?.sections?.[id] || []).map((entry) => ({
+            text: entry.text,
+            because: "",
+            scope: entry.origin === "rejected" ? "this brand" : "this brand",
+            active: true,
+          })),
+        ),
+      }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The world could not be written.");
+    state.direction.world = body.world;
+    recordBrainHistory(`The world was written, v${body.world.version}`, "Read it, then approve it so production writes from it.", "complete");
+    navigate("brand-world");
+  } catch (error) {
+    state.direction.error = error.message || "The world could not be written.";
+  } finally {
+    state.direction.authoring = false;
+    render();
+  }
+}
+
+async function approveTheWorld() {
+  const world = state.direction.world;
+  if (!worldHasText(world) || state.direction.authoring) return;
+  state.direction.authoring = true;
+  render();
+  try {
+    const response = await fetch("/api/direction", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve-world", world }),
+    });
+    const body = await readApiJson(response);
+    if (!response.ok) throw new Error(body.error || "The world could not be approved.");
+    state.direction.world = body.world;
+    recordBrainHistory(`The world v${body.world.version} is approved`, "Production writes every picture from this world.", "complete");
+    setToast("The world is approved. Production writes from it now.");
+    navigate("brain-artifacts");
+  } catch (error) {
+    state.direction.error = error.message || "The world could not be approved.";
+    render();
+  } finally {
+    state.direction.authoring = false;
+  }
+}
+
+function renderBrandWorld() {
+  const world = state.direction.world;
+  if (!worldHasText(world)) {
+    return brainWorkspace("The brand world", "Nothing written yet.", `
+      <section class="card"><p class="page-description">Hold a direction session and write the world at the end of it.</p>
+      <button class="button primary" type="button" data-action="direction-open">Go to the session</button></section>
+    `, "brand-world-workspace");
+  }
+  const approved = world.status === "approved";
+  const sections = WORLD_SECTION_LABELS.map(([id, label]) => {
+    const body = String(world.sections?.[id] || "").trim();
+    if (!body) return "";
+    return `<section class="world-section"><h2>${escapeHtml(label)}</h2>${body
+      .split(/\n{2,}/)
+      .map((paragraph) => `<p>${escapeHtml(paragraph.trim())}</p>`)
+      .join("")}</section>`;
+  }).join("");
+  const decisions = (world.decisions || []).filter((decision) => decision.active);
+  return brainWorkspace(
+    world.title || "The brand world",
+    approved
+      ? `Approved, version ${world.version}. Production writes every picture from this.`
+      : `Version ${world.version}, written by the session. Read it, then approve it.`,
+    `
+      ${state.direction.error ? `<p class="direction-error">${escapeHtml(state.direction.error)}</p>` : ""}
+      <article class="world-document">${sections}
+        ${decisions.length
+          ? `<section class="world-section"><h2>What you decided</h2><ul>${decisions
+              .map((decision) => `<li>${escapeHtml(decision.text)}${decision.because ? ` ${escapeHtml(decision.because)}` : ""}</li>`)
+              .join("")}</ul></section>`
+          : ""}
+      </article>
+      <div class="world-actions">
+        ${approved
+          ? `<span class="brain-status success">Approved v${world.version}</span>
+             <button class="button secondary" type="button" data-action="direction-open">Reopen the session</button>`
+          : `<button class="button primary" type="button" data-action="world-approve" ${state.direction.authoring ? "disabled" : ""}>Approve the world</button>
+             <button class="button secondary" type="button" data-action="direction-open">Back to the session</button>`}
+      </div>
+    `,
+    "brand-world-workspace",
   );
 }
 
@@ -10922,6 +11079,9 @@ root.addEventListener("click", (event) => {
     }
   }
   if (action === "direction-approve") void approveDirectionRecord();
+  if (action === "direction-author-world") void authorTheWorld();
+  if (action === "world-open") navigate("brand-world");
+  if (action === "world-approve") void approveTheWorld();
   if (action === "retry-brain-synthesis") startBrainSynthesis();
   if (action === "select-brain-exception") {
     state.brain.selectedExceptionId = target.dataset.id;
