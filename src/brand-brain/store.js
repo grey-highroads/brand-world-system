@@ -38,6 +38,12 @@ function directionPathname(clientId) {
   return `${clientRoot(clientId)}/state/direction.json`;
 }
 
+// The brand world document. The creative source, stored as its own record so
+// it survives a brain rebuild and carries its own version and approval.
+function worldPathname(clientId) {
+  return `${clientRoot(clientId)}/state/world.json`;
+}
+
 function sourcesPrefix(clientId) {
   return `${clientRoot(clientId)}/sources/`;
 }
@@ -87,6 +93,18 @@ export function createFileBrandBrainStore(storePath) {
     },
     async clearInProgress() {
       await fs.rm(inProgressFilePath(storePath), { force: true });
+    },
+    async readWorld() {
+      try {
+        return JSON.parse(await fs.readFile(path.join(path.dirname(storePath), "world.json"), "utf8"));
+      } catch (error) {
+        if (error.code === "ENOENT") return null;
+        throw error;
+      }
+    },
+    async writeWorld(value) {
+      await fs.mkdir(path.dirname(storePath), { recursive: true });
+      await fs.writeFile(path.join(path.dirname(storePath), "world.json"), `${JSON.stringify(value, null, 2)}\n`, { mode: 0o600 });
     },
     async readDirection() {
       try {
@@ -176,6 +194,19 @@ export function createVercelBlobBrandBrainStore(options = {}) {
     },
     async readDirection() {
       return readJsonBlobOrNull(directionPathname(clientId));
+    },
+    async readWorld() {
+      return readJsonBlobOrNull(worldPathname(clientId));
+    },
+    async writeWorld(value) {
+      await put(worldPathname(clientId), JSON.stringify(value), {
+        access: "private",
+        ...credentials,
+        allowOverwrite: true,
+        addRandomSuffix: false,
+        contentType: "application/json",
+        cacheControlMaxAge: 0,
+      });
     },
     async writeDirection(value) {
       await put(directionPathname(clientId), JSON.stringify(value), {
