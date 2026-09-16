@@ -8118,14 +8118,14 @@ function directionCard() {
   const heading = evolvedWaiting
     ? "The evolved world needs your approval"
     : approved
-    ? "Direction approved"
+    ? "Write the world"
     : started
     ? "Direction session in progress"
     : "This brand needs a direction";
   const copy = evolvedWaiting
     ? "It is built and stored, and production still writes from the brand today until you approve it. Read it first: the moments and the cast are what every picture comes from."
     : approved
-    ? `Version ${record.version} is approved and the evolved passes will read it as a source. Build the brand world, evolved, when you are ready.`
+    ? `A direction is settled, version ${record.version}. Write the world from it. That is the document production writes every picture from.`
     : started
     ? `${directionEntryTotal(record, true)} entries so far${record.reach ? `, reach recommended: ${record.reach.level}` : ""}. Continue the session, then approve the record.`
     : "The evolved world has nothing to reach from yet. Give the session a rough steer and it proposes worlds to react to. Three or four rounds.";
@@ -8134,8 +8134,8 @@ function directionCard() {
        <button class="button secondary" type="button" data-action="select-artifact-world" data-world="evolved">Read it first</button>
        <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
     : approved
-    ? `<button class="button primary" type="button" data-action="rebuild-evolved-world">Build the brand world, evolved</button>
-       <button class="button secondary" type="button" data-action="direction-open">View the direction record</button>`
+    ? `<button class="button primary" type="button" data-action="direction-author-world" ${state.direction.authoring ? "disabled" : ""}>${state.direction.authoring ? "Writing the world" : "Write the world"}</button>
+       <button class="button secondary" type="button" data-action="direction-open">Reopen the session first</button>`
     : `<button class="button primary" type="button" data-action="direction-open">${started ? "Continue the direction session" : "Find the direction"}</button>`;
   return `
     <section class="card direction-card">
