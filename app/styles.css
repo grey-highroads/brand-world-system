@@ -10105,3 +10105,10 @@ button.ws-attention-item:hover {
   font-size: 13px;
   color: var(--muted);
 }
+
+.direction-record-note {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
