@@ -257,14 +257,26 @@ test("a settled audience runs the same session, held fixed rather than reopened"
 });
 let saved;
 
-test("the session route refuses before the brand today is approved", async () => {
+test("the session runs off the foundation read, before the brand today is approved", async () => {
+  // The session is where the world gets decided, so it no longer waits behind
+  // a full four pass synthesis and an approval of a world nobody directed.
   const unapproved = savedBrain();
+  unapproved.result = unapproved.approvedResult;
   delete unapproved.approvedResult;
   unapproved.brain = { artifactStatus: "draft" };
   const store = directionStore(unapproved);
+  const turn = await runDirectionSessionTurn(
+    { message: "Hello." },
+    { store, env: { OPENAI_API_KEY: "x" }, complete: cannedTurn({ reply: "Here are two worlds.", worlds: [], options: [], entries: [], reach: null }) },
+  );
+  assert.equal(turn.reply, "Here are two worlds.");
+});
+
+test("the session refuses when the sources have not been read at all", async () => {
+  const store = directionStore({ kind: "synthesis", sources: [], brain: {} });
   await assert.rejects(
     runDirectionSessionTurn({ message: "Hello." }, { store, env: {}, complete: cannedTurn({}) }),
-    /Approve the brand today/,
+    /Read the brand's sources first/,
   );
 });
 
@@ -391,4 +403,70 @@ test("an evolved-only run reads the approved record as a source, and not a propo
   for (const call of withProposed) {
     assert.equal(call.sources.some((source) => source.id === "direction-record"), false, `pass ${call.passId} does not read a proposed record`);
   }
+});
+
+// ---------------------------------------------------------------------------
+// The world document
+// ---------------------------------------------------------------------------
+
+test("the world round-trips, counts its words, and renders as one piece of prose", async () => {
+  const { emptyWorld, normalizeWorld, worldIsWritten, worldProse, worldWordCount, worldAsSource } = await import("../src/direction/world.js");
+  const world = emptyWorld({ brandName: "MycoPop", model: "gpt-5.6" });
+  assert.equal(worldIsWritten(world), false);
+  world.title = "Nothing on the calendar";
+  world.sections.thesis = "A world of people with time they did not have to ask for.";
+  world.sections.people = "Late twenties into late thirties, in it for the thing rather than the scene around it.";
+  world.sections.places = "A field at the back of a festival, a stairwell, a car park at two in the morning.";
+  world.decisions = [
+    { text: "No optimization language anywhere in frame.", because: "Reads as wellness.", scope: "this brand", active: true },
+    { text: "That one kitchen with the marble island.", because: "Too staged.", scope: "this picture", active: true },
+  ];
+  const clean = normalizeWorld(world);
+  assert.equal(worldIsWritten(clean), true);
+  assert.ok(worldWordCount(clean) > 20);
+
+  const prose = worldProse(clean);
+  assert.match(prose, /## The people/);
+  assert.match(prose, /## Where it happens/);
+  assert.doesNotMatch(prose, /## What is around them/, "an empty section writes nothing");
+  // Only brand scoped decisions travel. A rejection about one picture is not
+  // a rule about the world.
+  assert.match(prose, /No optimization language/);
+  assert.doesNotMatch(prose, /marble island/);
+  assert.doesNotMatch(prose, /\u2014|\u2013/);
+
+  const source = worldAsSource(clean);
+  assert.equal(source.provenance, "ours");
+  assert.equal(source.aspiration, "aspiration");
+  assert.match(source.usage, /casting range rather than a cast list/);
+  assert.match(source.usage, /possibilities to depart from/);
+});
+
+test("the authoring instruction sends the facts, the session, and the decisions", async () => {
+  const { buildWorldAuthoringInstruction, worldAuthoringSchema } = await import("../src/direction/author.js");
+  const instruction = buildWorldAuthoringInstruction({
+    foundation: { brand: "MycoPop", productTruth: "No caffeine." },
+    transcript: "PROPOSED: Two worlds.\n\nOWNER: The second one, without the garage.",
+    landed: "The second one.",
+    decisions: [{ text: "No garages.", because: "Reads as labor.", scope: "this brand", active: true }],
+  });
+  assert.match(instruction, /No caffeine/);
+  assert.match(instruction, /without the garage/);
+  assert.match(instruction, /Reads as labor/);
+  assert.match(instruction, /Write it long/);
+  assert.match(instruction, /casting range, never a cast/);
+  assert.match(instruction, /twenty pictures of tables/);
+  assert.doesNotMatch(instruction, /\u2014/);
+  // Every section the document holds is asked for in one call, so the parts
+  // are written against each other rather than separately.
+  assert.deepEqual(Object.keys(worldAuthoringSchema.properties.sections.properties).length, 9);
+});
+
+test("an approved world replaces the derived artifacts in the writer's context", async () => {
+  const { buildSceneRequest } = await import("../api/production/generate-copy.js").then((mod) => ({ buildSceneRequest: mod.worldSceneTask }));
+  const task = buildSceneRequest({ peopleless: false, count: 3 });
+  assert.match(task, /each one is a different picture from this brand's world/);
+  assert.match(task, /possibilities to depart from rather than a list to work through/);
+  assert.match(task, /pictures of people sitting at tables is a failure/);
+  assert.doesNotMatch(task, /three moments/);
 });
