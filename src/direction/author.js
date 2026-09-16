@@ -14,17 +14,38 @@ function strictObject(properties) {
   return { type: "object", properties, required: Object.keys(properties), additionalProperties: false };
 }
 
-export const worldAuthoringSchema = strictObject({
-  title: { type: "string", description: "A short name for this world, three to six words, in the owner's register rather than a marketing line." },
-  sections: strictObject(
-    Object.fromEntries(
-      WORLD_SECTIONS.map((section) => [section.id, { type: "string", description: section.hint }]),
-    ),
-  ),
-});
+// The document is written in three passes rather than one. A single call
+// writing all nine sections leaves the browser waiting several minutes with
+// nothing coming back, and the connection is dropped before the function
+// answers. Each stage reads everything written before it, so the parts are
+// still written against each other.
+export const WORLD_STAGES = [
+  { id: "ground", sections: ["thesis", "people", "life"] },
+  { id: "pictures", sections: ["places", "objects", "light", "camera"] },
+  { id: "reach", sections: ["range", "edges"] },
+];
 
-export function buildWorldAuthoringInstruction({ foundation, transcript, landed, decisions }) {
-  const sectionLines = WORLD_SECTIONS.map((section) => `### ${section.label} ("${section.id}")\n${section.hint}`).join("\n\n");
+export function worldStageSections(stageId) {
+  const stage = WORLD_STAGES.find((entry) => entry.id === stageId) || WORLD_STAGES[0];
+  return WORLD_SECTIONS.filter((section) => stage.sections.includes(section.id));
+}
+
+export function worldAuthoringSchemaFor(stageId) {
+  const sections = worldStageSections(stageId);
+  const properties = { sections: strictObject(Object.fromEntries(sections.map((section) => [section.id, { type: "string", description: section.hint }]))) };
+  if (stageId === WORLD_STAGES[0].id) {
+    properties.title = { type: "string", description: "A short name for this world, three to six words, in the owner's register rather than a marketing line." };
+  }
+  return strictObject(properties);
+}
+
+export function buildWorldAuthoringInstruction({ foundation, transcript, landed, decisions, stageId, written }) {
+  const sectionLines = worldStageSections(stageId).map((section) => `### ${section.label} ("${section.id}")\n${section.hint}`).join("\n\n");
+  const already = written && Object.keys(written).length
+    ? `\nWHAT IS ALREADY WRITTEN\nThese sections of this same document are done. Write against them: do not restate them, do not contradict them, and let them decide what belongs in the sections below.\n${Object.entries(written)
+        .map(([id, body]) => `## ${(WORLD_SECTIONS.find((section) => section.id === id) || {}).label || id}\n${body}`)
+        .join("\n\n")}\n`
+    : "";
   return `You are writing the brand world document for ${foundation?.brand || "this brand"}. It is the creative source for everything this brand makes visually. A photographer briefed on a real shoot reads this. An agency writing a campaign reads this. The system writes every picture from this. There is nothing behind it to fall back on, so write it complete.
 
 The brand facts, read from its own material. These are true and you do not contradict them:
@@ -39,7 +60,8 @@ ${landed || "(see the transcript)"}
 What the owner decided along the way, including what he killed and why:
 ${JSON.stringify(decisions || [], null, 2)}
 
-WRITE THE WHOLE THING
+${already}
+WRITE THIS PART OF IT
 Write it long. This is the document everything else comes from, so depth is the point and there is no brevity target. Several hundred words in the larger sections is normal and more is fine where you have something to say.
 
 You know this culture, this category, and this aesthetic territory in more detail than anyone could describe to you. Use it. Write what you actually know about how these people live, what they wear, what they listen to, what their rooms look like, what a Saturday costs them. Be particular and commit. A world that could belong to any brand in this category has failed, and hedging is how that happens.
@@ -52,7 +74,9 @@ The people are a casting range, never a cast. One description wide enough that t
 
 Give the world its scale. It runs from one person alone to a crowd of thousands, and the same territory holds at every size. A world written entirely in small interiors produces twenty pictures of tables.
 
-SECTIONS
+SECTIONS TO WRITE NOW
+Write only these. Other parts of the document are handled separately.
+
 ${sectionLines}
 
 TONE
@@ -67,12 +91,13 @@ export function worldAuthoringModel(env = process.env) {
   return configured || String(env?.OPENAI_MODEL || "").trim() || DEFAULT_BRAND_BRAIN_MODEL;
 }
 
-export function worldFromAuthoringResult({ parsed, brandName, model, decisions }) {
+export function worldFromAuthoringResult({ parsed, brandName, model, decisions, previous }) {
   const world = emptyWorld({ brandName, model });
-  world.title = String(parsed?.title || "").trim();
+  world.title = String(parsed?.title || previous?.title || "").trim();
   for (const section of WORLD_SECTIONS) {
-    world.sections[section.id] = String(parsed?.sections?.[section.id] || "").trim();
+    const written = String(parsed?.sections?.[section.id] || "").trim();
+    world.sections[section.id] = written || String(previous?.sections?.[section.id] || "").trim();
   }
-  world.decisions = Array.isArray(decisions) ? decisions : [];
+  world.decisions = Array.isArray(decisions) ? decisions : previous?.decisions || [];
   return normalizeWorld(world);
 }
