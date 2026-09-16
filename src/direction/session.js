@@ -383,7 +383,7 @@ export async function authorBrandWorld(body, options) {
   const transcript = cleanTurns(body?.turns)
     .map((turn) => `${turn.role === "session" ? "PROPOSED" : "OWNER"}: ${turn.text}`)
     .join("\n\n");
-  const landed = String(body?.landed || "").trim().slice(0, 4000);
+  const landed = [String(body?.landed || "").trim(), String(body?.direction || "").trim()].filter(Boolean).join("\n\n").slice(0, 8000);
   const decisions = Array.isArray(body?.decisions) ? body.decisions.slice(0, 80) : [];
 
   const model = worldAuthoringModel(options.env);
