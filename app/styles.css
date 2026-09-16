@@ -10112,3 +10112,32 @@ button.ws-attention-item:hover {
   color: var(--muted);
   line-height: 1.5;
 }
+
+.direction-entry-cut {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font: inherit;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  padding: 2px 4px;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.direction-section li:hover .direction-entry-cut,
+.direction-entry-cut:focus-visible {
+  opacity: 1;
+}
+
+.direction-entry-cut:hover {
+  color: var(--danger);
+}
+
+.direction-record-head .button.small {
+  font-size: 12px;
+  padding: 5px 10px;
+  margin-bottom: 14px;
+}
