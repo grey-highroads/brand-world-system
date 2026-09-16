@@ -2,7 +2,7 @@ import { DEFAULT_BRAND_BRAIN_MODEL, collectChatCompletionStream } from "../brand
 import { REACH_LEVELS } from "../brand-brain/schema.js";
 import { worldArtifacts } from "../brand-brain/world.js";
 import { selectApprovedBaseline } from "../brand-brain/service.js";
-import { buildWorldAuthoringInstruction, worldAuthoringModel, worldAuthoringSchema, worldFromAuthoringResult } from "./author.js";
+import { WORLD_STAGES, buildWorldAuthoringInstruction, worldAuthoringModel, worldAuthoringSchemaFor, worldFromAuthoringResult } from "./author.js";
 import {
   DIRECTION_ENTRY_KINDS,
   DIRECTION_ENTRY_ORIGINS,
@@ -386,6 +386,17 @@ export async function authorBrandWorld(body, options) {
   const landed = [String(body?.landed || "").trim(), String(body?.direction || "").trim()].filter(Boolean).join("\n\n").slice(0, 8000);
   const decisions = Array.isArray(body?.decisions) ? body.decisions.slice(0, 80) : [];
 
+  // One stage per request. The client walks the stages in order and hands
+  // back what is written so far, so each call is short enough to answer
+  // before the connection is dropped and long enough to be written against
+  // everything before it.
+  const stageId = WORLD_STAGES.some((stage) => stage.id === body?.stage) ? body.stage : WORLD_STAGES[0].id;
+  const previous = body?.world || null;
+  const written = {};
+  for (const [id, text] of Object.entries(previous?.sections || {})) {
+    if (String(text || "").trim()) written[id] = text;
+  }
+
   const model = worldAuthoringModel(options.env);
   const request = {
     model,
@@ -393,12 +404,12 @@ export async function authorBrandWorld(body, options) {
     stream: true,
     stream_options: { include_usage: true },
     messages: [
-      { role: "developer", content: buildWorldAuthoringInstruction({ foundation, transcript, landed, decisions }) },
-      { role: "user", content: "Write the world now. Reply with the JSON object and nothing else." },
+      { role: "developer", content: buildWorldAuthoringInstruction({ foundation, transcript, landed, decisions, stageId, written }) },
+      { role: "user", content: "Write these sections now. Reply with the JSON object and nothing else." },
     ],
     response_format: {
       type: "json_schema",
-      json_schema: { name: "brand_world", strict: true, schema: worldAuthoringSchema },
+      json_schema: { name: "brand_world", strict: true, schema: worldAuthoringSchemaFor(stageId) },
     },
   };
 
@@ -412,10 +423,13 @@ export async function authorBrandWorld(body, options) {
     throw new Error("The world did not come back as usable JSON. Try again.");
   }
 
-  return worldFromAuthoringResult({
+  const world = worldFromAuthoringResult({
     parsed,
     brandName: root.brandName || "",
     model: completion.model || model,
     decisions,
+    previous,
   });
+  const index = WORLD_STAGES.findIndex((stage) => stage.id === stageId);
+  return { world, stage: stageId, nextStage: WORLD_STAGES[index + 1]?.id || null };
 }
